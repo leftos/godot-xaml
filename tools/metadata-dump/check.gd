@@ -52,6 +52,11 @@ func _run_checks(data: Dictionary, bytes: PackedByteArray) -> void:
 	_check("K16", _k16(data))
 	_check("K17", _k17(data))
 	_check("K18", _k18(data))
+	_check("K19", _k19(data))
+	_check("K20", _k20(data))
+	_check("K21", _k21(data))
+	_check("K22", _k22(data))
+	_check("K23", _k23(data))
 
 
 func _k1(data: Dictionary) -> String:
@@ -224,6 +229,46 @@ func _k18(data: Dictionary) -> String:
 	)
 
 
+func _k19(data: Dictionary) -> String:
+	var overrides := _default_overrides(data, "Button")
+	if not overrides.has("focus_mode"):
+		return "Button.defaultOverrides has no focus_mode"
+	return _mismatch("Button.defaultOverrides.focus_mode", overrides.get("focus_mode"), "2")
+
+
+func _k20(data: Dictionary) -> String:
+	var overrides := _default_overrides(data, "Label")
+	if not overrides.has("mouse_filter"):
+		return "Label.defaultOverrides has no mouse_filter"
+	return _mismatch("Label.defaultOverrides.mouse_filter", overrides.get("mouse_filter"), "2")
+
+
+func _k21(data: Dictionary) -> String:
+	if _default_overrides(data, "Control").has("focus_mode"):
+		return "Control.defaultOverrides lists focus_mode, which Control declares"
+	return ""
+
+
+func _k22(data: Dictionary) -> String:
+	var prop := _property(data, "BaseButton", "disabled")
+	if prop.is_empty():
+		return "BaseButton has no property disabled"
+	if prop.has("default"):
+		return "BaseButton.disabled has a default %s" % var_to_str(prop.default)
+	return ""
+
+
+func _k23(data: Dictionary) -> String:
+	var marked := _mismatch(
+		"BaseButton.hasDefaults", _class(data, "BaseButton").get("hasDefaults"), false
+	)
+	if not marked.is_empty():
+		return marked
+	if _class(data, "Button").has("hasDefaults"):
+		return "Button has a hasDefaults key"
+	return ""
+
+
 func _check(id: String, detail: String) -> void:
 	if detail.is_empty():
 		print("CHECK %s PASS" % id)
@@ -249,6 +294,11 @@ func _class_signal(data: Dictionary, class_title: String, name: String) -> Dicti
 		if signal_info.get("name") == name:
 			return signal_info
 	return {}
+
+
+func _default_overrides(data: Dictionary, class_title: String) -> Dictionary:
+	var overrides: Dictionary = _class(data, class_title).get("defaultOverrides", {})
+	return overrides
 
 
 func _theme_override(data: Dictionary, class_title: String, name: String) -> Dictionary:

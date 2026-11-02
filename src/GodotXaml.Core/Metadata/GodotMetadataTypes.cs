@@ -11,6 +11,7 @@ public sealed class GodotClassInfo
     private readonly FrozenDictionary<string, GodotPropertyInfo> propertiesByCSharpName;
     private readonly FrozenDictionary<string, GodotEnumInfo> enumsByName;
     private readonly FrozenDictionary<string, GodotThemeOverrideInfo> themeOverridesByName;
+    private readonly FrozenDictionary<string, GodotPropertyDefault> defaultOverrides;
 
     internal GodotClassInfo(GodotClassParts parts)
     {
@@ -18,12 +19,19 @@ public sealed class GodotClassInfo
         CSharpName = parts.CSharpName;
         Parent = parts.Parent;
         Instantiable = parts.Instantiable;
+        HasDefaults = parts.HasDefaults;
         Properties = parts.Properties;
         Enums = parts.Enums;
         ThemeOverrides = parts.ThemeOverrides;
         Signals = parts.Signals;
         propertiesByName = Index(parts.Properties, p => p.Name, "property");
         propertiesByCSharpName = Index(parts.Properties, p => p.CSharpName, "property C# name");
+        defaultOverrides = UniqueIndex.Build(
+            parts.DefaultOverrides,
+            o => o.Key,
+            o => o.Value,
+            duplicate => $"Class '{Name}' lists the default override '{duplicate}' twice."
+        );
         enumsByName = Index(parts.Enums, e => e.QualifiedName[(e.QualifiedName.LastIndexOf('.') + 1)..], "enum");
         themeOverridesByName = Index(parts.ThemeOverrides, t => t.Name, "theme override");
     }
@@ -39,6 +47,12 @@ public sealed class GodotClassInfo
 
     /// <summary>Whether ClassDB can instantiate the class.</summary>
     public bool Instantiable { get; }
+
+    /// <summary>
+    /// Whether Godot reads any default for the class's properties; false for a class ClassDB marks virtual, whose every property
+    /// has none.
+    /// </summary>
+    public bool HasDefaults { get; }
 
     /// <summary>The properties the class declares itself, in ClassDB order.</summary>
     public ImmutableArray<GodotPropertyInfo> Properties { get; }
@@ -60,6 +74,8 @@ public sealed class GodotClassInfo
 
     internal GodotThemeOverrideInfo? ThemeOverride(string godotName) => themeOverridesByName.GetValueOrDefault(godotName);
 
+    internal GodotPropertyDefault? DefaultOverride(string godotName) => defaultOverrides.GetValueOrDefault(godotName);
+
     private FrozenDictionary<string, T> Index<T>(ImmutableArray<T> items, Func<T, string> key, string what) =>
         UniqueIndex.Build(items, key, duplicate => $"Class '{Name}' lists the {what} '{duplicate}' twice.");
 }
@@ -70,7 +86,9 @@ internal sealed record GodotClassParts(
     string CSharpName,
     string? Parent,
     bool Instantiable,
+    bool HasDefaults,
     ImmutableArray<GodotPropertyInfo> Properties,
+    ImmutableArray<KeyValuePair<string, GodotPropertyDefault>> DefaultOverrides,
     ImmutableArray<GodotEnumInfo> Enums,
     ImmutableArray<GodotThemeOverrideInfo> ThemeOverrides,
     ImmutableArray<GodotSignalInfo> Signals
@@ -109,6 +127,11 @@ public sealed record GodotPropertyInfo(
     public bool IsStored => (Usage & UsageStorage) != 0;
 }
 
+/// <summary>A property's default for a class: its Godot value text (<c>Vector2(0, 0)</c>) and the value read from it.</summary>
+/// <param name="Text">The default as Godot value text.</param>
+/// <param name="Value">The default read from <paramref name="Text"/>.</param>
+public sealed record GodotPropertyDefault(string Text, GodotValue Value);
+
 /// <summary>A class or global enum with its members' Godot and C# names.</summary>
 /// <param name="QualifiedName">The class enum's <c>Class.Enum</c> name, or the global enum's name.</param>
 /// <param name="Bitfield">Whether the enum is a bitfield.</param>
@@ -145,12 +168,21 @@ internal static class UniqueIndex
     /// <param name="key">Each item's key.</param>
     /// <param name="duplicate">The error message for a key found twice.</param>
     /// <returns>The lookup, ordinal on the key.</returns>
-    public static FrozenDictionary<string, T> Build<T>(IEnumerable<T> items, Func<T, string> key, Func<string, string> duplicate)
+    public static FrozenDictionary<string, T> Build<T>(IEnumerable<T> items, Func<T, string> key, Func<string, string> duplicate) =>
+        Build(items, key, item => item, duplicate);
+
+    /// <summary>The items' values by their keys, failing on a key that two items share.</summary>
+    public static FrozenDictionary<string, TValue> Build<TItem, TValue>(
+        IEnumerable<TItem> items,
+        Func<TItem, string> key,
+        Func<TItem, TValue> value,
+        Func<string, string> duplicate
+    )
     {
-        var index = new Dictionary<string, T>(StringComparer.Ordinal);
-        foreach (T item in items)
+        var index = new Dictionary<string, TValue>(StringComparer.Ordinal);
+        foreach (TItem item in items)
         {
-            if (!index.TryAdd(key(item), item))
+            if (!index.TryAdd(key(item), value(item)))
             {
                 throw new InvalidDataException(duplicate(key(item)));
             }

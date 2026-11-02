@@ -1,6 +1,6 @@
 # metadata-dump
 
-Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent, whether it can be instantiated, its own enums and its own properties, each property with its Variant type, enum or bitfield type, hint, hint string, usage flags, class name and default value. The file is committed; `metadata/godot-4.7.json` is the current one.
+Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent, whether it can be instantiated, its own enums and its own properties, plus the defaults it changes for inherited ones, each property with its Variant type, enum or bitfield type, hint, hint string, usage flags, class name and default value. The file is committed; `metadata/godot-4.7.json` is the current one.
 
 ## What it reads
 
@@ -11,12 +11,18 @@ Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent
 
 Top level: `godot` (the engine's version string), `globalEnums`, `classes`.
 
-- A class: `parent` (null for `Object`), `instantiable`, `enums`, `properties`, `signals`, and `themeOverrides` on some (below).
+- A class: `parent` (null for `Object`), `instantiable`, `enums`, `properties`, `signals`, and `hasDefaults`, `defaultOverrides` and `themeOverrides` on some (below).
 - An enum: `{"bitfield": bool, "values": [[name, int], …]}`, members in declaration order.
 - A property: `name`, `type` (Variant type name), `enumType` (`"Control.MouseFilter"`, or null), `bitfield`, `hint`, `hintString`, `usage`, `className`, `default`.
 - A signal: `name` and `args`, an array in ClassDB order of `{name, type, className}` per argument. `type` is the argument's Variant type (`Object` for a node argument) and `className` its class (`Area2D`'s `body_entered` takes `body`, `Object`, `Node2D`). A class with no signals of its own has `[]`.
 
-`default` is Godot's own value text (`var_to_str`: `Vector2(0, 0)`, `""` as `"\"\""`, `"null"` for a null default). The key is left out when no default is known: the class cannot be instantiated, or the default is an Object.
+`default` is Godot's own value text (`var_to_str`: `Vector2(0, 0)`, `""` as `"\"\""`, `"null"` for a null default of an Object or Nil property). The key is left out when no default is known: the class cannot be instantiated (`BaseButton`'s own properties have none), the default is an Object, or ClassDB reports null for a property whose type is neither Object nor Nil.
+
+An instantiable class also has `defaultOverrides` when its own default for an inherited property differs from what its parent chain gives: `{"<property>": "<Godot value text>"}` (`Button` has `focus_mode` `"2"`, since `BaseButton`'s constructor sets it to All; `Label` has `mouse_filter` `"2"`). The key is absent when there are none, and the same null rule applies.
+
+An instantiable class for which ClassDB reports no default for any property that can hold one has `"hasDefaults": false`, written only when false. These are the classes Godot registers as virtual (`BaseButton`, `Range`, `VisualInstance3D`, `Texture`, …), which `ClassDB::class_get_default_property_value` never instantiates, so Godot saves every stored property of such a node; a class with no such property at all (`Object`, `RefCounted`) is marked too.
+
+A property's effective default for a class is none when the class has `hasDefaults` false; else the class's own declaration's `default` (none when it has no `default` key); else the class's override; else the parent's effective default.
 
 Properties keep ClassDB order; category, group and subgroup entries and names containing `/` are left out.
 
@@ -43,6 +49,7 @@ godot --headless --path tools/metadata-dump --script res://check.gd -- --file <a
 `check.gd` prints `CHECK <id> PASS` or `CHECK <id> FAIL <detail>` for each known fact, and exits 1 when any failed. The facts:
 
 - classes and properties: Control's parent, `Node2D.position` and `Label.text` defaults, no defaults on `CanvasItem`, `layout_mode` stored, no `/` name in `Control.properties`;
+- default overrides: `Button` overrides `focus_mode` with `"2"`, `Label` overrides `mouse_filter` with `"2"`, `Control` has no `focus_mode` override, `BaseButton.disabled` has no `default` key, and `BaseButton` has `hasDefaults` false while `Button` has no such key;
 - enums: the `mouse_filter` and `size_flags_horizontal` enum links, the `Side` global enum;
 - theme overrides: `Label`'s `font_color` is a `Color`, `Button`'s `styles/normal` is an `Object` of `StyleBox`, `Window` has overrides, `Node2D` has no `themeOverrides`;
 - signals: `BaseButton` declares `pressed` and `Button` does not, `Node` declares `ready`, `Area2D`'s `body_entered` takes a `Node2D` `body`;

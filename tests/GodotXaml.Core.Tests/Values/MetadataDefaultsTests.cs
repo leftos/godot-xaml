@@ -7,8 +7,8 @@ namespace GodotXaml.Core.Tests.Values;
 // one reads and writes back to the same text.
 public sealed class MetadataDefaultsTests
 {
-    // The default texts in metadata/godot-4.7.json: 4,190 properties, 484 of them without a default.
-    private const int DefaultCount = 3706;
+    // The default texts in metadata/godot-4.7.json: 4,190 properties, 701 of them without a default.
+    private const int DefaultCount = 3489;
 
     [Fact]
     public void WritesEveryDefaultBackUnchanged()

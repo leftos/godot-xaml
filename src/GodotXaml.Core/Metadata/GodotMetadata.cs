@@ -115,6 +115,39 @@ public sealed class GodotMetadata
     public GodotPropertyInfo? FindPropertyByCSharpName(GodotClassInfo cls, string csName) =>
         Chain(Resolve(cls)).Select(c => c.OwnPropertyByCSharpName(csName)).FirstOrDefault(p => p is not null);
 
+    /// <summary>
+    /// A property's default for a class, as Godot reads it for that class (its own value, else the nearest override or
+    /// declaration up the chain); a class Godot keeps no defaults for has none for any property.
+    /// </summary>
+    /// <param name="cls">The class.</param>
+    /// <param name="godotName">The property's Godot name (<c>focus_mode</c>).</param>
+    /// <returns>The default, or null when the class has none for the property.</returns>
+    /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
+    public GodotPropertyDefault? FindDefault(GodotClassInfo cls, string godotName)
+    {
+        foreach (GodotClassInfo current in Chain(Resolve(cls)))
+        {
+            if (!current.HasDefaults)
+            {
+                return null;
+            }
+
+            GodotPropertyInfo? property = current.OwnProperty(godotName);
+            if (property is not null)
+            {
+                return property.DefaultText is null ? null : new GodotPropertyDefault(property.DefaultText, property.Default!);
+            }
+
+            GodotPropertyDefault? overrideDefault = current.DefaultOverride(godotName);
+            if (overrideDefault is not null)
+            {
+                return overrideDefault;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>A signal of a class or of one of its ancestors, by its C# name.</summary>
     /// <param name="cls">The class to start from.</param>
     /// <param name="csName">The signal's C# name (<c>Pressed</c>).</param>
@@ -207,7 +240,9 @@ internal static class GodotMetadataReader
                 csName,
                 JsonFields.NullableString(entry, "parent", where),
                 JsonFields.Bool(entry, "instantiable", where),
+                JsonFields.OptionalBool(entry, "hasDefaults", where) ?? true,
                 properties,
+                DefaultOverrides(entry, name, where),
                 [.. JsonFields.Object(entry, "enums", where).EnumerateObject().Select(e => ClassEnum(name, e))],
                 [.. JsonFields.OptionalArray(entry, "themeOverrides", where).Select(t => ThemeOverride(name, t))],
                 [.. JsonFields.Array(entry, "signals", where).EnumerateArray().Select(s => Signal(name, csName, properties, s))]
@@ -233,6 +268,26 @@ internal static class GodotMetadataReader
             defaultText,
             defaultText is null ? null : ReadDefault(defaultText, where)
         );
+    }
+
+    /// <summary>The defaults a class gives the properties it inherits, keyed by property name.</summary>
+    private static ImmutableArray<KeyValuePair<string, GodotPropertyDefault>> DefaultOverrides(JsonElement entry, string className, string where) =>
+        [
+            .. JsonFields
+                .OptionalObject(entry, "defaultOverrides", where)
+                .Select(o => new KeyValuePair<string, GodotPropertyDefault>(o.Name, DefaultOverride(className, o.Name, o.Value))),
+        ];
+
+    private static GodotPropertyDefault DefaultOverride(string className, string propertyName, JsonElement text)
+    {
+        string where = $"The default override of {className}.{propertyName}";
+        if (text.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidDataException($"{where} is not a string.");
+        }
+
+        string value = text.GetString()!;
+        return new GodotPropertyDefault(value, ReadDefault(value, where));
     }
 
     private static GodotValue ReadDefault(string text, string where)
@@ -348,6 +403,14 @@ internal static class JsonFields
     /// <summary>The array's items, or none when the key is absent.</summary>
     public static IEnumerable<JsonElement> OptionalArray(JsonElement owner, string key, string where) =>
         owner.TryGetProperty(key, out _) ? Array(owner, key, where).EnumerateArray() : [];
+
+    /// <summary>The object's members, or none when the key is absent.</summary>
+    public static IEnumerable<JsonProperty> OptionalObject(JsonElement owner, string key, string where) =>
+        owner.TryGetProperty(key, out _) ? Object(owner, key, where).EnumerateObject() : [];
+
+    /// <summary>The Boolean, or null when the key is absent.</summary>
+    public static bool? OptionalBool(JsonElement owner, string key, string where) =>
+        owner.TryGetProperty(key, out _) ? Bool(owner, key, where) : null;
 
     public static string String(JsonElement owner, string key, string where) => OfKind(owner, key, where, JsonValueKind.String).GetString()!;
 

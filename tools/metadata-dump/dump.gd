@@ -12,6 +12,9 @@ const BITFIELD_PREFIX := "bitfield::"
 const THEME_OVERRIDE_PREFIX := "theme_override_"
 
 var _instantiate_failures := PackedStringArray()
+var _own_defaults := {}
+var _default_overrides := {}
+var _has_defaults := {}
 
 
 func _initialize() -> void:
@@ -129,14 +132,19 @@ func _classes(api_types: Dictionary) -> Dictionary:
 	return classes
 
 
+## Whether a property list entry is one the dump leaves out.
+func _is_skipped(entry: Dictionary) -> bool:
+	return (entry.usage & SKIPPED_USAGE) != 0 or String(entry.name).contains("/")
+
+
 func _class_entry(class_title: String, api_props: Dictionary) -> Dictionary:
 	var parent := String(ClassDB.get_parent_class(class_title))
 	var instantiable := ClassDB.can_instantiate(class_title)
 	var props := []
 	for entry: Dictionary in ClassDB.class_get_property_list(class_title, true):
-		if entry.usage & SKIPPED_USAGE or String(entry.name).contains("/"):
+		if _is_skipped(entry):
 			continue
-		props.append(_property_entry(class_title, entry, instantiable, api_props))
+		props.append(_property_entry(class_title, entry, api_props))
 	var class_entry := {
 		"parent": null if parent.is_empty() else parent,
 		"instantiable": instantiable,
@@ -144,8 +152,13 @@ func _class_entry(class_title: String, api_props: Dictionary) -> Dictionary:
 		"properties": props,
 		"signals": _signal_entries(class_title),
 	}
+	if not _class_has_defaults(class_title):
+		class_entry["hasDefaults"] = false
 	if _has_theme_overrides(class_title):
 		class_entry["themeOverrides"] = _theme_override_entries(class_title)
+	var overrides := _class_overrides(class_title)
+	if not overrides.is_empty():
+		class_entry["defaultOverrides"] = overrides
 	return class_entry
 
 
@@ -183,9 +196,7 @@ func _theme_override_entries(class_title: String) -> Array:
 	return entries
 
 
-func _property_entry(
-	class_title: String, entry: Dictionary, instantiable: bool, api_props: Dictionary
-) -> Dictionary:
+func _property_entry(class_title: String, entry: Dictionary, api_props: Dictionary) -> Dictionary:
 	var api_type: String = api_props.get(String(entry.name), "")
 	var enum_type: Variant = null
 	var bitfield := false
@@ -204,11 +215,97 @@ func _property_entry(
 		"usage": entry.usage,
 		"className": String(entry.class_name),
 	}
-	if instantiable:
-		var value: Variant = ClassDB.class_get_property_default_value(class_title, entry.name)
-		if not value is Object:
-			prop["default"] = var_to_str(value)
+	var text: Variant = _class_own_defaults(class_title).get(String(entry.name))
+	if text != null:
+		prop["default"] = text
 	return prop
+
+
+## The default of each property `class_title` declares itself, as Godot value text, or null for a
+## property with no default: a class that cannot be instantiated, or a value Godot has none for.
+func _class_own_defaults(class_title: String) -> Dictionary:
+	if _own_defaults.has(class_title):
+		return _own_defaults[class_title]
+	var instantiable := ClassDB.can_instantiate(class_title)
+	var defaults := {}
+	for entry: Dictionary in ClassDB.class_get_property_list(class_title, true):
+		if _is_skipped(entry):
+			continue
+		defaults[String(entry.name)] = _default_text(class_title, entry) if instantiable else null
+	_own_defaults[class_title] = defaults
+	return defaults
+
+
+## Whether Godot reads a default for any of the class's properties.
+##
+## ClassDB never instantiates a class it marks virtual to read defaults, so every property of such a
+## class reports no value, and Godot writes every stored property of a node of it. A class ClassDB
+## cannot instantiate has no defaults to lose, and is not marked.
+func _class_has_defaults(class_title: String) -> bool:
+	if _has_defaults.has(class_title):
+		return _has_defaults[class_title]
+	var has_defaults := true
+	if ClassDB.can_instantiate(class_title):
+		has_defaults = false
+		for entry: Dictionary in ClassDB.class_get_property_list(class_title, false):
+			if _is_skipped(entry) or entry.type == TYPE_OBJECT or entry.type == TYPE_NIL:
+				continue
+			if _default_text(class_title, entry) != null:
+				has_defaults = true
+				break
+	_has_defaults[class_title] = has_defaults
+	return has_defaults
+
+
+## The defaults `class_title` gives the properties it inherits, by property name.
+##
+## A property is listed only when Godot's value for an instance of the class differs from the
+## class's parent's default for it, which includes a parent that has none.
+func _class_overrides(class_title: String) -> Dictionary:
+	if _default_overrides.has(class_title):
+		return _default_overrides[class_title]
+	var overrides := {}
+	_default_overrides[class_title] = overrides
+	if not ClassDB.can_instantiate(class_title):
+		return overrides
+	var own := _class_own_defaults(class_title)
+	var parent := String(ClassDB.get_parent_class(class_title))
+	for entry: Dictionary in ClassDB.class_get_property_list(class_title, false):
+		var name := String(entry.name)
+		if _is_skipped(entry) or own.has(name):
+			continue
+		var text: Variant = _default_text(class_title, entry)
+		if text != null and text != _effective_default(parent, name):
+			overrides[name] = text
+	return overrides
+
+
+## The default of `name` as Godot reads it for `class_title`, or null when it has none.
+##
+## A class Godot keeps no defaults for has none for any property; otherwise a class that declares
+## the property uses its own declaration, else its override applies, else its parent's default.
+func _effective_default(class_title: String, name: String) -> Variant:
+	if class_title.is_empty() or not _class_has_defaults(class_title):
+		return null
+	var own := _class_own_defaults(class_title)
+	if own.has(name):
+		return own[name]
+	var overrides := _class_overrides(class_title)
+	if overrides.has(name):
+		return overrides[name]
+	return _effective_default(String(ClassDB.get_parent_class(class_title)), name)
+
+
+## The default of `entry` on an instance of `class_title`, as Godot value text, or null when
+## Godot has none.
+##
+## Godot answers with no value as null, which only an Object or Nil property can hold for real; a
+## non-null Object default is left out too.
+func _default_text(class_title: String, entry: Dictionary) -> Variant:
+	var value: Variant = ClassDB.class_get_property_default_value(class_title, entry.name)
+	if value is Object or (value == null and entry.type != TYPE_OBJECT and entry.type != TYPE_NIL):
+		return null
+	return var_to_str(value)
 
 
 func _class_enums(class_title: String) -> Dictionary:
