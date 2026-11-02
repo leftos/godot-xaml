@@ -1,0 +1,8 @@
+bin/
+obj/
+.tmp/
+.godot/
+*.user
+.vs/
+TestResults/
+node_modules/

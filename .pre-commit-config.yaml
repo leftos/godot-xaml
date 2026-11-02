@@ -1,0 +1,33 @@
+# prek hooks (prek install; prek run --all-files). Only checks scoped to the staged files run at pre-commit; the build and
+# tests join at pre-push once the first C# project exists. The Agent Mail guard blocks a commit over another Claude Code
+# session's file lease, and passes on a machine without the user-level guard.
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: '\.(bat|cmd)$'
+      - id: trailing-whitespace
+        stages: [pre-commit]
+        exclude: '\.md$'
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: check-added-large-files
+        stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      - id: docs-lint
+        name: docs-lint (fast)
+        entry: pwsh -NoProfile -File tools/docs-lint.ps1
+        language: system
+        pass_filenames: false
+        files: \.md$
+      - id: agent-mail-guard
+        name: agent-mail lease guard
+        entry: pwsh -NoProfile -File tools/agent-mail-guard.ps1
+        language: system
+        pass_filenames: true
