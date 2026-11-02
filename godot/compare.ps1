@@ -33,7 +33,7 @@ $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env
 $project = $PSScriptRoot
 $repo = Split-Path $project -Parent
 $cases = Join-Path $project 'cases'
-$expectedFixtures = 12
+$expectedFixtures = 13
 # The scripts the fixtures name by res:// path, copied from the generator's project; .gitignore lists each copy.
 $fixtureScripts = @('holder.gd', 'quoted.gd', 'tagged.gd')
 

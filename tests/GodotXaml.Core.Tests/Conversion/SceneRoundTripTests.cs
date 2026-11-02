@@ -28,6 +28,7 @@ public sealed class SceneRoundTripTests
             "multiline",
             "nested",
             "placeholder",
+            "property_order",
             "script_node",
             "sub_resources",
             "unique_name"
@@ -308,8 +309,7 @@ public sealed class SceneRoundTripTests
             Uid = source.Header.Uid,
         };
 
-    private static string Comparable(TscnDocument document) =>
-        TscnWriter.Write(TscnTestNormalizer.SortProperties(TscnTestNormalizer.Normalize(document)));
+    private static string Comparable(TscnDocument document) => TscnWriter.Write(TscnTestNormalizer.Normalize(document));
 
     // The file's sections, blank-line separated, in ordinal order.
     private static string[] Sections(string text) => [.. text.Split("\n\n").Order(StringComparer.Ordinal)];

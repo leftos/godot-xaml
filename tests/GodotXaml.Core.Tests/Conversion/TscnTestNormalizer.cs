@@ -7,8 +7,8 @@ using GodotXaml.Core.Values;
 namespace GodotXaml.Core.Tests.Conversion;
 
 /// <summary>
-/// Rewrites a .tscn or .tres model so that two files Godot would load as the same scene compare equal as text:
-/// Godot mints section ids per save, and the .xscn keeps properties in another order than Godot's property list.
+/// Rewrites a .tscn or .tres model so that two files Godot would load as the same scene compare equal as text: Godot mints
+/// section ids per save.
 /// </summary>
 internal static class TscnTestNormalizer
 {
@@ -67,22 +67,6 @@ internal static class TscnTestNormalizer
             Connections = [.. document.Connections.Select(connection => connection with { Binds = [.. connection.Binds.Select(Rewrite)] })],
         };
     }
-
-    /// <summary>
-    /// Sorts the properties of every node and sub_resource by name (ordinal), for comparing a model whose property order
-    /// is the .xscn's alphabetical one with a file in Godot's property-list order.
-    /// </summary>
-    /// <param name="document">The document.</param>
-    /// <returns>The document with its node and sub_resource properties sorted.</returns>
-    public static TscnDocument SortProperties(TscnDocument document) =>
-        document with
-        {
-            SubResources = [.. document.SubResources.Select(sub => sub with { Properties = Sorted(sub.Properties) })],
-            Nodes = [.. document.Nodes.Select(node => node with { Properties = Sorted(node.Properties) })],
-        };
-
-    private static ImmutableArray<TscnProperty> Sorted(ImmutableArray<TscnProperty> properties) =>
-        [.. properties.OrderBy(property => property.Name, StringComparer.Ordinal)];
 
     private static GodotValue Renamed(GodotValue reference, Dictionary<string, string> extIds, Dictionary<string, string> subIds) =>
         reference switch

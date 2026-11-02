@@ -133,6 +133,12 @@ public sealed class GodotMetadata
     /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
     public bool Inherits(GodotClassInfo cls, string ancestorGodotName) => Chain(Resolve(cls)).Any(c => c.Name == ancestorGodotName);
 
+    /// <summary>A class and its ancestors, as this metadata has them.</summary>
+    /// <param name="cls">The class to start from.</param>
+    /// <returns>The class, then each ancestor up to <c>Object</c>.</returns>
+    /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
+    internal IEnumerable<GodotClassInfo> ChainOf(GodotClassInfo cls) => Chain(Resolve(cls));
+
     /// <summary>A property of a class or of one of its ancestors, by its Godot name.</summary>
     /// <param name="cls">The class to start from.</param>
     /// <param name="godotName">The property's Godot name (<c>custom_minimum_size</c>).</param>

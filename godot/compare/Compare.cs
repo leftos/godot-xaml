@@ -25,7 +25,7 @@ namespace GodotXaml.Addon.Compare;
 public partial class Compare : Node
 {
     private const string CasesPath = "res://cases/";
-    private const int ExpectedPairs = 12;
+    private const int ExpectedPairs = 13;
 
     /// <inheritdoc/>
     public override void _Ready()
@@ -48,6 +48,10 @@ public partial class Compare : Node
         finally
         {
             GD.Print($"DONE {passed}/{ExpectedPairs}");
+
+            // A Variant the dump left to its finalizer, freed once the engine has shut down, crashes the process at exit.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
             GetTree().Quit(passed == ExpectedPairs ? 0 : 1);
         }
     }

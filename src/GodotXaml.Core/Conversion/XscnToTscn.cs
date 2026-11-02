@@ -29,6 +29,8 @@ public static partial class XscnToTscn
         [".res"] = "Resource",
         [".gd"] = "Script",
         [".cs"] = "Script",
+        [".gdshader"] = "Shader",
+        [".gdshaderinc"] = "ShaderInclude",
         [".png"] = "Texture2D",
         [".jpg"] = "Texture2D",
         [".jpeg"] = "Texture2D",
@@ -92,6 +94,7 @@ public static partial class XscnToTscn
         private readonly GodotMetadata metadata;
         private readonly ConversionOptions options;
         private readonly Func<string, ulong> siteHash;
+        private readonly PropertyOrder order;
         private readonly Dictionary<string, XscnResource> table = new(StringComparer.Ordinal);
         private readonly List<ExtUse> extUses = [];
         private readonly HashSet<string> extSeen = new(StringComparer.Ordinal);
@@ -108,6 +111,7 @@ public static partial class XscnToTscn
             this.metadata = metadata;
             this.options = options;
             this.siteHash = siteHash;
+            order = new PropertyOrder(metadata);
             IndexTable();
         }
 
@@ -354,12 +358,14 @@ public static partial class XscnToTscn
 
         private ImmutableArray<TscnProperty> Properties(SubUse use) => Properties(use.Resource, use.Location);
 
-        private ImmutableArray<TscnProperty> Properties(XscnResource resource, string location) => Properties(resource.Properties, location);
+        private ImmutableArray<TscnProperty> Properties(XscnResource resource, string location) =>
+            Properties(resource.Type, resource.Properties, location);
 
-        private ImmutableArray<TscnProperty> Properties(ImmutableArray<XscnProperty> source, string location)
+        // owner says the section's class, which sets the property order; anything but a class keeps source order.
+        private ImmutableArray<TscnProperty> Properties(XscnType? owner, ImmutableArray<XscnProperty> source, string location)
         {
             ImmutableArray<TscnProperty>.Builder properties = ImmutableArray.CreateBuilder<TscnProperty>();
-            foreach (XscnProperty property in source)
+            foreach (XscnProperty property in order.Sort((owner as XscnClassType)?.Class, source))
             {
                 if (Value(property.Value, location + "." + property.GodotName) is { } value)
                 {

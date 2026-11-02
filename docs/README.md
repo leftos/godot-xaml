@@ -21,6 +21,7 @@
 - **Fixture generator**: `tools/value-fixtures/`, the headless Godot script that writes the expected value text under `tests/fixtures/values/`; `tools/scene-fixtures/` does the same for scenes and resources under `tests/fixtures/scenes/`.
 - **Format pair**: an `.in.xscn`/`.out.xscn` pair under `tests/fixtures/xscn/format/`; the writer's output for the `.in` document must equal the `.out` file, which proves the canonical rewrite.
 - **Gate**: a command a change must pass (build, test, format check), run through `./run.ps1 <verb>` and `tools/gate.ps1`, which log to `.tmp/`; the Gates section of the `godot-xaml-nextup` skill lists them and which hook runs each.
+- **Godot property order**: the order Godot lists a section's properties in, which the way back restores (`PropertyOrder`).
 - **Kept key**: an `x:Resources` key a save carries over from the previous document to the sub_resource that pairs with its entry, so a save changes only what changed (`PreviousKeys`).
 - **Key order**: the order Godot writes a dictionary's entries in: string keys by code point, other keys by Variant type then value; keys Godot cannot order keep their source order. `GodotKeyOrder`.
 - **Left file**: a file `convert --project` keeps as text because Godot loads it before any addon (`StartupFiles`).

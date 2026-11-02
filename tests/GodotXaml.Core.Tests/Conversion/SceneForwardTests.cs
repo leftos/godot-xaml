@@ -27,6 +27,7 @@ public sealed partial class SceneForwardTests
             "multiline",
             "nested",
             "placeholder",
+            "property_order",
             "script_node",
             "sub_resources",
             "unique_name"

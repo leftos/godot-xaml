@@ -1,0 +1,20 @@
+<Control
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Name="Root"
+    AnchorsPreset="TopLeft"
+    LayoutMode="Uncontrolled"
+    x:UniqueId="198994451">
+  <Panel
+      Name="Box"
+      GrowHorizontal="Begin"
+      GrowVertical="Begin"
+      LayoutMode="Position"
+      x:UniqueId="1109250759" />
+  <Button
+      Name="Toggle"
+      ButtonPressed="True"
+      LayoutMode="Position"
+      Text="Hold"
+      ToggleMode="True"
+      x:UniqueId="1733119216" />
+</Control>

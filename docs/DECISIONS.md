@@ -94,6 +94,12 @@ A sub-resource used once is written inline, as a property element. One used by s
 
 The canonical writer puts `Name` first and `Script` second, then every other property in ordinal alphabetical order, then the `x:` attributes. The order needs no metadata, so a new Godot minor version never reorders a file.
 
+The way back (`.xscn` to `.tscn`) restores Godot's property order instead, because a `.tscn` sets properties in file order and some depend on it (`control.cpp` anchors and grow direction, `base_button.cpp` `toggle_mode` before `button_pressed`).
+
+`PropertyOrder` sorts a section's properties stably: each class base first, with its own list; `theme_override_*` by the metadata's `ThemeOverrides` index, after Control's or Window's own list; then `script`; then other slash-named names, so a script's own come after it; then script exports, then `metadata/*`.
+
+A section with no class (an instance or inherited root, an `x:Override`, a placeholder, an unknown type) keeps source order. Order among script exports and inside a dynamic family (Theme, TileSet) cannot be restored from the alphabetical `.xscn`. The writer's alphabetical order stays.
+
 ## One error-tolerant XML parser
 
 The core parses `.xscn` and `.xres` with GuiLabs.Language.Xml (formerly Microsoft.Language.Xml; Apache-2.0, targets net8.0 and netstandard2.0), a full-fidelity parser that keeps every span and builds a tree from half-typed text. Every host uses it: the Godot loader treats any error node as a load error, and the language server reports errors as diagnostics and keeps going. One parser means one set of parsing rules everywhere.

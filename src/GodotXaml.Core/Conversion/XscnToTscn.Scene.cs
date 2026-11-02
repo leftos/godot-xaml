@@ -157,9 +157,11 @@ public static partial class XscnToTscn
         // Name="%X" is unique_name_in_owner = true, written first; an explicit one says the same, or loses to it.
         private ImmutableArray<TscnProperty> NodeProperties(XscnNodeElement element, string location)
         {
+            // A placeholder's or an override's properties are set on its scene's node, whose class the core does not know.
+            XscnType? owner = element is XscnNode { InstancePlaceholder: null } plain ? plain.Type : null;
             if (element is not XscnNode { Unique: true } node)
             {
-                return Properties(element.Properties, location);
+                return Properties(owner, element.Properties, location);
             }
 
             ImmutableArray<XscnProperty> explicitOnes = [.. node.Properties.Where(property => property.GodotName == UniqueNameProperty)];
@@ -170,7 +172,7 @@ public static partial class XscnToTscn
             }
 
             ImmutableArray<XscnProperty> rest = [.. node.Properties.Where(property => property.GodotName != UniqueNameProperty)];
-            return Properties(rest, location).Insert(0, new TscnProperty(UniqueNameProperty, new GodotBool(true)));
+            return Properties(owner, rest, location).Insert(0, new TscnProperty(UniqueNameProperty, new GodotBool(true)));
         }
 
         // An instanced, inherited or placeholder node is made by its scene, so the .tscn names no class for it

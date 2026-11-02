@@ -73,6 +73,12 @@ public sealed partial class SceneBackTests
               <InstancePlaceholder Name="Later" x:InstancePlaceholder="res://cases/lone_root.tscn" x:UniqueId="841232467" />
             </Node>
             """,
+        ["property_order"] = $$"""
+            <Control {{X}} Name="Root" AnchorsPreset="TopLeft" LayoutMode="Uncontrolled" x:UniqueId="198994451">
+              <Panel Name="Box" GrowHorizontal="Begin" GrowVertical="Begin" LayoutMode="Position" x:UniqueId="1109250759" />
+              <Button Name="Toggle" ButtonPressed="True" LayoutMode="Position" Text="Hold" ToggleMode="True" x:UniqueId="1733119216" />
+            </Control>
+            """,
         ["script_node"] = $$"""
             <Node {{X}} Name="Root" x:UniqueId="784806209">
               <Node Name="Holder" Script="res://holder.gd" target='NodePath("../Target")' x:NodePaths="target" x:UniqueId="1536725368" />

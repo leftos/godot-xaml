@@ -57,6 +57,7 @@ func _run() -> String:
 		_quoted_name,
 		_placeholder,
 		_multiline,
+		_property_order,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -226,6 +227,18 @@ func _multiline() -> String:
 	root.set_meta("table", {"b": 2, "a": [1, 2], "c": {"nested": true}})
 	_add(root, "After").editor_description = "one line"
 	return _save_scene("multiline", root)
+
+
+func _property_order() -> String:
+	var root := _root("Control")
+	var box: Panel = _add(root, "Box", "Panel")
+	box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var toggle: Button = _add(root, "Toggle", "Button")
+	toggle.text = "Hold"
+	toggle.toggle_mode = true
+	toggle.button_pressed = true
+	return _save_scene("property_order", root)
 
 
 ## A gradient with non-default colours, its sub-resource id pinned.

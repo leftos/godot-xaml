@@ -12,7 +12,9 @@ pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/scene-fixtures.log --timeout
 
 ## Regenerating is a deliberate act
 
-Ext-resource and sub-resource ids are pinned (`Resource.set_id_for_path`, `resource_scene_unique_id`), so they are the same on every run. Node `unique_id` values are not: the packer draws them at random (`packed_scene.cpp`, `SceneState::_parse_node`) and `Node.set_unique_scene_id` is not exposed to scripts. Every run therefore rewrites the `unique_id=` numbers of every scene, and nothing else. Regenerate only when a case is added or changed, and commit the whole folder after the run.
+Ext-resource and sub-resource ids are pinned (`Resource.set_id_for_path`, `resource_scene_unique_id`), so they are the same on every run. Node `unique_id` values are not: the packer draws them at random (`packed_scene.cpp`, `SceneState::_parse_node`) and `Node.set_unique_scene_id` is not exposed to scripts. Every run therefore rewrites the `unique_id=` numbers of every scene, and nothing else.
+
+Regenerate only when a case is added or changed. A changed case commits the whole folder after the run; a new case is copied alone from an `-OutDir` run, so the other fixtures keep their `unique_id`s. A new fixture also goes in the three fixture lists (`SceneForwardTests.Scenes`, `SceneBackTests.Fixtures`, `SceneRoundTripTests.Fixtures`), `SceneBackTests.Inputs`, `ExpectedPairs` in `godot/compare/Compare.cs` and `$expectedFixtures` in `godot/compare.ps1`.
 
 ## Files
 
@@ -40,5 +42,6 @@ Ext-resource and sub-resource ids are pinned (`Resource.set_id_for_path`, `resou
 - `quoted_name.tres`: property names with a space, `=`, `"` and a non-ASCII character.
 - `placeholder.tscn`: `instance_placeholder=`.
 - `multiline.tscn`: a multi-line string and a dictionary inside a node section.
+- `property_order.tscn`: properties whose result depends on the order they are set in: `grow_horizontal` and `grow_vertical` with `layout_mode`, `button_pressed` with `toggle_mode`.
 
 `uid=` attributes are absent from every fixture: the saver asks the editor's file system for uids, which a `--script` run does not start.

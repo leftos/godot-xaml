@@ -27,13 +27,13 @@ public sealed partial class SceneBackTests
             "multiline",
             "nested",
             "placeholder",
+            "property_order",
             "script_node",
             "sub_resources",
             "unique_name"
         );
 
-    // Ids normalised on both sides, and properties sorted by name, since the .xscn's order is alphabetical and Godot's is
-    // its property list's.
+    // Ids normalised on both sides; property order is compared as Godot wrote it.
     [Theory]
     [MemberData(nameof(Fixtures))]
     public void ConvertsXscnToTheGodotScene(string fixture)
@@ -163,6 +163,23 @@ public sealed partial class SceneBackTests
 
         Assert.Equal(["res://inner.tscn", "res://inst.gd", "res://sprite.png", "res://bind.png"], scene.ExtResources.Select(ext => ext.Path));
         Assert.Equal(["1_", "2_", "3_", "4_"], scene.ExtResources.Select(ext => ext.Id[..2]));
+    }
+
+    // A script export has no declared type, so only the extension says what the file holds.
+    [Fact]
+    public void AGdshaderFileComesBackAsAShader()
+    {
+        TscnDocument scene = Back($$"""<Node {{X}} Name="Root" shader='Resource("res://s.gdshader")' />""");
+
+        Assert.Equal("Shader", Assert.Single(scene.ExtResources).Type);
+    }
+
+    [Fact]
+    public void AGdshaderincFileComesBackAsAShaderInclude()
+    {
+        TscnDocument scene = Back($$"""<Node {{X}} Name="Root" shader='Resource("res://s.gdshaderinc")' />""");
+
+        Assert.Equal("ShaderInclude", Assert.Single(scene.ExtResources).Type);
     }
 
     // The extension says nothing, so only the instance's declared type gives PackedScene.
@@ -359,8 +376,202 @@ public sealed partial class SceneBackTests
         Assert.Empty(back.Document.ExtResources);
     }
 
-    private static string Comparable(TscnDocument document) =>
-        TscnWriter.Write(TscnTestNormalizer.SortProperties(TscnTestNormalizer.Normalize(document)));
+    [Fact]
+    public void PropertiesComeBackInGodotsPropertyListOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Control {{X}} Name="Root">
+              <Panel Name="Box" AnchorBottom="1" AnchorRight="1" AnchorsPreset="FullRect" LayoutMode="Anchors" />
+              <Button Name="Toggle" ButtonPressed="True" ToggleMode="True" />
+            </Control>
+            """
+        );
+
+        Assert.Equal(["layout_mode", "anchors_preset", "anchor_right", "anchor_bottom"], Names(scene.Nodes[1].Properties));
+        Assert.Equal(["toggle_mode", "button_pressed"], Names(scene.Nodes[2].Properties));
+    }
+
+    [Fact]
+    public void ABaseClassPropertyComesBeforeADerivedOne()
+    {
+        TscnDocument scene = Back($$"""<Label {{X}} Name="Root" Text="Hi" Visible="False" LayoutMode="Position" />""");
+
+        Assert.Equal(["visible", "layout_mode", "text"], Names(scene.Nodes[0].Properties));
+    }
+
+    [Fact]
+    public void ThemeOverridesComeAfterControlsOwnList()
+    {
+        TscnDocument scene = Back($$"""<Label {{X}} Name="Root" Text="Hi" ThemeOverrideColors.font_color="1, 0, 0, 1" LayoutMode="Position" />""");
+
+        Assert.Equal(["layout_mode", "theme_override_colors/font_color", "text"], Names(scene.Nodes[0].Properties));
+    }
+
+    // Label's list puts font_size before font_color, against the alphabetical order of their families.
+    [Fact]
+    public void ThemeOverridesComeInTheMetadatasOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""<Label {{X}} Name="Root" ThemeOverrideColors.font_color="1, 0, 0, 1" ThemeOverrideFontSizes.font_size="20" />"""
+        );
+
+        Assert.Equal(["theme_override_font_sizes/font_size", "theme_override_colors/font_color"], Names(scene.Nodes[0].Properties));
+    }
+
+    [Fact]
+    public void ScriptThenExportsThenMetadataComeLast()
+    {
+        TscnDocument scene = Back($$"""<Node2D {{X}} Name="Root" Metadata.m="1" alpha="2" Script="res://s.gd" Position="1, 2" />""");
+
+        Assert.Equal(["position", "script", "alpha", "metadata/m"], Names(scene.Nodes[0].Properties));
+    }
+
+    [Fact]
+    public void ADynamicNameComesAfterTheClassList()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <PopupMenu {{X}} Name="Root">
+              <x:Prop Name="item_0/text" Value='"One"' />
+              <x:Prop Name="item_count" Value="1" />
+            </PopupMenu>
+            """
+        );
+
+        Assert.Equal(["item_count", "item_0/text"], Names(scene.Nodes[0].Properties));
+    }
+
+    // The script's own _get_property_list gives such a name, and the node has no script until the script line is set.
+    [Fact]
+    public void ASlashNamedScriptPropertyComesAfterTheScript()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Node2D {{X}} Name="Root" Script="res://s.gd">
+              <x:Prop Name="settings/speed" Value="2" />
+            </Node2D>
+            """
+        );
+
+        Assert.Equal(["script", "settings/speed"], Names(scene.Nodes[0].Properties));
+    }
+
+    [Fact]
+    public void ASubResourceComesBackInOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <PanelContainer {{X}} Name="Root">
+              <PanelContainer.ThemeOverrideStyles.panel>
+                <StyleBoxFlat BgColor="1, 0, 0, 1" ContentMarginLeft="4" />
+              </PanelContainer.ThemeOverrideStyles.panel>
+            </PanelContainer>
+            """
+        );
+
+        Assert.Equal(["content_margin_left", "bg_color"], Names(Assert.Single(scene.SubResources).Properties));
+    }
+
+    [Fact]
+    public void AResourceRootComesBackInOrder()
+    {
+        XscnParseResult parsed = XscnParser.Parse(
+            $$"""<StyleBoxFlat {{X}} BgColor="1, 0, 0, 1" ContentMarginLeft="4" />""",
+            XscnDocumentKind.Resource,
+            Metadata
+        );
+        Assert.Empty(parsed.Diagnostics);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, Metadata, Options);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(["content_margin_left", "bg_color"], Names(back.Document.ResourceProperties));
+    }
+
+    [Fact]
+    public void AnInstanceAnOverrideAndAnUnknownClassKeepSourceOrder()
+    {
+        ImmutableArray<XscnProperty> alphabetical =
+        [
+            new XscnProperty("button_pressed", new XscnScalar(new GodotBool(true))),
+            new XscnProperty("toggle_mode", new XscnScalar(new GodotBool(true))),
+        ];
+        XscnNode root = new()
+        {
+            Type = new XscnClassType(Metadata.FindClass("Node")!),
+            Name = "Root",
+            Children =
+            [
+                new XscnNode
+                {
+                    Type = new XscnSceneType("res://inner.tscn"),
+                    Name = "Inst",
+                    Properties = alphabetical,
+                    Children = [new XscnOverride { Path = "A", Properties = alphabetical }],
+                },
+                new XscnNode
+                {
+                    Type = new XscnUnknownType("MyThing"),
+                    Name = "Unknown",
+                    Properties = alphabetical,
+                },
+            ],
+        };
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), Metadata, Options);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(["Inst", "A", "Unknown"], back.Document.Nodes.Skip(1).Select(node => node.Name));
+        Assert.All(back.Document.Nodes.Skip(1), node => Assert.Equal(["button_pressed", "toggle_mode"], Names(node.Properties)));
+    }
+
+    // Both names are Node's, process_mode first, so sorting by the tag's class would move them.
+    [Fact]
+    public void APlaceholderKeepsSourceOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Node {{X}} Name="Root">
+              <InstancePlaceholder Name="Later" x:InstancePlaceholder="res://a.tscn" EditorDescription="note" ProcessMode="Always" />
+            </Node>
+            """
+        );
+
+        Assert.Equal(["editor_description", "process_mode"], Names(scene.Nodes[1].Properties));
+    }
+
+    [Fact]
+    public void RepeatedNamesKeepTheirOrder()
+    {
+        XscnNode root = new()
+        {
+            Type = new XscnClassType(Metadata.FindClass("Node")!),
+            Name = "Root",
+            Properties =
+            [
+                new XscnProperty("alpha", new XscnScalar(new GodotInt(1))),
+                new XscnProperty("process_priority", new XscnScalar(new GodotInt(2))),
+                new XscnProperty("alpha", new XscnScalar(new GodotInt(3))),
+            ],
+        };
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), Metadata, Options);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(
+            [
+                new TscnProperty("process_priority", new GodotInt(2)),
+                new TscnProperty("alpha", new GodotInt(1)),
+                new TscnProperty("alpha", new GodotInt(3)),
+            ],
+            back.Document.Nodes[0].Properties
+        );
+    }
+
+    private static string Comparable(TscnDocument document) => TscnWriter.Write(TscnTestNormalizer.Normalize(document));
+
+    private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
 
     private static XscnDocument Parse(string text)
     {
