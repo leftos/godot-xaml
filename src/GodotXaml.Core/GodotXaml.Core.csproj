@@ -5,8 +5,27 @@
     <RootNamespace>GodotXaml.Core</RootNamespace>
   </PropertyGroup>
 
+  <!-- The NuGet package the addon's install brings in. The version comes from Directory.Build.props. -->
+  <PropertyGroup>
+    <PackageId>GodotXaml.Core</PackageId>
+    <Authors>Leftos Aslanoglou</Authors>
+    <Description>The godot-xaml core for reading and writing .xscn and .xres, and converting Godot's .tscn text.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/leftos/godot-xaml</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/leftos/godot-xaml</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>godot xaml scene</PackageTags>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="GuiLabs.Language.Xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The engine metadata ships inside the assembly: inside Godot the core is loaded from a stream, so it has no file
+         path to read the metadata from (GodotMetadata.LoadBundled). The glob picks up a later Godot minor version. -->
+    <EmbeddedResource Include="..\..\metadata\godot-*.json" LogicalName="GodotXaml.Core.Metadata.%(Filename)%(Extension)" />
+    <None Update="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

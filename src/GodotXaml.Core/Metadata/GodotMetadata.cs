@@ -13,6 +13,11 @@ namespace GodotXaml.Core.Metadata;
 /// </summary>
 public sealed class GodotMetadata
 {
+    // The name an embedded metadata file has in this assembly: GodotXaml.Core.Metadata.godot-4.7.json.
+    private const string BundledResourcePrefix = "GodotXaml.Core.Metadata.godot-";
+
+    private const string BundledResourceSuffix = ".json";
+
     private readonly FrozenDictionary<string, GodotClassInfo> classes;
     private readonly FrozenDictionary<string, GodotClassInfo> classesByCSharpName;
     private readonly FrozenDictionary<string, GodotEnumInfo> globalEnums;
@@ -77,6 +82,35 @@ public sealed class GodotMetadata
             List<GodotClassInfo> classList = GodotMetadataReader.Classes(JsonFields.Object(root, "classes", "The metadata"));
             return new GodotMetadata(classList, globals);
         }
+    }
+
+    /// <summary>The Godot versions whose metadata this assembly carries, by minor version (<c>4.7</c>).</summary>
+    public static IReadOnlyList<string> BundledVersions { get; } =
+    [
+        .. typeof(GodotMetadata)
+            .Assembly.GetManifestResourceNames()
+            .Where(n => n.StartsWith(BundledResourcePrefix, StringComparison.Ordinal) && n.EndsWith(BundledResourceSuffix, StringComparison.Ordinal))
+            .Select(n => n[BundledResourcePrefix.Length..^BundledResourceSuffix.Length])
+            .Order(StringComparer.Ordinal),
+    ];
+
+    /// <summary>Loads the metadata of a Godot version this assembly carries.</summary>
+    /// <param name="godotMinor">The engine's minor version (<c>4.7</c>).</param>
+    /// <returns>The version's classes and enums.</returns>
+    /// <exception cref="ArgumentException">
+    /// The assembly carries no metadata for <paramref name="godotMinor"/>; the message names the versions it carries.
+    /// </exception>
+    public static GodotMetadata LoadBundled(string godotMinor)
+    {
+        string name = BundledResourcePrefix + godotMinor + BundledResourceSuffix;
+        using Stream? stream = typeof(GodotMetadata).Assembly.GetManifestResourceStream(name);
+        if (stream is null)
+        {
+            string carried = BundledVersions.Count == 0 ? "none" : string.Join(", ", BundledVersions.Select(v => $"'{v}'"));
+            throw new ArgumentException($"This assembly carries no metadata for Godot '{godotMinor}'; it carries {carried}.", nameof(godotMinor));
+        }
+
+        return Load(stream);
     }
 
     /// <summary>Every class in the file, in no set order.</summary>
