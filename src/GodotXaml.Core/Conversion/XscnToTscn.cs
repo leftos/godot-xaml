@@ -53,15 +53,37 @@ public static partial class XscnToTscn
     /// <param name="document">The .xscn or .xres model.</param>
     /// <param name="metadata">The engine classes, for the declared type of a property holding a file.</param>
     /// <param name="options">The seed or kept ids, the host's lookups and the header's uid.</param>
-    /// <returns>The .tscn or .tres model and its issues.</returns>
-    public static ConversionResult<TscnDocument> Convert(XscnDocument document, GodotMetadata metadata, ConversionOptions options)
+    /// <returns>The .tscn or .tres model, its issues and the ids its sections got.</returns>
+    public static ConversionResult<TscnDocument> Convert(XscnDocument document, GodotMetadata metadata, ConversionOptions options) =>
+        Convert(document, metadata, options, SiteHash);
+
+    // siteHash gives the hash of a sub-resource's site key, which its new id is seeded from.
+    internal static ConversionResult<TscnDocument> Convert(
+        XscnDocument document,
+        GodotMetadata metadata,
+        ConversionOptions options,
+        Func<string, ulong> siteHash
+    )
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(options);
-        var context = new Context(document, metadata, options);
+        var context = new Context(document, metadata, options, siteHash);
         TscnDocument converted = document.Kind == XscnDocumentKind.Scene ? context.ConvertScene() : context.ConvertResource();
-        return new ConversionResult<TscnDocument>(converted, [.. context.Issues]);
+        return new ConversionResult<TscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids() };
+    }
+
+    // FNV-1a 64 over the key's UTF-8 bytes: the same on every run and platform, which string.GetHashCode is not.
+    private static ulong SiteHash(string siteKey)
+    {
+        ulong hash = 0xCBF29CE484222325UL;
+        foreach (byte octet in System.Text.Encoding.UTF8.GetBytes(siteKey))
+        {
+            hash ^= octet;
+            hash *= 0x100000001B3UL;
+        }
+
+        return hash;
     }
 
     private sealed partial class Context
@@ -69,6 +91,7 @@ public static partial class XscnToTscn
         private readonly XscnDocument document;
         private readonly GodotMetadata metadata;
         private readonly ConversionOptions options;
+        private readonly Func<string, ulong> siteHash;
         private readonly Dictionary<string, XscnResource> table = new(StringComparer.Ordinal);
         private readonly List<ExtUse> extUses = [];
         private readonly HashSet<string> extSeen = new(StringComparer.Ordinal);
@@ -79,15 +102,18 @@ public static partial class XscnToTscn
         private readonly Dictionary<string, string> extIds = new(StringComparer.Ordinal);
         private readonly Dictionary<XscnResource, string> subIds = new(ReferenceEqualityComparer.Instance);
 
-        public Context(XscnDocument document, GodotMetadata metadata, ConversionOptions options)
+        public Context(XscnDocument document, GodotMetadata metadata, ConversionOptions options, Func<string, ulong> siteHash)
         {
             this.document = document;
             this.metadata = metadata;
             this.options = options;
+            this.siteHash = siteHash;
             IndexTable();
         }
 
         public List<ConversionIssue> Issues { get; } = [];
+
+        public ConversionIds Ids() => new(extIds, subIds);
 
         // An entry without a key cannot be referred to, and a repeated key names the first entry with it.
         private void IndexTable()
@@ -112,18 +138,21 @@ public static partial class XscnToTscn
         }
 
         // _find_resources (resource_format_text.cpp:1680-1714): a resource's properties in sorted name order, each
-        // reference followed where it is met.
-        private void Discover(XscnResource resource, string location) => DiscoverProperties(resource.Type, resource.Properties, location);
+        // reference followed where it is met. The site is the site key of the element or resource that holds them: a
+        // resource held inline gets "<holder's site>|<property>", and a table entry "key:<x:Key>" wherever it is used.
+        private void Discover(XscnResource resource, string location, string site) =>
+            DiscoverProperties(resource.Type, resource.Properties, location, site);
 
-        private void DiscoverProperties(XscnType? owner, ImmutableArray<XscnProperty> properties, string location)
+        private void DiscoverProperties(XscnType? owner, ImmutableArray<XscnProperty> properties, string location, string site)
         {
             foreach (XscnProperty property in properties.OrderBy(property => property.GodotName, StringComparer.Ordinal))
             {
-                DiscoverValue(property.Value, DeclaredType(owner, property.GodotName), location + "." + property.GodotName);
+                string name = property.GodotName;
+                DiscoverValue(property.Value, DeclaredType(owner, name), location + "." + name, site + "|" + name);
             }
         }
 
-        private void DiscoverValue(XscnValue value, string? declaredType, string location)
+        private void DiscoverValue(XscnValue value, string? declaredType, string location, string site)
         {
             switch (value)
             {
@@ -134,7 +163,7 @@ public static partial class XscnToTscn
                     DiscoverKey(key.Key, location);
                     break;
                 case XscnInline inline:
-                    DiscoverResource(inline.Resource, location);
+                    DiscoverResource(inline.Resource, location, site);
                     break;
                 case XscnScalar scalar:
                     string? bareType = scalar.Value is GodotPathRef ? declaredType : null;
@@ -184,7 +213,7 @@ public static partial class XscnToTscn
         {
             if (table.TryGetValue(key, out XscnResource? entry))
             {
-                DiscoverResource(entry, $"x:Resources \"{key}\"");
+                DiscoverResource(entry, $"x:Resources \"{key}\"", "key:" + key);
             }
             else
             {
@@ -193,7 +222,7 @@ public static partial class XscnToTscn
         }
 
         // resource_format_text.cpp:1674-1714: a resource is saved after the resources it uses, once.
-        private void DiscoverResource(XscnResource resource, string location)
+        private void DiscoverResource(XscnResource resource, string location, string site)
         {
             if (found.Contains(resource))
             {
@@ -207,10 +236,10 @@ public static partial class XscnToTscn
                 return;
             }
 
-            Discover(resource, location);
+            Discover(resource, location, site);
             visiting.Remove(resource);
             found.Add(resource);
-            subUses.Add(new SubUse(resource, location));
+            subUses.Add(new SubUse(resource, location, site));
         }
 
         private string? DeclaredType(XscnType? owner, string property) =>
@@ -247,15 +276,15 @@ public static partial class XscnToTscn
 
         // The ids, ext_resources numbered in discovery order and written in Godot's natural id order
         // (resource_format_text.cpp:1868-1877), sub_resources after what they use; the sections get their properties
-        // once every id is known.
+        // once every id is known. A new sub_resource id is seeded from its site key, so an edit elsewhere in the file
+        // leaves it as it was; one that would repeat an earlier id takes the next free one.
         private TscnDocument MintIds(TscnDocument shell)
         {
             TscnDocument result = MintExtIds(shell);
-            for (int i = 0; i < subUses.Count; i++)
+            foreach (SubUse use in subUses)
             {
-                SubUse use = subUses[i];
                 string type = TypeName(use.Resource.Type, use.Location);
-                string id = options.KeepIds?.SubIdOf(use.Resource) ?? result.NewSubResourceId(type, SeedOf(i));
+                string id = options.KeepIds?.SubIdOf(use.Resource) ?? result.NewSubResourceId(type, options.Seed ^ siteHash(use.Site));
                 subIds[use.Resource] = id;
                 result = result with { SubResources = result.SubResources.Add(new TscnSubResource { Type = type, Id = id }) };
             }
@@ -375,6 +404,7 @@ public static partial class XscnToTscn
 
         private sealed record ExtUse(string Path, string? DeclaredType, string Location);
 
-        private sealed record SubUse(XscnResource Resource, string Location);
+        // Location names the use in messages; Site is the site key the new id is seeded from.
+        private sealed record SubUse(XscnResource Resource, string Location, string Site);
     }
 }

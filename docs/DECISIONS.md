@@ -187,6 +187,14 @@ Choices the format rulings above leave to the core, made by the orchestrator whi
 - **Writer comments.** A carriage return in a comment becomes LF. An empty table that has comments is still written.
 - **Malformed structure.** A duplicate attribute is `GX0113` (the first is kept), a scene-prefixed attribute `GX0114`, a second table `GX0115`, and a class tag that is not a Resource where a resource goes (a property element, an `x:Resources` entry, an `.xres` root) `GX0117`, the element still read. `Name=""` and `Name="%"` are `GX0104`.
 
+## Sub-resource ids follow where they are used
+
+A built-in sub-resource's id is minted from where it is used: its site key (the element path and property it sits in, nested), or its `x:Resources` key. It does not depend on its position among the sub-resources, so an edit elsewhere in the file keeps every other id.
+
+Why: the format stores no ids (the owner's "Not stored" ruling, "Where the rest of a `.tscn` goes"), so a save and the next load must compute the same id from the document alone. The saver gives each sub-resource the path `<file>::<id>` the next load mints, and a load registers its sub-resources in the cache under the same paths, so the open resource and a reload are one object.
+
+Godot fact (4.7.2): the C# dispatch of a `ResourceFormatLoader._load` override copies the returned Variant and never disposes the original (`ScriptMethodsGenerator.cs` in GodotSharp's source generators, and `VariantUtils.generic.cs`). A C# `_Load` that does not dispose its Variant keeps the returned scene alive, and its sub-resources stay in the cache.
+
 ## Exported games load binary through a remap
 
 An `EditorExportPlugin`, registered by an `EditorPlugin` the project enables, loads each `.xscn` and `.xres` through the loader at export, saves Godot binary and adds it with `add_file(path, bytes, remap: true)`, so the exported game loads binary through Godot's `.remap` and runs no addon code at load. The raw XML is not shipped. The loaders are packed too, as a fallback and for a `.xscn` autoload's type check (`main/main.cpp`, which asks `get_resource_type` of the original path, and that lookup does not follow a remap). The binary sits under `res://.godot/exported/godot-xaml/`, named as Godot names its own conversions, so a project holding both `a.xscn` and `a.scn` gets no clash.

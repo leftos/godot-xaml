@@ -27,12 +27,13 @@ public static partial class TscnToXscn
         ArgumentNullException.ThrowIfNull(options);
         var context = new Context(document, metadata, options);
         XscnDocument converted = document.Kind == TscnKind.Scene ? context.ConvertScene() : context.ConvertResource();
+        IReadOnlyDictionary<XscnResource, XscnResource> copies = new Dictionary<XscnResource, XscnResource>();
         if (options.Previous is { } previous)
         {
-            converted = PreviousComments.Carry(previous, converted, context.KeptPreviousKeys, context.Issues);
+            (converted, copies) = PreviousComments.Carry(previous, converted, context.KeptPreviousKeys, context.Issues);
         }
 
-        return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids() };
+        return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids(copies) };
     }
 
     private sealed partial class Context
@@ -61,8 +62,9 @@ public static partial class TscnToXscn
         // The keys the previous document's x:Resources entries gave, which are the only ones that keep its comments.
         public IReadOnlySet<string> KeptPreviousKeys => references.KeptPreviousKeys;
 
-        // The first ext_resource at a path gives the path's id, as the .xscn keeps one file per path.
-        public ConversionIds Ids()
+        // The first ext_resource at a path gives the path's id, as the .xscn keeps one file per path. A sub_resource's id
+        // goes to the copy the comment carry made of its resource, when it made one, so it names the returned document's.
+        public ConversionIds Ids(IReadOnlyDictionary<XscnResource, XscnResource> copies)
         {
             Dictionary<string, string> extIds = new(StringComparer.Ordinal);
             foreach (TscnExtResource ext in references.UsedExtResources)
@@ -70,7 +72,13 @@ public static partial class TscnToXscn
                 extIds.TryAdd(ext.Path, ext.Id);
             }
 
-            return new ConversionIds(extIds, subIds);
+            Dictionary<XscnResource, string> returned = new(ReferenceEqualityComparer.Instance);
+            foreach ((XscnResource resource, string id) in subIds)
+            {
+                returned[copies.GetValueOrDefault(resource) ?? resource] = id;
+            }
+
+            return new ConversionIds(extIds, returned);
         }
 
         private ImmutableArray<XscnUid> Uids() =>

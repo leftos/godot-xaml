@@ -23,7 +23,7 @@ public static partial class XscnToTscn
                 };
             }
 
-            Discover(root, RootLocation);
+            Discover(root, RootLocation, TscnNodePaths.Root);
             ReportUnusedEntries();
             TscnDocument converted = MintIds(new TscnDocument { Kind = TscnKind.Resource }) with
             {

@@ -96,16 +96,22 @@ public static partial class XscnToTscn
                 DiscoverFile(scene, "PackedScene", null, location);
             }
 
-            DiscoverProperties((placed.Element as XscnNode)?.Type, placed.Element.Properties, location);
+            DiscoverProperties((placed.Element as XscnNode)?.Type, placed.Element.Properties, location, placed.Path);
         }
 
         private void DiscoverBinds(PlacedElement placed)
         {
             foreach (XscnConnection connection in placed.Element.Connections)
             {
-                foreach (GodotValue bind in connection.Binds)
+                string site = $"{placed.Path}|signal {connection.Signal}|{connection.To}|{connection.Method}";
+                for (int i = 0; i < connection.Binds.Length; i++)
                 {
-                    DiscoverValue(new XscnScalar(bind), null, $"{Location(placed.Path)} signal {connection.Signal}");
+                    DiscoverValue(
+                        new XscnScalar(connection.Binds[i]),
+                        null,
+                        $"{Location(placed.Path)} signal {connection.Signal}",
+                        $"{site}|bind[{i}]"
+                    );
                 }
             }
         }

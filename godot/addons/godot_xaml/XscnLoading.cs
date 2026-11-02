@@ -58,7 +58,7 @@ internal static class XscnLoading
         Interlocked.Increment(ref loadCallCount);
         try
         {
-            return LoadConverted(path, cacheMode);
+            return LetGoNextFrame(LoadConverted(path, cacheMode));
         }
         // Godot reads an exception escaping a virtual as a nil return: the load would fail with no reason given.
 #pragma warning disable CA1031
@@ -68,6 +68,17 @@ internal static class XscnLoading
             GD.PushError($"{path}: godot-xaml: the load failed: {exception}");
             return (int)Error.Failed;
         }
+    }
+
+    // Godot's generated dispatch of _Load copies the returned Variant and never disposes it (ScriptMethodsGenerator.cs
+    // :436-459), so its reference would keep the loaded resource in the cache until a finalizer runs. It is disposed once,
+    // when the calling thread's message queue next flushes: on the main thread a frame later, on a loader worker thread
+    // right after _load returns (core/io/resource_loader.cpp:524-544). Disposed now, it would be empty before Godot copies it.
+    private static Variant LetGoNextFrame(Variant result)
+    {
+        Variant ours = result;
+        Callable.From(() => ours.Dispose()).CallDeferred();
+        return result;
     }
 
     /// <summary>The file's dependencies, one entry per external resource in the converted text, in the text loader's format.</summary>
@@ -139,6 +150,11 @@ internal static class XscnLoading
         }
     }
 
+    /// <summary>Converts a parsed document to the text loader's form, minting its sub-resource ids as every load does.</summary>
+    /// <param name="document">The parsed <c>.xscn</c> or <c>.xres</c>.</param>
+    /// <returns>The converted document and the conversion's issues.</returns>
+    internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document) => XscnToTscn.Convert(document, XscnMetadata.Value, Options);
+
     private static Variant LoadConverted(string path, int cacheMode)
     {
         Error error = ReadAndConvert(path, pushWarnings: true, out TscnDocument? converted);
@@ -149,8 +165,7 @@ internal static class XscnLoading
 
         bool isScene = IsScene(path);
         string typeHint = isScene ? "PackedScene" : converted.Header.Type ?? "Resource";
-        bool deep = cacheMode is (int)ResourceFormatLoader.CacheMode.IgnoreDeep or (int)ResourceFormatLoader.CacheMode.ReplaceDeep;
-        return XscnLoadRoute.Load(path, TscnWriter.Write(converted), isScene, typeHint, deep);
+        return XscnLoadRoute.Load(path, TscnWriter.Write(converted), isScene, typeHint, (ResourceFormatLoader.CacheMode)cacheMode);
     }
 
     // The entry the text loader gives an ext_resource (resource_format_text.cpp:946-977):
@@ -315,7 +330,7 @@ internal static class XscnLoading
             return error;
         }
 
-        ConversionResult<TscnDocument> result = XscnToTscn.Convert(document, XscnMetadata.Value, Options);
+        ConversionResult<TscnDocument> result = ToTscn(document);
         if (PushIssues(path, result.Issues, pushWarnings))
         {
             return Error.ParseError;

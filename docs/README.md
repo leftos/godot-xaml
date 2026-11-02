@@ -34,7 +34,9 @@
 - **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn` in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
 - **Seed scene**: the one-node scene `tools/scene-fixtures/` saves first so the inherited-scene case can be saved from it; a script cannot set up scene inheritance directly.
 - **Sidecar**: the `.uid` file beside a file that has no header to hold its uid (`main.xscn.uid`); `convert` moves a uid between a `.tscn` header and it.
+- **Site key**: where a sub-resource is used in an `.xscn` (its element path and property, nested), from which the way back mints its id, so ids do not shift when the file is edited elsewhere.
 - **Staging folder**: `<root>/.godot-xaml-staging/<stamp>-<8 hex>/`, where `convert --project` writes every output first; it is removed when the run ends, and a failed run leaves the project as it was.
+- **Takeover**: the addon saver's step on a save with `ReplaceSubresourcePaths` to a `res://` path, giving each built-in sub-resource the id and path `<file>::<id>` the next load mints.
 - **Tolerant parse**: a parse that always returns a document with its diagnostics and never throws on bad text (`XscnParser.Parse`).
 - **Value grammar**: Godot's text syntax for a property value, such as `Vector2(0, 0)`, shared by `.tscn`, `.tres` and the metadata defaults.
 - **`.xres`**: a Godot resource (a theme, a StyleBox) in the XAML format; the counterpart of `.tres`.

@@ -9,8 +9,8 @@ namespace GodotXaml.Core.Conversion;
 public sealed record ConversionResult<T>(T Document, ImmutableArray<ConversionIssue> Issues)
 {
     /// <summary>
-    /// The ids the source's sections had, for <see cref="ConversionOptions.KeepIds"/>; set by <see cref="TscnToXscn"/>,
-    /// null from <see cref="XscnToTscn"/>.
+    /// The ids of the sections: from <see cref="TscnToXscn"/> the ones the source had, for
+    /// <see cref="ConversionOptions.KeepIds"/>; from <see cref="XscnToTscn"/> the ones the converted document got.
     /// </summary>
     public ConversionIds? Ids { get; init; }
 }

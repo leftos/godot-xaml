@@ -1,0 +1,6 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Contained">
+  <x:Resources>
+    <StyleBoxFlat x:Key="Listed" BgColor="0, 1, 0, 1" />
+  </x:Resources>
+  <x:Prop Name="metadata/list" Value='[SubResource("Listed")]' />
+</Control>

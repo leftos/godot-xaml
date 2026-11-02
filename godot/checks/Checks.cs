@@ -28,8 +28,16 @@ public partial class Checks : Node
     private const string ThemePath = CasesPath + "theme.xres";
     private const string HolderPath = CasesPath + "holder.xscn";
     private const string ParentPath = CasesPath + "parent.xscn";
+    private const string ContainedPath = CasesPath + "contained.xscn";
     private const string SavesFolder = "user://gx-saves/";
     private const string OutFolder = "res://checks/out/";
+    private const string HeldScriptPath = CasesPath + "held.gd";
+    private const string AbstractSubResource =
+        "  <CollisionShape2D Name=\"Abstract\">\n"
+        + "    <CollisionShape2D.Shape>\n"
+        + "      <Shape2D />\n"
+        + "    </CollisionShape2D.Shape>\n"
+        + "  </CollisionShape2D>\n";
 
     // Two users of one material, so the conversion keeps it in x:Resources rather than inlining it.
     private const string KeysScene =
@@ -48,6 +56,9 @@ public partial class Checks : Node
     // A hang guard, not a time budget: the threaded load of two small scenes takes a few frames, and checks.ps1 quits the
     // run after 600.
     private const int ThreadedLoadFrameGuard = 300;
+
+    // The garbage collections C45 allows a dropped scene's sub-resource to leave the cache in, each followed by a frame.
+    private const int ContainerReleaseGcPasses = 3;
 
     private static int tempPathsBefore;
 
@@ -85,9 +96,27 @@ public partial class Checks : Node
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
             ("C32", RelativeSpellingStaysInTheProject),
+            ("C33", SaveTakesOverSubResourcePaths),
+            ("C34", LoadRegistersSubResources),
+            ("C35", ReplaceKeepsALiveSubResource),
+            ("C36", ReplaceKeepsALiveSubResourceInATscn),
+            ("C37", SaveDoesNotTakeOverWithoutTheFlag),
+            ("C38", ReplaceRestoresAfterAFailedLoad),
+            ("C41", SaveLeavesANonStoredResourceAlone),
+            ("C43", RenameKeepsTheLiveSubResource),
+            ("C44", SaveOverAnExistingFileTakesOverTheBox),
+        ];
+        (string Id, Func<Task<string>> Run)[] frameChecks =
+        [
+            ("C18", () => ThreadedLoad(ParentPath, ThreadedResultFailure)),
+            ("C31", () => ThreadedLoad(HolderPath, ThreadedHolderFailure)),
+            ("C39", ReuseKeepsADroppedScenesSubResource),
+            ("C40", ReuseKeepsADroppedScenesSubResourceInATscn),
+            ("C42", DroppedSceneLeavesTheCache),
+            ("C45", DroppedSceneReleasesContainerSubResources),
         ];
         DeleteFolder(SavesFolder);
-        int total = checks.Length + 2;
+        int total = checks.Length + frameChecks.Length;
         XscnLoadRoute.RecordTempPaths = true;
         tempPathsBefore = XscnLoadRoute.TempPaths.Count;
         int passed = 0;
@@ -98,10 +127,12 @@ public partial class Checks : Node
                 passed += Report(id, run) ? 1 : 0;
             }
 
-            string threadedLoadFailure = await FailureOf(() => ThreadedLoad(ParentPath, ThreadedResultFailure));
-            passed += Report("C18", () => threadedLoadFailure) ? 1 : 0;
-            string threadedHolderFailure = await FailureOf(() => ThreadedLoad(HolderPath, ThreadedHolderFailure));
-            passed += Report("C31", () => threadedHolderFailure) ? 1 : 0;
+            // These wait for frames, which the checks above never see: they all run in one.
+            foreach ((string id, Func<Task<string>> run) in frameChecks)
+            {
+                string failure = await FailureOf(run);
+                passed += Report(id, () => failure) ? 1 : 0;
+            }
         }
         finally
         {
@@ -1035,6 +1066,559 @@ public partial class Checks : Node
             && entry.EndsWith("::::" + path, StringComparison.Ordinal)
             && entry.IndexOf("::", StringComparison.Ordinal) == entry.Length - path.Length - 4
         );
+
+    private static string SaveTakesOverSubResourcePaths()
+    {
+        const string path = OutFolder + "taken.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            // Godot's property order puts normal before hover, the alphabetical order hover first; hover has an id already.
+            var normal = new StyleBoxFlat();
+            var hover = new StyleBoxFlat { ResourceSceneUniqueId = "StyleBoxFlat_given" };
+            var root = new Control { Name = "Root" };
+            var button = new Button { Name = "Button" };
+            button.Set("theme_override_styles/normal", normal);
+            button.Set("theme_override_styles/hover", hover);
+            root.AddChild(button);
+            button.Owner = root;
+            var scene = new PackedScene();
+            Error packed = scene.Pack(root);
+            root.Free();
+            if (packed != Error.Ok)
+            {
+                return $"packing the scene returned {packed}";
+            }
+
+            Error saved = ResourceSaver.Save(scene, path, ResourceSaver.SaverFlags.ReplaceSubresourcePaths);
+            if (saved != Error.Ok)
+            {
+                return $"the save returned {saved}";
+            }
+
+            string failures = SavedBoxFailures(path, [normal, hover]);
+            GC.KeepAlive(scene);
+            return failures;
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // Save As onto a file that exists: the file's previous text is carried, and the boxes still move from the first file
+    // to the one written last.
+    private static string SaveOverAnExistingFileTakesOverTheBox()
+    {
+        const string first = OutFolder + "first.xscn";
+        const string path = OutFolder + "existing.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            var normal = new StyleBoxFlat();
+            var hover = new StyleBoxFlat { ResourceSceneUniqueId = "StyleBoxFlat_given" };
+            var root = new Control { Name = "Root" };
+            var button = new Button { Name = "Button" };
+            button.Set("theme_override_styles/normal", normal);
+            button.Set("theme_override_styles/hover", hover);
+            root.AddChild(button);
+            button.Owner = root;
+            var scene = new PackedScene();
+            Error packed = scene.Pack(root);
+            root.Free();
+            if (packed != Error.Ok)
+            {
+                return $"packing the scene returned {packed}";
+            }
+
+            Error saved = ResourceSaver.Save(scene, first, ResourceSaver.SaverFlags.ReplaceSubresourcePaths);
+            if (saved != Error.Ok)
+            {
+                return $"the first save returned {saved}";
+            }
+
+            File.Copy(ProjectSettings.GlobalizePath(first), ProjectSettings.GlobalizePath(path));
+            saved = ResourceSaver.Save(scene, path, ResourceSaver.SaverFlags.ReplaceSubresourcePaths);
+            if (saved != Error.Ok)
+            {
+                return $"the save over {path} returned {saved}";
+            }
+
+            string failures = SavedBoxFailures(path, [normal, hover]);
+            GC.KeepAlive(scene);
+            return failures;
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A rename moves the box's site, so the next load mints it another id: the save gives the live box that id, and a
+    // replace load then reuses it. Packing gives each node a unique id (packed_scene.cpp:1099-1119), so a first save of the
+    // tree writes them and the rename's save matches the renamed node by its id.
+    private static string RenameKeepsTheLiveSubResource()
+    {
+        const string path = OutFolder + "renamed.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.Copy(ProjectSettings.GlobalizePath(HolderPath), ProjectSettings.GlobalizePath(path));
+            if (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Replace) is not PackedScene scene)
+            {
+                return $"the replace load of {path} did not return a PackedScene";
+            }
+
+            Node root = scene.Instantiate();
+            Resource? box;
+            string failure;
+            try
+            {
+                Node inline = root.GetNode("Inline");
+                box = inline.Get("theme_override_styles/panel").AsGodotObject() as Resource;
+                failure = PackAndSave(root, path, "the first save");
+                inline.Name = "Renamed";
+                failure = failure.Length > 0 ? failure : PackAndSave(root, path, "the save of the renamed tree");
+            }
+            finally
+            {
+                root.Free();
+            }
+
+            GC.KeepAlive(scene);
+            if (failure.Length > 0)
+            {
+                return failure;
+            }
+
+            return box is null ? $"{path} gave no inline StyleBox" : RenamedBoxFailure(path, box);
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    private static string PackAndSave(Node root, string path, string what)
+    {
+        var scene = new PackedScene();
+        Error packed = scene.Pack(root);
+        if (packed != Error.Ok)
+        {
+            return $"packing the tree for {what} returned {packed}";
+        }
+
+        Error saved = ResourceSaver.Save(scene, path, ResourceSaver.SaverFlags.ReplaceSubresourcePaths);
+        GC.KeepAlive(scene);
+        return saved == Error.Ok ? "" : $"{what} returned {saved}";
+    }
+
+    private static string RenamedBoxFailure(string path, Resource box)
+    {
+        string savedPath = box.ResourcePath;
+        if (savedPath != path + "::" + box.ResourceSceneUniqueId)
+        {
+            return $"the box's path is \"{savedPath}\", not \"{path}::{box.ResourceSceneUniqueId}\"";
+        }
+
+        if (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Replace) is not PackedScene reloaded)
+        {
+            return $"the replace load of {path} after the rename did not return a PackedScene";
+        }
+
+        Node again = reloaded.Instantiate();
+        Variant after = again.GetNodeOrNull("Renamed")?.Get("theme_override_styles/panel") ?? default;
+        again.Free();
+        GC.KeepAlive(reloaded);
+        return SameBoxFailure(0, box, savedPath, after);
+    }
+
+    // Each saved box is named after its id, and a replace load of the file gives back the same object at the same path.
+    private static string SavedBoxFailures(string path, Resource[] boxes)
+    {
+        string[] savedPaths = [.. boxes.Select(box => box.ResourcePath)];
+        if (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Replace) is not PackedScene reloaded)
+        {
+            return $"the replace load of {path} did not return a PackedScene";
+        }
+
+        Node again = reloaded.Instantiate();
+        Node button = again.GetNode("Button");
+        Variant[] after = [button.Get("theme_override_styles/normal"), button.Get("theme_override_styles/hover")];
+        again.Free();
+        GC.KeepAlive(reloaded);
+        string[] failures =
+        [
+            .. boxes.Select(
+                (box, i) =>
+                    box.ResourcePath == path + "::" + box.ResourceSceneUniqueId
+                        ? ""
+                        : $"box {i}'s path is \"{box.ResourcePath}\", not \"{path}::{box.ResourceSceneUniqueId}\""
+            ),
+            .. boxes.Select((box, i) => SameBoxFailure(i, box, savedPaths[i], after[i])),
+        ];
+        return string.Join("; ", failures.Where(f => f.Length > 0));
+    }
+
+    private static string SameBoxFailure(int index, Resource box, string savedPath, Variant reloaded)
+    {
+        var live = reloaded.AsGodotObject() as Resource;
+        return live is not null && live.GetInstanceId() == box.GetInstanceId() && live.ResourcePath == savedPath
+            ? ""
+            : $"box {index}'s reload is {live?.GetInstanceId()} at \"{live?.ResourcePath}\", not {box.GetInstanceId()} at \"{savedPath}\"";
+    }
+
+    private static string SaveDoesNotTakeOverWithoutTheFlag()
+    {
+        const string path = OutFolder + "untaken.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            var box = new StyleBoxFlat();
+            var root = new Control { Name = "Root" };
+            var panel = new Panel { Name = "Panel" };
+            panel.Set("theme_override_styles/panel", box);
+            root.AddChild(panel);
+            panel.Owner = root;
+            var scene = new PackedScene();
+            Error packed = scene.Pack(root);
+            root.Free();
+            if (packed != Error.Ok)
+            {
+                return $"packing the scene returned {packed}";
+            }
+
+            Error saved = ResourceSaver.Save(scene, path);
+            if (saved != Error.Ok)
+            {
+                return $"the save returned {saved}";
+            }
+
+            return box.ResourcePath.Length == 0 ? "" : $"the sub-resource's path is \"{box.ResourcePath}\", not empty";
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    private static string LoadRegistersSubResources()
+    {
+        Resource? box = LiveInlineBox(HolderPath, ResourceLoader.CacheMode.Replace, out PackedScene? scene);
+        if (box is null)
+        {
+            return $"{HolderPath} gave no inline StyleBox";
+        }
+
+        bool cached = ResourceLoader.HasCached(box.ResourcePath);
+        GC.KeepAlive(scene);
+        if (!box.ResourcePath.StartsWith(HolderPath + "::", StringComparison.Ordinal))
+        {
+            return $"the box's path \"{box.ResourcePath}\" does not name {HolderPath}";
+        }
+
+        return cached ? "" : $"HasCached(\"{box.ResourcePath}\") is false";
+    }
+
+    private Task<string> ReuseKeepsADroppedScenesSubResource() => ReuseKeepsTheObject(HolderPath);
+
+    private async Task<string> ReuseKeepsADroppedScenesSubResourceInATscn()
+    {
+        const string path = OutFolder + "reused.tscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        File.WriteAllText(
+            ProjectSettings.GlobalizePath(path),
+            "[gd_scene format=3]\n\n[sub_resource type=\"StyleBoxFlat\" id=\"box\"]\n\n[node name=\"Root\" type=\"Control\"]\n\n"
+                + "[node name=\"Inline\" type=\"Panel\" parent=\".\"]\ntheme_override_styles/panel = SubResource(\"box\")\n"
+        );
+        try
+        {
+            return await ReuseKeepsTheObject(path);
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A .tscn whose last reference is let go leaves the cache at once. Godot's dispatch of _Load keeps a copy of the Variant
+    // it returns until a finalizer runs, so the loader lets go of it a frame later.
+    private async Task<string> DroppedSceneLeavesTheCache()
+    {
+        const string path = OutFolder + "dropped.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.Copy(ProjectSettings.GlobalizePath(HolderPath), ProjectSettings.GlobalizePath(path));
+            Resource? loaded = ResourceLoader.Load(path);
+            if (loaded is null)
+            {
+                return $"{path} did not load";
+            }
+
+            loaded.Dispose();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            return ResourceLoader.HasCached(path) ? $"{path} is still cached a frame after its only reference was disposed" : "";
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A sub-resource held only inside an array leaves the cache once its scene is dropped, so the walk that names it keeps
+    // no strong reference: it lets go of every container it reads, and the C# wrappers it makes release at GC, each pass
+    // freeing the next link of the chain. Its path comes from the loader's own conversion, so the check never holds the
+    // resource itself.
+    private async Task<string> DroppedSceneReleasesContainerSubResources()
+    {
+        const string path = OutFolder + "contained.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.Copy(ProjectSettings.GlobalizePath(ContainedPath), ProjectSettings.GlobalizePath(path));
+            XscnParseResult parsed = XscnParser.Parse(
+                File.ReadAllText(ProjectSettings.GlobalizePath(path)),
+                XscnDocumentKind.Scene,
+                XscnMetadata.Value
+            );
+            string subPath = path + "::" + XscnLoading.ToTscn(parsed.Document).Document.SubResources.Single().Id;
+            Resource? loaded = ResourceLoader.Load(path);
+            if (loaded is null)
+            {
+                return $"{path} did not load";
+            }
+
+            bool cachedWhileHeld = ResourceLoader.HasCached(subPath);
+            loaded.Dispose();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (!cachedWhileHeld)
+            {
+                return $"{subPath} was not cached while its scene was held";
+            }
+
+            for (int pass = 0; pass < ContainerReleaseGcPasses && ResourceLoader.HasCached(subPath); pass++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+
+            return ResourceLoader.HasCached(subPath)
+                ? $"{subPath} is still cached after its scene was dropped and {ContainerReleaseGcPasses} garbage collections"
+                : "";
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // The box stays alive while its scene leaves the cache; a reuse load of the scene then reuses the box (:589-592).
+    private async Task<string> ReuseKeepsTheObject(string path)
+    {
+        Resource? box = LiveInlineBox(path, ResourceLoader.CacheMode.Replace, out PackedScene? scene);
+        if (box is null)
+        {
+            return $"{path} gave no inline StyleBox";
+        }
+
+        // Disposing the wrapper is how C# lets go of a RefCounted; the instantiated root is already freed.
+        string expected = box.ResourcePath;
+        scene?.Dispose();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (ResourceLoader.HasCached(path))
+        {
+            return $"{path} is still cached a frame after its scene's wrapper was disposed";
+        }
+
+        Resource? again = LiveInlineBox(path, ResourceLoader.CacheMode.Reuse, out PackedScene? againScene);
+        GC.KeepAlive(againScene);
+        if (again is null)
+        {
+            return $"the reuse load of {path} gave no inline StyleBox";
+        }
+
+        return again.GetInstanceId() == box.GetInstanceId() && again.ResourcePath == expected
+            ? ""
+            : $"the reuse load gave {again.GetInstanceId()} at \"{again.ResourcePath}\", not {box.GetInstanceId()} at \"{expected}\"";
+    }
+
+    // A script variable that is not exported is not stored, so the saver does not save what it holds: here another
+    // scene's sub-resource, whose path the save must leave alone.
+    private static string SaveLeavesANonStoredResourceAlone()
+    {
+        const string path = OutFolder + "held.xscn";
+        Resource? foreign = LiveInlineBox(HolderPath, ResourceLoader.CacheMode.Replace, out PackedScene? holderScene);
+        if (foreign is null)
+        {
+            return $"{HolderPath} gave no inline StyleBox";
+        }
+
+        string expected = foreign.ResourcePath;
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            var holding = new Resource();
+            holding.SetScript(GD.Load<Script>(HeldScriptPath));
+            holding.Set("held", foreign);
+            var root = new Control { Name = "Root" };
+            root.SetMeta("holding", holding);
+            // The file's own box takes the foreign box's id, so the id is in the save's map and only the walk's storage
+            // rule keeps the foreign box out of it.
+            root.SetMeta("own", new StyleBoxFlat { ResourceSceneUniqueId = foreign.ResourceSceneUniqueId });
+            var scene = new PackedScene();
+            Error packed = scene.Pack(root);
+            root.Free();
+            if (packed != Error.Ok)
+            {
+                return $"packing the scene returned {packed}";
+            }
+
+            Error saved = ResourceSaver.Save(scene, path, ResourceSaver.SaverFlags.ReplaceSubresourcePaths);
+            GC.KeepAlive(holderScene);
+            GC.KeepAlive(scene);
+            if (saved != Error.Ok)
+            {
+                return $"the save returned {saved}";
+            }
+
+            string[] failures =
+            [
+                holding.Get("held").AsGodotObject() == foreign ? "" : "the script variable no longer holds the box",
+                holding.ResourcePath.StartsWith(path + "::", StringComparison.Ordinal)
+                    ? ""
+                    : $"the holding resource's path is \"{holding.ResourcePath}\"",
+                foreign.ResourcePath == expected ? "" : $"the held box's path is \"{foreign.ResourcePath}\", not \"{expected}\"",
+            ];
+            return string.Join("; ", failures.Where(f => f.Length > 0));
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    private static string ReplaceKeepsALiveSubResource() => ReplaceKeepsTheObject(HolderPath);
+
+    private static string ReplaceKeepsALiveSubResourceInATscn()
+    {
+        const string path = OutFolder + "live.tscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        File.WriteAllText(
+            ProjectSettings.GlobalizePath(path),
+            "[gd_scene format=3]\n\n[sub_resource type=\"StyleBoxFlat\" id=\"box\"]\n\n[node name=\"Root\" type=\"Control\"]\n\n"
+                + "[node name=\"Inline\" type=\"Panel\" parent=\".\"]\ntheme_override_styles/panel = SubResource(\"box\")\n"
+        );
+        try
+        {
+            return ReplaceKeepsTheObject(path);
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    private static string ReplaceKeepsTheObject(string path)
+    {
+        Resource? first = LiveInlineBox(path, ResourceLoader.CacheMode.Replace, out PackedScene? firstScene);
+        Resource? second = LiveInlineBox(path, ResourceLoader.CacheMode.Replace, out PackedScene? secondScene);
+        GC.KeepAlive(firstScene);
+        GC.KeepAlive(secondScene);
+        if (first is null || second is null)
+        {
+            return $"{path} gave no inline StyleBox";
+        }
+
+        return first.GetInstanceId() == second.GetInstanceId()
+            ? ""
+            : $"the second load made a new object: {first.GetInstanceId()} then {second.GetInstanceId()}, path \"{first.ResourcePath}\"";
+    }
+
+    private static Resource? LiveInlineBox(string path, ResourceLoader.CacheMode mode, out PackedScene? scene)
+    {
+        scene = ResourceLoader.Load(path, "", mode) as PackedScene;
+        if (scene is null)
+        {
+            return null;
+        }
+
+        Node root = scene.Instantiate();
+        try
+        {
+            return root.GetNodeOrNull<Panel>("Inline")?.Get("theme_override_styles/panel").AsGodotObject() as Resource;
+        }
+        finally
+        {
+            root.Free();
+        }
+    }
+
+    // The broken copy holds a sub-resource of an abstract class: the conversion accepts it and Godot's text loader cannot
+    // create it (resource_format_text.cpp:596-608). A missing external file would not do, since a scene skips it and loads.
+    // The temp file a failed load keeps is the proof that the failure came from the text loader.
+    private static string ReplaceRestoresAfterAFailedLoad()
+    {
+        const string copyPath = OutFolder + "restore.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        string holder = File.ReadAllText(ProjectSettings.GlobalizePath(HolderPath));
+        int tempPathsBeforeFailure = XscnLoadRoute.TempPaths.Count;
+        Resource? held = LiveInlineBox(HolderPath, ResourceLoader.CacheMode.Replace, out PackedScene? heldScene);
+        string heldPath = held?.ResourcePath ?? "";
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(copyPath), holder);
+            Resource? box = LiveInlineBox(copyPath, ResourceLoader.CacheMode.Replace, out PackedScene? scene);
+            if (held is null || box is null)
+            {
+                return $"{HolderPath} or {copyPath} gave no inline StyleBox";
+            }
+
+            string expected = box.ResourcePath;
+            File.WriteAllText(
+                ProjectSettings.GlobalizePath(copyPath),
+                holder.Replace("</Control>", AbstractSubResource + "</Control>", StringComparison.Ordinal)
+            );
+            tempPathsBeforeFailure = XscnLoadRoute.TempPaths.Count;
+            ResourceLoader.Load(copyPath, "", ResourceLoader.CacheMode.Replace);
+            bool failedInGodot = XscnLoadRoute.TempPaths.Skip(tempPathsBeforeFailure).Any(File.Exists);
+            GC.KeepAlive(heldScene);
+            GC.KeepAlive(scene);
+            string[] failures =
+            [
+                failedInGodot ? "" : "the broken copy did not fail in Godot's text loader",
+                StayedFailure(copyPath, expected, box),
+                StayedFailure(HolderPath, heldPath, held),
+            ];
+            return string.Join("; ", failures.Where(f => f.Length > 0));
+        }
+        finally
+        {
+            foreach (string kept in XscnLoadRoute.TempPaths.Skip(tempPathsBeforeFailure).Where(File.Exists))
+            {
+                File.Delete(kept);
+            }
+
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A box named after its file before the failed load and still at that path after it.
+    private static string StayedFailure(string file, string before, Resource box) =>
+        before.StartsWith(file + "::", StringComparison.Ordinal) && box.ResourcePath == before
+            ? ""
+            : $"{file}'s box moved from \"{before}\" to \"{box.ResourcePath}\"";
 
     private static string RenamesDependencies()
     {

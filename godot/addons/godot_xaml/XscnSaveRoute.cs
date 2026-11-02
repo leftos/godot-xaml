@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Godot;
 using GodotXaml.Core.Conversion;
@@ -70,8 +72,88 @@ internal static class XscnSaveRoute
             return Error.InvalidData;
         }
 
-        return WriteAtomically(path, text);
+        Error written = WriteAtomically(path, text);
+        if (written == Error.Ok && TakesOverPaths(path, flags))
+        {
+            TakeOverSubResourcePaths(resource, path, converted);
+        }
+
+        return written;
     }
+
+    private static bool TakesOverPaths(string path, uint flags) =>
+        ((ResourceSaver.SaverFlags)flags).HasFlag(ResourceSaver.SaverFlags.ReplaceSubresourcePaths)
+        && path.StartsWith("res://", StringComparison.Ordinal);
+
+    // Godot's text saver takes each sub-resource over itself (resource_format_text.cpp:1941-1943), but not on a save outside
+    // res:// (:1777-1779), and its save here goes to the temp folder. The ids it assigned (:1927-1934) are not the ones the
+    // next load mints, so each sub-resource takes the loader's id for the same sub_resource before its path; one the
+    // conversion has no id for is left as it is.
+    private static void TakeOverSubResourcePaths(Resource saved, string path, ConversionResult<XscnDocument> converted)
+    {
+        Dictionary<string, string> loaderIds = LoaderIds(converted);
+        XscnLoadRoute.WalkOwnResources(
+            saved,
+            IsBuiltIn,
+            resource =>
+            {
+                if (resource.GetInstanceId() != saved.GetInstanceId() && loaderIds.TryGetValue(resource.ResourceSceneUniqueId, out string? id))
+                {
+                    resource.ResourceSceneUniqueId = id;
+                    resource.TakeOverPath(path + "::" + id);
+                }
+            }
+        );
+    }
+
+    // Godot's id of each sub_resource to the id the next load mints for it: the forward conversion says which resource of
+    // the document each Godot id became, and the loader's own conversion of that document gives the resource its id, which
+    // depends only on where the resource is used, so the written file loads with the same one.
+    private static Dictionary<string, string> LoaderIds(ConversionResult<XscnDocument> converted)
+    {
+        Dictionary<string, string> ids = new(StringComparer.Ordinal);
+        ConversionIds? loader = XscnLoading.ToTscn(converted.Document).Ids;
+        if (converted.Ids is not { } godot || loader is null)
+        {
+            return ids;
+        }
+
+        foreach (XscnResource resource in Resources(converted.Document))
+        {
+            if (godot.SubIdOf(resource) is { } godotId && loader.SubIdOf(resource) is { } loaderId)
+            {
+                ids.TryAdd(godotId, loaderId);
+            }
+        }
+
+        return ids;
+    }
+
+    // Every resource the document holds: the table's entries and each resource held inline, at any depth.
+    private static IEnumerable<XscnResource> Resources(XscnDocument document) =>
+        document.Resources.SelectMany(entry => Held(entry).Prepend(entry)).Concat(Held(document.Root));
+
+    private static IEnumerable<XscnResource> Held(XscnElement element)
+    {
+        ImmutableArray<XscnProperty> properties = element switch
+        {
+            XscnNodeElement node => node.Properties,
+            XscnResource resource => resource.Properties,
+            _ => [],
+        };
+        IEnumerable<XscnResource> inline = properties
+            .Select(property => property.Value)
+            .OfType<XscnInline>()
+            .SelectMany(value => Held(value.Resource).Prepend(value.Resource));
+        return element is XscnNodeElement { Children: var children } ? inline.Concat(children.SelectMany(Held)) : inline;
+    }
+
+    // After a load a sub-resource's path is "<old file>::<id>", and after Save As that is another file's path; Resource.is_built_in
+    // also counts local:// (core/io/resource.h:147).
+    private static bool IsBuiltIn(string resourcePath) =>
+        resourcePath.Length == 0
+        || resourcePath.Contains("::", StringComparison.Ordinal)
+        || resourcePath.StartsWith("local://", StringComparison.Ordinal);
 
     // Godot's text saver writes the resource to a temp file; its text comes back and the file is deleted.
     private static Error SaveAsText(Resource resource, string path, uint flags, bool isScene, out string text)

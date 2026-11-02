@@ -23,14 +23,24 @@ internal static class PreviousComments
     /// this conversion makes takes comments only when its key is one of them.
     /// </param>
     /// <param name="issues">The conversion's issues; a comment the result cannot carry adds a warning here.</param>
-    /// <returns>A copy of <paramref name="next"/> carrying the comments of the parts of <paramref name="previous"/> it matches.</returns>
-    public static XscnDocument Carry(XscnDocument previous, XscnDocument next, IReadOnlySet<string> keptKeys, List<ConversionIssue> issues)
+    /// <returns>
+    /// A copy of <paramref name="next"/> carrying the comments of the parts of <paramref name="previous"/> it matches, and
+    /// each resource of <paramref name="next"/> the carry rebuilt, by reference, to the copy the returned document holds.
+    /// </returns>
+    public static (XscnDocument Document, IReadOnlyDictionary<XscnResource, XscnResource> Copies) Carry(
+        XscnDocument previous,
+        XscnDocument next,
+        IReadOnlySet<string> keptKeys,
+        List<ConversionIssue> issues
+    )
     {
         ArgumentNullException.ThrowIfNull(previous);
         ArgumentNullException.ThrowIfNull(next);
         ArgumentNullException.ThrowIfNull(keptKeys);
         ArgumentNullException.ThrowIfNull(issues);
-        return new Carrier(previous, next, keptKeys, issues).Run();
+        var carrier = new Carrier(previous, next, keptKeys, issues);
+        XscnDocument carried = carrier.Run();
+        return (carried, carrier.Copies);
     }
 
     /// <summary>One save's carrying and reporting, over one previous document and the one it becomes.</summary>
@@ -54,6 +64,9 @@ internal static class PreviousComments
         // The new node elements matched to a previous one by a unique id that occurs once in each document.
         private readonly Dictionary<XscnNodeElement, XscnNodeElement> byId;
 
+        // Each resource of the new document the carry rebuilt, to its copy.
+        private readonly Dictionary<XscnResource, XscnResource> copies = new(ReferenceEqualityComparer.Instance);
+
         public Carrier(XscnDocument previous, XscnDocument next, IReadOnlySet<string> keptKeys, List<ConversionIssue> issues)
         {
             this.previous = previous;
@@ -68,6 +81,8 @@ internal static class PreviousComments
                 used.Add(root);
             }
         }
+
+        public IReadOnlyDictionary<XscnResource, XscnResource> Copies => copies;
 
         public XscnDocument Run()
         {
@@ -177,7 +192,9 @@ internal static class PreviousComments
         private XscnResource CarryResource(XscnResource before, string path, XscnResource after)
         {
             var carried = (XscnResource)CarryComments(before, after);
-            return carried with { Properties = CarryProperties(before.Properties, path, after.Properties) };
+            XscnResource copy = carried with { Properties = CarryProperties(before.Properties, path, after.Properties) };
+            copies[after] = copy;
+            return copy;
         }
 
         // The x:Resources table: an entry takes comments only when the forward conversion kept its key from the previous

@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using Godot;
 using Godot.Collections;
+using GodotXaml.Core.Tscn;
 
 namespace GodotXaml.Addon;
 
@@ -36,14 +37,17 @@ internal static class XscnLoadRoute
     /// <summary>Sets <see cref="WalkVisits"/> back to zero.</summary>
     internal static void ResetWalkVisits() => Interlocked.Exchange(ref walkVisits, 0);
 
-    /// <summary>Writes the text to a temp file, loads it with the cache ignored, and deletes the file unless the load failed.</summary>
+    /// <summary>
+    /// Writes the text to a temp file and loads it through Godot's text loader: with the cache ignored, or on a reuse or a
+    /// replace in that mode, with the live sub-resources; then deletes the file unless the load failed.
+    /// </summary>
     /// <param name="path">The <c>.xscn</c> or <c>.xres</c> being loaded, for the error message and its sub-resources' paths.</param>
     /// <param name="text">The converted text.</param>
     /// <param name="isScene">True for a scene (a <c>.tscn</c> temp file), false for a resource (a <c>.tres</c>).</param>
     /// <param name="typeHint">The class Godot is told to expect.</param>
-    /// <param name="deep">True to ignore the cache for the file's dependencies too, as the caller's deep cache mode asks.</param>
+    /// <param name="cacheMode">The cache mode Godot passed for the file.</param>
     /// <returns>The loaded resource, or <see cref="Error.FileCorrupt"/> when Godot could not load the text.</returns>
-    public static Variant Load(string path, string text, bool isScene, string typeHint, bool deep)
+    public static Variant Load(string path, string text, bool isScene, string typeHint, ResourceFormatLoader.CacheMode cacheMode)
     {
         Directory.CreateDirectory(Folder);
         string tempPath = Path.Combine(Folder, $"{Guid.NewGuid():N}.{(isScene ? "tscn" : "tres")}").Replace('\\', '/');
@@ -53,11 +57,22 @@ internal static class XscnLoadRoute
         }
 
         bool keep = false;
+        string tempPrefix = tempPath + "::";
+        string pathPrefix = path + "::";
+        var moved = new List<Resource>();
         try
         {
             File.WriteAllText(tempPath, text);
-            ResourceLoader.CacheMode mode = deep ? ResourceLoader.CacheMode.IgnoreDeep : ResourceLoader.CacheMode.Ignore;
-            Resource? loaded = ResourceLoader.Load(tempPath, typeHint, mode);
+            if (cacheMode is ResourceFormatLoader.CacheMode.Replace or ResourceFormatLoader.CacheMode.ReplaceDeep)
+            {
+                MoveLiveSubResources(text, tempPrefix, pathPrefix, moved, sameClassOnly: true);
+            }
+            else if (cacheMode is ResourceFormatLoader.CacheMode.Reuse)
+            {
+                MoveLiveSubResources(text, tempPrefix, pathPrefix, moved, sameClassOnly: false);
+            }
+
+            Resource? loaded = ResourceLoader.Load(tempPath, typeHint, TextLoaderMode(cacheMode));
             if (loaded is null)
             {
                 keep = true;
@@ -65,11 +80,14 @@ internal static class XscnLoadRoute
                 return (int)Error.FileCorrupt;
             }
 
-            NameSubResourcesAfter(loaded, tempPath + "::", path + "::");
+            bool cached = cacheMode is not (ResourceFormatLoader.CacheMode.Ignore or ResourceFormatLoader.CacheMode.IgnoreDeep);
+            NameSubResourcesAfter(loaded, tempPrefix, pathPrefix, cached);
             return loaded;
         }
         finally
         {
+            // Also after a failed load or a throw: every moved object goes home.
+            MoveBack(moved, tempPrefix, pathPrefix);
             if (!keep)
             {
                 File.Delete(tempPath);
@@ -77,41 +95,112 @@ internal static class XscnLoadRoute
         }
     }
 
-    // The text loader names each sub-resource "<file>::<id>" after the temp file; Godot's own load of a .tscn names it
-    // after the scene (resource_format_text.cpp:632-636). Renaming with SetPathCache, as the text loader does, keeps the
-    // resource out of the cache. The walk enters only the loaded resource and resources with no path or a temp-file path:
-    // another file cannot hold this file's sub-resources, and reading its properties can be costly (a mesh's buffers).
-    private static void NameSubResourcesAfter(Resource loaded, string tempPrefix, string pathPrefix)
+    // Only the reuse and replace modes reach the cache: they reuse the objects moved under the temp file's name.
+    private static ResourceLoader.CacheMode TextLoaderMode(ResourceFormatLoader.CacheMode cacheMode) =>
+        cacheMode switch
+        {
+            ResourceFormatLoader.CacheMode.Reuse => ResourceLoader.CacheMode.Reuse,
+            ResourceFormatLoader.CacheMode.Replace => ResourceLoader.CacheMode.Replace,
+            ResourceFormatLoader.CacheMode.ReplaceDeep => ResourceLoader.CacheMode.ReplaceDeep,
+            ResourceFormatLoader.CacheMode.IgnoreDeep => ResourceLoader.CacheMode.IgnoreDeep,
+            _ => ResourceLoader.CacheMode.Ignore,
+        };
+
+    // A replace reuses an object in place only when it finds it at the file's own "<file>::<id>", with the same class
+    // (resource_format_text.cpp:576-583); a reuse takes whatever it finds there, with no class check and no change of path
+    // (:589-592, 633). The file the text loader reads is the temp file, so each live sub-resource moves under the temp
+    // file's name first, and the walk names it back.
+    // Each object is listed as it moves, so a throw part way leaves the list naming every object to move back.
+    private static void MoveLiveSubResources(string text, string tempPrefix, string pathPrefix, List<Resource> moved, bool sameClassOnly)
+    {
+        foreach (TscnSubResource sub in TscnReader.Read(text).SubResources)
+        {
+            if (ResourceLoader.GetCachedRef(pathPrefix + sub.Id) is { } live && (!sameClassOnly || live.GetClass() == sub.Type))
+            {
+                live.TakeOverPath(tempPrefix + sub.Id);
+                moved.Add(live);
+            }
+        }
+    }
+
+    // Every moved object goes home: the walk names back only what the new scene reaches, and after a failed load nothing.
+    private static void MoveBack(List<Resource> moved, string tempPrefix, string pathPrefix)
+    {
+        foreach (Resource resource in moved)
+        {
+            if (resource.ResourcePath.StartsWith(tempPrefix, StringComparison.Ordinal))
+            {
+                resource.TakeOverPath(pathPrefix + resource.ResourcePath[tempPrefix.Length..]);
+            }
+        }
+    }
+
+    /// <summary>Visits a resource and every resource it holds that the file owns, each once, the root first.</summary>
+    /// <param name="root">The resource to start from; it is always visited.</param>
+    /// <param name="isOwnPath">Whether a held resource with this path belongs to the file, so the walk enters it.</param>
+    /// <param name="visit">Called with each resource entered, before the resources it holds are read.</param>
+    internal static void WalkOwnResources(Resource root, Func<string, bool> isOwnPath, Action<Resource> visit)
     {
         var visited = new HashSet<ulong>();
-        var pending = new Stack<Variant>([loaded]);
+        var pending = new Stack<Variant>([root]);
+        // Each value is disposed once read: an undisposed Variant holds a reference that keeps its resource, and so the
+        // loaded scene, in the cache until the finalizer runs. A sub-resource's C# wrapper made by the walk releases it at
+        // GC, the same as any C# code that touches the object.
         while (pending.TryPop(out Variant value))
         {
-            Resource? resource = value.VariantType == Variant.Type.Object ? value.AsGodotObject() as Resource : null;
-            if (resource is null)
+            using (value)
             {
-                PushContainerItems(value, pending);
+                Resource? resource = value.VariantType == Variant.Type.Object ? value.AsGodotObject() as Resource : null;
+                if (resource is null)
+                {
+                    PushContainerItems(value, pending);
+                }
+                else if (
+                    visited.Add(resource.GetInstanceId()) && (resource.GetInstanceId() == root.GetInstanceId() || isOwnPath(resource.ResourcePath))
+                )
+                {
+                    visit(resource);
+                    PushHeldValues(resource, pending);
+                }
             }
-            else if (
-                visited.Add(resource.GetInstanceId())
-                && (resource.GetInstanceId() == loaded.GetInstanceId() || IsOwnSubResource(resource.ResourcePath, tempPrefix))
-            )
+        }
+    }
+
+    // The text loader names each sub-resource "<file>::<id>" after the temp file; Godot's own load of a .tscn names it
+    // after the scene (resource_format_text.cpp:632-636): into the cache unless the cache is ignored. TakeOverPath stands in
+    // place of SetPathCache, not after it, since set_path returns early on an equal path (resource.cpp:80-82). The walk
+    // enters only the loaded resource and resources with no path or a temp-file path: another file cannot hold this file's
+    // sub-resources, and reading its properties can be costly (a mesh's buffers).
+    private static void NameSubResourcesAfter(Resource loaded, string tempPrefix, string pathPrefix, bool cached)
+    {
+        WalkOwnResources(
+            loaded,
+            resourcePath => IsOwnSubResource(resourcePath, tempPrefix),
+            resource =>
             {
                 Interlocked.Increment(ref walkVisits);
                 if (resource.ResourcePath.StartsWith(tempPrefix, StringComparison.Ordinal))
                 {
-                    resource.SetPathCache(pathPrefix + resource.ResourcePath[tempPrefix.Length..]);
+                    string named = pathPrefix + resource.ResourcePath[tempPrefix.Length..];
+                    if (cached)
+                    {
+                        resource.TakeOverPath(named);
+                    }
+                    else
+                    {
+                        resource.SetPathCache(named);
+                    }
                 }
-
-                PushHeldValues(resource, pending);
             }
-        }
+        );
     }
 
     private static bool IsOwnSubResource(string resourcePath, string tempPrefix) =>
         resourcePath.Length == 0 || resourcePath.StartsWith(tempPrefix, StringComparison.Ordinal);
 
-    // A packed scene's values are walked through its state; its _bundled property holds the same values again.
+    // A packed scene's values are walked through its state; its _bundled property holds the same values again. Only stored
+    // properties are read, as Godot's text saver reads them (resource_format_text.cpp:1690): a script variable that is not
+    // exported holds what another file owns.
     private static void PushHeldValues(Resource resource, Stack<Variant> pending)
     {
         var scene = resource as PackedScene;
@@ -123,7 +212,8 @@ internal static class XscnLoadRoute
         foreach (Dictionary property in resource.GetPropertyList())
         {
             StringName name = property["name"].AsStringName();
-            if (scene is null || name != "_bundled")
+            bool stored = (property["usage"].AsInt64() & (long)PropertyUsageFlags.Storage) != 0;
+            if (stored && (scene is null || name != "_bundled"))
             {
                 pending.Push(resource.Get(name));
             }
@@ -142,26 +232,36 @@ internal static class XscnLoadRoute
 
         for (int connection = 0; connection < state.GetConnectionCount(); connection++)
         {
-            pending.Push(state.GetConnectionBinds(connection));
+            using Godot.Collections.Array binds = state.GetConnectionBinds(connection);
+            PushArrayItems(binds, pending);
         }
     }
 
+    // A container wrapper holds its native container, and so every resource in it, until it is disposed: each one's items
+    // are copied out and the wrapper let go at once.
     private static void PushContainerItems(Variant value, Stack<Variant> pending)
     {
         if (value.VariantType == Variant.Type.Array)
         {
-            foreach (Variant item in value.AsGodotArray())
-            {
-                pending.Push(item);
-            }
+            using Godot.Collections.Array array = value.AsGodotArray();
+            PushArrayItems(array, pending);
         }
         else if (value.VariantType == Variant.Type.Dictionary)
         {
-            foreach (KeyValuePair<Variant, Variant> pair in value.AsGodotDictionary())
+            using Dictionary dictionary = value.AsGodotDictionary();
+            foreach (KeyValuePair<Variant, Variant> pair in dictionary)
             {
                 pending.Push(pair.Key);
                 pending.Push(pair.Value);
             }
+        }
+    }
+
+    private static void PushArrayItems(Godot.Collections.Array array, Stack<Variant> pending)
+    {
+        foreach (Variant item in array)
+        {
+            pending.Push(item);
         }
     }
 }
