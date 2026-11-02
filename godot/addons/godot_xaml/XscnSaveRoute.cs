@@ -118,9 +118,14 @@ internal static class XscnSaveRoute
         return result.Document;
     }
 
-    // The text goes to a hidden staging file beside the target, on its volume and wherever the target is writable, then
-    // replaces the target in one rename, so a failed write never leaves a half-written file at the path.
-    private static Error WriteAtomically(string path, string text)
+    /// <summary>
+    /// Writes the text to a hidden staging file beside the target, on its volume and wherever the target is writable, then
+    /// replaces the target in one rename, so a failed write never leaves a half-written file at the path.
+    /// </summary>
+    /// <param name="path">The <c>res://</c> file to write.</param>
+    /// <param name="text">Its new text, written as UTF-8 without a byte order mark.</param>
+    /// <returns><see cref="Error.Ok"/>, or <see cref="Error.FileCantWrite"/> with the target left as it was.</returns>
+    internal static Error WriteAtomically(string path, string text)
     {
         string target = ProjectSettings.GlobalizePath(path);
         string stagingPath = Path.Combine(Path.GetDirectoryName(target) ?? "", $".{Guid.NewGuid():N}.{path.GetExtension()}.tmp");

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Godot;
 using GodotXaml.Addon;
 using GodotXaml.Core.Metadata;
+using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
 
 namespace GodotXaml.AddonChecks;
@@ -24,7 +25,11 @@ public partial class Checks : Node
     private const string CasesPath = "res://checks/cases/";
     private const string ChildScenePath = CasesPath + "child.xscn";
     private const string BoxPath = CasesPath + "box.xres";
+    private const string ThemePath = CasesPath + "theme.xres";
+    private const string HolderPath = CasesPath + "holder.xscn";
+    private const string ParentPath = CasesPath + "parent.xscn";
     private const string SavesFolder = "user://gx-saves/";
+    private const string OutFolder = "res://checks/out/";
 
     // Two users of one material, so the conversion keeps it in x:Resources rather than inlining it.
     private const string KeysScene =
@@ -76,9 +81,13 @@ public partial class Checks : Node
             ("C25", SetUidRefusesOtherExtensions),
             ("C26", SavingOverUnparsableTextWritesAParsableFile),
             ("C27", SaveToAMissingFolderWritesNothing),
+            ("C28", ExtensionsSplitByType),
+            ("C29", ReportsDependencies),
+            ("C30", RenamesDependencies),
+            ("C32", RelativeSpellingStaysInTheProject),
         ];
-        ResetSavesFolder();
-        int total = checks.Length + 1;
+        DeleteFolder(SavesFolder);
+        int total = checks.Length + 2;
         XscnLoadRoute.RecordTempPaths = true;
         tempPathsBefore = XscnLoadRoute.TempPaths.Count;
         int passed = 0;
@@ -89,8 +98,10 @@ public partial class Checks : Node
                 passed += Report(id, run) ? 1 : 0;
             }
 
-            string threadedLoadFailure = await FailureOf(ThreadedLoad);
+            string threadedLoadFailure = await FailureOf(() => ThreadedLoad(ParentPath, ThreadedResultFailure));
             passed += Report("C18", () => threadedLoadFailure) ? 1 : 0;
+            string threadedHolderFailure = await FailureOf(() => ThreadedLoad(HolderPath, ThreadedHolderFailure));
+            passed += Report("C31", () => threadedHolderFailure) ? 1 : 0;
         }
         finally
         {
@@ -165,9 +176,9 @@ public partial class Checks : Node
 
     private static string ParseErrorFailsTheLoad()
     {
-        int callsBefore = XscnFormatLoader.LoadCallCount;
+        int callsBefore = XscnLoading.LoadCallCount;
         Resource loaded = ResourceLoader.Load(BrokenScenePath, "", ResourceLoader.CacheMode.Ignore);
-        int calls = XscnFormatLoader.LoadCallCount - callsBefore;
+        int calls = XscnLoading.LoadCallCount - callsBefore;
         if (loaded is not null)
         {
             return $"loading {BrokenScenePath} returned a {loaded.GetClass()}, not null";
@@ -336,23 +347,27 @@ public partial class Checks : Node
         return string.Join("; ", failures);
     }
 
-    // Godot binds no ResourceLoader.get_resource_type for scripts (core/core_bind.cpp), so this asks the loader directly;
-    // that the engine routes the question to it is proved by the editor checks, not here.
+    // Godot binds no ResourceLoader.get_resource_type for scripts (core/core_bind.cpp), so this asks the loaders directly;
+    // that the engine routes the question to them is proved by the editor checks, not here. Each loader reports no type
+    // for the other's extension.
     private static string XresReportsItsRootClass()
     {
-        using var loader = new XscnFormatLoader();
-        (string Path, string Type)[] expected =
+        using var resourceLoader = new XresFormatLoader();
+        using var sceneLoader = new XscnFormatLoader();
+        (ResourceFormatLoader Loader, string Path, string Type)[] expected =
         [
-            (BoxPath, "StyleBoxFlat"),
-            (CasesPath + "notxml.xres", "Resource"),
-            (CasesPath + "scene.xscn", "PackedScene"),
+            (resourceLoader, BoxPath, "StyleBoxFlat"),
+            (resourceLoader, CasesPath + "notxml.xres", "Resource"),
+            (resourceLoader, CasesPath + "scene.xscn", ""),
+            (sceneLoader, CasesPath + "scene.xscn", "PackedScene"),
+            (sceneLoader, BoxPath, ""),
         ];
         return string.Join(
             "; ",
             expected
-                .Select(e => (e.Path, e.Type, Reported: loader._GetResourceType(e.Path)))
+                .Select(e => (e.Loader, e.Path, e.Type, Reported: e.Loader._GetResourceType(e.Path)))
                 .Where(e => e.Reported != e.Type)
-                .Select(e => $"{e.Path} reports type \"{e.Reported}\", not {e.Type}")
+                .Select(e => $"{e.Loader.GetType().Name} reports type \"{e.Reported}\" for {e.Path}, not \"{e.Type}\"")
         );
     }
 
@@ -365,9 +380,9 @@ public partial class Checks : Node
     private static string ConversionErrorFailsTheLoad()
     {
         const string path = CasesPath + "badoverride.xscn";
-        int callsBefore = XscnFormatLoader.LoadCallCount;
+        int callsBefore = XscnLoading.LoadCallCount;
         Resource loaded = ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore);
-        int calls = XscnFormatLoader.LoadCallCount - callsBefore;
+        int calls = XscnLoading.LoadCallCount - callsBefore;
         if (loaded is not null)
         {
             return $"loading {path} returned a {loaded.GetClass()}, not null";
@@ -678,10 +693,10 @@ public partial class Checks : Node
         return firstLine == expected ? "" : $"the sidecar's first line is \"{firstLine}\", not \"{expected}\"";
     }
 
-    // The save checks start from an empty folder on every run.
-    private static void ResetSavesFolder()
+    // The save and rename checks start from an empty folder on every run.
+    private static void DeleteFolder(string resFolder)
     {
-        string folder = ProjectSettings.GlobalizePath(SavesFolder);
+        string folder = ProjectSettings.GlobalizePath(resFolder);
         if (Directory.Exists(folder))
         {
             Directory.Delete(folder, recursive: true);
@@ -810,10 +825,271 @@ public partial class Checks : Node
     private static int Occurrences(string text, string value) =>
         (text.Length - text.Replace(value, "", StringComparison.Ordinal).Length) / value.Length;
 
-    private async Task<string> ThreadedLoad()
+    private static string ExtensionsSplitByType()
     {
-        const string path = CasesPath + "parent.xscn";
-        int callsBefore = XscnFormatLoader.LoadCallCount;
+        (string Type, string[] Has, string[] Lacks)[] expected =
+        [
+            ("PackedScene", ["xscn"], ["xres"]),
+            ("StyleBox", ["xres"], ["xscn"]),
+            ("Resource", ["xscn", "xres"], []),
+            ("GDExtension", [], ["xscn", "xres"]),
+        ];
+        var failures = new List<string>();
+        foreach ((string type, string[] has, string[] lacks) in expected)
+        {
+            string[] extensions = ResourceLoader.GetRecognizedExtensionsForType(type);
+            string list = string.Join(", ", extensions);
+            failures.AddRange(has.Where(e => !extensions.Contains(e)).Select(e => $"{type}'s extensions [{list}] lack {e}"));
+            failures.AddRange(lacks.Where(extensions.Contains).Select(e => $"{type}'s extensions [{list}] contain {e}"));
+        }
+
+        return string.Join("; ", failures);
+    }
+
+    private static string ReportsDependencies()
+    {
+        (string File, string[] Expected)[] cases = [(HolderPath, [ThemePath, BoxPath]), (ParentPath, [ChildScenePath])];
+        var failures = new List<string>();
+        foreach ((string file, string[] expected) in cases)
+        {
+            string[] dependencies = ResourceLoader.GetDependencies(file);
+            string list = string.Join(", ", dependencies);
+            if (dependencies.Length != expected.Length)
+            {
+                failures.Add($"{file} has {dependencies.Length} dependencies [{list}], not {expected.Length}");
+            }
+
+            failures.AddRange(
+                expected.Where(p => !dependencies.Any(d => IsDependencyEntry(d, p))).Select(p => $"{file}'s dependencies [{list}] do not list {p}")
+            );
+        }
+
+        failures.Add(UidEntriesFailure());
+        return string.Join("; ", failures.Where(f => f.Length > 0));
+    }
+
+    // The text loader's uid entries with and without the type (resource_format_text.cpp:967-975).
+    private static string UidEntriesFailure()
+    {
+        const string path = OutFolder + "uids.xscn";
+        DeleteFolder(OutFolder);
+        try
+        {
+            WriteHolderWithThemeUid(path, withValueReference: false);
+            using var loader = new XscnFormatLoader();
+            string uid = UidTextOf(ThemePath);
+            (bool AddTypes, string Expected)[] cases = [(true, $"{uid}::Theme::{ThemePath}"), (false, $"{uid}::::{ThemePath}")];
+            return string.Join(
+                "; ",
+                cases
+                    .Select(c => (c.AddTypes, c.Expected, Entries: loader._GetDependencies(path, c.AddTypes)))
+                    .Where(r => !r.Entries.Contains(r.Expected))
+                    .Select(r => $"_GetDependencies({path}, {r.AddTypes}) gave [{string.Join(", ", r.Entries)}], with no \"{r.Expected}\"")
+            );
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    private static string UidTextOf(string path) => ResourceUid.IdToText(ResourceLoader.GetResourceUid(path));
+
+    // holder.xscn with an x:Uids entry giving theme.xres its uid, and, when asked, a metadata Resource() reference carrying
+    // that uid. An untyped reference shares the theme's ext_resource and makes its type Resource.
+    private static void WriteHolderWithThemeUid(string path, bool withValueReference)
+    {
+        string holder = File.ReadAllText(ProjectSettings.GlobalizePath(HolderPath));
+        int afterRootTag = holder.IndexOf(">\n", StringComparison.Ordinal) + 2;
+        string uid = UidTextOf(ThemePath);
+        string inserted =
+            $"  <x:Uids>\n    <x:Uid Path=\"{ThemePath}\" Value=\"{uid}\" />\n  </x:Uids>\n"
+            + (withValueReference ? $"  <x:Prop Name=\"metadata/ref\" Value='Resource(\"{uid}\", \"{ThemePath}\")' />\n" : "");
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        File.WriteAllText(ProjectSettings.GlobalizePath(path), holder.Insert(afterRootTag, inserted));
+    }
+
+    private static XscnParseResult ParseFile(string path) =>
+        XscnParser.Parse(File.ReadAllText(ProjectSettings.GlobalizePath(path)), XscnDocumentKind.Scene, XscnMetadata.Value);
+
+    private static GodotPathRef? RootReference(XscnDocument document) =>
+        (document.Root as XscnNodeElement)?.Properties.FirstOrDefault(p => p.GodotName == "metadata/ref")?.Value
+            is XscnScalar { Value: GodotPathRef reference }
+            ? reference
+            : null;
+
+    // A replaced dependency takes its new file's uid, in x:Uids and in value text (resource_format_text.cpp:1076-1080).
+    private static string UidRenameFailure(XscnFormatLoader loader)
+    {
+        const string path = OutFolder + "uids.xscn";
+        WriteHolderWithThemeUid(path, withValueReference: true);
+        Error error = loader._RenameDependencies(path, new Godot.Collections.Dictionary { [ThemePath] = BoxPath });
+        XscnParseResult parsed = ParseFile(path);
+        if (error != Error.Ok || parsed.HasErrors)
+        {
+            return $"renaming {ThemePath} to {BoxPath} in {path} returned {error}, and the file parses: {!parsed.HasErrors}";
+        }
+
+        string expected = $"{BoxPath}={UidTextOf(BoxPath)}";
+        string table = string.Join(", ", parsed.Document.Uids.Select(u => $"{u.Path}={u.Uid}"));
+        string reference = RootReference(parsed.Document) is { } found ? $"{found.Path}={found.Uid}" : "(none)";
+        string[] failures =
+        [
+            table == expected ? "" : $"the renamed x:Uids table is [{table}], not [{expected}]",
+            reference == expected ? "" : $"the renamed metadata reference is {reference}, not {expected}",
+        ];
+        return string.Join("; ", failures.Where(f => f.Length > 0));
+    }
+
+    // A path written relative to the file is resolved against the file's folder, mapped, and written relative again as
+    // path_to_file gives it (resource_format_text.cpp:1060-1073, ustring.cpp:4839-4917): "./" for the same folder,
+    // "../" to climb.
+    private static string RelativeRenameFailure(XscnFormatLoader loader)
+    {
+        (string File, string Written, string OldPath, string NewPath, string Expected)[] cases =
+        [
+            (OutFolder + "relative.xscn", "theme.xres", OutFolder + "theme.xres", OutFolder + "moved.xres", "./moved.xres"),
+            (OutFolder + "scenes/relative.xscn", "theme.xres", OutFolder + "scenes/theme.xres", OutFolder + "art/theme.xres", "../art/theme.xres"),
+            (OutFolder + "scenes/shared.xscn", "../shared/x.xres", OutFolder + "shared/x.xres", OutFolder + "shared/y.xres", "../shared/y.xres"),
+        ];
+        return string.Join(
+            "; ",
+            cases
+                .Select(c => RelativeCaseFailure(loader, c.File, c.Written, new Godot.Collections.Dictionary { [c.OldPath] = c.NewPath }, c.Expected))
+                .Where(f => f.Length > 0)
+        );
+    }
+
+    // From the project root, path_to_file climbs above res://; the spelling falls back to the absolute path there.
+    private static string RelativeSpellingStaysInTheProject()
+    {
+        const string target = OutFolder + "sub/x.xres";
+        (string Folder, string Expected)[] cases = [("res://", target), (OutFolder + "a/", "../sub/x.xres")];
+        return string.Join(
+            "; ",
+            cases
+                .Select(c => (c.Folder, c.Expected, Spelled: XscnLoading.RelativeSpelling(c.Folder, target)))
+                .Where(r => r.Spelled != r.Expected)
+                .Select(r => $"from {r.Folder}, {target} is spelled \"{r.Spelled}\", not \"{r.Expected}\"")
+        );
+    }
+
+    // An instanced scene written relative to the file is an ext_resource like any other, so it follows a move too.
+    private static string RelativeInstanceFailure(XscnFormatLoader loader)
+    {
+        const string path = OutFolder + "a/main.xscn";
+        const string expected = "Scene=\"../b/child.xscn\"";
+        string folder = ProjectSettings.GlobalizePath(OutFolder + "a/");
+        Directory.CreateDirectory(folder);
+        File.Copy(ProjectSettings.GlobalizePath(ChildScenePath), Path.Combine(folder, "child.xscn"), overwrite: true);
+        File.WriteAllText(
+            ProjectSettings.GlobalizePath(path),
+            "<Node xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+                + "  <x:Instance Scene=\"child.xscn\" Name=\"C\" />\n"
+                + "</Node>\n"
+        );
+        var renames = new Godot.Collections.Dictionary { [OutFolder + "a/child.xscn"] = OutFolder + "b/child.xscn" };
+        Error error = loader._RenameDependencies(path, renames);
+        string text = File.ReadAllText(ProjectSettings.GlobalizePath(path));
+        if (error != Error.Ok || ParseFile(path).HasErrors)
+        {
+            return $"the relative instance rename in {path} returned {error}, and the file parses: {!ParseFile(path).HasErrors}";
+        }
+
+        return text.Contains(expected, StringComparison.Ordinal) ? "" : $"{path} does not hold {expected} after the rename:\n{text}";
+    }
+
+    private static string RelativeCaseFailure(
+        XscnFormatLoader loader,
+        string path,
+        string written,
+        Godot.Collections.Dictionary renames,
+        string expected
+    )
+    {
+        string folder = ProjectSettings.GlobalizePath(path.GetBaseDir());
+        Directory.CreateDirectory(folder);
+        File.Copy(ProjectSettings.GlobalizePath(ThemePath), Path.Combine(folder, "theme.xres"), overwrite: true);
+        File.WriteAllText(
+            ProjectSettings.GlobalizePath(path),
+            "<Node xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+                + $"  <x:Prop Name=\"metadata/ref\" Value='Resource(\"{written}\")' />\n"
+                + "</Node>\n"
+        );
+        Error error = loader._RenameDependencies(path, renames);
+        XscnParseResult parsed = ParseFile(path);
+        if (error != Error.Ok || parsed.HasErrors)
+        {
+            return $"the relative rename in {path} returned {error}, and the file parses: {!parsed.HasErrors}";
+        }
+
+        string? renamed = RootReference(parsed.Document)?.Path;
+        return renamed == expected ? "" : $"{path}'s reference \"{written}\" reads \"{renamed}\" after the rename, not \"{expected}\"";
+    }
+
+    // The text loader's entry without types: the path, or the uid text, an empty type slot and the path.
+    private static bool IsDependencyEntry(string entry, string path) =>
+        entry == path
+        || (
+            entry.StartsWith("uid://", StringComparison.Ordinal)
+            && entry.EndsWith("::::" + path, StringComparison.Ordinal)
+            && entry.IndexOf("::", StringComparison.Ordinal) == entry.Length - path.Length - 4
+        );
+
+    private static string RenamesDependencies()
+    {
+        const string outPath = OutFolder + "holder.xscn";
+        const string movedPath = CasesPath + "moved.xres";
+        DeleteFolder(OutFolder);
+        try
+        {
+            string outFile = ProjectSettings.GlobalizePath(outPath);
+            Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+            File.WriteAllText(outFile, File.ReadAllText(ProjectSettings.GlobalizePath(HolderPath)));
+            using var loader = new XscnFormatLoader();
+            Error error = loader._RenameDependencies(outPath, new Godot.Collections.Dictionary { [ThemePath] = movedPath });
+            if (error != Error.Ok)
+            {
+                return $"_RenameDependencies({outPath}) returned {error}";
+            }
+
+            string renamed = File.ReadAllText(outFile);
+            XscnParseResult parsed = XscnParser.Parse(renamed, XscnDocumentKind.Scene, XscnMetadata.Value);
+            string[] failures =
+            [
+                renamed.Contains(movedPath, StringComparison.Ordinal) ? "" : $"the renamed file does not name {movedPath}",
+                renamed.Contains(ThemePath, StringComparison.Ordinal) ? $"the renamed file still names {ThemePath}" : "",
+                renamed.Contains(BoxPath, StringComparison.Ordinal) ? "" : $"the renamed file no longer names {BoxPath}",
+                parsed.HasErrors ? "the renamed file does not parse" : "",
+                UnmatchedRenameFailure(loader, outPath, outFile),
+                UidRenameFailure(loader),
+                RelativeRenameFailure(loader),
+                RelativeInstanceFailure(loader),
+            ];
+            return string.Join("; ", failures.Where(f => f.Length > 0)) + (failures.Any(f => f.Length > 0) ? $":\n{renamed}" : "");
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    private static string UnmatchedRenameFailure(XscnFormatLoader loader, string path, string file)
+    {
+        byte[] before = File.ReadAllBytes(file);
+        var renames = new Godot.Collections.Dictionary { ["res://nowhere/a.xres"] = "res://nowhere/b.xres" };
+        Error error = loader._RenameDependencies(path, renames);
+        if (error != Error.Ok)
+        {
+            return $"a rename naming nothing in {path} returned {error}";
+        }
+
+        return File.ReadAllBytes(file).SequenceEqual(before) ? "" : $"a rename naming nothing in {path} changed its bytes";
+    }
+
+    private async Task<string> ThreadedLoad(string path, Func<Resource, int, string> resultFailure)
+    {
+        int callsBefore = XscnLoading.LoadCallCount;
         Error request = ResourceLoader.LoadThreadedRequest(path, "", useSubThreads: true, ResourceLoader.CacheMode.IgnoreDeep);
         if (request != Error.Ok)
         {
@@ -825,7 +1101,7 @@ public partial class Checks : Node
             ResourceLoader.ThreadLoadStatus status = ResourceLoader.LoadThreadedGetStatus(path);
             if (status == ResourceLoader.ThreadLoadStatus.Loaded)
             {
-                return ThreadedResultFailure(ResourceLoader.LoadThreadedGet(path), XscnFormatLoader.LoadCallCount - callsBefore);
+                return resultFailure(ResourceLoader.LoadThreadedGet(path), XscnLoading.LoadCallCount - callsBefore);
             }
 
             if (status != ResourceLoader.ThreadLoadStatus.InProgress)
@@ -855,5 +1131,22 @@ public partial class Checks : Node
         bool hasInner = root.GetNodeOrNull("Inst/Inner") is not null;
         root.Free();
         return hasInner ? "" : "the threaded load's scene has no Inst/Inner";
+    }
+
+    // The holder, its theme and its stylebox each load through the custom loader on Godot's loader threads.
+    private static string ThreadedHolderFailure(Resource loaded, int calls)
+    {
+        if (loaded is not PackedScene scene)
+        {
+            return $"LoadThreadedGet returned {loaded?.GetClass() ?? "null"}, not a PackedScene";
+        }
+
+        const int files = 3;
+        string[] failures =
+        [
+            calls >= files ? "" : $"the custom loader was called {calls} times, not for holder.xscn, theme.xres and box.xres",
+            .. ExternalPathFailures(scene, ThemePath),
+        ];
+        return string.Join("; ", failures.Where(f => f.Length > 0));
     }
 }
