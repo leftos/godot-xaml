@@ -20,7 +20,9 @@ Top level: `godot` (the engine's version string), `globalEnums`, `classes`.
 
 Properties keep ClassDB order; category, group and subgroup entries and names containing `/` are left out.
 
-A class that is `Control` or `Window` or inherits one also has `themeOverrides`: an array, in Godot's order, of `{name, type, hint, hintString}` for each `theme_override_<family>/<item>` entry (`Label` has `theme_override_colors/font_color`, type `Color`; `Button` has `theme_override_styles/normal`, type `Object`, hint string `StyleBox`). It has no `usage` or `default`. The list is the full one, inherited items included, since abstract ancestors cannot be instantiated, and it is empty for a class with no items (`Control`, `Container`). Every other class has no such key. The dump instantiates and frees each such class to read it, and fails the run, naming the classes, when one cannot be instantiated.
+A class that is `Control` or `Window` or inherits one also has `themeOverrides`: an array, in Godot's order, of `{name, type, hint, hintString}` for each `theme_override_<family>/<item>` entry (`Label` has `theme_override_colors/font_color`, type `Color`; `Button` has `theme_override_styles/normal`, type `Object`, hint string `StyleBox`).
+
+It has no `usage` or `default`. The list is the full one, inherited items included, since abstract ancestors cannot be instantiated, and it is empty for a class with no items (`Control`, `Container`). Every other class has no such key. The dump instantiates and frees each such class to read it, and fails the run, naming the classes, when one cannot be instantiated.
 
 Keys are sorted, the indent is two spaces, lines end in LF and the file ends with a newline, so two runs give identical bytes.
 
@@ -38,7 +40,13 @@ pwsh -NoProfile -File tools/metadata-dump/dump.ps1 -Godot <path to a Godot 4.7 b
 godot --headless --path tools/metadata-dump --script res://check.gd -- --file <absolute path to the JSON>
 ```
 
-`check.gd` prints `CHECK <id> PASS` or `CHECK <id> FAIL <detail>` for each known fact (Control's parent, `mouse_filter` and `size_flags_horizontal` enum links, `Node2D.position` and `Label.text` defaults, no defaults on `CanvasItem`, the `Side` global enum, `layout_mode` stored, LF endings, `Label`'s `font_color` override is a `Color`, `Button`'s `styles/normal` override is an `Object` of `StyleBox`, `Window` has overrides, `Node2D` has no `themeOverrides`, no `/` name in `Control.properties`, `BaseButton` declares `pressed` and `Button` does not, `Node` declares `ready`, `Area2D`'s `body_entered` takes a `Node2D` `body`), and exits 1 when any failed.
+`check.gd` prints `CHECK <id> PASS` or `CHECK <id> FAIL <detail>` for each known fact, and exits 1 when any failed. The facts:
+
+- classes and properties: Control's parent, `Node2D.position` and `Label.text` defaults, no defaults on `CanvasItem`, `layout_mode` stored, no `/` name in `Control.properties`;
+- enums: the `mouse_filter` and `size_flags_horizontal` enum links, the `Side` global enum;
+- theme overrides: `Label`'s `font_color` is a `Color`, `Button`'s `styles/normal` is an `Object` of `StyleBox`, `Window` has overrides, `Node2D` has no `themeOverrides`;
+- signals: `BaseButton` declares `pressed` and `Button` does not, `Node` declares `ready`, `Area2D`'s `body_entered` takes a `Node2D` `body`;
+- the file: LF endings.
 
 ## When to re-run it
 

@@ -41,7 +41,9 @@ The editor checks E1 to E8 run in a windowed editor, driven by the `addons/edito
 
 Each check prints `CHECK <id> PASS` or `CHECK <id> FAIL <detail>` and saves a screenshot of the editor; `NOTE <id>` lines say how a check measured what it did. Every wait is bounded at 60 s and fails as `timed out waiting for <what>`. The run ends with `DONE <passed>/<total>` and the editor quits with exit code 0 only when all passed.
 
-`editor-checks.ps1` runs the lot: it builds the spike, imports it, then starts the editor in mode `run` and again in mode `reopen`. Results go to `<repo>/.tmp/editor-checks/`: `results.txt`, `<id>.png` per check, and `E3-Main.xscn`, `E5-Host.tscn` and `E6-Main.xscn`, the files as the editor saved them. The checks edit the spike's scenes and `XscnFormatSaver.cs`, so the script backs them up first, restores them at the end, and writes `RESTORE OK` only when every spike file is byte-identical to how it started.
+`editor-checks.ps1` runs the lot: it builds the spike, imports it, then starts the editor in mode `run` and again in mode `reopen`. Results go to `<repo>/.tmp/editor-checks/`: `results.txt`, `<id>.png` per check, and `E3-Main.xscn`, `E5-Host.tscn` and `E6-Main.xscn`, the files as the editor saved them.
+
+The checks edit the spike's scenes and `XscnFormatSaver.cs`, so the script backs them up first, restores them at the end, and writes `RESTORE OK` only when every spike file is byte-identical to how it started.
 
 Godot is `$env:GODOT_PATH`, else `$env:GODOT_BIN`. The editor opens windows, so run it through the gate, which routes it to the build box's desktop (`.gate/desktop.toml`), from the repo root:
 

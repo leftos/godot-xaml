@@ -47,9 +47,13 @@ Each component gets an entry here in the commit that adds its project.
 - **Scene fixture generator** (`tools/scene-fixtures/`): a headless Godot 4.7.2 project that saves each case with `ResourceSaver.save` and copies the bytes to `tests/fixtures/scenes/`. It shares no files with the C# core.
 - **Xscn model** (`src/GodotXaml.Core/Xscn/`, namespace `GodotXaml.Core.Xscn`): the immutable `.xscn` document model. `XscnDocument` holds namespaces, uids, the root and the resources; elements are `XscnClassType`, `XscnSceneType` or `XscnUnknownType`, with `XscnNode`, `XscnOverride`, `XscnResource`, `XscnProperty` and `XscnConnection`. A property value is an `XscnScalar`, `XscnFile`, `XscnKeyRef`, `XscnInline` or `XscnInvalid`. Constructors reject uninitialised arrays.
 
-  `XscnPropertyNames` maps an attribute name to a Godot property and back (known class, unknown class through the global C# name index, dotted slash-named attributes, script properties verbatim); `AttributeName` returns null when `x:Prop` is needed. `XscnValueText` (`TypeOf`, `Read`, `Write`) gives each type its compact form and Godot value text otherwise; `Write` returns `XscnAttributeText` or `XscnNeedsProp`. `XscnEnumText` names enum members, .NET-style flags text and hint display names as Godot's inspector numbers them.
+  `XscnPropertyNames` maps an attribute name to a Godot property and back (known class, unknown class through the global C# name index, dotted slash-named attributes, script properties verbatim); `AttributeName` returns null when `x:Prop` is needed.
+
+  `XscnValueText` (`TypeOf`, `Read`, `Write`) gives each type its compact form and Godot value text otherwise; `Write` returns `XscnAttributeText` or `XscnNeedsProp`. `XscnEnumText` names enum members, .NET-style flags text and hint display names as Godot's inspector numbers them.
 - **Diagnostics** (`src/GodotXaml.Core/Diagnostics/`): `TextSpan(start, length)`, UTF-16 offsets into a source text, for the language server.
-- **Core library** (`src/GodotXaml.Core`, net8.0): owns Godot's C# naming rules (`Names/GodotNames.cs`, a port of `modules/mono/utils/naming_utils.cpp` in the 4.7.2 source; enum members in `Names/GodotEnumNames.cs`), the value grammar, the metadata loader, the Tscn document model and the Xscn model above; the `.xscn` parser, canonical writer and the `.tscn` conversion are built here next (GXAML-36, GXAML-37, GXAML-7). It never references a Godot assembly, and its internals are visible to `tests/GodotXaml.Core.Tests`.
+- **Core library** (`src/GodotXaml.Core`, net8.0): owns Godot's C# naming rules (`Names/GodotNames.cs`, a port of `modules/mono/utils/naming_utils.cpp` in the 4.7.2 source; enum members in `Names/GodotEnumNames.cs`), the value grammar, the metadata loader, the Tscn document model and the Xscn model above; the `.xscn` parser, canonical writer and the `.tscn` conversion are built here next (GXAML-36, GXAML-37, GXAML-7).
+
+  It never references a Godot assembly, and its internals are visible to `tests/GodotXaml.Core.Tests`.
 
 ## Integration Footguns
 
