@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/GodotXaml.Cli/GodotXaml.Cli.csproj" />
     <Project Path="src/GodotXaml.Core/GodotXaml.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/GodotXaml.Cli.Tests/GodotXaml.Cli.Tests.csproj" />
     <Project Path="tests/GodotXaml.Core.Tests/GodotXaml.Core.Tests.csproj" />
   </Folder>
 </Solution>

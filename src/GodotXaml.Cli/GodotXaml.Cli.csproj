@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>GodotXaml.Cli</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>godot-xaml</ToolCommandName>
+    <PackageId>GodotXaml.Cli</PackageId>
+    <Authors>Leftos Aslanoglou</Authors>
+    <Description>The godot-xaml command-line tool: check, and later convert and format, .xscn and .xres files.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/leftos/godot-xaml</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/leftos/godot-xaml</RepositoryUrl>
+    <PackageTags>godot xaml scene cli</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GodotXaml.Core\GodotXaml.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\metadata\godot-4.7.json" Link="metadata\godot-4.7.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GodotXaml.Cli.Tests" />
+  </ItemGroup>
+</Project>
