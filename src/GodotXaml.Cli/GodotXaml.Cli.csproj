@@ -7,7 +7,7 @@
     <ToolCommandName>godot-xaml</ToolCommandName>
     <PackageId>GodotXaml.Cli</PackageId>
     <Authors>Leftos Aslanoglou</Authors>
-    <Description>The godot-xaml command-line tool: check, and later convert and format, .xscn and .xres files.</Description>
+    <Description>Checks, converts and formats Godot scenes and resources written as XAML.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/leftos/godot-xaml</PackageProjectUrl>
     <RepositoryUrl>https://github.com/leftos/godot-xaml</RepositoryUrl>

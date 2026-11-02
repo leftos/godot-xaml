@@ -3,7 +3,7 @@ using System.Text;
 namespace GodotXaml.Cli.Tests;
 
 /// <summary>Runs the tool in process, against files written to a temporary folder of its own.</summary>
-public sealed class CliProgramTests : IDisposable
+public sealed partial class CliProgramTests : IDisposable
 {
     private const string UnknownClass = "No Godot class is named Gadget; the element is kept with an unknown type.";
     private readonly string folder = Path.Combine(Path.GetTempPath(), "godot-xaml-cli-tests", Guid.NewGuid().ToString("N"));
@@ -442,7 +442,7 @@ public sealed class CliProgramTests : IDisposable
     {
         using var output = new StringWriter();
         using var error = new StringWriter();
-        int exitCode = CliProgram.Run(args, output, error, enumerate);
+        int exitCode = CliProgram.Run(args, output, error, enumerate, Environment.CurrentDirectory);
         return new RunResult(exitCode, output.ToString(), error.ToString());
     }
 

@@ -11,24 +11,27 @@ public static class CliProgram
     /// <param name="args">The command line, without the program's own name.</param>
     /// <param name="output">Where help and results go.</param>
     /// <param name="error">Where usage problems and failures go.</param>
-    /// <returns>0 when no file has an error, 1 when one does, 2 when the command could not check anything.</returns>
-    public static int Run(string[] args, TextWriter output, TextWriter error) => Run(args, output, error, folder => Directory.EnumerateFiles(folder));
+    /// <returns>0 when no file has an error, 1 when one does or is refused, 2 for a usage or I/O error.</returns>
+    public static int Run(string[] args, TextWriter output, TextWriter error) =>
+        Run(args, output, error, folder => Directory.EnumerateFiles(folder), Environment.CurrentDirectory);
 
-    /// <summary>Runs the tool, with the folder enumeration a caller can replace to exercise a failing one.</summary>
+    /// <summary>Runs the tool, with the folder enumeration and the working directory a caller can replace.</summary>
     /// <param name="args">The command line, without the program's own name.</param>
     /// <param name="output">Where help and results go.</param>
     /// <param name="error">Where usage problems and failures go.</param>
     /// <param name="enumerate">The files directly in a folder.</param>
+    /// <param name="workingDirectory">The folder the search for <c>godot-xaml.json</c> starts from.</param>
     /// <returns>The exit code.</returns>
-    internal static int Run(string[] args, TextWriter output, TextWriter error, Func<string, IEnumerable<string>> enumerate)
+    internal static int Run(string[] args, TextWriter output, TextWriter error, Func<string, IEnumerable<string>> enumerate, string workingDirectory)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(error);
         ArgumentNullException.ThrowIfNull(enumerate);
+        ArgumentNullException.ThrowIfNull(workingDirectory);
         try
         {
-            ParseResult parseResult = Build(enumerate).Parse(args);
+            ParseResult parseResult = Build(enumerate, workingDirectory).Parse(args);
             if (parseResult.Errors.Count > 0)
             {
                 foreach (ParseError parseError in parseResult.Errors)
@@ -53,10 +56,12 @@ public static class CliProgram
         }
     }
 
-    private static RootCommand Build(Func<string, IEnumerable<string>> enumerate)
+    private static RootCommand Build(Func<string, IEnumerable<string>> enumerate, string workingDirectory)
     {
-        var root = new RootCommand("Checks Godot scenes and resources written as XAML.");
+        var root = new RootCommand("Checks, converts and formats Godot scenes and resources written as XAML.");
         root.Subcommands.Add(CheckCommand.Create(enumerate));
+        root.Subcommands.Add(ConvertCommand.Create(enumerate, workingDirectory));
+        root.Subcommands.Add(FormatCommand.Create(enumerate));
         return root;
     }
 }
