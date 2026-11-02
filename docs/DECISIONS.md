@@ -149,6 +149,20 @@ One C# core (parser, writer, metadata, `.tscn` conversion) serves the Godot addo
 
 Later versions: editing the selected node in Visual Studio's Properties window, then a full visual designer in Visual Studio.
 
+## Releases
+
+Version 1 ships in three releases, tracked as Linear's `vNext`, `vNext+1` and `vNext+2`:
+
+1. **First release**, the one the owner's repos start trying: the core (model, parser, canonical writer), the `.tscn` conversion run on the owner's projects, the addon's loader, saver and export support, an install a project can follow, the CLI, and godot-mcp support for `.xscn`. A project can convert its scenes, edit them in Godot, ship a build, and let its agents preview and edit them.
+2. **Second**: the language server and the VS Code extension, with the name checks against GodotSharp.
+3. **Third**: the Visual Studio extension and its preview pane, with the addon's preview server.
+
+The later versions above sit in no release. Everything godot-xaml needs from godot-mcp is owner-approved at High priority there.
+
+## Friction from projects using godot-xaml is filed as GitHub issues
+
+From the first release, every repo that uses godot-xaml files each friction (a conversion that comes out wrong, a load error, an editor save that changes a scene it should not, a tooling gap) as a GitHub issue on `leftos/godot-xaml`, one per friction, naming the version, what happened against what was expected, and the workaround, as godot-mcp's friction rule does. The repo is public, so a private project's scene goes in as a minimal repro, never pasted whole.
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.
