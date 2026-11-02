@@ -10,6 +10,7 @@ The rule that shapes it: one C# core, with no Godot dependency, owns the format;
 |---|---|---|
 | Change a format rule | [`DECISIONS.md`](DECISIONS.md) → [`plans/v1-design.md`](plans/v1-design.md) | — |
 | Add or change what the metadata dump records (property, enum, default) | [`DECISIONS.md`](DECISIONS.md) ("The metadata file") → `tools/metadata-dump/dump.gd` → `metadata/godot-4.7.json` → Godot source `F:\Godot\src-4.7.2`: `core/core_bind.cpp:1839-1879` (the ClassDB calls), `core/object/class_db.cpp:2172-2227` (defaults), `core/extension/extension_api_dump.cpp:53-85` (enum type strings; the dump reads the getter's return type) | [`tools/metadata-dump/README.md`](../tools/metadata-dump/README.md) |
+| Add or change a C# gate, hook or test location | [`.claude/skills/godot-xaml-nextup/SKILL.md`](../.claude/skills/godot-xaml-nextup/SKILL.md) (Gates) → Test locations below → `run.ps1`, `.pre-commit-config.yaml`, `Directory.Build.props`, `.editorconfig` | — |
 
 ## Layers
 
@@ -17,6 +18,7 @@ Each component gets an entry here in the commit that adds its project.
 
 - **Metadata dump** (`tools/metadata-dump/`): a GDScript run by headless Godot that writes `metadata/godot-<major>.<minor>.json` from `ClassDB` and `extension_api.json`. It shares no files with the C# core; `dump.ps1` runs it and `check.gd` checks its output.
 - **Metadata file** (`metadata/godot-4.7.json`): the committed output, one per Godot minor version; the core and the language server read it, never a running Godot.
+- **Core library** (`src/GodotXaml.Core`, net8.0): owns Godot's C# naming rules (`Names/GodotNames.cs`, a port of `modules/mono/utils/naming_utils.cpp` in the 4.7.2 source); the format, parser, writer and `.tscn` conversion are built here next (GXAML-21, GXAML-22, GXAML-5). It never references a Godot assembly, and its internals are visible to `tests/GodotXaml.Core.Tests`.
 
 ## Integration Footguns
 
@@ -26,6 +28,7 @@ Each component gets an entry here in the commit that adds its project.
 ## Test locations
 
 - `tools/metadata-dump/check.gd`: facts about a dumped file, run with `godot --headless --path tools/metadata-dump --script res://check.gd -- --file <abs>`; prints `CHECK <id> PASS|FAIL`.
+- `tests/GodotXaml.Core.Tests` (net10.0, xunit.v3 on Microsoft.Testing.Platform): tests of `src/GodotXaml.Core`, in folders mirroring the core's (`Names/` for `GodotNames`). Run with `./run.ps1 test`.
 
 ## Deep docs
 

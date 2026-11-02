@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GodotXaml.Core/GodotXaml.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GodotXaml.Core.Tests/GodotXaml.Core.Tests.csproj" />
+  </Folder>
+</Solution>

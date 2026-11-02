@@ -1,6 +1,7 @@
-# prek hooks (prek install; prek run --all-files). Only checks scoped to the staged files run at pre-commit; the build and
-# tests join at pre-push once the first C# project exists. The Agent Mail guard blocks a commit over another Claude Code
-# session's file lease, and passes on a machine without the user-level guard.
+# prek hooks (prek install; prek run --all-files). Only checks scoped to the staged files run at pre-commit: CSharpier on
+# the staged C# files, the 150-character line check that catches the comments CSharpier does not wrap, the GDScript format
+# and lint checks of the metadata dump tool, and the Agent Mail guard. The warnings-as-errors build joins at pre-push. No
+# hook runs a test suite: `run.ps1 test` runs by hand, and `run.ps1 format-check` checks the whole repo by hand.
 default_install_hook_types: [pre-commit, pre-push]
 default_stages: [pre-commit]
 repos:
@@ -28,6 +29,36 @@ repos:
         language: system
         pass_filenames: false
         files: \.md$
+      - id: csharpier
+        name: csharpier check
+        entry: dotnet csharpier check
+        language: system
+        pass_filenames: true
+        types: [c#]
+        exclude: ^spikes/
+      - id: cs-line-length
+        name: C# line length
+        entry: uv run --quiet python tools/linelength.py
+        language: system
+        types: [c#]
+        exclude: ^spikes/
+      - id: dotnet-build
+        name: dotnet build -warnaserror
+        entry: pwsh -NoProfile -File run.ps1 build
+        language: system
+        pass_filenames: false
+        files: \.(cs|csproj|props|slnx|editorconfig)$|^global\.json$
+        stages: [pre-push]
+      - id: gdformat
+        name: gdformat check
+        entry: gdformat --check
+        language: system
+        files: ^tools/metadata-dump/.*\.gd$
+      - id: gdlint
+        name: gdlint
+        entry: gdlint
+        language: system
+        files: ^tools/metadata-dump/.*\.gd$
       - id: agent-mail-guard
         name: agent-mail lease guard
         entry: pwsh -NoProfile -File tools/agent-mail-guard.ps1

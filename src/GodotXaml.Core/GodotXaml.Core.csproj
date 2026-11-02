@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- net8.0: the Godot addon loads this assembly, and Godot 4.7's minimum is net8.0 (GodotTools.ProjectEditor/ProjectGenerator.cs:15). -->
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>GodotXaml.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GodotXaml.Core.Tests" />
+  </ItemGroup>
+</Project>
