@@ -53,12 +53,17 @@ internal sealed class TscnReferences
     /// The document the conversion replaces, whose <c>x:Resources</c> keys the sub_resources that match its entries keep;
     /// null converts from scratch.
     /// </param>
+    /// <param name="previousById">
+    /// The previous document's keyed entries by the id its conversion back gives each, which a loaded sub_resource keeps
+    /// through a save; a sub_resource whose id names one of them of the same type takes its key.
+    /// </param>
     /// <returns>The references.</returns>
     public static TscnReferences Analyze(
         TscnDocument document,
         List<ConversionIssue> issues,
         Func<string?, string, bool> canInline,
-        XscnDocument? previous
+        XscnDocument? previous,
+        IReadOnlyDictionary<string, XscnResource> previousById
     )
     {
         var references = new TscnReferences(issues, canInline);
@@ -66,7 +71,7 @@ internal sealed class TscnReferences
         references.Count(document);
         references.ReportUnused();
         references.FindCycles();
-        references.ChooseKeys(previous);
+        references.ChooseKeys(previous, previousById);
         return references;
     }
 
@@ -257,16 +262,24 @@ internal sealed class TscnReferences
         return false;
     }
 
-    // The previous document's key first, for a sub_resource that matches one of its entries. Then the owner's ruling: the
-    // resource_name when it is an XML name no earlier entry took, else the type and a counter per type, skipping keys
-    // already taken; names are given out first so a counter never takes a later entry's name.
-    private void ChooseKeys(XscnDocument? previous)
+    // The previous document's key first, for a sub_resource that pairs with one of its entries by id, so an edited entry
+    // keeps it and a value-equal duplicate gets a new key; then for the rest the key of an entry that matches by name or
+    // properties, never one whose resource went inline, which dropped it. Then the owner's ruling: the resource_name when
+    // it is an XML name no earlier entry took, else the type and a counter per type, skipping keys already taken; names
+    // are given out first so a counter never takes a later entry's name.
+    private void ChooseKeys(XscnDocument? previous, IReadOnlyDictionary<string, XscnResource> previousById)
     {
         List<TscnSubResource> keyed = [.. KeyedSubResources];
         HashSet<string> taken = new(StringComparer.Ordinal);
-        foreach (TscnSubResource sub in keyed)
+        PairByPreviousId(keyed, previousById, taken);
+        HashSet<string> dropped =
+        [
+            .. subResources.Where(sub => IsInline(sub.Id)).Select(sub => PreviousKeys.KeyById(sub, previousById)).OfType<string>(),
+        ];
+
+        foreach (TscnSubResource sub in keyed.Where(sub => !keys.ContainsKey(sub.Id)))
         {
-            KeepPreviousKey(sub, previous, taken);
+            KeepPreviousKey(sub, previous, taken, dropped);
         }
 
         foreach (TscnSubResource sub in keyed.Where(sub => !keys.ContainsKey(sub.Id)))
@@ -284,12 +297,27 @@ internal sealed class TscnReferences
         }
     }
 
-    // The key of the previous document's first matching entry that no earlier sub_resource took.
-    private void KeepPreviousKey(TscnSubResource sub, XscnDocument? previous, HashSet<string> taken)
+    // The key of the entry whose id a loaded sub_resource keeps through a save, so an edited entry keeps it and a
+    // value-equal duplicate gets a new one.
+    private void PairByPreviousId(List<TscnSubResource> keyed, IReadOnlyDictionary<string, XscnResource> previousById, HashSet<string> taken)
+    {
+        foreach (TscnSubResource sub in keyed)
+        {
+            if (PreviousKeys.KeyById(sub, previousById) is { } key && taken.Add(key))
+            {
+                keptPrevious.Add(key);
+                keys[sub.Id] = key;
+            }
+        }
+    }
+
+    // The key of the previous document's first matching entry that no earlier sub_resource took and that no inline
+    // resource dropped.
+    private void KeepPreviousKey(TscnSubResource sub, XscnDocument? previous, HashSet<string> taken, HashSet<string> dropped)
     {
         foreach (string key in PreviousKeys.Keys(sub, previous, id => Ext(id)?.Path))
         {
-            if (taken.Add(key))
+            if (!dropped.Contains(key) && taken.Add(key))
             {
                 keptPrevious.Add(key);
                 keys[sub.Id] = key;

@@ -18,7 +18,9 @@ public static partial class TscnToXscn
     /// <summary>Converts a document.</summary>
     /// <param name="document">The .tscn or .tres model.</param>
     /// <param name="metadata">The engine classes, for the element types.</param>
-    /// <param name="options">The options; the forward conversion reads <see cref="ConversionOptions.Previous"/>.</param>
+    /// <param name="options">
+    /// The options; the forward conversion reads <see cref="ConversionOptions.Previous"/> and <see cref="ConversionOptions.Seed"/>.
+    /// </param>
     /// <returns>The .xscn or .xres model, its issues, and the source's ids for <see cref="ConversionOptions.KeepIds"/>.</returns>
     public static ConversionResult<XscnDocument> Convert(TscnDocument document, GodotMetadata metadata, ConversionOptions options)
     {
@@ -49,11 +51,15 @@ public static partial class TscnToXscn
             this.metadata = metadata;
             ReportExtra(document);
             XscnPropertyNames names = XscnParser.NamesOf(metadata);
+            IReadOnlyDictionary<string, XscnResource> previousById = options.Previous is { } previous
+                ? PreviousKeys.EntriesById(previous, metadata, options.Seed)
+                : new Dictionary<string, XscnResource>();
             references = TscnReferences.Analyze(
                 document,
                 Issues,
                 (cls, name) => names.AttributeName(cls is null ? null : metadata.FindClass(cls), name) is not null,
-                options.Previous
+                options.Previous,
+                previousById
             );
         }
 

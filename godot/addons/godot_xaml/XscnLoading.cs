@@ -26,9 +26,12 @@ internal static class XscnLoading
     /// <summary>The extension of a resource.</summary>
     public const string ResourceExtension = "xres";
 
+    // The id seed the loader and the saver share: a save pairs a sub_resource with its entry by the ids this seed mints.
+    internal const ulong Seed = 0;
+
     private static readonly ConversionOptions Options = new()
     {
-        Seed = 0,
+        Seed = Seed,
         ExtResourceTypes = GodotProjectLookups.Instance,
         ScriptClassOf = GodotProjectLookups.ScriptClassOf,
         Uid = null,

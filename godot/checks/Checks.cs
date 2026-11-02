@@ -113,6 +113,7 @@ public partial class Checks : Node
             ("C49", SetUidNeedsAFile),
             ("C50", HeadlessSaveKeepsAnUncachedUid),
             ("C51", RemappedFileResolvesAgainstItsOriginalPath),
+            ("C52", EditingAKeyedResourceKeepsItsKey),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -687,6 +688,47 @@ public partial class Checks : Node
         int keys = Occurrences(saved, "x:Key=\"HandKey\"");
         int uses = Occurrences(saved, "Material=\"{HandKey}\"");
         return keys > 0 && uses == 2 ? "" : $"the saved text has x:Key=\"HandKey\" {keys} times and Material=\"{{HandKey}}\" {uses} times:\n{saved}";
+    }
+
+    // C22 saves an unedited scene, whose values still match its entry; this one edits the keyed material first, so only the
+    // id its load minted pairs it with the entry.
+    private static string EditingAKeyedResourceKeepsItsKey()
+    {
+        string path = SavesFolder + "edited-keys.xscn";
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        File.WriteAllText(ProjectSettings.GlobalizePath(path), KeysScene);
+        if (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+        {
+            return $"loading {path} did not return a PackedScene";
+        }
+
+        Node root = scene.Instantiate();
+        string failure;
+        try
+        {
+            if (root.GetNodeOrNull<Sprite2D>("One")?.Material is not CanvasItemMaterial material)
+            {
+                return "the scene's One has no CanvasItemMaterial";
+            }
+
+            material.LightMode = CanvasItemMaterial.LightModeEnum.LightOnly;
+            failure = PackAndSave(root, path, "saving the edited scene");
+        }
+        finally
+        {
+            root.Free();
+        }
+
+        GC.KeepAlive(scene);
+        if (failure.Length > 0)
+        {
+            return failure;
+        }
+
+        string saved = File.ReadAllText(ProjectSettings.GlobalizePath(path));
+        int keys = Occurrences(saved, "x:Key=\"HandKey\"");
+        int uses = Occurrences(saved, "Material=\"{HandKey}\"");
+        return keys == 1 && uses == 2 ? "" : $"the saved text has x:Key=\"HandKey\" {keys} times and Material=\"{{HandKey}}\" {uses} times:\n{saved}";
     }
 
     private static string RecognizesEveryResourceButAScript()

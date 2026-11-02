@@ -5,7 +5,11 @@ namespace GodotXaml.Core.Conversion;
 /// <summary>What a conversion needs beyond the document and the metadata.</summary>
 public sealed record ConversionOptions
 {
-    /// <summary>The seed new <c>[ext_resource]</c> and <c>[sub_resource]</c> ids are drawn from; the same seed gives the same ids.</summary>
+    /// <summary>
+    /// The seed new <c>[ext_resource]</c> and <c>[sub_resource]</c> ids are drawn from; the same seed gives the same ids. A
+    /// forward conversion with <see cref="Previous"/> uses it to find the ids that load minted, so a host passes the seed
+    /// it loaded with.
+    /// </summary>
     public ulong Seed { get; init; }
 
     /// <summary>The host's lookup of an ext_resource's class, asked before the table by extension; null when the host has none.</summary>
@@ -28,9 +32,9 @@ public sealed record ConversionOptions
     public ConversionIds? KeepIds { get; init; }
 
     /// <summary>
-    /// The <c>.xscn</c> or <c>.xres</c> a forward conversion replaces: its <c>x:Resources</c> keys are kept for the
-    /// sub-resources that match its entries, and its comments are carried onto the parts of the new document that match
-    /// it; null converts from scratch.
+    /// The <c>.xscn</c> or <c>.xres</c> a forward conversion replaces: its <c>x:Resources</c> entries pair with the
+    /// sub-resources by the id <see cref="Seed"/> mints first, then by name or properties, and the keys of the pairs are
+    /// kept; its comments are carried onto the parts of the new document that match it; null converts from scratch.
     /// </summary>
     public XscnDocument? Previous { get; init; }
 }

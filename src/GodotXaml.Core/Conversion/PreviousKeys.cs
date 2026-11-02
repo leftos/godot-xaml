@@ -1,3 +1,4 @@
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
@@ -5,10 +6,11 @@ using GodotXaml.Core.Xscn;
 namespace GodotXaml.Core.Conversion;
 
 /// <summary>
-/// The keys a previous <c>.xscn</c> or <c>.xres</c> gives the sub_resources that match its <c>x:Resources</c> entries, so
-/// a save changes only what changed: the same type, and either the same non-empty <c>resource_name</c> or equal
-/// properties. A reference to another sub_resource compares as any reference (<c>SubResource("?")</c>) and an
-/// ext_resource as its path, so a resource whose only change is which other sub_resource it uses still matches.
+/// The keys a previous <c>.xscn</c> or <c>.xres</c> gives the sub_resources that pair with its <c>x:Resources</c> entries, so
+/// a save changes only what changed: first the id its conversion back gives an entry, which a loaded sub_resource keeps
+/// through a save, and otherwise the same type and either the same non-empty <c>resource_name</c> or equal properties. A
+/// reference to another sub_resource compares as any reference (<c>SubResource("?")</c>) and an ext_resource as its path,
+/// so a resource whose only change is which other sub_resource it uses still matches.
 /// </summary>
 internal static class PreviousKeys
 {
@@ -40,6 +42,45 @@ internal static class PreviousKeys
             }
         }
     }
+
+    /// <summary>
+    /// The previous document's keyed entries by the id its conversion back gives each, which is the id a loaded
+    /// sub_resource keeps through a save. An entry nothing reaches has no id and is left out.
+    /// </summary>
+    /// <param name="previous">The document the conversion replaces.</param>
+    /// <param name="metadata">The engine classes, for the conversion back.</param>
+    /// <param name="seed">The seed the host gave the conversion, so the ids come out as its loader minted them.</param>
+    /// <returns>Each id the document gives an entry, and that entry.</returns>
+    public static IReadOnlyDictionary<string, XscnResource> EntriesById(XscnDocument previous, GodotMetadata metadata, ulong seed)
+    {
+        if (previous.Resources.Length == 0)
+        {
+            return new Dictionary<string, XscnResource>();
+        }
+
+        // The conversion's issues are ignored: the document was already reported when it was loaded, and an entry nothing
+        // reaches has no id and is left out.
+        ConversionIds ids = XscnToTscn.Convert(previous, metadata, new ConversionOptions { Seed = seed }).Ids!;
+        Dictionary<string, XscnResource> entries = new(StringComparer.Ordinal);
+        foreach (XscnResource entry in previous.Resources)
+        {
+            if (ids.SubIdOf(entry) is { } id)
+            {
+                entries.TryAdd(id, entry);
+            }
+        }
+
+        return entries;
+    }
+
+    /// <summary>The key of the previous entry a sub_resource pairs with by id: its id names an entry of the same type, else null.</summary>
+    /// <param name="sub">The sub_resource that needs a key.</param>
+    /// <param name="entries">The previous document's entries by id.</param>
+    /// <returns>The entry's key, or null when no entry has the id or the types differ.</returns>
+    public static string? KeyById(TscnSubResource sub, IReadOnlyDictionary<string, XscnResource> entries) =>
+        entries.TryGetValue(sub.Id, out XscnResource? entry) && TypeName(entry) is { } type && string.Equals(type, sub.Type, StringComparison.Ordinal)
+            ? entry.Key
+            : null;
 
     private static bool Matches(TscnSubResource sub, XscnResource entry, Func<string, string?> extPath) =>
         TypeName(entry) is { } type

@@ -52,7 +52,7 @@ internal static class XscnSaveRoute
         XscnDocument? previous = Previous(path, isScene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource);
         var options = new ConversionOptions
         {
-            Seed = 0,
+            Seed = XscnLoading.Seed,
             ScriptClassOf = GodotProjectLookups.ScriptClassOf,
             Previous = previous,
         };
@@ -118,9 +118,9 @@ internal static class XscnSaveRoute
         && path.StartsWith("res://", StringComparison.Ordinal);
 
     // Godot's text saver takes each sub-resource over itself (resource_format_text.cpp:1941-1943), but not on a save outside
-    // res:// (:1777-1779), and its save here goes to the temp folder. The ids it assigned (:1927-1934) are not the ones the
-    // next load mints, so each sub-resource takes the loader's id for the same sub_resource before its path; one the
-    // conversion has no id for is left as it is.
+    // res:// (:1777-1779), and its save here goes to the temp folder. The ids it assigns (:1927-1934) are not the ones the
+    // next load mints for a resource with no id yet; a loaded one keeps the loader's id (:1898-1906). So each sub-resource
+    // takes the loader's id for the same sub_resource before its path; one the conversion has no id for is left as it is.
     private static void TakeOverSubResourcePaths(Resource saved, string path, ConversionResult<XscnDocument> converted)
     {
         Dictionary<string, string> loaderIds = LoaderIds(converted);
