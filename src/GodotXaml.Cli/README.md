@@ -62,6 +62,14 @@ ui/main.tscn: ui/main.xscn exists (use --force)
 
 Both files of a pair given in the same run (`main.tscn` and `main.xscn`) are refused, even under `--force`, so a run never converts a file onto its own source: `ui/main.tscn: ui/main.xscn is also being converted`.
 
+Every reference a converted file makes to another file converted in the same run is rewritten in the output, so a scene that instances `res://ui/button.tscn` says `res://ui/button.xscn` instead: instance and inherited scene paths, file properties, `Resource("res://…")` in value text, `<x:Uids>` paths and `x:InstancePlaceholder`. Files are grouped by their nearest `project.godot`, and a reference is rewritten only within its own project. A reference to a file that was not converted stays as it is.
+
+A reference to a converted file from a scene or resource the run does not write — including a source it refused or could not convert — is left as it is and warned about, with its file, line and column (`warning GXP0002`). The message says whether the reference carries a uid of its own — an `ext_resource`'s `uid` attribute, an `.xscn` or `.xres` `<x:Uids>` entry for its path, or a `uid://` in the same `Resource(…)` call — which keeps the reference resolving once the source is removed. A folder holding its own `project.godot` is another project, and a folder whose name starts with `.` or that holds a `.gdignore` is not part of the project's resources; none of them is scanned.
+
+An output that cannot be written is counted as an error and the run goes on with the rest. A file the run does write that refers to that output's new path — quoted, or through an instance written as a namespace tag — is then warned about once (`warning GXP0005`), with a location when the path itself appears in the file, since the reference names a file the run never wrote; the old file is still there.
+
+The source is kept, so it still carries the uid its output now has, and the run warns about it (`warning GXP0003`) until the source is removed. A source with no `project.godot` above it is converted with its references as they are, and warned about (`warning GXP0001`). Text the rewriter cannot change, such as a path in a value it could not parse, is warned about (`warning GXP0004`). Warnings do not change the exit code.
+
 A problem with a file is one line, and that file is not written: a `.tscn` the reader cannot read (`error GXT0001`, with its line and column), a document the conversion cannot write (`error GXT0002`), a `.tres` holding a scene or a `.tscn` holding a resource (`error GXT0003`), or a conversion issue (`error GXC…` or `warning GXC…`, with where it is). The other files go on. The last line is the summary:
 
 ```text

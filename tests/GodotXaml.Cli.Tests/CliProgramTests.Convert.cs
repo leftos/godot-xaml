@@ -71,6 +71,7 @@ public sealed partial class CliProgramTests
     public void ConvertOverwritesWhenTheConfigAllowsIt()
     {
         Write("godot-xaml.json", "{\"convert\": {\"overwrite\": true}}");
+        Write("project.godot", "");
         string tres = Write("sub/mat.tres", Material);
         string xres = Write("sub/mat.xres", "old");
 
@@ -325,7 +326,7 @@ public sealed partial class CliProgramTests
         Assert.Equal(0, converted.ExitCode);
         Assert.Equal(0, formatted.ExitCode);
         string[] names = [.. Directory.EnumerateFiles(folder).Select(path => Path.GetFileName(path)).Order(StringComparer.Ordinal)];
-        Assert.Equal(["godot-xaml.json", "mat.tres", "mat.xres", "root.xscn"], names);
+        Assert.Equal(["godot-xaml.json", "mat.tres", "mat.xres", "project.godot", "root.xscn"], names);
     }
 
     [Fact]
@@ -440,6 +441,7 @@ public sealed partial class CliProgramTests
     public void ConvertForceWinsOverOverwriteFalse()
     {
         Write("godot-xaml.json", "{\"convert\": {\"overwrite\": false}}");
+        Write("project.godot", "");
         string tres = Write("mat.tres", Material);
         string xres = Write("mat.xres", "old");
 
@@ -453,10 +455,15 @@ public sealed partial class CliProgramTests
         "[gd_resource type=\"GradientTexture1D\" format=3]\n\n[sub_resource type=\"Gradient\" id=\"Gradient_abc12\"]\n"
         + "offsets = PackedFloat32Array(0, 1)\n\n[resource]\ngradient = SubResource(\"Gradient_abc12\")\n";
 
-    // A run with an empty godot-xaml.json in the test's folder, so a config above the temp folder is never found.
+    // A run with an empty godot-xaml.json in the test's folder, so a config above the temp folder is never found, and a
+    // project root there unless the test wrote its own, so the run's files belong to a Godot project.
     private RunResult RunConvert(params string[] args)
     {
         Write("godot-xaml.json", "{}");
+        if (!File.Exists(Path.Combine(folder, "project.godot")))
+        {
+            Write("project.godot", "");
+        }
         return RunIn(folder, ["convert", .. args]);
     }
 
