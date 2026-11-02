@@ -23,10 +23,6 @@ How godot-xaml version 1 is built and in what order. The settled choices are in 
 
 ## Open questions
 
-Each is settled with the recommended answer unless the work shows otherwise; the answer goes into `DECISIONS.md`.
+Each is settled with the recommended answer unless the work shows otherwise; the answer goes into `DECISIONS.md`. The format's questions (signals, scripts, overrides, inherited scenes, groups and metadata) are settled there.
 
-- **The node's script.** Recommended: `Script="res://…/Foo.cs"` as an attribute, the way the inspector shows it, rather than XAML's `x:Class`.
-- **Instanced scenes with edited children** (`editable_children`, a child's property overridden). Recommended: the overridden child written as a nested element marked `Override="true"`, holding only the changed properties.
-- **Inherited scenes.** Recommended: the root element names its base scene, `<c:Modal Inherits="true">`.
-- **Groups, metadata and resource-local properties.** Recommended: `Groups="a, b"` and a `<Node.Meta>` property element.
 - **Preview transport.** Recommended: the Visual Studio pane talks to the open Godot editor's addon over a local socket, which renders the text into a `SubViewport` and sends back an image and each node's rectangle (for click-to-select), and falls back to a headless-window Godot run, as godot-mcp's `preview_scene` does, when no editor is open.

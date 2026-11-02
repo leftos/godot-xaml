@@ -80,6 +80,25 @@ The core parses `.xscn` and `.xres` with GuiLabs.Language.Xml (formerly Microsof
 
 A comment is legal XML only between elements, never inside a start tag (XML 1.0, production `STag`), so a comment attaches to the element it precedes.
 
+## Canonical layout
+
+- A start tag stays on one line when it fits in 100 columns; otherwise every attribute goes on its own line, indented 4 spaces from the tag.
+- Elements indent 2 spaces. No XML declaration; UTF-8 without a BOM, LF line ends, a final newline.
+- Inside an element: `<x:Uids>` first, then `<x:Resources>`, then property elements, then child nodes in scene order.
+
+## Integer properties with a hint but no enum
+
+Nine integer properties carry an enum-style hint with no C# enum behind it (`layout_mode`, `anchors_preset`, `ProgressBar.fill_mode` and others). They are written by the hint's display name for the stored index, in PascalCase (`AnchorsPreset="FullRect"`, `LayoutMode="Anchors"`); the reader also accepts the integer.
+
+## Where the rest of a `.tscn` goes
+
+- `unique_id` is kept as `x:UniqueId`, the last attribute, wherever the `.tscn` has it, so a save from the editor does not churn ids and 4.7's id paths keep resolving.
+- An inherited scene is a root element whose tag names a scene (`<c:Modal …>` at the root); no marker, since a root cannot be an instance.
+- `Script="res://…"` is an attribute, as the inspector shows it.
+- Groups are `x:Groups="a, b"`, sorted as Godot sorts them.
+- A node's `index`, a non-root `owner`, `instance_placeholder`, `node_paths` and 4.7's `parent_id_path`, `owner_uid_path`, `from_uid_path` and `to_uid_path` are kept as `x:` attributes (`x:Index`, `x:Owner`, `x:InstancePlaceholder`, `x:NodePaths`, …), written only where the `.tscn` has them, so a conversion without a running Godot round-trips.
+- Not stored: `load_steps` (4.7.2 no longer writes it), `format` (chosen again on conversion back), `script_class` (it follows from the script), and `ext_resource` and `sub_resource` ids (references are paths and keys; ids are made again on conversion back). The scene's own uid lives in its `.uid` sidecar.
+
 ## The metadata file
 
 - The dump tool is a GDScript run by headless Godot (`godot --headless --script`), with no build step, so it shares no files with the C# core.
