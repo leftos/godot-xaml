@@ -113,4 +113,7 @@ public static class ConversionCodes
 
     /// <summary>A placeholder (<c>x:InstancePlaceholder</c>) whose tag names another class or a scene; the tag is dropped.</summary>
     public const string PlaceholderTypeDropped = "GXC0116";
+
+    /// <summary>A comment of the previous document that the converted document cannot carry; it is dropped and warned about.</summary>
+    public const string CommentDropped = "GXC0117";
 }

@@ -29,7 +29,7 @@ public static partial class TscnToXscn
         XscnDocument converted = document.Kind == TscnKind.Scene ? context.ConvertScene() : context.ConvertResource();
         if (options.Previous is { } previous)
         {
-            converted = PreviousComments.Carry(previous, converted, context.KeptPreviousKeys);
+            converted = PreviousComments.Carry(previous, converted, context.KeptPreviousKeys, context.Issues);
         }
 
         return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids() };

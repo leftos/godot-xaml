@@ -130,6 +130,8 @@ The `.tscn`/`.tres` reader and writer are tested on small scenes and resources m
 
 Every save, by the Godot editor or the formatter, writes one fixed layout, like gofmt: diffs come only from real changes. Comments are kept, attached to the node or attribute they precede; hand line breaks and attribute order are not.
 
+A save goes through `.tscn` text, which holds no comments, so they are carried over from the file being replaced. A node keeps its comments across a rename or a move: it is matched by its `x:UniqueId` first, then by its path from the root. A comment the save cannot carry is dropped with a warning naming it, never silently.
+
 ## References: paths inline, XML namespaces for scenes
 
 - A file is referenced by its `res://` path where it is used (`Texture="res://Art/frame.png"`).
