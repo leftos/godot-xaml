@@ -60,6 +60,20 @@ internal static class XscnSignalNames
         return csName ?? godotName;
     }
 
+    /// <summary>The attribute and value <c>x:Connect</c> names a signal with.</summary>
+    /// <param name="metadata">The metadata.</param>
+    /// <param name="cls">The emitter's class, or null when it is not known.</param>
+    /// <param name="godotName">The signal's Godot name.</param>
+    /// <returns>
+    /// <c>Signal</c> with <see cref="ConnectName"/>'s name when <see cref="GodotName"/> reads it back as
+    /// <paramref name="godotName"/>; else <c>GodotSignal</c> with the Godot name verbatim.
+    /// </returns>
+    public static (string Attribute, string Value) ConnectAttribute(GodotMetadata metadata, GodotClassInfo? cls, string godotName)
+    {
+        string name = ConnectName(metadata, cls, godotName);
+        return GodotName(metadata, cls, name) == godotName ? ("Signal", name) : ("GodotSignal", godotName);
+    }
+
     /// <summary>The names of <c>Object.ConnectFlags</c>, GodotSharp's own; none when the metadata lacks the enum, leaving integers.</summary>
     /// <param name="metadata">The metadata.</param>
     /// <returns>The flag names.</returns>

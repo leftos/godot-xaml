@@ -205,6 +205,99 @@ public sealed class XscnWriterTests
             """
         );
 
+    // Signal="Finished" would read back as the engine's finished on an unknown class, so the name is written verbatim.
+    [Fact]
+    public void ConnectOnAnInstanceWritesGodotSignalForAScriptSignalTheAgreedNameWouldChange() =>
+        Assert.Equal(
+            $"""
+            <Control {X} Name="Root">
+              <x:Instance Name="I" Scene="res://dialog.xscn">
+                <x:Connect GodotSignal="Finished" To="Panel" Method="M" />
+              </x:Instance>
+            </Control>
+
+            """,
+            XscnWriter.Write(SceneOf(Root("Control") with { Children = [InstanceNode("I", SignalConnection("Finished"))] }), Real)
+        );
+
+    // The class's own signal Finished reads back as the engine's finished, so the name is written verbatim.
+    [Fact]
+    public void ConnectOnAKnownClassWritesGodotSignalWhenItsEngineSignalTakesTheName() =>
+        Assert.Equal(
+            $"""
+            <AudioStreamPlayer {X} Name="Root">
+              <x:Connect GodotSignal="Finished" To="Panel" Method="M" />
+            </AudioStreamPlayer>
+
+            """,
+            XscnWriter.Write(SceneOf(Root("AudioStreamPlayer") with { Connections = [SignalConnection("Finished")] }), Real)
+        );
+
+    [Fact]
+    public void ConnectOnAKnownClassKeepsSignalForAScriptSignalNoEngineSignalTakes() =>
+        Assert.Equal(
+            $"""
+            <Button {X} Name="Root">
+              <x:Connect Signal="Finished" To="Panel" Method="M" />
+            </Button>
+
+            """,
+            XscnWriter.Write(SceneOf(Root("Button") with { Connections = [SignalConnection("Finished")] }), Real)
+        );
+
+    [Fact]
+    public void ConnectOnAnInstanceKeepsTheAgreedCSharpName() =>
+        Assert.Equal(
+            $"""
+            <Control {X} Name="Root">
+              <x:Instance Name="I" Scene="res://dialog.xscn">
+                <x:Connect Signal="Finished" To="Panel" Method="M" />
+              </x:Instance>
+            </Control>
+
+            """,
+            XscnWriter.Write(SceneOf(Root("Control") with { Children = [InstanceNode("I", SignalConnection("finished"))] }), Real)
+        );
+
+    [Fact]
+    public void ConnectOnAnInstanceKeepsAScriptSignalWithNoAgreedName() =>
+        Assert.Equal(
+            $"""
+            <Control {X} Name="Root">
+              <x:Instance Name="I" Scene="res://dialog.xscn">
+                <x:Connect Signal="my_signal" To="Panel" Method="M" />
+              </x:Instance>
+            </Control>
+
+            """,
+            XscnWriter.Write(SceneOf(Root("Control") with { Children = [InstanceNode("I", SignalConnection("my_signal"))] }), Real)
+        );
+
+    [Theory]
+    [InlineData("Instance", "Finished")]
+    [InlineData("AudioStreamPlayer", "Finished")]
+    [InlineData("Button", "Finished")]
+    [InlineData("Instance", "finished")]
+    [InlineData("Instance", "my_signal")]
+    public void ConnectSignalReadsBackAsWritten(string emitter, string signal)
+    {
+        XscnNode root =
+            emitter == "Instance"
+                ? Root("Control") with
+                {
+                    Children = [InstanceNode("I", SignalConnection(signal))],
+                }
+                : Root(emitter) with
+                {
+                    Connections = [SignalConnection(signal)],
+                };
+        string written = XscnWriter.Write(SceneOf(root), Real);
+
+        XscnParseResult reread = XscnParser.Parse(written, XscnDocumentKind.Scene, Real);
+        Assert.Empty(reread.Diagnostics);
+        Assert.Equal(signal, Assert.Single(Emitter(Assert.IsType<XscnNode>(reread.Document.Root)).Connections).Signal);
+    }
+
     // An attribute would change the call order (attributes are read first, in name order) or repeat a name.
     [Fact]
     public void AConnectionThatWouldReorderOrRepeatAnAttributeStaysAnElement() =>
@@ -566,4 +659,16 @@ public sealed class XscnWriterTests
     }
 
     private static XscnConnection BoundConnection(params GodotValue[] binds) => new("pressed", ".", "M", 2, [.. binds], 0, [], []);
+
+    private static XscnConnection SignalConnection(string signal) => new(signal, "Panel", "M", 2, [], 0, [], []);
+
+    private static XscnNode InstanceNode(string name, params XscnConnection[] connections) =>
+        new()
+        {
+            Type = new XscnSceneType("res://dialog.xscn"),
+            Name = name,
+            Connections = [.. connections],
+        };
+
+    private static XscnNode Emitter(XscnNode root) => root.Connections.IsEmpty ? (XscnNode)root.Children[0] : root;
 }

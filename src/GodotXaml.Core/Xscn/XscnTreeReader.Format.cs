@@ -11,7 +11,18 @@ namespace GodotXaml.Core.Xscn;
 /// <summary>The format's elements with fixed attributes: <c>x:Prop</c> and <c>x:Connect</c>, and the parts both build on.</summary>
 internal sealed partial class XscnTreeReader
 {
-    private static readonly string[] ConnectAttributes = ["Signal", "To", "Method", "Flags", "Binds", "Unbinds", "FromUidPath", "ToUidPath"];
+    private static readonly string[] ConnectAttributes =
+    [
+        "Signal",
+        "GodotSignal",
+        "To",
+        "Method",
+        "Flags",
+        "Binds",
+        "Unbinds",
+        "FromUidPath",
+        "ToUidPath",
+    ];
 
     // <x:Prop Name="…" Value="…" />: the Godot name verbatim, the value untyped Godot value text.
     private void AddProp(ElementParts parent, IXmlElementSyntax element)
@@ -35,13 +46,38 @@ internal sealed partial class XscnTreeReader
 
         Dictionary<string, AttributeText> attributes = FixedAttributes(element, ConnectAttributes);
         ExpectNoElements(element);
-        AttributeText? signal = Required(element, attributes, "Signal");
+        string? signal = ConnectionSignal(element, attributes, parent.Class);
         AttributeText? method = Required(element, attributes, "Method");
         if (signal is not null && method is not null)
         {
-            XscnConnection connection = ReadConnection(attributes, SignalName(parent.Class, signal.Value), method.Value);
+            XscnConnection connection = ReadConnection(attributes, signal, method.Value);
             parent.Connections.Add(connection with { LeadingComments = TakePending(parent) });
         }
+    }
+
+    // Signal's C# name mapped as the class or the agreed table does, GodotSignal's name verbatim, or null after a diagnostic.
+    private string? ConnectionSignal(IXmlElementSyntax element, Dictionary<string, AttributeText> attributes, GodotClassInfo? cls)
+    {
+        AttributeText? godotSignal = attributes.GetValueOrDefault("GodotSignal");
+        AttributeText? signal = attributes.GetValueOrDefault("Signal");
+        if (godotSignal is not null && signal is not null)
+        {
+            Report(XscnCodes.SignalAndGodotSignal, "<x:Connect> has both Signal and GodotSignal; write one.", NameSpan(element));
+            return null;
+        }
+
+        if (godotSignal is not null)
+        {
+            return godotSignal.Value;
+        }
+
+        if (signal is not null)
+        {
+            return SignalName(cls, signal.Value);
+        }
+
+        Report(XscnCodes.MissingAttribute, "<x:Connect> needs Signal=\"…\" or GodotSignal=\"…\".", NameSpan(element));
+        return null;
     }
 
     private XscnConnection ReadConnection(Dictionary<string, AttributeText> attributes, string signal, string method) =>

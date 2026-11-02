@@ -342,6 +342,30 @@ public sealed class XscnParserErrorTests
         Assert.Equal([2, 3], Assert.IsType<XscnNode>(result.Document.Root).Connections.Select(c => c.Flags));
     }
 
+    [Fact]
+    public void ConnectWithSignalAndGodotSignalIsAnError()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Connect Signal=\"Pressed\" GodotSignal=\"Pressed\" Method=\"M\" />\n</Control>"
+        );
+
+        Assert.Equal([("GX0118", 2, 4)], positions);
+        Assert.Equal("<x:Connect> has both Signal and GodotSignal; write one.", Assert.Single(result.Diagnostics).Message);
+        Assert.Empty(Assert.IsType<XscnNode>(result.Document.Root).Connections);
+    }
+
+    [Fact]
+    public void ConnectWithNeitherSignalNorGodotSignalIsAnError()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Connect To=\"Panel\" Method=\"M\" />\n</Control>"
+        );
+
+        Assert.Equal([("GX0108", 2, 4)], positions);
+        Assert.Equal("<x:Connect> needs Signal=\"…\" or GodotSignal=\"…\".", Assert.Single(result.Diagnostics).Message);
+        Assert.Empty(Assert.IsType<XscnNode>(result.Document.Root).Connections);
+    }
+
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text) => Parse(text, Real);
 
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text, GodotMetadata metadata) =>

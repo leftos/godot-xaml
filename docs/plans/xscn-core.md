@@ -30,7 +30,7 @@ How GXAML-5 is built: four briefs in order, and the choices the owner's format r
 - **A value that does not fit its type's compact form** (an int in a float property, a script property on an instance whose stored name matches an engine property of another type) is written as `<x:Prop Name="…" Value="…" />` with Godot value text. The codec decides by reading its own attribute text back and comparing, so every round trip is exact. On an untyped attribute or `x:Prop`, `Resource("res://…")` alone reads as a file and `{Key}` as a resource key.
 - **Groups.** A group name holding a comma or edge whitespace makes `x:Groups` fall back to Godot array text.
 - **Uids** are `<x:Uid Path="res://…" Value="uid://…" />` entries.
-- **Connections.** `<x:Connect>` carries `FromUidPath` and `ToUidPath` as comma-separated integers; `To` defaults to `.`; Persist is implied and flag names come from `Object.ConnectFlags`.
+- **Connections.** `<x:Connect>` names its signal with `Signal`, or with `GodotSignal` (Godot's name verbatim) where `Signal` would read back as another signal; it carries `FromUidPath` and `ToUidPath` as comma-separated integers; `To` defaults to `.`; Persist is implied and flag names come from `Object.ConnectFlags`.
 - **Attribute values** are entity-decoded by the parser, not the XML library. A bad reference is the library's `GX0001` and the value is kept as written.
 - **Library errors** become `GX0001`. An element's diagnostics span its tag name, a value's diagnostics span the value. `GX0107` (unknown class) is the only warning.
 - **The `x:` prefix** is whatever the root binds to the format URI. An element with an undeclared prefix is kept as an unknown node; such an attribute is dropped.

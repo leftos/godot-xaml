@@ -238,12 +238,14 @@ public static partial class XscnWriter
             && connection.ToUidPath.IsEmpty
             && connection.LeadingComments.IsEmpty;
 
-        private XmlTag ConnectTag(GodotClassInfo? cls, XscnConnection connection) =>
-            new(
+        private XmlTag ConnectTag(GodotClassInfo? cls, XscnConnection connection)
+        {
+            (string attribute, string value) = XscnSignalNames.ConnectAttribute(metadata, cls, connection.Signal);
+            return new(
                 FormatPrefix + ":Connect",
                 [
                     .. Present(
-                        ("Signal", XscnSignalNames.ConnectName(metadata, cls, connection.Signal)),
+                        (attribute, value),
                         ("To", connection.To == "." ? null : connection.To),
                         ("Method", connection.Method),
                         ("Flags", FlagsText(connection.Flags)),
@@ -255,6 +257,7 @@ public static partial class XscnWriter
                 ],
                 []
             );
+        }
 
         private static string? BindsText(ImmutableArray<GodotValue> binds) =>
             binds.IsEmpty ? null : EscapeForbidden(GodotText(new GodotArray(binds, null)), "The Binds attribute", "<x:Connect>");

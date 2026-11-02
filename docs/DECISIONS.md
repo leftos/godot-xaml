@@ -80,6 +80,8 @@ A connection is written on the node that emits the signal, like XAML's `Click="H
 
 Any other receiver, non-default flags, binds or unbinds use an element on the emitter, `<x:Connect Signal="Pressed" To="Panel" Method="Hide" Flags="Deferred, OneShot" Binds='[1, "a"]' />`, as does a signal whose name clashes with a property. The method name is the script's own and is never renamed.
 
+`Signal` holds the C# name everywhere, mapped by the emitter's class, or on an instance, an override or an unknown class by the one Godot name every engine class with that C# name agrees on. A C# script's signal keeps its PascalCase name in Godot (`Finished`), which that mapping would read back as an engine signal (`finished`), so where `Signal` would read back as a different signal the writer uses `GodotSignal="Finished"`, holding Godot's own name verbatim. An `<x:Connect>` with both `Signal` and `GodotSignal` is `GX0118`; one with neither is `GX0108`.
+
 ## Shared sub-resources live in an `x:Resources` table
 
 A sub-resource used once is written inline, as a property element. One used by several properties, or referenced from inside Godot value text (an array or dictionary), sits in an `<x:Resources>` table at the top of the root with an `x:Key`, like XAML's resource dictionaries. An attribute refers to it as `{Key}`; Godot value text refers to it as `SubResource("Key")`. Inlining a shared resource twice would make Godot load two separate objects.

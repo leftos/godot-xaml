@@ -157,6 +157,28 @@ public sealed class XscnParserTests
     }
 
     [Fact]
+    public void GodotSignalIsReadVerbatimOnAnInstance()
+    {
+        XscnDocument document = Parse(
+            $"""<Control {X} Name="Root"><x:Instance Name="I" Scene="res://dialog.xscn">"""
+                + """<x:Connect GodotSignal="Finished" To="Panel" Method="M" /></x:Instance></Control>"""
+        );
+
+        Assert.Equal("Finished", Assert.Single(ChildNode(document.Root, 0).Connections).Signal);
+    }
+
+    [Fact]
+    public void GodotSignalIsReadVerbatimOnAKnownClass()
+    {
+        XscnDocument document = Parse(
+            $"""<Control {X} Name="Root"><AudioStreamPlayer Name="Player">"""
+                + """<x:Connect GodotSignal="Finished" To="Panel" Method="M" /></AudioStreamPlayer></Control>"""
+        );
+
+        Assert.Equal("Finished", Assert.Single(ChildNode(document.Root, 0).Connections).Signal);
+    }
+
+    [Fact]
     public void ASignalAttributeIsAConnectionToTheRootWithDefaultFlags()
     {
         XscnDocument document = Parse($"""<Control {X} Name="Root"><Button Name="Update" Pressed="on_x" /></Control>""");

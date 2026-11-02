@@ -88,4 +88,7 @@ public static class XscnCodes
     /// of an .xres).
     /// </summary>
     public const string NotAResource = "GX0117";
+
+    /// <summary>An <c>x:Connect</c> with both <c>Signal</c> and <c>GodotSignal</c>; the connection is not read.</summary>
+    public const string SignalAndGodotSignal = "GX0118";
 }
