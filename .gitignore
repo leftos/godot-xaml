@@ -6,3 +6,10 @@ obj/
 .vs/
 TestResults/
 node_modules/
+godot/cases/
+godot/holder.gd
+godot/holder.gd.uid
+godot/quoted.gd
+godot/quoted.gd.uid
+godot/tagged.gd
+godot/tagged.gd.uid
