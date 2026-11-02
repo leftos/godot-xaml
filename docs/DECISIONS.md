@@ -52,7 +52,9 @@ The property's type decides how its text is read, never the text's first charact
 
 On an element whose class the core cannot know without opening another file (an instanced scene, `<x:Override>`), a property is typed by its C# name across every Godot class: when every class that has the name agrees on its type and enum, the value is compact text (`AnchorsPreset="FullRect"`, `CustomMinimumSize="640, 0"`); when they disagree (`Position`, `Size`, `Mode`), it is Godot value text (`Position="Vector2(10, 20)"`).
 
-This typing depends on the metadata of one Godot minor version, so a new version can change how a file is read: a name that becomes ambiguous, or a property whose type or enum changes. Each Godot release that changes typing gets an upgrader that reads a project's files with the old version's metadata and writes them with the new one. When a new metadata file is added, a test lists every name whose typing differs from the previous version's, so whether a release needs an upgrade step is always known.
+This typing depends on the metadata of one Godot minor version, so a new version can change how a file is read: a name that becomes ambiguous, or a property whose type or enum changes.
+
+Each Godot release that changes typing gets an upgrader that reads a project's files with the old version's metadata and writes them with the new one. When a new metadata file is added, a test lists every name whose typing differs from the previous version's, so whether a release needs an upgrade step is always known.
 
 Booleans are written `True` and `False` (either case is read), and a float has no trailing `.0` (`AnchorRight="1"`), as vector components already have none.
 
@@ -66,13 +68,17 @@ A node inside an instanced scene that the scene changes is written as `<x:Overri
 
 ## Slash-named properties are dotted attributes
 
-A Godot property whose name holds a `/` (`theme_override_constants/separation`, `metadata/_tab_index`, `shader_parameter/albedo`) is written as a dotted attribute: the part before the slash in PascalCase, the key after it verbatim, since keys are free strings that would not survive a case change (`ThemeOverrideConstants.separation="12"`, `Metadata._tab_index="0"`). A value that needs an element, such as an inline resource, uses the same name as a property element (`<VBoxContainer.ThemeOverrideStyles.panel>`). A key that is not a legal XML name falls back to `<x:Prop Name="…" Value="…" />` with the Godot name verbatim.
+A Godot property whose name holds a `/` (`theme_override_constants/separation`, `metadata/_tab_index`, `shader_parameter/albedo`) is written as a dotted attribute: the part before the slash in PascalCase, the key after it verbatim, since keys are free strings that would not survive a case change (`ThemeOverrideConstants.separation="12"`, `Metadata._tab_index="0"`).
+
+A value that needs an element, such as an inline resource, uses the same name as a property element (`<VBoxContainer.ThemeOverrideStyles.panel>`). A key that is not a legal XML name falls back to `<x:Prop Name="…" Value="…" />` with the Godot name verbatim.
 
 The value follows the typed-values rule. Each theme-override family has one fixed type (`scene/gui/control.cpp:400-417`: colors are `Color`, constants and font sizes `int`, fonts `Font`, icons `Texture2D`, styles `StyleBox`), so the metadata file records each family's type and the core writes them in compact text (`ThemeOverrideColors.font_color="1, 0.8, 0, 1"`). `metadata/…` and `shader_parameter/…` values have no fixed type, so they are written as Godot value text.
 
 ## Signals are attributes on the emitter
 
-A connection is written on the node that emits the signal, like XAML's `Click="Handler"`. The common case, received by the scene root with default flags, is an attribute named by the signal's C# name whose value is the method (`<Button Name="Update" Pressed="on_update_button_pressed" />`). Any other receiver, non-default flags, binds or unbinds use an element on the emitter, `<x:Connect Signal="Pressed" To="Panel" Method="Hide" Flags="Deferred, OneShot" Binds='[1, "a"]' />`, as does a signal whose name clashes with a property. The method name is the script's own and is never renamed.
+A connection is written on the node that emits the signal, like XAML's `Click="Handler"`. The common case, received by the scene root with default flags, is an attribute named by the signal's C# name whose value is the method (`<Button Name="Update" Pressed="on_update_button_pressed" />`).
+
+Any other receiver, non-default flags, binds or unbinds use an element on the emitter, `<x:Connect Signal="Pressed" To="Panel" Method="Hide" Flags="Deferred, OneShot" Binds='[1, "a"]' />`, as does a signal whose name clashes with a property. The method name is the script's own and is never renamed.
 
 ## Shared sub-resources live in an `x:Resources` table
 
@@ -110,7 +116,9 @@ Nine integer properties carry an enum-style hint with no C# enum behind it (`lay
 ## The metadata file
 
 - The dump tool is a GDScript run by headless Godot (`godot --headless --script`), with no build step, so it shares no files with the C# core.
-- Its output is JSON, one file per Godot minor version (`metadata/godot-4.7.json`). Each class lists only its own properties and signals, with a link to its parent; names containing `/` are not properties. The exception is `themeOverrides`, which a class that is `Control` or `Window` or inherits one carries as its full list, inherited items included: each `theme_override_<family>/<item>` entry with its type, hint and hint string, read from an instance, so the file records each family's type and the item names. Defaults are stored as Godot's own value text (`Vector2(0, 0)`), the grammar a `.tscn` uses, so the core reads them with its `.tscn` value reader.
+- Its output is JSON, one file per Godot minor version (`metadata/godot-4.7.json`). Each class lists only its own properties and signals, with a link to its parent; names containing `/` are not properties.
+
+  The exception is `themeOverrides`, which a class that is `Control` or `Window` or inherits one carries as its full list, inherited items included: each `theme_override_<family>/<item>` entry with its type, hint and hint string, read from an instance, so the file records each family's type and the item names. Defaults are stored as Godot's own value text (`Vector2(0, 0)`), the grammar a `.tscn` uses, so the core reads them with its `.tscn` value reader.
 
 ## Test fixtures are synthetic
 
