@@ -26,7 +26,7 @@ public static class GodotValueWriter
         [typeof(GodotFloat)] = (value, options) => GodotFloatFormat.FormatTopLevel(((GodotFloat)value).Value, options.Compat),
         [typeof(GodotString)] = (value, _) => "\"" + GodotStringEscape.CEscapeMultiline(((GodotString)value).Value) + "\"",
         [typeof(GodotStringName)] = (value, _) => "&\"" + GodotStringEscape.CEscape(((GodotStringName)value).Value) + "\"",
-        [typeof(GodotNodePath)] = (value, _) => "NodePath(\"" + GodotStringEscape.CEscape(((GodotNodePath)value).Value) + "\")",
+        [typeof(GodotNodePath)] = (value, _) => "NodePath(\"" + GodotStringEscape.CEscape(((GodotNodePath)value).Path) + "\")",
         [typeof(GodotReal)] = (value, options) => WriteReal((GodotReal)value, options),
         [typeof(GodotInts)] = (value, _) => WriteInts((GodotInts)value),
         [typeof(GodotRid)] = (value, _) => WriteRid((GodotRid)value),

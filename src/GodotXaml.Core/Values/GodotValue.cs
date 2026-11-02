@@ -38,9 +38,19 @@ public sealed record GodotString(string Value) : GodotValue;
 /// <param name="Value">The text.</param>
 public sealed record GodotStringName(string Value) : GodotValue;
 
-/// <summary>A NodePath, held as the raw path text Godot was given.</summary>
-/// <param name="Value">The path text.</param>
-public sealed record GodotNodePath(string Value) : GodotValue;
+/// <summary>
+/// A NodePath, held as the text Godot prints for the path it was given: its names joined by <c>/</c> under a leading
+/// <c>/</c> when absolute, then its subnames joined by <c>:</c> (core/string/node_path.cpp:170-188, 394-472).
+/// </summary>
+public sealed record GodotNodePath : GodotValue
+{
+    /// <summary>Creates a path from the text Godot was given.</summary>
+    /// <param name="text">The path text, parsed as Godot parses it.</param>
+    public GodotNodePath(string text) => Path = GodotNodePathText.Normalize(text);
+
+    /// <summary>The path text, as Godot prints it.</summary>
+    public string Path { get; }
+}
 
 /// <summary>A float-component math value (Vector2 to Projection, and Color), its components in constructor order.</summary>
 public sealed record GodotReal : GodotValue
