@@ -8,16 +8,16 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      # tests/fixtures/values/ holds Godot's exact output: no final newline, trailing spaces and raw control characters.
+      # tests/fixtures/ holds Godot's exact output: no final newline, trailing spaces and raw control characters.
       - id: mixed-line-ending
         args: [--fix=lf]
-        exclude: '\.(bat|cmd)$|^tests/fixtures/values/'
+        exclude: '\.(bat|cmd)$|^tests/fixtures/'
       - id: trailing-whitespace
         stages: [pre-commit]
-        exclude: '\.md$|^tests/fixtures/values/'
+        exclude: '\.md$|^tests/fixtures/'
       - id: end-of-file-fixer
         stages: [pre-commit]
-        exclude: '^tests/fixtures/values/'
+        exclude: '^tests/fixtures/'
       - id: check-added-large-files
         # metadata/godot-<minor>.json, the committed ClassDB dump, is about 1.9 MB.
         args: [--maxkb=4096]
