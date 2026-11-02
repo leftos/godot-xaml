@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Godot;
 using GodotXaml.Addon;
@@ -23,6 +24,17 @@ public partial class Checks : Node
     private const string CasesPath = "res://checks/cases/";
     private const string ChildScenePath = CasesPath + "child.xscn";
     private const string BoxPath = CasesPath + "box.xres";
+    private const string SavesFolder = "user://gx-saves/";
+
+    // Two users of one material, so the conversion keeps it in x:Resources rather than inlining it.
+    private const string KeysScene =
+        "<Node2D xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + "  <x:Resources>\n"
+        + "    <CanvasItemMaterial x:Key=\"HandKey\" LightMode=\"Unshaded\" />\n"
+        + "  </x:Resources>\n"
+        + "  <Sprite2D Name=\"One\" Material=\"{HandKey}\" />\n"
+        + "  <Sprite2D Name=\"Two\" Material=\"{HandKey}\" />\n"
+        + "</Node2D>\n";
 
     private static readonly string LoaderTempFolder = Path.Combine(Path.GetTempPath(), "godot-xaml");
 
@@ -55,7 +67,17 @@ public partial class Checks : Node
             ("C14", SubResourcesNameTheXscn),
             ("C15", WalkStaysInTheFile),
             ("C16", IgnoreDeepReloadsADependency),
+            ("C19", SavesAScene),
+            ("C20", SavesAResource),
+            ("C21", SavingTwiceGivesTheSameBytes),
+            ("C22", SavingKeepsResourceKeys),
+            ("C23", RecognizesEveryResourceButAScript),
+            ("C24", SetUidWritesTheSidecar),
+            ("C25", SetUidRefusesOtherExtensions),
+            ("C26", SavingOverUnparsableTextWritesAParsableFile),
+            ("C27", SaveToAMissingFolderWritesNothing),
         ];
+        ResetSavesFolder();
         int total = checks.Length + 1;
         XscnLoadRoute.RecordTempPaths = true;
         tempPathsBefore = XscnLoadRoute.TempPaths.Count;
@@ -168,9 +190,9 @@ public partial class Checks : Node
         int callsBefore = XscnFormatSaver.SaveCallCount;
         Error saveError = ResourceSaver.Save(scene, ProbeSavePath);
         int calls = XscnFormatSaver.SaveCallCount - callsBefore;
-        if (saveError != Error.Unavailable)
+        if (saveError != Error.Ok)
         {
-            return $"ResourceSaver.Save({ProbeSavePath}) returned {saveError}, not Unavailable (custom saver calls: {calls})";
+            return $"ResourceSaver.Save({ProbeSavePath}) returned {saveError}, not Ok (custom saver calls: {calls})";
         }
 
         return calls == 1 ? "" : $"the custom saver was called {calls} times, not once";
@@ -537,6 +559,256 @@ public partial class Checks : Node
             File.WriteAllText(childFile, original);
         }
     }
+
+    private static string SavesAScene()
+    {
+        const string sourcePath = CasesPath + "scene.xscn";
+        const string savedPath = SavesFolder + "scene.xscn";
+        if (ResourceLoader.Load(sourcePath) is not PackedScene scene)
+        {
+            return $"loading {sourcePath} did not return a PackedScene";
+        }
+
+        string failure = SaveAndParse(scene, savedPath, XscnDocumentKind.Scene, out _);
+        if (failure.Length > 0)
+        {
+            return failure;
+        }
+
+        if (ResourceLoader.Load(savedPath, "", ResourceLoader.CacheMode.Ignore) is not PackedScene saved)
+        {
+            return $"loading {savedPath} did not return a PackedScene";
+        }
+
+        string expected = string.Join(", ", PreOrder(scene));
+        string actual = string.Join(", ", PreOrder(saved));
+        return expected == actual ? "" : $"the saved scene's nodes are [{actual}], not [{expected}]";
+    }
+
+    private static string SavesAResource()
+    {
+        const string sourcePath = CasesPath + "theme.xres";
+        if (ResourceLoader.Load(sourcePath) is not Theme theme)
+        {
+            return $"loading {sourcePath} did not return a Theme";
+        }
+
+        string failure = SaveAndParse(theme, SavesFolder + "theme.xres", XscnDocumentKind.Resource, out XscnDocument? document);
+        if (failure.Length > 0)
+        {
+            return failure;
+        }
+
+        string root = document?.Root is XscnResource { Type: XscnClassType type } ? type.Class.Name : "(no engine class)";
+        return root == "Theme" ? "" : $"the saved resource's root tag is {root}, not Theme";
+    }
+
+    private static string SavingTwiceGivesTheSameBytes()
+    {
+        const string sourcePath = CasesPath + "scene.xscn";
+        const string savedPath = SavesFolder + "twice.xscn";
+        if (ResourceLoader.Load(sourcePath) is not PackedScene scene)
+        {
+            return $"loading {sourcePath} did not return a PackedScene";
+        }
+
+        byte[] first = SaveAndRead(scene, savedPath);
+        byte[] second = SaveAndRead(scene, savedPath);
+        return first.SequenceEqual(second)
+            ? ""
+            : $"the second save differs from the first:\n{Encoding.UTF8.GetString(first)}\n---\n{Encoding.UTF8.GetString(second)}";
+    }
+
+    private static string SavingKeepsResourceKeys()
+    {
+        const string path = SavesFolder + "keys.xscn";
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        File.WriteAllText(ProjectSettings.GlobalizePath(path), KeysScene);
+        if (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+        {
+            return $"loading {path} did not return a PackedScene";
+        }
+
+        string saved = Encoding.UTF8.GetString(SaveAndRead(scene, path));
+        int keys = Occurrences(saved, "x:Key=\"HandKey\"");
+        int uses = Occurrences(saved, "Material=\"{HandKey}\"");
+        return keys > 0 && uses == 2 ? "" : $"the saved text has x:Key=\"HandKey\" {keys} times and Material=\"{{HandKey}}\" {uses} times:\n{saved}";
+    }
+
+    private static string RecognizesEveryResourceButAScript()
+    {
+        using var saver = new XscnFormatSaver();
+        using var script = new GDScript();
+        using var box = new StyleBoxFlat();
+        var failures = new List<string>();
+        if (saver._Recognize(script))
+        {
+            failures.Add("_Recognize is true for a GDScript");
+        }
+
+        if (!saver._Recognize(box))
+        {
+            failures.Add("_Recognize is false for a StyleBoxFlat");
+        }
+
+        return string.Join("; ", failures);
+    }
+
+    private static string SetUidWritesTheSidecar()
+    {
+        const string path = SavesFolder + "scene.xscn";
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        string sidecar = ProjectSettings.GlobalizePath(path) + ".uid";
+        File.Delete(sidecar);
+        using var saver = new XscnFormatSaver();
+        long id = ResourceUid.CreateId();
+        Error error = saver._SetUid(path, id);
+        if (error != Error.Ok)
+        {
+            return $"_SetUid({path}) returned {error}";
+        }
+
+        if (!File.Exists(sidecar))
+        {
+            return $"_SetUid({path}) wrote no {sidecar}";
+        }
+
+        string firstLine = File.ReadLines(sidecar).FirstOrDefault() ?? "(empty)";
+        string expected = ResourceUid.IdToText(id);
+        return firstLine == expected ? "" : $"the sidecar's first line is \"{firstLine}\", not \"{expected}\"";
+    }
+
+    // The save checks start from an empty folder on every run.
+    private static void ResetSavesFolder()
+    {
+        string folder = ProjectSettings.GlobalizePath(SavesFolder);
+        if (Directory.Exists(folder))
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    private static string SetUidRefusesOtherExtensions()
+    {
+        const string path = SavesFolder + "x.gd";
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        string sidecar = ProjectSettings.GlobalizePath(path) + ".uid";
+        using var saver = new XscnFormatSaver();
+        Error error = saver._SetUid(path, ResourceUid.CreateId());
+        var failures = new List<string>();
+        if (error != Error.FileUnrecognized)
+        {
+            failures.Add($"_SetUid({path}) returned {error}, not FileUnrecognized");
+        }
+
+        if (File.Exists(sidecar))
+        {
+            failures.Add($"_SetUid({path}) wrote {sidecar}");
+        }
+
+        return string.Join("; ", failures);
+    }
+
+    private static string SavingOverUnparsableTextWritesAParsableFile()
+    {
+        const string sourcePath = CasesPath + "scene.xscn";
+        const string savedPath = SavesFolder + "unparsable.xscn";
+        if (ResourceLoader.Load(sourcePath) is not PackedScene scene)
+        {
+            return $"loading {sourcePath} did not return a PackedScene";
+        }
+
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        File.WriteAllText(ProjectSettings.GlobalizePath(savedPath), "<Control Name=\"Root\"><unclosed>");
+        return SaveAndParse(scene, savedPath, XscnDocumentKind.Scene, out _);
+    }
+
+    private static string SaveToAMissingFolderWritesNothing()
+    {
+        const string sourcePath = CasesPath + "scene.xscn";
+        const string missingFolder = SavesFolder + "missing/";
+        const string savedPath = missingFolder + "scene.xscn";
+        if (ResourceLoader.Load(sourcePath) is not PackedScene scene)
+        {
+            return $"loading {sourcePath} did not return a PackedScene";
+        }
+
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        Error error = ResourceSaver.Save(scene, savedPath);
+        string[] staging = Directory.GetFiles(ProjectSettings.GlobalizePath(SavesFolder), "*.tmp");
+        var failures = new List<string>();
+        if (error == Error.Ok)
+        {
+            failures.Add($"ResourceSaver.Save({savedPath}) returned Ok");
+        }
+
+        if (File.Exists(ProjectSettings.GlobalizePath(savedPath)))
+        {
+            failures.Add($"{savedPath} exists");
+        }
+
+        if (staging.Length > 0)
+        {
+            failures.Add($"staging files left in {SavesFolder}: [{string.Join(", ", staging)}]");
+        }
+
+        return string.Join("; ", failures);
+    }
+
+    // Saves the resource, then parses the saved file; the failure, or "" with the parsed document.
+    private static string SaveAndParse(Resource resource, string path, XscnDocumentKind kind, out XscnDocument? document)
+    {
+        document = null;
+        string text = Encoding.UTF8.GetString(SaveAndRead(resource, path));
+        XscnParseResult result = XscnParser.Parse(text, kind, XscnMetadata.Value);
+        if (result.HasErrors)
+        {
+            return $"{path} does not parse: " + string.Join("; ", result.Diagnostics.Select(d => $"{d.Code} {d.Message}"));
+        }
+
+        document = result.Document;
+        return "";
+    }
+
+    private static byte[] SaveAndRead(Resource resource, string path)
+    {
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        Error error = ResourceSaver.Save(resource, path);
+        if (error != Error.Ok)
+        {
+            throw new InvalidOperationException($"ResourceSaver.Save({path}) returned {error}");
+        }
+
+        return File.ReadAllBytes(ProjectSettings.GlobalizePath(path));
+    }
+
+    // Each node's name and class, root first, then each child's subtree in child order.
+    private static List<string> PreOrder(PackedScene scene)
+    {
+        Node root = scene.Instantiate();
+        try
+        {
+            var nodes = new List<string>();
+            var pending = new Stack<Node>([root]);
+            while (pending.TryPop(out Node? node))
+            {
+                nodes.Add($"{node.Name}:{node.GetClass()}");
+                for (int child = node.GetChildCount() - 1; child >= 0; child--)
+                {
+                    pending.Push(node.GetChild(child));
+                }
+            }
+
+            return nodes;
+        }
+        finally
+        {
+            root.Free();
+        }
+    }
+
+    private static int Occurrences(string text, string value) =>
+        (text.Length - text.Replace(value, "", StringComparison.Ordinal).Length) / value.Length;
 
     private async Task<string> ThreadedLoad()
     {
