@@ -16,6 +16,7 @@
 - **Key order**: the order Godot writes a dictionary's entries in: string keys by code point, other keys by Variant type then value; keys Godot cannot order keep their source order. `GodotKeyOrder`.
 - **Metadata dump**: the tool in `tools/metadata-dump/` that walks `ClassDB` in a headless Godot run and writes the metadata file.
 - **Metadata file**: `metadata/godot-<major>.<minor>.json`, the per-Godot-version file of every class's own properties (Godot name, type, enum or flags type, hint, default), enums and, for `Control` and `Window` classes, the theme-override items (name, type, hint), dumped from `ClassDB`, so tools outside Godot know what the backing integers mean. C# names are computed by the core, not stored.
+- **Metadata loader**: `GodotMetadata` in `src/GodotXaml.Core/Metadata/`, which reads the metadata file into records and looks up classes, properties, enums and signals with their C# names.
 - **Minted id**: a new ext-resource or sub-resource id the core makes from a caller's seed, in Godot's id form (`TscnDocument.NewExtResourceId`, `NewSubResourceId`).
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
 - **Round trip**: converting a `.tscn` to `.xscn` and back (or the reverse) and getting the same scene as Godot loads it.

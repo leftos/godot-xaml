@@ -8,6 +8,12 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
+    <!-- Read, never loaded, by GodotSharpEnumTests: the C# enum names Godot generates, to check GodotEnumNames against. -->
+    <PackageReference Include="GodotSharp" ExcludeAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="GodotSharpPath" Value="$(PkgGodotSharp)\lib\net8.0\GodotSharp.dll" />
   </ItemGroup>
 
   <ItemGroup>
