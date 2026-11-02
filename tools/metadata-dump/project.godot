@@ -1,0 +1,9 @@
+; Engine configuration file.
+; The metadata dump runs its scripts from this project: `godot --headless --path tools/metadata-dump --script res://dump.gd`.
+
+config_version=5
+
+[application]
+
+config/name="metadata-dump"
+config/features=PackedStringArray("4.7")

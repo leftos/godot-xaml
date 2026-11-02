@@ -10,7 +10,8 @@
 ## Glossary
 
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.
-- **Metadata file**: the per-Godot-version file of every class's properties (C# name, Godot name, type, enum or flags names, default), dumped from `ClassDB` by a headless Godot run, so tools outside Godot know what the backing integers mean.
+- **Metadata dump**: the tool in `tools/metadata-dump/` that walks `ClassDB` in a headless Godot run and writes the metadata file.
+- **Metadata file**: `metadata/godot-<major>.<minor>.json`, the per-Godot-version file of every class's own properties (Godot name, type, enum or flags type, hint, default) and enums, dumped from `ClassDB`, so tools outside Godot know what the backing integers mean. C# names are computed by the core, not stored.
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
 - **Round trip**: converting a `.tscn` to `.xscn` and back (or the reverse) and getting the same scene as Godot loads it.
 - **`.xres`**: a Godot resource (a theme, a StyleBox) in the XAML format; the counterpart of `.tres`.

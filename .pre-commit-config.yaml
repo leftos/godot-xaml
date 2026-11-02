@@ -16,6 +16,8 @@ repos:
       - id: end-of-file-fixer
         stages: [pre-commit]
       - id: check-added-large-files
+        # metadata/godot-<minor>.json, the committed ClassDB dump, is about 1.9 MB.
+        args: [--maxkb=4096]
         stages: [pre-commit]
 
   - repo: local
