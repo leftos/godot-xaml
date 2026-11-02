@@ -9,6 +9,7 @@
 
 ## Glossary
 
+- **Backup folder**: `<root>/.godot-xaml-backup/<UTC stamp>/`, where `convert --project` copies each original, its `.uid`, each script or `project.godot` it edits and each output it overwrites, at their paths under the root, before changing anything.
 - **Built path**: a path a script assembles at run time (`"res://ui/" + name + ".tscn"`) instead of writing whole; `convert` cannot rewrite it and warns (`GXP0006`) when a literal ends in an extension the run converts.
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.
 - **Canonical fixture**: an `.xscn` or `.xres` under `tests/fixtures/xscn/canonical/` that the writer must reproduce byte for byte.
@@ -33,6 +34,7 @@
 - **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn` in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
 - **Seed scene**: the one-node scene `tools/scene-fixtures/` saves first so the inherited-scene case can be saved from it; a script cannot set up scene inheritance directly.
 - **Sidecar**: the `.uid` file beside a file that has no header to hold its uid (`main.xscn.uid`); `convert` moves a uid between a `.tscn` header and it.
+- **Staging folder**: `<root>/.godot-xaml-staging/<stamp>-<8 hex>/`, where `convert --project` writes every output first; it is removed when the run ends, and a failed run leaves the project as it was.
 - **Tolerant parse**: a parse that always returns a document with its diagnostics and never throws on bad text (`XscnParser.Parse`).
 - **Value grammar**: Godot's text syntax for a property value, such as `Vector2(0, 0)`, shared by `.tscn`, `.tres` and the metadata defaults.
 - **`.xres`**: a Godot resource (a theme, a StyleBox) in the XAML format; the counterpart of `.tres`.

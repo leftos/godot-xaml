@@ -47,6 +47,10 @@ An export needs nothing more: with the plugin on, scenes ship as Godot binary.
 
 To update, raise the package version and copy the folder again.
 
+## Converting a project
+
+`godot-xaml convert --project <root>` converts every `.tscn` and `.tres` under a project to `.xscn` and `.xres` (`--back` goes the other way), rewrites the `res://` references between them, and edits the scripts and `project.godot` that name a converted file. It is all or nothing: if any file fails, the project is left as it was. Otherwise the originals are copied to `.godot-xaml-backup/` before they are removed, unless you pass `--nobackup`. `addons/` is never touched. See [the CLI README](src/GodotXaml.Cli/README.md#convert).
+
 ## Status
 
 Not released yet. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md). Version 1 targets Godot 4.7+ with .NET:

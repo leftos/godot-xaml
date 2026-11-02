@@ -20,4 +20,10 @@ internal static class CliCodes
 
     /// <summary>A script or <c>project.godot</c> string that holds a converted path inside longer text, or may build one at runtime.</summary>
     internal const string BuiltPath = "GXP0006";
+
+    /// <summary>A <c>--project</c> run in which a source was not converted, so nothing in the project changed.</summary>
+    internal const string OriginalsKept = "GXP0007";
+
+    /// <summary>A script or <c>project.godot</c> of a <c>--project</c> run that is not UTF-8 text, so it is neither scanned nor edited.</summary>
+    internal const string NotUtf8 = "GXP0008";
 }

@@ -315,12 +315,32 @@ internal static class ReferenceScan
     private static List<string> Files(string root, TextWriter error)
     {
         List<string> found = [];
-        Walk(root, found, error);
+        Walk(root, found, new WalkRule(Accepted, Excluded: null, SkipLinks: false), error);
         found.Sort(StringComparer.Ordinal);
         return found;
     }
 
-    private static void Walk(string folder, List<string> found, TextWriter error)
+    /// <summary>
+    /// Every file under a project root with one of the given extensions, by the folder rule of the scan's own walk, ordered
+    /// by its path under the root with '/' as the separator, compared ordinal. A folder that is a link or a junction is not
+    /// entered, so a run never works on files outside the project.
+    /// </summary>
+    /// <param name="root">The project root's full path.</param>
+    /// <param name="extensions">The extensions to find, each with its leading dot, matched case-insensitively.</param>
+    /// <param name="skipAddons">Whether <c>addons</c> directly under the root is skipped; one deeper down is walked.</param>
+    /// <param name="error">Where a folder that cannot be read is reported.</param>
+    /// <returns>The files, or null when a folder could not be read.</returns>
+    internal static List<string>? ProjectFiles(string root, IReadOnlyCollection<string> extensions, bool skipAddons, TextWriter error)
+    {
+        List<string> found = [];
+        string? addons = skipAddons ? Path.GetFullPath(Path.Combine(root, "addons")) : null;
+        var rule = new WalkRule(path => extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase), addons, SkipLinks: true);
+        bool read = Walk(root, found, rule, error);
+        return read ? [.. found.OrderBy(path => Path.GetRelativePath(root, path).Replace('\\', '/'), StringComparer.Ordinal)] : null;
+    }
+
+    // Whether every folder was read; a folder that cannot be is reported and the walk goes on with the rest.
+    private static bool Walk(string folder, List<string> found, WalkRule rule, TextWriter error)
     {
         try
         {
@@ -328,18 +348,18 @@ internal static class ReferenceScan
             foreach (string path in Directory.EnumerateFiles(folder))
             {
                 holdsCsproj |= string.Equals(Path.GetExtension(path), ".csproj", StringComparison.OrdinalIgnoreCase);
-                if (Accepted(path))
+                if (rule.Accept(path))
                 {
                     found.Add(path);
                 }
             }
+            bool read = true;
             foreach (string subfolder in Directory.EnumerateDirectories(folder))
             {
-                if (!Skip(subfolder) && !(holdsCsproj && IsBuildOutput(subfolder)))
-                {
-                    Walk(subfolder, found, error);
-                }
+                bool walked = !Skip(subfolder) && !(holdsCsproj && IsBuildOutput(subfolder)) && !rule.Leaves(subfolder);
+                read &= !walked || Walk(subfolder, found, rule, error);
             }
+            return read;
         }
         catch (UnauthorizedAccessException)
         {
@@ -349,6 +369,16 @@ internal static class ReferenceScan
         {
             error.WriteLine($"{folder}: cannot be read.");
         }
+        return false;
+    }
+
+    // Which files a walk keeps, the one folder it leaves out by full path, and whether it leaves out links and junctions.
+    // Only a folder with a link target counts: another reparse point, such as a cloud folder, is walked.
+    private sealed record WalkRule(Func<string, bool> Accept, string? Excluded, bool SkipLinks)
+    {
+        public bool Leaves(string folder) =>
+            (Excluded is not null && InputFiles.PathComparer.Equals(Path.GetFullPath(folder), Excluded))
+            || (SkipLinks && new DirectoryInfo(folder).LinkTarget is not null);
     }
 
     private static bool Accepted(string path) =>

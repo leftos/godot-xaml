@@ -19,10 +19,14 @@ internal sealed record ConvertSource(bool FromTscn, XscnDocumentKind Kind, strin
 /// <summary>
 /// The <c>convert</c> command: writes each file beside its source with the other extension, the direction following the
 /// source's extension. An output that exists is refused unless <c>--force</c> or <c>godot-xaml.json</c> allows overwriting.
+/// With <c>--project</c> it converts a whole project or changes nothing, then edits its scripts and <c>project.godot</c>
+/// and removes the originals.
 /// </summary>
 internal static class ConvertCommand
 {
     private const string NoRootMessage = "no project.godot above this file; its res:// references are not rewritten";
+    private const string StagingFolderName = ".godot-xaml-staging";
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     private static readonly AcceptedFiles<ConvertSource> Accepted = new(
         [
@@ -34,40 +38,124 @@ internal static class ConvertCommand
         "only .tscn, .tres, .xscn and .xres files can be converted."
     );
 
+    private static readonly string[] ForwardExtensions = [".tscn", ".tres"];
+    private static readonly string[] BackExtensions = [".xscn", ".xres"];
+    private static readonly string[] ScriptExtensions = [".gd", ".cs"];
+
     /// <summary>The command, its paths argument and its options.</summary>
     /// <param name="enumerate">The files directly in a folder.</param>
     /// <param name="workingDirectory">The folder the search for <c>godot-xaml.json</c> starts from.</param>
     /// <returns>The command.</returns>
     internal static Command Create(Func<string, IEnumerable<string>> enumerate, string workingDirectory)
     {
-        Argument<string[]> paths = CheckCommand.PathsArgument("A .tscn, .tres, .xscn or .xres file, or a folder searched recursively for all four.");
-        Option<string> metadata = CheckCommand.MetadataOption();
-        Option<bool> force = new("--force") { Description = "Overwrites an output that already exists." };
+        var options = new ConvertOptions(
+            CheckCommand.PathsArgument("A .tscn, .tres, .xscn or .xres file, or a folder searched recursively for all four."),
+            CheckCommand.MetadataOption(),
+            new Option<bool>("--force") { Description = "Overwrites an output that already exists." },
+            new Option<string>("--project")
+            {
+                Description =
+                    "A Godot project's root folder: converts every .tscn and .tres under it, or nothing if one fails, edits the "
+                    + "scripts and project.godot that name them, and removes the originals after backing them up.",
+            },
+            new Option<bool>("--back") { Description = "With --project, converts every .xscn and .xres back to .tscn and .tres." },
+            new Option<bool>("--nobackup") { Description = "Deletes the originals with no backup." }
+        );
+        options.Paths.Arity = ArgumentArity.ZeroOrMore;
         var command = new Command("convert", "Converts .tscn and .tres files to .xscn and .xres, and back, writing each beside its source.");
-        command.Arguments.Add(paths);
-        command.Options.Add(metadata);
-        command.Options.Add(force);
-        command.SetAction(parseResult =>
-        {
-            InvocationConfiguration invocation = parseResult.InvocationConfiguration;
-            List<InputFile<ConvertSource>>? files = InputFiles.Collect(parseResult.GetValue(paths) ?? [], Accepted, invocation.Error, enumerate);
-            if (files is null)
-            {
-                return 2;
-            }
-            GodotMetadata? loaded = MetadataFile.TryLoad(parseResult.GetValue(metadata), invocation.Error);
-            if (loaded is null)
-            {
-                return 2;
-            }
-            bool? configOverwrite = ProjectConfig.TryReadOverwrite(workingDirectory, invocation.Error);
-            if (configOverwrite is null)
-            {
-                return 2;
-            }
-            return Convert(files, loaded, parseResult.GetValue(force) || configOverwrite.Value, invocation);
-        });
+        command.Arguments.Add(options.Paths);
+        command.Options.Add(options.Metadata);
+        command.Options.Add(options.Force);
+        command.Options.Add(options.Project);
+        command.Options.Add(options.Back);
+        command.Options.Add(options.NoBackup);
+        command.SetAction(parseResult => Run(parseResult, options, enumerate, workingDirectory));
         return command;
+    }
+
+    private static int Run(ParseResult parseResult, ConvertOptions options, Func<string, IEnumerable<string>> enumerate, string workingDirectory)
+    {
+        InvocationConfiguration invocation = parseResult.InvocationConfiguration;
+        string? root = parseResult.GetValue(options.Project);
+        string[] paths = parseResult.GetValue(options.Paths) ?? [];
+        string? usage = root is null ? RootlessUsageError(parseResult, options, paths.Length > 0) : ProjectUsageError(root, paths.Length > 0);
+        if (usage is not null)
+        {
+            invocation.Error.WriteLine(usage);
+            return 2;
+        }
+        ProjectSettings? project = root is null
+            ? null
+            : new ProjectSettings(FullRoot(root), parseResult.GetValue(options.NoBackup), parseResult.GetValue(options.Back));
+        List<InputFile<ConvertSource>>? files = project is null
+            ? InputFiles.Collect(paths, Accepted, invocation.Error, enumerate)
+            : ProjectSources(project.Root, project.Back, invocation.Error);
+        return files is null ? 2 : LoadAndConvert(parseResult, options, files, project, workingDirectory);
+    }
+
+    private static string FullRoot(string root) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+
+    private static int LoadAndConvert(
+        ParseResult parseResult,
+        ConvertOptions options,
+        List<InputFile<ConvertSource>> files,
+        ProjectSettings? project,
+        string workingDirectory
+    )
+    {
+        InvocationConfiguration invocation = parseResult.InvocationConfiguration;
+        GodotMetadata? loaded = MetadataFile.TryLoad(parseResult.GetValue(options.Metadata), invocation.Error);
+        if (loaded is null)
+        {
+            return 2;
+        }
+        bool? configOverwrite = ProjectConfig.TryReadOverwrite(workingDirectory, invocation.Error);
+        if (configOverwrite is null)
+        {
+            return 2;
+        }
+        return Convert(files, loaded, parseResult.GetValue(options.Force) || configOverwrite.Value, project, invocation);
+    }
+
+    private static string? RootlessUsageError(ParseResult parseResult, ConvertOptions options, bool hasPaths)
+    {
+        if (!hasPaths)
+        {
+            return "convert needs a path or --project.";
+        }
+        if (parseResult.GetValue(options.Back))
+        {
+            return "--back needs --project.";
+        }
+        return parseResult.GetValue(options.NoBackup) ? "--nobackup needs --project." : null;
+    }
+
+    private static string? ProjectUsageError(string root, bool hasPaths)
+    {
+        if (hasPaths)
+        {
+            return "--project takes no paths.";
+        }
+        return File.Exists(Path.Combine(root, "project.godot")) ? null : $"{FullRoot(root)}: no project.godot in this folder.";
+    }
+
+    // Every scene and resource of the direction under the root, addons/ left out with the folders Godot leaves out.
+    private static List<InputFile<ConvertSource>>? ProjectSources(string root, bool back, TextWriter error)
+    {
+        List<string>? found = ReferenceScan.ProjectFiles(root, back ? BackExtensions : ForwardExtensions, skipAddons: true, error);
+        if (found is null)
+        {
+            return null;
+        }
+        List<InputFile<ConvertSource>> files = [];
+        foreach (string path in found)
+        {
+            if (Accepted.TryGetKind(path, out ConvertSource? kind))
+            {
+                files.Add(new InputFile<ConvertSource>(path, kind));
+            }
+        }
+        return files;
     }
 
     /// <summary>The seed of an output's new resource ids: FNV-1a over its full path's UTF-8, the same on every run.</summary>
@@ -87,7 +175,13 @@ internal static class ConvertCommand
 
     // Every source and every .uid sidecar is read before any file is converted. The run then plans before it writes:
     // which sources it converts, the references their documents hold and the project roots those references live in.
-    private static int Convert(List<InputFile<ConvertSource>> files, GodotMetadata metadata, bool overwrite, InvocationConfiguration invocation)
+    private static int Convert(
+        List<InputFile<ConvertSource>> files,
+        GodotMetadata metadata,
+        bool overwrite,
+        ProjectSettings? project,
+        InvocationConfiguration invocation
+    )
     {
         List<Source>? sources = ReadSources(files, invocation.Error);
         if (sources is null)
@@ -95,17 +189,19 @@ internal static class ConvertCommand
             return 2;
         }
         var inputs = new HashSet<string>(sources.Select(source => Path.GetFullPath(source.File.Path)), InputFiles.PathComparer);
-        var tally = new Tally { Overwrite = overwrite };
+        var tally = new Tally { Overwrite = overwrite, Project = project is not null };
         List<Planned> planned = Plan(sources, inputs, metadata, tally, invocation.Output);
         Dictionary<string, Dictionary<string, string>> renames = Renames(planned, tally, invocation.Output);
         Rewrite(planned, renames, tally, invocation.Output);
-        foreach (Planned item in planned)
+        if (project is null)
         {
-            Place(item, metadata, tally, invocation);
+            FinishPlain(planned, metadata, tally, invocation);
         }
-        ReportSharedUids(planned, tally, invocation.Output);
-        ReportFailedWrites(planned, metadata, tally, invocation.Output);
-        Scan(planned, tally, invocation);
+        else
+        {
+            Dictionary<string, string> map = renames.GetValueOrDefault(project.Root) ?? new Dictionary<string, string>(StringComparer.Ordinal);
+            FinishProject(new ProjectRun(project, tally, invocation), sources.Count, planned, map, metadata);
+        }
         invocation.Output.WriteLine($"{tally.Converted} converted, {tally.Refused} refused, {tally.Errors} error(s), {tally.Warnings} warning(s)");
         if (tally.WriteErrors > 0)
         {
@@ -114,26 +210,355 @@ internal static class ConvertCommand
         return tally.Errors > 0 || tally.Refused > 0 ? 1 : 0;
     }
 
+    private static void FinishPlain(List<Planned> planned, GodotMetadata metadata, Tally tally, InvocationConfiguration invocation)
+    {
+        foreach (Planned item in planned)
+        {
+            Place(item, metadata, tally, invocation);
+        }
+        ReportSharedUids(planned, tally, invocation.Output);
+        ReportFailedWrites(planned, metadata, tally, invocation.Output);
+        Scan(planned, tally, invocation, []);
+    }
+
+    // All or nothing: every output is written to a staging folder first. When a source was not converted or staged,
+    // the staging folder goes and the project is as it was. Otherwise the originals are backed up, the outputs moved
+    // in, the scripts edited and the originals removed, in that order. The staging folder never outlives the run. A
+    // project with no source makes no backup and says so.
+    private static void FinishProject(
+        ProjectRun run,
+        int sourceCount,
+        List<Planned> planned,
+        IReadOnlyDictionary<string, string> renames,
+        GodotMetadata metadata
+    )
+    {
+        if (sourceCount == 0)
+        {
+            run.Invocation.Output.WriteLine($"{run.Root}: no {(run.Back ? ".xscn or .xres" : ".tscn or .tres")} files to convert");
+            return;
+        }
+        try
+        {
+            bool converted = Stage(run, planned, metadata) && planned.Count == sourceCount;
+            List<ScriptEdit>? edits = FindEdits(run, renames);
+            if (!converted || edits is null)
+            {
+                // A failed run moves no output in, so every source found counts as not converted.
+                string message = $"nothing changed: {sourceCount} source(s) were not converted; the project is as it was";
+                Warn(run.Invocation.Output, run.Tally, run.Root, CliCodes.OriginalsKept, message);
+                return;
+            }
+            if (Apply(run, planned, edits))
+            {
+                Scan(planned, run.Tally, run.Invocation, run.NotUtf8);
+            }
+        }
+        finally
+        {
+            RemoveStaging(run);
+        }
+    }
+
+    // Writes every output to the staging folder, each at its path under the root; true when every one was written.
+    private static bool Stage(ProjectRun run, List<Planned> planned, GodotMetadata metadata)
+    {
+        if (planned.Count == 0)
+        {
+            return true;
+        }
+        string parent = Path.Combine(run.Root, StagingFolderName);
+        if (!OriginalsBackup.TryCreateUnique(parent, out string? staging))
+        {
+            run.Invocation.Error.WriteLine($"{parent}: cannot be written.");
+            WriteError(run.Tally);
+            return false;
+        }
+        run.Staging = staging;
+        foreach (Planned item in planned)
+        {
+            item.Staged = Path.Combine(staging, Path.GetRelativePath(run.Root, item.Output));
+            Place(item, metadata, run.Tally, run.Invocation);
+        }
+        return planned.All(item => item.Written);
+    }
+
+    // The steps that change the project. A failure from the first move on stops at its step, leaves the originals in
+    // place and says where the backup is; nothing is rolled back.
+    private static bool Apply(ProjectRun run, List<Planned> planned, List<ScriptEdit> edits)
+    {
+        if (!run.NoBackup && !BackUp(run, planned, edits))
+        {
+            WriteError(run.Tally);
+            return false;
+        }
+        if (MoveIn(run, planned) && WriteEdits(run, edits) && RemoveOriginals(run, planned))
+        {
+            return true;
+        }
+        WriteError(run.Tally);
+        string message = run.NoBackup
+            ? $"{run.Root}: the project is part converted, and --nobackup kept no copy"
+            : $"{run.Root}: the project is part converted; restore it from {run.Backup}";
+        run.Invocation.Error.WriteLine(message);
+        return false;
+    }
+
+    // Every script and project.godot under the root, addons/ left out, with its whole-literal references to a converted
+    // file rewritten; only the files that change, and nothing written yet. Null when one cannot be read, a folder cannot
+    // be walked, or a file to edit is read-only; every such file is reported before the run stops.
+    private static List<ScriptEdit>? FindEdits(ProjectRun run, IReadOnlyDictionary<string, string> renames)
+    {
+        if (renames.Count == 0)
+        {
+            return [];
+        }
+        List<string>? scripts = ReferenceScan.ProjectFiles(run.Root, ScriptExtensions, skipAddons: true, run.Invocation.Error);
+        if (scripts is null)
+        {
+            WriteError(run.Tally);
+            return null;
+        }
+        scripts.Add(Path.Combine(run.Root, "project.godot"));
+        List<ScriptEdit> edits = [];
+        bool editable = true;
+        foreach (string file in scripts)
+        {
+            editable &= TryAddEdit(run, file, renames, edits);
+        }
+        return editable ? edits : null;
+    }
+
+    // False when the file cannot be read, a write error, or is read-only and would be edited, a refusal. A file that is
+    // not UTF-8 is warned and left; a file with nothing to rewrite adds no edit.
+    private static bool TryAddEdit(ProjectRun run, string file, IReadOnlyDictionary<string, string> renames, List<ScriptEdit> edits)
+    {
+        if (!TryReadBytes(file, run.Invocation.Error, out byte[]? bytes))
+        {
+            WriteError(run.Tally);
+            return false;
+        }
+        string? text = DecodeUtf8(bytes);
+        if (text is null)
+        {
+            Warn(run.Invocation.Output, run.Tally, file, CliCodes.NotUtf8, "not UTF-8 text; not scanned or edited");
+            run.NotUtf8.Add(file);
+            return true;
+        }
+        ScriptRewrite rewrite = ScriptPaths.Rewrite(text, ScriptPaths.KindOf(file)!.Value, renames);
+        if (rewrite.Rewritten == 0)
+        {
+            return true;
+        }
+        if (IsReadOnlyTarget(file))
+        {
+            run.Invocation.Output.WriteLine($"{file}: read-only, so it cannot be edited");
+            run.Tally.Refused++;
+            return false;
+        }
+        // A leading byte order mark is kept, since the rewriter works on the text after it.
+        byte[] written = Encoding.UTF8.GetBytes(rewrite.Text);
+        byte[] encoded = bytes.AsSpan().StartsWith(Encoding.UTF8.Preamble) ? [.. Encoding.UTF8.Preamble, .. written] : written;
+        edits.Add(new ScriptEdit(file, encoded, bytes, rewrite.Rewritten));
+        return true;
+    }
+
+    // The text after a UTF-8 byte order mark, or null when the bytes are not UTF-8, which the caller reports.
+    private static string? DecodeUtf8(byte[] bytes)
+    {
+        ReadOnlySpan<byte> text = bytes;
+        if (text.StartsWith(Encoding.UTF8.Preamble))
+        {
+            text = text[Encoding.UTF8.Preamble.Length..];
+        }
+        try
+        {
+            return StrictUtf8.GetString(text);
+        }
+        catch (DecoderFallbackException)
+        {
+            return null;
+        }
+    }
+
+    // Each source and its .uid, each existing output and output .uid the move replaces, and each file to be edited, the
+    // last from the bytes its edit was made from.
+    private static bool BackUp(ProjectRun run, List<Planned> planned, List<ScriptEdit> edits)
+    {
+        List<string> files = [];
+        foreach (Planned item in planned)
+        {
+            files.Add(item.Source.File.Path);
+            files.AddRange(new[] { item.Source.File.Path + ".uid", item.Output, item.Output + ".uid" }.Where(File.Exists));
+        }
+        List<(string Path, byte[] Bytes)> read = [.. edits.Select(edit => (edit.Path, edit.Original))];
+        if (!OriginalsBackup.TryCopy(run.Root, files, read, run.Invocation.Error, out string? folder))
+        {
+            return false;
+        }
+        run.Backup = folder;
+        run.Invocation.Output.WriteLine($"{files.Count + read.Count} file(s) backed up to {folder}");
+        return true;
+    }
+
+    private static bool MoveIn(ProjectRun run, List<Planned> planned)
+    {
+        foreach (Planned item in planned)
+        {
+            if (!MoveSidecar(item, run.Invocation.Error) || !TryMove(item.Staged!, item.Output, run.Invocation.Error))
+            {
+                return false;
+            }
+            run.Invocation.Output.WriteLine($"{item.Source.File.Path} -> {item.Output}");
+            run.Tally.Converted++;
+        }
+        return true;
+    }
+
+    // A conversion with no uid staged no sidecar, so one left beside the output from an earlier conversion goes, as in
+    // a plain run.
+    private static bool MoveSidecar(Planned item, TextWriter error)
+    {
+        if (!item.Source.File.Kind.FromTscn)
+        {
+            return true;
+        }
+        string staged = item.Staged! + ".uid";
+        string target = item.Output + ".uid";
+        if (File.Exists(staged))
+        {
+            return TryMove(staged, target, error);
+        }
+        return !File.Exists(target) || InputFiles.TryDelete(target, error);
+    }
+
+    private static bool WriteEdits(ProjectRun run, List<ScriptEdit> edits)
+    {
+        foreach (ScriptEdit edit in edits)
+        {
+            if (!InputFiles.TryWrite(edit.Path, edit.Bytes, run.Invocation.Error))
+            {
+                return false;
+            }
+            run.Invocation.Output.WriteLine($"{edit.Path}: {edit.Rewritten} path(s) rewritten");
+        }
+        return true;
+    }
+
+    private static bool RemoveOriginals(ProjectRun run, List<Planned> planned)
+    {
+        foreach (Planned item in planned)
+        {
+            string source = item.Source.File.Path;
+            bool removed =
+                InputFiles.TryDelete(source, run.Invocation.Error)
+                && (!File.Exists(source + ".uid") || InputFiles.TryDelete(source + ".uid", run.Invocation.Error));
+            if (!removed)
+            {
+                return false;
+            }
+        }
+        run.Invocation.Output.WriteLine($"{planned.Count} original(s) removed");
+        return true;
+    }
+
+    private static bool TryMove(string from, string to, TextWriter error)
+    {
+        try
+        {
+            File.Move(from, to, overwrite: true);
+            return true;
+        }
+        catch (IOException)
+        {
+            error.WriteLine($"{to}: cannot be written.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            error.WriteLine($"{to}: access denied.");
+        }
+        return false;
+    }
+
+    // The staging folder goes whatever the run's outcome, and the folder above it once no other run's is left in it.
+    private static void RemoveStaging(ProjectRun run)
+    {
+        if (run.Staging is null)
+        {
+            return;
+        }
+        try
+        {
+            Directory.Delete(run.Staging, recursive: true);
+            string parent = Path.GetDirectoryName(run.Staging)!;
+            if (!Directory.EnumerateFileSystemEntries(parent).Any())
+            {
+                Directory.Delete(parent);
+            }
+        }
+        catch (IOException)
+        {
+            run.Invocation.Error.WriteLine($"{run.Staging}: cannot be deleted.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            run.Invocation.Error.WriteLine($"{run.Staging}: access denied.");
+        }
+    }
+
+    private static void WriteError(Tally tally)
+    {
+        tally.Errors++;
+        tally.WriteErrors++;
+    }
+
+    // Where Place writes the output: beside its source, or in the staging folder, whose subfolder is made first; null
+    // when that subfolder cannot be made.
+    private static string? WriteTarget(Planned item, TextWriter error)
+    {
+        if (item.Staged is null)
+        {
+            return item.Output;
+        }
+        return TryCreateFolder(Path.GetDirectoryName(item.Staged)!, error) ? item.Staged : null;
+    }
+
+    private static bool TryCreateFolder(string folder, TextWriter error)
+    {
+        try
+        {
+            Directory.CreateDirectory(folder);
+            return true;
+        }
+        catch (IOException)
+        {
+            error.WriteLine($"{folder}: cannot be written.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            error.WriteLine($"{folder}: access denied.");
+        }
+        return false;
+    }
+
     // A pair clash or an existing output refuses a source before any conversion runs; a document the core refuses
     // drops it with its own error. Only the sources left are converted, and only they enter the rename map.
     private static List<Planned> Plan(List<Source> sources, HashSet<string> inputs, GodotMetadata metadata, Tally tally, TextWriter output)
     {
+        var outputCounts = new Dictionary<string, int>(InputFiles.PathComparer);
+        foreach (Source source in sources)
+        {
+            string full = Path.GetFullPath(OutputOf(source));
+            outputCounts[full] = outputCounts.GetValueOrDefault(full) + 1;
+        }
         List<(Source Source, string Output)> candidates = [];
         foreach (Source source in sources)
         {
-            string outputPath = Path.ChangeExtension(source.File.Path, source.File.Kind.OutputExtension);
-            if (inputs.Contains(Path.GetFullPath(outputPath)))
+            string outputPath = OutputOf(source);
+            string? refusal = Refusal(source, outputPath, inputs, outputCounts[Path.GetFullPath(outputPath)] > 1, tally);
+            if (refusal is not null)
             {
-                // Converting both files of a pair in one run would swap them, so neither is converted.
-                output.WriteLine($"{source.File.Path}: {outputPath} is also being converted");
-                tally.Refused++;
-                continue;
-            }
-            string? sidecar = source.File.Kind.FromTscn ? outputPath + ".uid" : null;
-            string? existing = FirstExisting(outputPath, sidecar);
-            if (existing is not null && !tally.Overwrite)
-            {
-                output.WriteLine($"{source.File.Path}: {existing} exists (use --force)");
+                output.WriteLine($"{source.File.Path}: {refusal}");
                 tally.Refused++;
                 continue;
             }
@@ -258,7 +683,8 @@ internal static class ConvertCommand
 
     // The existing-output check ran in the plan, so a refused file leaves the disk as it was. The sidecar is written
     // before the output, so an output never stands beside a sidecar of an earlier conversion. A write that fails
-    // counts as an error of the run, which goes on with the rest.
+    // counts as an error of the run, which goes on with the rest. A staged output is written to the staging folder, and
+    // counts as converted only once it is moved into place.
     private static void Place(Planned item, GodotMetadata metadata, Tally tally, InvocationConfiguration invocation)
     {
         Converted? converted = Text(item, metadata, tally, invocation.Output, check: false);
@@ -266,22 +692,31 @@ internal static class ConvertCommand
         {
             return;
         }
-        string? sidecar = item.Source.File.Kind.FromTscn ? item.Output + ".uid" : null;
+        string? target = WriteTarget(item, invocation.Error);
+        if (target is null)
+        {
+            WriteFailed(item, tally);
+            return;
+        }
+        string? sidecar = item.Source.File.Kind.FromTscn ? target + ".uid" : null;
         byte[]? sidecarBefore = null;
         if (sidecar is not null && !TryPlaceSidecar(sidecar, converted.SidecarUid, invocation.Error, out sidecarBefore))
         {
             WriteFailed(item, tally);
             return;
         }
-        if (!InputFiles.TryWrite(item.Output, converted.Text, invocation.Error))
+        if (!InputFiles.TryWrite(target, converted.Text, invocation.Error))
         {
             // The sidecar belongs to the output that was not written, so it goes back to what it was.
             RestoreSidecar(sidecar, sidecarBefore, invocation.Error);
             WriteFailed(item, tally);
             return;
         }
-        invocation.Output.WriteLine($"{item.Source.File.Path} -> {item.Output}");
-        tally.Converted++;
+        if (item.Staged is null)
+        {
+            invocation.Output.WriteLine($"{item.Source.File.Path} -> {item.Output}");
+            tally.Converted++;
+        }
         item.Written = true;
         item.WrittenText = converted.Text;
     }
@@ -384,9 +819,10 @@ internal static class ConvertCommand
     // References to the files this run converts, in the scenes, resources, scripts and project.godot it does not write. A
     // source it could not convert, refused or could not write is not written either, so it is scanned like any other
     // file; its output is not in the map, since the run did not convert it.
-    private static void Scan(List<Planned> planned, Tally tally, InvocationConfiguration invocation)
+    // A file in alsoSkip was already reported and is not read again.
+    private static void Scan(List<Planned> planned, Tally tally, InvocationConfiguration invocation, IEnumerable<string> alsoSkip)
     {
-        var skip = new HashSet<string>(InputFiles.PathComparer);
+        var skip = new HashSet<string>(alsoSkip.Select(Path.GetFullPath), InputFiles.PathComparer);
         var roots = new Dictionary<string, Dictionary<string, string>>(InputFiles.PathComparer);
         foreach (Planned item in planned)
         {
@@ -490,6 +926,85 @@ internal static class ConvertCommand
         return false;
     }
 
+    private static string OutputOf(Source source) => Path.ChangeExtension(source.File.Path, source.File.Kind.OutputExtension);
+
+    // Why a source is not converted, or null. Converting both files of a pair in one run would swap them, and two
+    // sources with one output would write over each other, so none of them is converted.
+    private static string? Refusal(Source source, string outputPath, HashSet<string> inputs, bool sharedOutput, Tally tally)
+    {
+        if (inputs.Contains(Path.GetFullPath(outputPath)))
+        {
+            return $"{outputPath} is also being converted";
+        }
+        return sharedOutput ? $"another source also converts to {outputPath}" : DiskRefusal(source, outputPath, tally);
+    }
+
+    // An existing output is refused without --force. A project run also refuses, even with --force, a folder where the
+    // output or its sidecar goes and a read-only or unresolvable file among those it replaces or removes, which it would
+    // otherwise find only after outputs had moved in; a plain run reports those as write errors.
+    private static string? DiskRefusal(Source source, string outputPath, Tally tally)
+    {
+        string? sidecar = source.File.Kind.FromTscn ? outputPath + ".uid" : null;
+        string? existing = FirstExisting(outputPath, sidecar);
+        if (existing is not null && !tally.Overwrite)
+        {
+            return $"{existing} exists (use --force)";
+        }
+        return tally.Project ? ProjectDiskRefusal(source.File.Path, outputPath, sidecar) : null;
+    }
+
+    private static string? ProjectDiskRefusal(string sourcePath, string outputPath, string? sidecar)
+    {
+        string? folder = new[] { outputPath, sidecar }.FirstOrDefault(Directory.Exists);
+        if (folder is not null)
+        {
+            return $"{folder} is a folder";
+        }
+        return new[] { sourcePath, sourcePath + ".uid", outputPath, sidecar }.Select(EntryRefusal).FirstOrDefault(refusal => refusal is not null);
+    }
+
+    // Why a file the move or the delete acts on refuses its source, or null. Both act on a link itself, so a link is
+    // judged by its own attribute; one that cannot be followed to its final target, a loop among them, is refused too.
+    private static string? EntryRefusal(string? path)
+    {
+        if (path is null)
+        {
+            return null;
+        }
+        try
+        {
+            var info = new FileInfo(path);
+            if (info.LinkTarget is not null)
+            {
+                info.ResolveLinkTarget(returnFinalTarget: true);
+            }
+            return IsReadOnlyEntry(path) ? $"{path} is read-only" : null;
+        }
+        catch (IOException)
+        {
+            return $"{path} cannot be resolved";
+        }
+    }
+
+    private static bool IsReadOnlyEntry(string path)
+    {
+        var info = new FileInfo(path);
+        return info.Exists && info.Attributes.HasFlag(FileAttributes.ReadOnly);
+    }
+
+    // An edit writes through a link, and a link's own attribute says nothing of the file a write lands in, so a link is
+    // judged by its final target.
+    private static bool IsReadOnlyTarget(string path)
+    {
+        var info = new FileInfo(path);
+        if (!info.Exists)
+        {
+            return false;
+        }
+        FileSystemInfo target = info.LinkTarget is null ? info : info.ResolveLinkTarget(returnFinalTarget: true) ?? info;
+        return target.Exists && target.Attributes.HasFlag(FileAttributes.ReadOnly);
+    }
+
     private static string? FirstExisting(string output, string? sidecar)
     {
         if (File.Exists(output))
@@ -591,6 +1106,45 @@ internal static class ConvertCommand
         public string WrittenText { get; set; } = "";
 
         public bool WriteFailed { get; set; }
+
+        // Where a project run writes the output before moving it into place; null in a plain run.
+        public string? Staged { get; set; }
+    }
+
+    private sealed record ConvertOptions(
+        Argument<string[]> Paths,
+        Option<string> Metadata,
+        Option<bool> Force,
+        Option<string> Project,
+        Option<bool> Back,
+        Option<bool> NoBackup
+    );
+
+    // A --project run's root, as a full path with no trailing separator, and whether it keeps a backup.
+    private sealed record ProjectSettings(string Root, bool NoBackup, bool Back);
+
+    // A file a project run edits: its bytes after the edit, the bytes the edit was made from, and how many literals changed.
+    private sealed record ScriptEdit(string Path, byte[] Bytes, byte[] Original, int Rewritten);
+
+    // A project run's settings, counts and streams, and the folders it made.
+    private sealed class ProjectRun(ProjectSettings settings, Tally tally, InvocationConfiguration invocation)
+    {
+        public string Root => settings.Root;
+
+        public bool NoBackup => settings.NoBackup;
+
+        public bool Back => settings.Back;
+
+        // The scripts warned as not UTF-8, which the reference scan then leaves alone.
+        public List<string> NotUtf8 { get; } = [];
+
+        public Tally Tally { get; } = tally;
+
+        public InvocationConfiguration Invocation { get; } = invocation;
+
+        public string? Staging { get; set; }
+
+        public string? Backup { get; set; }
     }
 
     // The text to write, and for a .xscn or .xres the uid its .uid sidecar holds (null for none).
@@ -600,6 +1154,8 @@ internal static class ConvertCommand
     private sealed class Tally
     {
         public bool Overwrite { get; init; }
+
+        public bool Project { get; init; }
 
         public int Converted { get; set; }
 

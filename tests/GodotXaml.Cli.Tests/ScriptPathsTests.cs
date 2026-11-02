@@ -171,6 +171,28 @@ public sealed class ScriptPathsTests
     }
 
     [Fact]
+    public void RewriteLeavesARawInterpolatedLiteralWhenTheValueHoldsABrace()
+    {
+        const string Text = "$\"\"\"res://x.tscn\"\"\"";
+
+        ScriptRewrite rewrite = ScriptPaths.Rewrite(Text, ScriptKind.CSharp, Renaming("res://{a}.xscn"));
+
+        Assert.Equal(Text, rewrite.Text);
+        Assert.Equal(ScriptHitKind.Whole, Assert.Single(rewrite.Left).Kind);
+    }
+
+    [Fact]
+    public void RewriteLeavesARawGdScriptLiteralWhenTheValueEndsInABackslash()
+    {
+        const string Text = "r\"res://x.tscn\"";
+
+        ScriptRewrite rewrite = ScriptPaths.Rewrite(Text, ScriptKind.GdScript, Renaming("res://a\\"));
+
+        Assert.Equal(Text, rewrite.Text);
+        Assert.Equal(ScriptHitKind.Whole, Assert.Single(rewrite.Left).Kind);
+    }
+
+    [Fact]
     public void RewriteDoublesAQuoteInAVerbatimLiteral() =>
         Assert.Equal("@\"res://a\"\"b.xscn\"", ScriptPaths.Rewrite("@\"res://x.tscn\"", ScriptKind.CSharp, Renaming("res://a\"b.xscn")).Text);
 

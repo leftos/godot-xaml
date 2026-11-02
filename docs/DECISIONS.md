@@ -219,6 +219,16 @@ The later versions above sit in no release. Everything godot-xaml needs from god
 
 From the first release, every repo that uses godot-xaml files each friction (a conversion that comes out wrong, a load error, an editor save that changes a scene it should not, a tooling gap) as a GitHub issue on `leftos/godot-xaml`, one per friction, naming the version, what happened against what was expected, and the workaround, as godot-mcp's friction rule does. The repo is public, so a private project's scene goes in as a minimal repro, never pasted whole.
 
+## A project conversion is all or nothing, and backs up what it removes
+
+`godot-xaml convert --project <root>` converts both ways: forward (`.tscn`/`.tres` to `.xscn`/`.xres`) by default, and back with `--back`, each rewriting references, scripts and `project.godot` the same way.
+
+It skips `addons/` (third-party addon scenes stay as they are, and references to them are left alone), `.godot/`, every folder whose name starts with `.`, and every folder holding a `.gdignore` file. There is no flag to include `addons/`.
+
+It always backs up what it removes or edits, unless the user passes `--nobackup`. The backup is a folder under the root, not the Recycle Bin, since the bin cannot meet "always": Windows silently deletes a file it cannot recycle and other systems have no bin.
+
+It is all or nothing. The outputs are written to a hidden staging folder first. If any source fails, the staging folder is deleted and the project is left exactly as it was, with every error listed in that run. Only when every source converts are the originals backed up, the outputs moved in, the scripts and `project.godot` edited, and the originals removed. A failure after the first move is reported as a part-converted project, naming the backup to restore from; there is no automatic rollback.
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.

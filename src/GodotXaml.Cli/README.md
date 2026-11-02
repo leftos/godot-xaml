@@ -38,6 +38,7 @@ The exit code is 0 when no file has an error, 1 when one does, and 2 for a usage
 
 ```sh
 godot-xaml convert <path>... [--force] [--metadata <file>]
+godot-xaml convert --project <root> [--back] [--nobackup] [--force] [--metadata <file>]
 ```
 
 Each path is a `.tscn`, `.tres`, `.xscn` or `.xres` file, or a folder searched recursively for all four. Each file is converted the other way (`.tscn` to `.xscn`, `.tres` to `.xres`, and back) and written beside its source, which stays:
@@ -83,6 +84,27 @@ A problem with a file is one line, and that file is not written: a `.tscn` the r
 ```
 
 The exit code is 0 when every file converted, 1 when one had an error or was refused, and 2 for a usage error, a file that cannot be read or written, or a `godot-xaml.json` that is not valid.
+
+### Converting a whole project
+
+`--project <root>` converts every `.tscn` and `.tres` under the root to `.xscn` and `.xres`, or with `--back` every `.xscn` and `.xres` to `.tscn` and `.tres`, rewriting references the same way both ways. It takes no paths, and `--back` and `--nobackup` are valid only with it. Unlike a plain run, it also edits the scripts and `project.godot`, and removes the originals.
+
+The walk skips `<root>/addons` (the root's own only; there is no flag to include it), `.godot/` and every other folder whose name starts with `.`, every folder holding a `.gdignore`, a folder with its own `project.godot`, `bin` and `obj` beside a `.csproj`, and folder links and junctions. The script walk skips the same folders.
+
+The run is all or nothing, in this order:
+
+1. Plan and stage: every refusal and conversion is checked first, and each output (with its `.uid`) is written to `<root>/.godot-xaml-staging/<stamp>-<8 hex>/`, which is removed when the run ends.
+2. If any source failed, nothing else happens: the project is as it was, every error is listed, and the run prints `{root}: warning GXP0007: nothing changed: {n} source(s) were not converted; the project is as it was` and exits 1 (2 on an I/O failure in the plan).
+3. Otherwise the originals are backed up to `<root>/.godot-xaml-backup/<UTC yyyyMMdd-HHmmss>[-N]/`, each at its path under the root, together with their `.uid` files, each script or `project.godot` to be edited and each output `--force` overwrites, unless `--nobackup`. The line is `{n} file(s) backed up to {folder}`.
+4. Each staged output moves into place (`{source} -> {output}`), each script and `project.godot` that names a converted file is edited (`{path}: {n} path(s) rewritten`), and the originals and their `.uid` files are removed (`{n} original(s) removed`). The reference scan then runs.
+
+The plan refuses, with nothing changed: a read-only source, `.uid` or overwritten output, judged by a link's own attribute, since the move and delete act on the link; a read-only script, judged by a link's target, since the edit writes through it; a link that cannot be followed (`{source}: {path} cannot be resolved`); a folder at an output path, even with `--force`; two sources with one output (`{source}: another source also converts to {output}`, in a plain run too); and a script that cannot be read. A script that is not UTF-8 is warned about (`warning GXP0008`: `not UTF-8 text; not scanned or edited`) and the run goes on. A raw interpolated C# literal whose new value holds a brace, and a GDScript `r"…"` whose new value ends in `\`, are left as they are and warned about as `GXP0002`. `GXP0003` is never printed in a project run.
+
+A failure after the first move stops the run at that step, skips the reference scan and exits 2, with one of these on stderr: `{root}: the project is part converted; restore it from {backup folder}`, or, under `--nobackup`, `{root}: the project is part converted, and --nobackup kept no copy`. Nothing is rolled back.
+
+A project with no files to convert prints `{root}: no .tscn or .tres files to convert` (`.xscn or .xres` with `--back`), then the summary line, and exits 0 with no backup made.
+
+Usage errors, all exit 2: `convert needs a path or --project.`, `--project takes no paths.`, `--back needs --project.`, `--nobackup needs --project.`, and `{root}: no project.godot in this folder.`
 
 ## Format
 

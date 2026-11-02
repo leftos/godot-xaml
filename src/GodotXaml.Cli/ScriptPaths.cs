@@ -215,7 +215,7 @@ internal static class ScriptPaths
         {
             LiteralForm.Regular => EscapedRegular(hit.Value, quote),
             LiteralForm.Verbatim => DoubledQuotes(hit.Value),
-            LiteralForm.Raw => AsRaw(hit.Value, quote),
+            LiteralForm.Raw => kind == ScriptKind.GdScript ? AsGdScriptRaw(hit.Value, quote) : AsRaw(hit.Value, quote),
             _ => Interpolated(text, literal, hit.Value),
         };
         return spelled is not null && HasAutoloadStar(literal, kind) ? "*" + spelled : spelled;
@@ -230,19 +230,19 @@ internal static class ScriptPaths
 
     private static string? AsRaw(string value, char quote) => value.Contains(quote, StringComparison.Ordinal) ? null : value;
 
-    // Only a literal with no hole reaches here, so its braces are all text.
+    // In a GDScript raw string a backslash still keeps the quote after it from closing the string.
+    private static string? AsGdScriptRaw(string value, char quote) => value.EndsWith('\\') ? null : AsRaw(value, quote);
+
+    // Only a literal with no hole reaches here, so its braces are all text. A raw interpolated literal spells a literal
+    // brace by its count of dollar signs, not by doubling, so a value with a brace is left.
     private static string? Interpolated(string text, ScriptLiteral literal, string value)
     {
-        string? spelled;
         if (literal.QuoteCount >= ScriptLexers.RawQuoteCount)
         {
-            spelled = AsRaw(value, '"');
+            return value.AsSpan().ContainsAny('{', '}') ? null : AsRaw(value, '"');
         }
-        else
-        {
-            spelled = HasVerbatimPrefix(text, literal.Quote) ? DoubledQuotes(value) : EscapedRegular(value, '"');
-        }
-        return spelled?.Replace("{", "{{", StringComparison.Ordinal).Replace("}", "}}", StringComparison.Ordinal);
+        string spelled = HasVerbatimPrefix(text, literal.Quote) ? DoubledQuotes(value) : EscapedRegular(value, '"');
+        return spelled.Replace("{", "{{", StringComparison.Ordinal).Replace("}", "}}", StringComparison.Ordinal);
     }
 
     // True for $@" and @$", the two spellings of a verbatim interpolated literal.
