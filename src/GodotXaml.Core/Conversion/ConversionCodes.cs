@@ -31,6 +31,36 @@ public static class ConversionCodes
     public const string UnknownClass = "GXC0008";
 
     /// <summary>
+    /// A <c>[node]</c> whose <c>parent=</c> names no earlier node, a node after the first with no <c>parent=</c>, or a node
+    /// with neither <c>type</c> nor <c>instance</c> outside any instance; it and its subtree are not converted.
+    /// </summary>
+    public const string NodeParentNotFound = "GXC0009";
+
+    /// <summary>
+    /// An <c>instance=</c> that is not <c>ExtResource("id")</c> of an existing section; the node and its subtree are not
+    /// converted, and a <c>Node</c> stands in for a root.
+    /// </summary>
+    public const string InstanceNotAScene = "GXC0010";
+
+    /// <summary>A second child of one parent with the same name; the later one is not converted.</summary>
+    public const string RepeatedSiblingName = "GXC0011";
+
+    /// <summary>A <c>[connection]</c> whose <c>from</c> names no node, inside or outside an instance; it is not converted.</summary>
+    public const string ConnectionEmitterNotFound = "GXC0012";
+
+    /// <summary>An <c>[editable]</c> whose <c>path</c> names no node; it is not converted.</summary>
+    public const string EditableNotFound = "GXC0013";
+
+    /// <summary>A scene with no <c>[node]</c>, or whose first one has neither a type nor a scene; a <c>Node</c> stands in for the root.</summary>
+    public const string RootNotConvertible = "GXC0014";
+
+    /// <summary>
+    /// A node with both <c>instance=</c> and <c>instance_placeholder=</c>; Godot loads it as a placeholder, so
+    /// <c>instance=</c> is dropped.
+    /// </summary>
+    public const string InstanceAndPlaceholder = "GXC0015";
+
+    /// <summary>
     /// A file whose class neither the host, the table by extension nor the property using it gives; its
     /// <c>[ext_resource]</c> says <c>type="Resource"</c>.
     /// </summary>

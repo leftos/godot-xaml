@@ -7,8 +7,9 @@ using GodotXaml.Core.Xscn;
 namespace GodotXaml.Core.Conversion;
 
 /// <summary>
-/// Converts a .tscn or .tres model to an .xscn or .xres model. An ext_resource becomes its path where it is used, a
-/// sub_resource used once as a bare property value goes inline and any other one into <c>x:Resources</c>; ids, the
+/// Converts a .tscn or .tres model to an .xscn or .xres model, a scene's nodes nested as their parent paths say and its
+/// connections on their emitters. An ext_resource becomes its path where it is used; a sub_resource used once as a bare
+/// value of a property a property element can hold goes inline, and any other one into <c>x:Resources</c>. Ids, the
 /// header's <c>format</c>, <c>script_class</c> and <c>uid</c> are not kept (DECISIONS.md, "Where the rest of a .tscn
 /// goes"). What the .xscn cannot hold is reported as an issue, never thrown.
 /// </summary>
@@ -24,13 +25,8 @@ public static partial class TscnToXscn
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(options);
-        if (document.Kind != TscnKind.Resource)
-        {
-            throw new NotSupportedException("Converting a scene (.tscn) to .xscn is not supported.");
-        }
-
         var context = new Context(document, metadata);
-        XscnDocument converted = context.ConvertResource();
+        XscnDocument converted = document.Kind == TscnKind.Scene ? context.ConvertScene() : context.ConvertResource();
         return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids() };
     }
 
@@ -46,7 +42,12 @@ public static partial class TscnToXscn
             this.document = document;
             this.metadata = metadata;
             ReportExtra(document);
-            references = TscnReferences.Analyze(document, Issues);
+            XscnPropertyNames names = XscnParser.NamesOf(metadata);
+            references = TscnReferences.Analyze(
+                document,
+                Issues,
+                (cls, name) => names.AttributeName(cls is null ? null : metadata.FindClass(cls), name) is not null
+            );
         }
 
         public List<ConversionIssue> Issues { get; } = [];

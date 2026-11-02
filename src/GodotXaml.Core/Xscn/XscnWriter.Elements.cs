@@ -78,7 +78,7 @@ public static partial class XscnWriter
             HashSet<string> reserved = [.. head.Select(a => a.Name), ScriptAttribute];
             List<PropertyOut> properties = Properties(
                 element.Properties,
-                new PropertyOwner(tag, cls, reserved, element is XscnNode, parentIsContainer)
+                new PropertyOwner(tag, cls, reserved, element is XscnNode, parentIsContainer, element.InstancePlaceholder is not null)
             );
             reserved.UnionWith(properties.Select(p => p.Attribute?.Name).OfType<string>());
             (List<XmlAttr> signals, List<XscnConnection> connects) = SplitConnections(element, cls, reserved);
@@ -106,7 +106,7 @@ public static partial class XscnWriter
             string tag = TypeName(resource.Type);
             List<PropertyOut> properties = Properties(
                 resource.Properties,
-                new PropertyOwner(tag, ClassOf(resource.Type), ResourceReserved, false, false)
+                new PropertyOwner(tag, ClassOf(resource.Type), ResourceReserved, false, false, false)
             );
             List<XmlAttr> key = resource.Key is { } value ? [new XmlAttr(FormatPrefix + ":Key", value)] : [];
             List<XmlAttr> attributes = [.. RootAttributes(isRoot), .. key, .. OrderedAttributes(properties, [])];

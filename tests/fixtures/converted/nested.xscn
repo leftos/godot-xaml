@@ -1,0 +1,8 @@
+<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="328417481">
+  <Node2D Name="A" Position="4, 2" x:UniqueId="2045403667">
+    <Node Name="B" x:UniqueId="352249410">
+      <Node Name="C" x:UniqueId="127997354" />
+    </Node>
+  </Node2D>
+  <Node Name="D" x:UniqueId="433799269" />
+</Node>

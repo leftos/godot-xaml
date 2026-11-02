@@ -1,0 +1,16 @@
+<Node
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    xmlns:cases="res://cases/"
+    Name="Root"
+    x:UniqueId="1300837998">
+  <x:Instance
+      Name="Inst"
+      Scene="res://cases/nested.tscn"
+      ProcessPriority="7"
+      x:Editable="True"
+      x:UniqueId="328417481">
+    <x:Override Path="A" Position="Vector2(9, 9)" x:Index="0" x:UniqueId="2045403667">
+      <Node Name="Added" x:Index="1" x:UniqueId="1957543159" />
+    </x:Override>
+  </x:Instance>
+</Node>

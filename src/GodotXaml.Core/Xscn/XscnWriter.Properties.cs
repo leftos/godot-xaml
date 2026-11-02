@@ -59,7 +59,15 @@ public static partial class XscnWriter
     /// <param name="Reserved">The attribute names the element uses for something other than a property.</param>
     /// <param name="IsNode">Whether the element is a node, whose attributes may name signals.</param>
     /// <param name="ParentIsContainer">Whether the element is a node whose parent is a Container.</param>
-    private sealed record PropertyOwner(string Tag, GodotClassInfo? Class, IReadOnlySet<string> Reserved, bool IsNode, bool ParentIsContainer);
+    /// <param name="IsPlaceholder">Whether the element is an instance placeholder, whose properties Godot saves against the instanced scene.</param>
+    private sealed record PropertyOwner(
+        string Tag,
+        GodotClassInfo? Class,
+        IReadOnlySet<string> Reserved,
+        bool IsNode,
+        bool ParentIsContainer,
+        bool IsPlaceholder
+    );
 
     /// <summary>A property as written: an attribute, or the items of a property element or an <c>x:Prop</c>.</summary>
     /// <param name="GodotName">The property's Godot name, which orders the elements.</param>
@@ -98,10 +106,11 @@ public static partial class XscnWriter
                 : PropForm(owner.Tag, property, UntypedText(property.Value));
 
         // A scalar equal to the class's own default, and a scalar layout_mode under a Container, which the parent decides;
-        // never on an element whose class is not known, for the script, or where comments would be lost.
+        // never on an element whose class is not known, on a placeholder (saved against the instanced scene's state,
+        // packed_scene.cpp:833-845), for the script, or where comments would be lost.
         private bool Omitted(PropertyOwner owner, XscnProperty property)
         {
-            if (owner.Class is not { } cls || !MayOmit(property) || property.Value is not XscnScalar scalar)
+            if (owner.Class is not { } cls || !MayOmit(owner, property) || property.Value is not XscnScalar scalar)
             {
                 return false;
             }
@@ -114,8 +123,8 @@ public static partial class XscnWriter
             return metadata.FindDefault(cls, property.GodotName) is { } fallback && GodotText(fallback.Value) == GodotText(scalar.Value);
         }
 
-        private static bool MayOmit(XscnProperty property) =>
-            property.GodotName != ScriptName && property.LeadingComments.IsEmpty && property.TrailingComments.IsEmpty;
+        private static bool MayOmit(PropertyOwner owner, XscnProperty property) =>
+            !owner.IsPlaceholder && property.GodotName != ScriptName && property.LeadingComments.IsEmpty && property.TrailingComments.IsEmpty;
 
         // An attribute when its name reads back as this property; x:Prop when it would not, or to keep the comments around it,
         // which a start tag has no room for.

@@ -596,6 +596,24 @@ public sealed class XscnWriterTests
         Assert.Contains("x:Groups", error.Message, StringComparison.Ordinal);
     }
 
+    // Godot saves a placeholder's properties against the instanced scene (packed_scene.cpp:833-845), so the class default
+    // is no reason to leave one out.
+    [Fact]
+    public void PlaceholderKeepsAPropertyEqualToTheClassDefault()
+    {
+        var later = new XscnNode
+        {
+            Type = ClassType("InstancePlaceholder"),
+            Name = "Later",
+            InstancePlaceholder = "res://later.tscn",
+            Properties = [new XscnProperty("process_mode", new XscnScalar(new GodotInt(0)))],
+        };
+
+        string written = XscnWriter.Write(SceneOf(Root("Node") with { Children = [later] }), Real);
+
+        Assert.Contains("ProcessMode=", written, StringComparison.Ordinal);
+    }
+
     // Parses, writes, and parses the written text again: the re-read has no diagnostic and writes the same text.
     private static XscnDocument RewriteStably(string text)
     {

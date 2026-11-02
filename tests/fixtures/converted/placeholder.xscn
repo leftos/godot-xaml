@@ -1,0 +1,6 @@
+<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="974068946">
+  <InstancePlaceholder
+      Name="Later"
+      x:InstancePlaceholder="res://cases/lone_root.tscn"
+      x:UniqueId="841232467" />
+</Node>

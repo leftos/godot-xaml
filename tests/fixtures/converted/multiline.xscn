@@ -1,0 +1,8 @@
+<Node
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Name="Root"
+    EditorDescription='first line&#10;second "quoted" line'
+    Metadata.table='{&#10;"a": [1, 2],&#10;"b": 2,&#10;"c": {&#10;"nested": true&#10;}&#10;}'
+    x:UniqueId="137123633">
+  <Node Name="After" EditorDescription="one line" x:UniqueId="1226013350" />
+</Node>

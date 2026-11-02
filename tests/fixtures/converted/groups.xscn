@@ -1,0 +1,3 @@
+<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="119704589">
+  <Node Name="Child" x:Groups="alpha, zeta" x:UniqueId="75316238" />
+</Node>

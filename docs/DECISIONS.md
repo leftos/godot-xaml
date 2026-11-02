@@ -84,7 +84,7 @@ Any other receiver, non-default flags, binds or unbinds use an element on the em
 
 ## Shared sub-resources live in an `x:Resources` table
 
-A sub-resource used once is written inline, as a property element. One used by several properties, or referenced from inside Godot value text (an array or dictionary), sits in an `<x:Resources>` table at the top of the root with an `x:Key`, like XAML's resource dictionaries. An attribute refers to it as `{Key}`; Godot value text refers to it as `SubResource("Key")`. Inlining a shared resource twice would make Godot load two separate objects.
+A sub-resource used once is written inline, as a property element. One used by several properties, or referenced from inside Godot value text (an array or dictionary), sits in an `<x:Resources>` table at the top of the root with an `x:Key`, like XAML's resource dictionaries. An attribute refers to it as `{Key}`; Godot value text refers to it as `SubResource("Key")`. Inlining a shared resource twice would make Godot load two separate objects. A resource used once on a property that has no attribute name, and so no property element (a Theme's `Button/styles/normal`, a key that is not an XML name), sits in the table too, referenced from `<x:Prop>`.
 
 ## Canonical attribute order: Name, Script, then alphabetical
 
@@ -112,7 +112,7 @@ Nine integer properties carry an enum-style hint with no C# enum behind it (`lay
 - An inherited scene is a root element whose tag names a scene (`<c:Modal …>` at the root); no marker, since a root cannot be an instance.
 - `Script="res://…"` is an attribute, as the inspector shows it.
 - Groups are `x:Groups="a, b"`, sorted as Godot sorts them.
-- A node's `index`, a non-root `owner`, `instance_placeholder`, `node_paths` and 4.7's `parent_id_path`, `owner_uid_path`, `from_uid_path` and `to_uid_path` are kept as `x:` attributes (`x:Index`, `x:Owner`, `x:InstancePlaceholder`, `x:NodePaths`, …), written only where the `.tscn` has them, so a conversion without a running Godot round-trips.
+- A node's `index`, a non-root `owner`, `instance_placeholder`, `node_paths` and 4.7's `parent_id_path`, `owner_uid_path`, `from_uid_path` and `to_uid_path` are kept as `x:` attributes (`x:Index`, `x:Owner`, `x:InstancePlaceholder`, `x:NodePaths`, …), written only where the `.tscn` has them, so a conversion without a running Godot round-trips. An instance placeholder, which a `.tscn` writes with no `type`, is an `<InstancePlaceholder>` element holding `x:InstancePlaceholder="res://…"`, the class Godot builds it as; its properties are never dropped as defaults, since Godot saves them against the instanced scene.
 - Not stored: `load_steps` (4.7.2 no longer writes it), `format` (chosen again on conversion back), `script_class` (it follows from the script), and `ext_resource` and `sub_resource` ids (references are paths and keys; ids are made again on conversion back). The scene's own uid lives in its `.uid` sidecar.
 
 ## The metadata file

@@ -374,6 +374,32 @@ public sealed partial class ResourceConversionTests
         Assert.Equal(("res://a.png", "uid://b1x2y3"), (ext.Path, ext.Uid));
     }
 
+    // A Theme's type properties (Button/styles/normal) have no attribute name, so no property element can hold an
+    // inline resource there: a resource used once by one goes into x:Resources.
+    [Fact]
+    public void ThemeTypePropertyWithAOnceUsedResourceGoesToTheTable()
+    {
+        const string text = """
+            [gd_resource type="Theme" format=3]
+
+            [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b1234"]
+            bg_color = Color(1, 0, 0, 1)
+
+            [resource]
+            Button/styles/normal = SubResource("StyleBoxFlat_b1234")
+
+            """;
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(TscnReader.Read(text), Metadata, Options);
+        Assert.Empty(forward.Issues);
+
+        Assert.Equal("StyleBoxFlat1", Assert.Single(forward.Document.Resources).Key);
+        Assert.Equal(new XscnKeyRef("StyleBoxFlat1"), Assert.Single(RootProperties(forward.Document)).Value);
+        string written = XscnWriter.Write(forward.Document, Metadata);
+        XscnParseResult parsed = XscnParser.Parse(written, XscnDocumentKind.Resource, Metadata);
+        Assert.Empty(parsed.Diagnostics);
+        Assert.Equal(written, XscnWriter.Write(parsed.Document, Metadata));
+    }
+
     // Converts the text to an XscnDocument with no issue and back, once with the forward ids, which must write the text
     // again, and once with new ids, which must write it again but for the ids; returns the XscnDocument.
     private static XscnDocument ForwardAndBack(string text)

@@ -1,0 +1,22 @@
+<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="1060821705">
+  <Node Name="Emitter" x:UniqueId="648309840">
+    <x:Connect
+        Signal="ChildEnteredTree"
+        To="Receiver"
+        Method="update_configuration_warnings"
+        Unbinds="1" />
+    <x:Connect
+        Signal="Ready"
+        To="Receiver"
+        Method="update_configuration_warnings"
+        Flags="OneShot" />
+    <x:Connect Signal="Renamed" To="Receiver" Method="update_configuration_warnings" />
+    <x:Connect Signal="TreeEntered" To="Receiver" Method="set_process" Binds="[true]" />
+    <x:Connect
+        Signal="TreeExited"
+        To="Receiver"
+        Method="update_configuration_warnings"
+        Flags="Deferred" />
+  </Node>
+  <Node Name="Receiver" x:UniqueId="1734189678" />
+</Node>

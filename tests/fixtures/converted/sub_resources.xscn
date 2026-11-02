@@ -1,0 +1,16 @@
+<Node2D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="944498477">
+  <x:Resources>
+    <CanvasItemMaterial x:Key="CanvasItemMaterial1" LightMode="Unshaded" />
+  </x:Resources>
+  <Sprite2D Name="One" x:UniqueId="616929792">
+    <Sprite2D.Texture>
+      <GradientTexture2D Width="8">
+        <GradientTexture2D.Gradient>
+          <Gradient Colors="PackedColorArray(1, 0, 0, 1, 0, 0, 1, 1)" />
+        </GradientTexture2D.Gradient>
+      </GradientTexture2D>
+    </Sprite2D.Texture>
+  </Sprite2D>
+  <Sprite2D Name="Two" Material="{CanvasItemMaterial1}" x:UniqueId="217975505" />
+  <Sprite2D Name="Three" Material="{CanvasItemMaterial1}" x:UniqueId="350658218" />
+</Node2D>

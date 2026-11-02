@@ -22,8 +22,13 @@ internal sealed class TscnReferences
     private readonly HashSet<string> onCycle = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> keys = new(StringComparer.Ordinal);
     private readonly List<ConversionIssue> issues;
+    private readonly Func<string?, string, bool> canInline;
 
-    private TscnReferences(List<ConversionIssue> issues) => this.issues = issues;
+    private TscnReferences(List<ConversionIssue> issues, Func<string?, string, bool> canInline)
+    {
+        this.issues = issues;
+        this.canInline = canInline;
+    }
 
     /// <summary>The ext_resources something refers to, in file order.</summary>
     public IEnumerable<TscnExtResource> UsedExtResources => extResources.Where(ext => usedExt.Contains(ext.Id));
@@ -37,10 +42,15 @@ internal sealed class TscnReferences
     /// </summary>
     /// <param name="document">The document.</param>
     /// <param name="issues">Where issues go.</param>
+    /// <param name="canInline">
+    /// Whether a property element can hold a resource set on a property: given the owning section's class (null for a node
+    /// with no type, an instance or an override) and the property's Godot name. A bare reference on a property that cannot
+    /// is counted as one inside value text, so its sub_resource goes into <c>x:Resources</c>.
+    /// </param>
     /// <returns>The references.</returns>
-    public static TscnReferences Analyze(TscnDocument document, List<ConversionIssue> issues)
+    public static TscnReferences Analyze(TscnDocument document, List<ConversionIssue> issues, Func<string?, string, bool> canInline)
     {
-        var references = new TscnReferences(issues);
+        var references = new TscnReferences(issues, canInline);
         references.Index(document);
         references.Count(document);
         references.ReportUnused();
@@ -110,10 +120,10 @@ internal sealed class TscnReferences
     {
         foreach (TscnSubResource sub in subResources)
         {
-            CountProperties(sub.Properties, sub.Id, $"[sub_resource id=\"{sub.Id}\"]");
+            CountProperties(sub.Properties, sub.Type, sub.Id, $"[sub_resource id=\"{sub.Id}\"]");
         }
 
-        CountProperties(document.ResourceProperties, null, "[resource]");
+        CountProperties(document.ResourceProperties, document.Header.Type, null, "[resource]");
         foreach (TscnNode node in document.Nodes)
         {
             string location = $"[node name=\"{node.Name}\"]";
@@ -122,7 +132,7 @@ internal sealed class TscnReferences
                 ValueReferences.Visit(instance, reference => Note(reference, null, false, location));
             }
 
-            CountProperties(node.Properties, null, location);
+            CountProperties(node.Properties, node.Type, null, location);
         }
 
         foreach (TscnConnection connection in document.Connections)
@@ -135,11 +145,11 @@ internal sealed class TscnReferences
         }
     }
 
-    private void CountProperties(ImmutableArray<TscnProperty> properties, string? from, string location)
+    private void CountProperties(ImmutableArray<TscnProperty> properties, string? ownerClass, string? from, string location)
     {
         foreach (TscnProperty property in properties)
         {
-            bool bare = property.Value is GodotResourceRef;
+            bool bare = property.Value is GodotResourceRef && canInline(ownerClass, property.Name);
             ValueReferences.Visit(property.Value, reference => Note(reference, from, bare, location));
         }
     }

@@ -1,0 +1,9 @@
+<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="784806209">
+  <Node
+      Name="Holder"
+      Script="res://holder.gd"
+      target='NodePath("../Target")'
+      x:NodePaths="target"
+      x:UniqueId="1536725368" />
+  <Node Name="Target" x:UniqueId="1544414068" />
+</Node>
