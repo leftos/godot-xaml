@@ -50,6 +50,10 @@ Every other value is written as Godot's own value text, exactly as a `.tscn` hol
 
 The property's type decides how its text is read, never the text's first character. A property the metadata types as `String` or `StringName` is always literal text, so `Text="[b]Bold[/b]"` and `Text="{0} items"` need no escape. A property with no known type (a script property, or one Godot declares as any Variant) is always Godot value text, its strings quoted (`Title='"[Esc] to close"'`).
 
+On an element whose class the core cannot know without opening another file (an instanced scene, `<x:Override>`), a property is typed by its C# name across every Godot class: when every class that has the name agrees on its type and enum, the value is compact text (`AnchorsPreset="FullRect"`, `CustomMinimumSize="640, 0"`); when they disagree (`Position`, `Size`, `Mode`), it is Godot value text (`Position="Vector2(10, 20)"`).
+
+Booleans are written `True` and `False` (either case is read), and a float has no trailing `.0` (`AnchorRight="1"`), as vector components already have none.
+
 ## Format elements and attributes take the `x:` prefix
 
 The default XML namespace is Godot's classes. Everything the format adds rather than Godot's property list takes the reserved `x:` prefix: the uid table (`<x:Uids>`), overrides (`<x:Override>`), and the attributes `x:Index`, `x:UniqueId`, `x:Editable` and `x:Groups`. A script property named `Index` or `Groups` therefore never clashes with them. `Name` and `Script` stay unprefixed, since they are Godot's own `name` and `script`.
