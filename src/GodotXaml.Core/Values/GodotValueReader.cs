@@ -1,7 +1,7 @@
 namespace GodotXaml.Core.Values;
 
 /// <summary>Reads Godot's value text, a port of VariantParser::parse_value (core/variant/variant_parser.cpp:677-1642).</summary>
-public static class GodotValueReader
+public static partial class GodotValueReader
 {
     // variant_parser.cpp:150-160, stor_fix: the names a constructor argument may use for a non-finite value.
     private static readonly Dictionary<string, double> NonFiniteNames = new(StringComparer.Ordinal)
@@ -12,8 +12,12 @@ public static class GodotValueReader
         ["nan"] = double.NaN,
     };
 
+    // The reference names' readers (GodotValueReader.References.cs). Declared here, above Identifiers, because
+    // BuildIdentifiers reads it and static fields initialise in textual order only within one file.
+    private static readonly Dictionary<string, Func<GodotValueLexer, GodotValue>> ReferenceNames = BuildReferenceNames();
+
     // The one dispatch point for identifiers (variant_parser.cpp:694-1622). An identifier missing here is
-    // "Unexpected identifier", as in Godot; containers, packed arrays, references and Object raise that error.
+    // "Unexpected identifier", as in Godot.
     private static readonly Dictionary<string, Func<GodotValueLexer, GodotValue>> Identifiers = BuildIdentifiers();
 
     /// <summary>Reads a whole text as one value; only whitespace and <c>;</c> comments may follow it.</summary>
@@ -62,6 +66,8 @@ public static class GodotValueReader
             GodotTokenType.Number or GodotTokenType.Color => token.Value!,
             GodotTokenType.String => new GodotString(token.Text),
             GodotTokenType.StringName => new GodotStringName(token.Text),
+            GodotTokenType.BracketOpen => new GodotArray(ReadItems(lexer), null),
+            GodotTokenType.CurlyBracketOpen => new GodotDictionary(ReadEntries(lexer), null, null),
 
             // variant_parser.cpp:1639: tk_name already quotes punctuation, so Godot's text reads got ''[''.
             _ => throw Error($"Expected value, got '{GodotValueTables.TokenName(token.Type)}'", token),
@@ -101,6 +107,9 @@ public static class GodotValueReader
             AddConstructor(parsers, ints.Value, lexer => new GodotInts(ints.Key, [.. ReadArguments(lexer, ints.Value).Select(ToInt32)]));
         }
 
+        AddContainers(parsers);
+        AddPacked(parsers);
+        AddReferences(parsers);
         return parsers;
     }
 
@@ -117,8 +126,20 @@ public static class GodotValueReader
         }
     }
 
-    // variant_parser.cpp:552-599 (_parse_construct), then the argument count check each constructor makes.
+    // The argument count check each constructor makes after _parse_construct.
     private static List<GodotValue> ReadArguments(GodotValueLexer lexer, ConstructorSpec spec)
+    {
+        List<GodotValue> arguments = ReadConstruct(lexer);
+        if (arguments.Count != spec.Arity)
+        {
+            throw lexer.Error($"Expected {spec.Arity} arguments for constructor", lexer.Position - 1);
+        }
+
+        return arguments;
+    }
+
+    // variant_parser.cpp:552-599, _parse_construct: numbers between parentheses, none at all allowed.
+    private static List<GodotValue> ReadConstruct(GodotValueLexer lexer)
     {
         Expect(lexer, GodotTokenType.ParenthesisOpen, "Expected '(' in constructor");
         var arguments = new List<GodotValue>();
@@ -133,11 +154,6 @@ public static class GodotValueReader
 
             arguments.Add(ConstructorNumber(token));
             first = false;
-        }
-
-        if (arguments.Count != spec.Arity)
-        {
-            throw lexer.Error($"Expected {spec.Arity} arguments for constructor", lexer.Position - 1);
         }
 
         return arguments;

@@ -1,0 +1,1 @@
+PackedStringArray("", "a", "nl\n quote\" backslash\\ tab\t apostrophe\'", "ellipsis… bullet• astral😀")

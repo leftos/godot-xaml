@@ -1,0 +1,1 @@
+PackedVector4Array(1, 2, 3, 4, 0.5, 0, -1, 1e+20)

@@ -152,13 +152,10 @@ public sealed class ScalarValueTests
     [InlineData("  ; only a comment", "Expected value, got 'EOF'")]
     [InlineData("#f80", "Expected value, got 'EOF'")]
     // variant_parser.cpp:130-148, 1639: tk_name quotes punctuation and the message quotes it again.
-    [InlineData("[1]", "Expected value, got ''[''")]
-    [InlineData("{}", "Expected value, got ''{''")]
     [InlineData(")", "Expected value, got '')''")]
-    [InlineData("Array[int]([])", "Unexpected identifier 'Array'")]
-    [InlineData("PackedByteArray()", "Unexpected identifier 'PackedByteArray'")]
-    [InlineData("ExtResource(\"1\")", "Unexpected identifier 'ExtResource'")]
-    [InlineData("Object(Node)", "Unexpected identifier 'Object'")]
+    [InlineData("]", "Expected value, got '']''")]
+    // variant_parser.cpp:995-1089: Object's class must be followed by a ','.
+    [InlineData("Object(Node)", "Expected ',' after object type")]
     [InlineData("-nan", "Unexpected identifier '-nan'")]
     [InlineData("Vector2", "Expected '(' in constructor")]
     [InlineData("Vector2(1,)", "Expected float in constructor")]

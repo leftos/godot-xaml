@@ -49,6 +49,51 @@ rid_id	RID(42)
 rid_empty_spaced	RID( )
 signal_spaced	Signal( )
 callable_plain	Callable()
+array_trailing_comma	[1,]
+array_nested_trailing_commas	[1, [2,],]
+array_multiline	[<LF>1,<LF>  "a" ; a comment<LF>]
+array_typed_spaced	Array[ int ]( [ 1 , 2 ] )
+array_typed_resource_class	Array[Resource]([])
+array_typed_variant	Array[Variant]([1])
+array_typed_nil	Array[Nil]([])
+dictionary_trailing_comma	{"a": 1,}
+dictionary_unsorted	{"b": 1, "a": 2, "C": 3}
+dictionary_one_line	{1: "x", "k": [], 0.5: {}}
+dictionary_duplicate_key	{"a": 1, "b": 2, "a": 3}
+dictionary_duplicate_string_name	{"a": 1, &"a": 2}
+dictionary_int_and_float_keys	{1: "int", 1.0: "float"}
+dictionary_typed_variant_value	Dictionary[String, Variant]({})
+dictionary_typed_variant_both	Dictionary[Variant, Variant]({"a": 1})
+dictionary_typed_resource_key	Dictionary[Resource, int]({})
+dictionary_typed_resource_value	Dictionary[int, Resource]({})
+packed_byte_base64	PackedByteArray("AQID")
+packed_byte_base64_empty	PackedByteArray("")
+packed_byte_wraps	PackedByteArray(256, -1, 1.9)
+packed_byte_pool	PoolByteArray(1, 2)
+packed_byte_legacy	ByteArray()
+packed_int32_alias	PackedIntArray(1, 2)
+packed_int32_pool	PoolIntArray()
+packed_int32_legacy	IntArray(3)
+packed_int32_wraps	PackedInt32Array(4294967297, 1.9)
+packed_int64_floats	PackedInt64Array(1.9, -1)
+packed_float32_alias	PackedRealArray(0.1)
+packed_float32_pool	PoolRealArray()
+packed_float32_legacy	FloatArray(2, inf_neg)
+packed_float64_spaced	PackedFloat64Array( 1 , 2.5 )
+packed_string_trailing_comma	PackedStringArray("a",)
+packed_string_pool	PoolStringArray("a", "b")
+packed_string_legacy	StringArray()
+packed_vector2_ragged	PackedVector2Array(1, 2, 3)
+packed_vector2_pool	PoolVector2Array(1, 2)
+packed_vector2_legacy	Vector2Array()
+packed_vector3_ragged	PackedVector3Array(1, 2, 3, 4)
+packed_vector3_pool	PoolVector3Array(1, 2, 3)
+packed_vector3_legacy	Vector3Array()
+packed_vector4_pool	PoolVector4Array(1, 2, 3, 4)
+packed_vector4_legacy	Vector4Array()
+packed_color_pool	PoolColorArray(1, 0, 0, 1)
+packed_color_legacy	ColorArray()
+packed_color_ragged	PackedColorArray(1, 0, 0)
 expects_error_trailing_comma	Vector2(1,)
 expects_error_wrong_count	Vector2(1, 2, 3)
 expects_error_leading_plus	+1
@@ -63,3 +108,17 @@ expects_error_unknown	Foo(1)
 expects_error_node_path_number	NodePath(1)
 expects_error_constructor_string	Vector2("1", 2)
 expects_error_color_at_end	#f80
+expects_error_array_no_comma	[1 2]
+expects_error_array_unterminated	[1
+expects_error_array_leading_comma	[,]
+expects_error_dictionary_no_colon	{"a" 1}
+expects_error_dictionary_no_comma	{"a": 1 "b": 2}
+expects_error_dictionary_unterminated	{"a": 1
+expects_error_typed_array_no_bracket	Array[int]
+expects_error_typed_array_untyped_body	Array[int]({})
+expects_error_typed_dictionary_one_type	Dictionary[int]({})
+expects_error_packed_byte_bad_base64	PackedByteArray("!!!!")
+expects_error_packed_byte_string_list	PackedByteArray("AQID", 1)
+expects_error_packed_string_number	PackedStringArray(1)
+expects_error_packed_int32_trailing_comma	PackedInt32Array(1,)
+expects_error_packed_float32_string	PackedFloat32Array("1")

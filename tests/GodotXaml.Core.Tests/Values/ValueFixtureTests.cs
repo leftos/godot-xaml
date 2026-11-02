@@ -2,7 +2,8 @@ using GodotXaml.Core.Values;
 
 namespace GodotXaml.Core.Tests.Values;
 
-// The fixture files tools/value-fixtures writes from Godot itself, under tests/fixtures/values/canonical and loose.
+// The fixture files tools/value-fixtures writes from Godot itself, under tests/fixtures/values/canonical, loose and
+// format4.
 public sealed class ValueFixtureTests
 {
     private const string ErrorPrefix = "expects_error_";
@@ -15,6 +16,8 @@ public sealed class ValueFixtureTests
 
     public static TheoryData<string> LooseCases =>
         new(CaseNames("loose", ".in.txt").Where(name => !name.StartsWith(ErrorPrefix, StringComparison.Ordinal)));
+
+    public static TheoryData<string> Format4Cases => new(CaseNames("format4", ".txt"));
 
     public static TheoryData<string> ErrorCases =>
         new(CaseNames("loose", ".in.txt").Where(name => name.StartsWith(ErrorPrefix, StringComparison.Ordinal)));
@@ -48,6 +51,17 @@ public sealed class ValueFixtureTests
         string expected = Fixture("loose", name + ".out.txt");
         Assert.Equal(expected, GodotValueWriter.Write(value, ValueWriteOptions.Default));
         Assert.Equal(GodotValueReader.Read(expected), value);
+    }
+
+    // The resource saver's text with compat off (resource_format_text.cpp:1736-1744): base64 bytes and -inf.
+    [Theory]
+    [MemberData(nameof(Format4Cases))]
+    public void WritesSaverTextWithCompatOffBackUnchanged(string name)
+    {
+        string expected = Fixture("format4", name + ".txt");
+        GodotValue value = GodotValueReader.Read(expected);
+        Assert.Equal(expected, GodotValueWriter.Write(value, new ValueWriteOptions(Compat: false)));
+        Assert.Equal(value, GodotValueReader.Read(GodotValueWriter.Write(value, ValueWriteOptions.Default)));
     }
 
     // Inputs str_to_var gives null for.

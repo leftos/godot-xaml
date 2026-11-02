@@ -15,7 +15,29 @@ static func all() -> Array:
 	cases.append_array(_real_constructors())
 	cases.append_array(_int_constructors())
 	cases.append_array(_misc())
+	cases.append_array(_arrays())
+	cases.append_array(_dictionaries())
+	cases.append_array(_packed())
+	cases.append_array(_objects())
 	return cases
+
+
+## The cases written by the resource saver with compat off (format=4): each value is saved as
+## metadata beside a PackedVector4Array, which turns compat off for the whole file.
+static func format4() -> Array:
+	var long := PackedByteArray()
+	for i in 100:
+		long.append((i * 37) % 256)
+	return [
+		["bytes_empty", PackedByteArray()],
+		["bytes_one", PackedByteArray([255])],
+		["bytes_two", PackedByteArray([0, 1])],
+		["bytes_three", PackedByteArray([1, 2, 3])],
+		["bytes_long", long],
+		["bytes_in_array", [PackedByteArray([7, 8]), 1]],
+		["float_negative_inf", -INF],
+		["vector2_negative_inf", Vector2(-INF, 1)],
+	]
 
 
 static func _scalars() -> Array:
@@ -108,4 +130,82 @@ static func _misc() -> Array:
 		["rid_id", rid_from_int64(12345)],
 		["signal_empty", Signal()],
 		["callable_empty", Callable()],
+	]
+
+
+static func _arrays() -> Array:
+	return [
+		["array_empty", []],
+		["array_mixed", [null, true, 1, 1.0, 2.5, "a", &"b", Vector2(1, 2)]],
+		["array_nested", [[], [1, [2.0]], {}, {"k": [3]}]],
+		["array_typed_int", Array([1, 2], TYPE_INT, &"", null)],
+		["array_typed_float", Array([1.0, 0.5], TYPE_FLOAT, &"", null)],
+		["array_typed_string", Array(["' '", '" "'], TYPE_STRING, &"", null)],
+		["array_typed_empty", Array([], TYPE_RID, &"", null)],
+		["array_typed_packed", Array([PackedVector2Array()], TYPE_PACKED_VECTOR2_ARRAY, &"", null)],
+		["array_typed_class", Array([], TYPE_OBJECT, &"Material", null)],
+		["array_typed_resource", Array([], TYPE_OBJECT, &"Resource", null)],
+	]
+
+
+static func _dictionaries() -> Array:
+	return [
+		["dictionary_empty", {}],
+		["dictionary_one", {"a": 1}],
+		["dictionary_string_keys", {"{": 1, "(": 2, "'": 3, '"': 4, "[": 5, "B": 6, "a": 7}],
+		["dictionary_code_points", {"": 1, "\U01f600": 2, "z": 3, "é": 4}],
+		["dictionary_mixed_keys", {"s": 1, &"n": 2, 2.5: 3, 1: 4, -1: 5, 0.5: 6, &"t": 7}],
+		["dictionary_bool_keys", {true: 1, false: 2}],
+		["dictionary_vector2_keys", {Vector2(1, 2): 1, Vector2(1, -1): 2, Vector2(0, 5): 3}],
+		["dictionary_vector2i_keys", {Vector2i(1, 2): 1, Vector2i(0, 9): 2}],
+		["dictionary_nested", {"b": {"d": [1, {}], "c": PackedStringArray()}, "a": [{"x": 5.0}]}],
+		["dictionary_values", {"f": 1.0, "n": null, "s": "line1\nline2", "v": Vector3(1, 2, 3)}],
+		[
+			"dictionary_typed",
+			Dictionary({"b": 2, "a": 1}, TYPE_STRING, &"", null, TYPE_INT, &"", null)
+		],
+		[
+			"dictionary_typed_variant_value",
+			Dictionary({}, TYPE_STRING, &"", null, TYPE_NIL, &"", null),
+		],
+		[
+			"dictionary_typed_variant_key",
+			Dictionary({1: "a"}, TYPE_NIL, &"", null, TYPE_STRING, &"", null),
+		],
+		[
+			"dictionary_typed_class",
+			Dictionary({}, TYPE_STRING_NAME, &"", null, TYPE_OBJECT, &"Texture2D", null),
+		],
+	]
+
+
+static func _packed() -> Array:
+	return [
+		["packed_byte_empty", PackedByteArray()],
+		["packed_byte", PackedByteArray([0, 1, 127, 128, 255])],
+		["packed_int32_empty", PackedInt32Array()],
+		["packed_int32", PackedInt32Array([-2147483648, 0, 2147483647])],
+		["packed_int64_empty", PackedInt64Array()],
+		["packed_int64", PackedInt64Array([-9223372036854775807 - 1, 0, 9223372036854775807])],
+		["packed_float32_empty", PackedFloat32Array()],
+		["packed_float32", PackedFloat32Array([0.1, 1, -2.5, 1e20, INF, -INF, NAN])],
+		["packed_float64_empty", PackedFloat64Array()],
+		["packed_float64", PackedFloat64Array([0.1, 1, 1.0 / 3.0, 1e300, -INF])],
+		["packed_string_empty", PackedStringArray()],
+		["packed_string", PackedStringArray(["", "a", ESCAPES_QUOTED, NON_ASCII])],
+		["packed_vector2_empty", PackedVector2Array()],
+		["packed_vector2", PackedVector2Array([Vector2(0, 0), Vector2(0.1, -1), Vector2(1, 1)])],
+		["packed_vector3_empty", PackedVector3Array()],
+		["packed_vector3", PackedVector3Array([Vector3(1, 2, 3), Vector3(-0.5, 0, 1e-7)])],
+		["packed_color_empty", PackedColorArray()],
+		["packed_color", PackedColorArray([Color(1, 0, 0, 1), Color(0.1, 0.2, 0.3, 0.4)])],
+		["packed_vector4_empty", PackedVector4Array()],
+		["packed_vector4", PackedVector4Array([Vector4(1, 2, 3, 4), Vector4(0.5, 0, -1, 1e20)])],
+	]
+
+
+static func _objects() -> Array:
+	return [
+		["object_ref_counted", RefCounted.new()],
+		["object_resource", Resource.new()],
 	]

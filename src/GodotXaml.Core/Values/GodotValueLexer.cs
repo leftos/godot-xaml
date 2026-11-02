@@ -90,6 +90,15 @@ internal sealed class GodotValueLexer(string text, int position, int line)
     /// <summary>The 1-based line of <see cref="Position"/>.</summary>
     public int Line { get; private set; } = line;
 
+    /// <summary>
+    /// Whether a read has reached the end of the text, as Godot's Stream::is_eof says once get_char has run out
+    /// (variant_parser.cpp:40-57): a number, an identifier or a colour ending at the end, or a token sought there.
+    /// </summary>
+    public bool ReadPastEnd { get; private set; }
+
+    /// <summary>How many containers and objects the reader is inside, which it keeps below its nesting limit.</summary>
+    public int Depth { get; set; }
+
     /// <summary>The next token.</summary>
     /// <returns>The token; <see cref="GodotTokenType.Eof"/> at the end of the text or at a NUL (variant_parser.cpp:183-186).</returns>
     public GodotToken Next()
@@ -98,6 +107,7 @@ internal sealed class GodotValueLexer(string text, int position, int line)
         {
             if (Position >= _text.Length || _text[Position] == '\0')
             {
+                ReadPastEnd |= Position >= _text.Length;
                 return Make(GodotTokenType.Eof, Position);
             }
 
@@ -171,6 +181,7 @@ internal sealed class GodotValueLexer(string text, int position, int line)
         Position = end;
         if (end >= _text.Length)
         {
+            ReadPastEnd = true;
             return Make(GodotTokenType.Eof, end);
         }
 
@@ -344,6 +355,7 @@ internal sealed class GodotValueLexer(string text, int position, int line)
         }
 
         Position = end;
+        ReadPastEnd |= end >= _text.Length;
         return Make(GodotTokenType.Identifier, start) with { Text = _text[start..end] };
     }
 
@@ -356,6 +368,7 @@ internal sealed class GodotValueLexer(string text, int position, int line)
         int end = At(fraction, 'e') || At(fraction, 'E') ? SkipExponent(fraction + 1) : fraction;
 
         Position = end;
+        ReadPastEnd |= end >= _text.Length;
         string number = _text[start..end];
         GodotValue value = end != integral ? new GodotFloat(ParseFloat(number)) : ParseInt(number, start);
         return Make(GodotTokenType.Number, start) with { Text = number, Value = value };

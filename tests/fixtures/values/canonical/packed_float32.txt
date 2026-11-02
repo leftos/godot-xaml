@@ -1,0 +1,1 @@
+PackedFloat32Array(0.1, 1, -2.5, 1e+20, inf, inf_neg, nan)

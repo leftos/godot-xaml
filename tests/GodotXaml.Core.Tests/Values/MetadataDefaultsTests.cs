@@ -4,16 +4,16 @@ using GodotXaml.Core.Values;
 namespace GodotXaml.Core.Tests.Values;
 
 // Every property default in metadata/godot-4.7.json is var_to_str of the value (tools/metadata-dump/dump.gd), so each
-// one in a form the reader handles reads and writes back to the same text.
+// one reads and writes back to the same text.
 public sealed class MetadataDefaultsTests
 {
-    // The forms the reader rejects: containers, typed containers and packed arrays.
-    private static readonly string[] UnhandledPrefixes = ["[", "{", "Array[", "Dictionary[", "Packed"];
+    // The default texts in metadata/godot-4.7.json: 4,190 properties, 484 of them without a default.
+    private const int DefaultCount = 3706;
 
     [Fact]
-    public void WritesEveryScalarDefaultBackUnchanged()
+    public void WritesEveryDefaultBackUnchanged()
     {
-        List<string> defaults = ScalarDefaults();
+        List<string> defaults = Defaults();
         var mismatches = new List<string>();
         foreach (string text in defaults)
         {
@@ -25,7 +25,7 @@ public sealed class MetadataDefaultsTests
         }
 
         Assert.True(mismatches.Count == 0, $"{mismatches.Count} of {defaults.Count} defaults differ:\n{string.Join('\n', mismatches.Take(20))}");
-        Assert.True(defaults.Count > 3000, $"{defaults.Count} scalar defaults read and written back unchanged");
+        Assert.Equal(DefaultCount, defaults.Count);
     }
 
     private static string WriteBack(string text)
@@ -40,7 +40,7 @@ public sealed class MetadataDefaultsTests
         }
     }
 
-    private static List<string> ScalarDefaults()
+    private static List<string> Defaults()
     {
         using var metadata = JsonDocument.Parse(File.ReadAllText(RepoFiles.PathOf("metadata", "godot-4.7.json")));
         var defaults = new List<string>();
@@ -48,7 +48,7 @@ public sealed class MetadataDefaultsTests
         {
             foreach (JsonElement property in godotClass.Value.GetProperty("properties").EnumerateArray())
             {
-                if (property.TryGetProperty("default", out JsonElement value) && IsScalar(value.GetString()!))
+                if (property.TryGetProperty("default", out JsonElement value))
                 {
                     defaults.Add(value.GetString()!);
                 }
@@ -57,6 +57,4 @@ public sealed class MetadataDefaultsTests
 
         return defaults;
     }
-
-    private static bool IsScalar(string text) => !UnhandledPrefixes.Any(prefix => text.StartsWith(prefix, StringComparison.Ordinal));
 }

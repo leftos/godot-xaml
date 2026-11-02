@@ -5,10 +5,13 @@ extends SceneTree
 ##     --out-dir <absolute tests/fixtures/values folder>
 ## canonical/<case>.txt is var_to_str of a value cases.gd builds; loose/<case>.in.txt is a text
 ## from inputs.txt and loose/<case>.out.txt is var_to_str(str_to_var(text)); floats/ holds one
-## `<hex bits>\t<text>` line per double or float32. Every file is LF with no final newline.
+## `<hex bits>\t<text>` line per double or float32; format4/<case>.txt is the text the resource
+## saver writes for a value with compat off. Every file is LF with no final newline.
 
 const Cases := preload("res://cases.gd")
-const FOLDERS: Array[String] = ["canonical", "loose", "floats"]
+const FOLDERS: Array[String] = ["canonical", "loose", "floats", "format4"]
+const FORMAT4_PATH := "user://format4.tres"
+const META_PREFIX := "metadata/v = "
 const ERROR_PREFIX := "expects_error_"
 const NULL_PREFIX := "null_"
 const RANDOM_COUNT := 2500
@@ -42,6 +45,7 @@ func _run() -> String:
 		_write_canonical(out_dir.path_join("canonical")),
 		_write_loose(out_dir.path_join("loose")),
 		_write_floats(out_dir.path_join("floats")),
+		_write_format4(out_dir.path_join("format4")),
 	]
 	for error in steps:
 		if not error.is_empty():
@@ -113,6 +117,40 @@ func _write_floats(folder: String) -> String:
 		var text := var_to_str(Vector2(_float32_from_bits(bits), 0))
 		singles.append("%08x" % bits + "\t" + text.substr(8, text.find(", ") - 8))
 	return _write(folder.path_join("float32.txt"), "\n".join(singles))
+
+
+func _write_format4(folder: String) -> String:
+	for entry: Array in Cases.format4():
+		var text := _saved_text(entry[1])
+		if text.begins_with("!"):
+			return "%s: %s" % [entry[0], text.substr(1)]
+		var error := _write(folder.path_join(entry[0] + ".txt"), text)
+		if not error.is_empty():
+			return error
+	return ""
+
+
+## The text after `metadata/v = ` in a .tres holding the value, or `!` and an error. The
+## PackedVector4Array beside it turns compat off (resource_format_text.cpp:1742-1744).
+func _saved_text(value: Variant) -> String:
+	var resource := Resource.new()
+	resource.set_meta("v", value)
+	resource.set_meta("w", PackedVector4Array())
+	var saved := ResourceSaver.save(resource, FORMAT4_PATH)
+	if saved != OK:
+		return "!cannot save %s (%s)" % [FORMAT4_PATH, error_string(saved)]
+	var text := FileAccess.get_file_as_string(FORMAT4_PATH)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(FORMAT4_PATH))
+	if not text.begins_with("[gd_resource") or text.find(" format=4") == -1:
+		return "!the saved file is not format=4: %s" % text.get_slice("\n", 0)
+	var start := text.find("\n" + META_PREFIX)
+	if start == -1:
+		return "!no %s line in the saved file" % META_PREFIX
+	start += 1 + META_PREFIX.length()
+	var end := text.find("\nmetadata/", start)
+	if end == -1:
+		end = text.length() - 1
+	return text.substr(start, end - start)
 
 
 func _double_patterns() -> Array[int]:

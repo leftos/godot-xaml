@@ -18,11 +18,13 @@ pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/value-fixtures.log --timeout
 
 ## Output
 
-Every file is LF with no final newline; each run first deletes the files in the three folders.
+Every file is LF with no final newline; each run first deletes the files in the four folders.
 
 - `canonical/<case>.txt`: `var_to_str(value)`.
 - `loose/<case>.in.txt` and `loose/<case>.out.txt`: the input text and `var_to_str(str_to_var(text))`; an `expects_error_*` case gets the `.in.txt` only. The generator fails when `str_to_var` returns null for any other case not named `null_*`. An error Godot raises after it has built the value (`Signal(1)`) still leaves `str_to_var` a value, so such inputs are pinned by unit tests instead.
 - `floats/doubles.txt`: `<16 hex digits of the double's bits>\t<var_to_str(double)>` per line.
 - `floats/float32.txt`: `<8 hex digits of the float's bits>\t<text>`, the text being the first component of `var_to_str(Vector2(x, 0))`.
+
+- `format4/<case>.txt`: the text the resource saver writes with compat off (base64 bytes, `-inf`). The generator saves a `.tres` whose metadata holds the value beside a `PackedVector4Array`, which switches Godot's saver to format 4, and takes the text after `metadata/v = `. It fails when the saved file is not format 4. The cases come from `Cases.format4()` in `cases.gd`.
 
 The float corpora hold edge classes (zero, -0, subnormals, the largest finite values, infinities, NaN, powers of ten 1e-8 to 1e22 and their neighbours, 2^53 and 2^24 neighbours) and 5,000 patterns each from a fixed-seed xorshift64, half of them unrestricted bit patterns and half with exponents near 1e-6 to 1e16.

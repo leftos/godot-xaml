@@ -1,0 +1,1 @@
+FloatArray(2, inf_neg)
