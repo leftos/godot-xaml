@@ -115,6 +115,68 @@ public sealed class TscnReaderTests
     public void RejectsSectionsGodotRejects(string text, string reason) =>
         Assert.Equal(reason, Assert.Throws<TscnParseException>(() => TscnReader.Read(text)).Reason);
 
+    // resource_format_text.cpp:461-538, 547-717, 868-908: the tag after the resource tags must be [node]. The last
+    // resource's trailing parse_tag ends the file with ERR_FILE_EOF (:532-537), which load() reports with no message;
+    // a file with no tag at all ends at open():1194-1200, "Unexpected end of file".
+    [Theory]
+    [InlineData("")]
+    [InlineData("\n\n[ext_resource type=\"Script\" path=\"res://a.gd\" id=\"1\"]\n")]
+    public void RejectsASceneThatEndsBeforeItsFirstNode(string tail) =>
+        Assert.Equal("Unexpected end of file", Assert.Throws<TscnParseException>(() => TscnReader.Read("[gd_scene format=3]" + tail)).Reason);
+
+    // resource_format_text.cpp:904: a tag after the resources that is not a node is named as unknown.
+    [Theory]
+    [InlineData("[connection signal=\"s\" from=\".\" to=\".\" method=\"m\"]", "Unknown tag 'connection' in file")]
+    [InlineData("[editable path=\".\"]", "Unknown tag 'editable' in file")]
+    public void RejectsASceneWhoseOnlyTagIsNotANode(string tag, string reason) =>
+        Assert.Equal(reason, Assert.Throws<TscnParseException>(() => TscnReader.Read($"[gd_scene format=3]\n\n{tag}\n")).Reason);
+
+    // resource_format_text.cpp:487-489, 566-567, 1153-1188 and core/variant/variant.cpp:1558-1560, 1597-1642: a
+    // tag's string fields are read through Variant::operator String, so a StringName, a bool, an int, a NodePath and
+    // null convert to the text stringify gives them.
+    [Theory]
+    [InlineData("type", "&\"Texture2D\"", "Texture2D")]
+    [InlineData("type", "false", "false")]
+    [InlineData("id", "1", "1")]
+    [InlineData("path", "NodePath(\"res://a.png\")", "res://a.png")]
+    [InlineData("uid", "null", "<null>")]
+    public void ReadsAStringFieldAsGodotsVariantToStringGivesIt(string name, string value, string expected)
+    {
+        var fields = new Dictionary<string, string>
+        {
+            ["type"] = "\"Script\"",
+            ["path"] = "\"res://a.gd\"",
+            ["id"] = "\"1\"",
+        };
+        fields[name] = value;
+        string tag = "[ext_resource " + string.Join(" ", fields.Select(field => field.Key + "=" + field.Value)) + "]";
+        TscnExtResource ext = Assert.Single(TscnReader.Read($"[gd_scene format=3]\n\n{tag}\n\n[node name=\"R\"]\n").ExtResources);
+
+        Assert.Equal(
+            expected,
+            name switch
+            {
+                "type" => ext.Type,
+                "path" => ext.Path,
+                "id" => ext.Id,
+                _ => ext.Uid,
+            }
+        );
+    }
+
+    // A float, a math value, a container and a reference keep the reader's own error: stringify would print one, and
+    // Godot's saver never writes one in a string field.
+    [Fact]
+    public void RejectsAFloatInAStringField() =>
+        Assert.Equal(
+            "Expected string for 'type' in 'ext_resource' tag",
+            Assert
+                .Throws<TscnParseException>(() =>
+                    TscnReader.Read("[gd_scene format=3]\n\n[ext_resource type=1.5 path=\"res://a.gd\" id=\"1\"]\n\n[node name=\"R\"]\n")
+                )
+                .Reason
+        );
+
     // resource_format_text.cpp:202-204: a node with no name field leaves the name unassigned.
     [Fact]
     public void ReadsANodeWithoutAName() =>

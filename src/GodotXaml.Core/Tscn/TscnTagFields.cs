@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using GodotXaml.Core.Values;
 
 namespace GodotXaml.Core.Tscn;
@@ -25,10 +26,25 @@ internal sealed class TscnTagFields(TscnTag tag)
         return _byName.TryGetValue(name, out TscnTagField? field) ? field.Value : null;
     }
 
-    /// <summary>A string field, or null when the tag has none.</summary>
+    /// <summary>
+    /// A string field as the loader reads it, through Variant::operator String (core/variant/variant.cpp:1558-1560,
+    /// 1597-1642): a String's text, a StringName's name, a NodePath's path, and stringify's text for null, a bool and
+    /// an int. Any other value keeps the reader's own error.
+    /// </summary>
     /// <param name="name">The field name.</param>
-    /// <returns>The text, or null.</returns>
-    public string? String(string name) => Typed<GodotString>(name, "string")?.Value;
+    /// <returns>The text, or null when the tag has none.</returns>
+    public string? String(string name) =>
+        Value(name) switch
+        {
+            null => null,
+            GodotString text => text.Value,
+            GodotStringName name2 => name2.Value,
+            GodotNodePath path => path.Path,
+            GodotNull => "<null>",
+            GodotBool flag => flag.Value ? "true" : "false",
+            GodotInt number => number.Value.ToString(CultureInfo.InvariantCulture),
+            _ => throw WrongType(name, "string"),
+        };
 
     /// <summary>A string field the tag must have.</summary>
     /// <param name="name">The field name.</param>

@@ -55,6 +55,7 @@ public static partial class TscnReader
         private List<TscnProperty>? _properties;
         private Action<ImmutableArray<TscnProperty>>? _finish;
         private TscnTag? _tag;
+        private TscnTag? _firstAfterResources;
         private int _rank = -1;
         private bool _resourceSeen;
         private bool _extOrSubSeen;
@@ -79,6 +80,15 @@ public static partial class TscnReader
                 // resource_format_text.cpp:648-651: a resource file that ends before its [resource] is an error.
                 string reason = _extOrSubSeen ? "Premature end of file while parsing [sub_resource]" : "Unknown tag '' in file";
                 throw TscnScanner.Error(reason, scanner.Line, scanner.Column);
+            }
+
+            if (_kind == TscnKind.Scene && _nodes.Count == 0)
+            {
+                // resource_format_text.cpp:461-538, 547-717, 868-908: a scene's first tag after its resources is [node].
+                // The resource loops end the file with ERR_FILE_EOF (:532-537), which load() reports with no message,
+                // while a file with no tag at all ends at open():1194-1200 with "Unexpected end of file" (:904 names a
+                // tag that is not one).
+                throw _firstAfterResources is { } tag ? Unknown(tag) : TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
             }
 
             return new TscnDocument
@@ -198,6 +208,11 @@ public static partial class TscnReader
 
             var fields = new TscnTagFields(tag);
             _tag = tag;
+            if (_firstAfterResources is null && tag.Name is not ("ext_resource" or "sub_resource"))
+            {
+                _firstAfterResources = tag;
+            }
+
             _properties = [];
             _finish = SectionReaders[tag.Name](this, fields);
         }
