@@ -1,0 +1,101 @@
+---
+name: prepare-release
+description: Prepare and publish a godot-xaml release — version, changelog, gates, packages, tag, GitHub release, Linear cut (invoke by hand as /prepare-release).
+disable-model-invocation: true
+---
+
+Prepare and publish a godot-xaml release. Walk through the phases in order, from the repo root; each phase ends on its **Done when** line, and any red stops the cut until the owner rules.
+
+The release ships the core, the CLI and the addon package at one version, on one track of builds: every release is `--latest`.
+
+**Ground rules for every phase:**
+
+- `linear` is the command `~/.claude/docs/plan-operations.md` defines.
+- Every long command runs through `tools/gate.ps1` or `run.ps1`; a status comes from the gate's verdict, read unpiped.
+- A commit message is written to `.tmp/msg-<slug>.txt`, a file new to that commit, in an earlier turn than the commit, and files are enumerated in the commit's pathspec.
+
+## Phase 1: Ground
+
+1. Confirm the tree is on `main`, clean and level with `origin` (`git fetch origin`, `git status -sb`).
+2. Run `linear release status godot-xaml`. An open issue in `vNext` stops the cut until the owner says otherwise.
+3. Ask the owner for the version `<v>`, as `major.minor.patch`. The suggested one is the next minor while the project is below 1.0.
+
+**Done when** the tree is level with `origin`, `vNext` holds no open issue the owner has not waved through, and the owner has named `<v>`.
+
+## Phase 2: Version
+
+Set `<v>` in the three homes `tools/pack-release.ps1` checks: `VersionPrefix` in `Directory.Build.props`, `version` in `godot/addons/godot_xaml/plugin.cfg`, and the `GodotXaml.Core` `PackageReference` in `README.md`.
+
+**Done when** all three read `<v>`.
+
+## Phase 3: Changelog
+
+1. Create `CHANGELOG.md` if the repo has none, then add a section `## <v> - <date>`, newest first, written from the Done issues `linear release status` lists in `vNext`.
+
+   Follow "Step 4: Write the bullets" of the `changelog-and-commit` skill: each bullet one sentence of at most 25 words in the product's own words, and the section read as the difference from the last release.
+2. Make `README.md` true for this version, in its Status section and its Install steps. At the first cut, remove "Not released yet." and the sentence on the local feed.
+
+**Done when** every Done issue in `vNext` with a user-visible change has its bullet, and each README claim about releases and installing holds at `<v>`.
+
+## Phase 4: Gates
+
+Write `.tmp/release-gates.sh`, a bash script with `set -e` that runs one gate at a time, and start it with `run_in_background`. Each step is named in the log:
+
+1. `pwsh -NoProfile -File run.ps1 test`
+2. `pwsh -NoProfile -File run.ps1 godot-build`
+3. `pwsh -NoProfile -File run.ps1 format-check`
+4. `godot/checks.ps1`, `godot/compare.ps1` and `godot/export.ps1`, each with its gate line from "Test locations" in `docs/ARCHITECTURE.md`
+
+To stop the script, use `pwsh -NoProfile -File tools/gate.ps1 stop-tree <its bash pid>`.
+
+**Done when** the script exits 0 with every gate's verdict passed.
+
+## Phase 5: Commit and tag
+
+The packages carry the commit they were built from, so the release commit comes first.
+
+1. Commit `CHANGELOG.md`, `README.md`, `Directory.Build.props` and `godot/addons/godot_xaml/plugin.cfg` with the message `chore: release <v>`:
+
+   `pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/commit.log --slot light --timeout 1200 -- git commit -F .tmp/msg-release-<v>.txt -- CHANGELOG.md README.md Directory.Build.props godot/addons/godot_xaml/plugin.cfg`
+2. Tag it: `git tag -a v<v> -m "godot-xaml <v>"`.
+
+**Done when** `git status --short` is empty and `git rev-parse "v<v>^{commit}"` is `HEAD`.
+
+## Phase 6: Pack
+
+```
+pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/pack.log --slot heavy --timeout 900 -- pwsh -NoProfile -File tools/pack-release.ps1 -Version <v>
+```
+
+**Done when** it exits 0 and lists `GodotXaml.Core.<v>.nupkg`, `GodotXaml.Cli.<v>.nupkg` and `godot-xaml-addon-<v>.zip`, all under `.tmp/release/<v>/`.
+
+## Phase 7: Push and publish
+
+1. Push the branch, then the tag: `git push origin main`, `git push origin v<v>`.
+2. Check that `NUGET_API_KEY` is set, testing only that it is non-empty. When it is missing, stop and ask the owner; its home is `G:\My Drive\Private Config\godot-xaml\secrets\`, reached by `dotenv-keys`, and the value never enters the conversation.
+3. Push the packages:
+
+   `dotnet nuget push .tmp/release/<v>/*.nupkg --source https://api.nuget.org/v3/index.json --api-key "$env:NUGET_API_KEY" --skip-duplicate`
+4. Write the changelog section for `<v>`, without its heading, to `.tmp/release-notes-<v>.md`.
+5. Create the GitHub release, attaching all three files:
+
+   `gh release create v<v> --latest --title "godot-xaml <v>" --notes-file .tmp/release-notes-<v>.md .tmp/release/<v>/GodotXaml.Core.<v>.nupkg .tmp/release/<v>/GodotXaml.Cli.<v>.nupkg .tmp/release/<v>/godot-xaml-addon-<v>.zip`
+
+**Done when** `git ls-remote --tags origin v<v>` shows the tag, `gh release view v<v>` lists the three assets and marks the release as latest, and both packages were pushed or reported as duplicates.
+
+## Phase 8: Cut
+
+1. Run `linear release complete godot-xaml --version <v> --sha <tag commit> --repo-root .`, where `<tag commit>` is `git rev-parse "v<v>^{commit}"`. It runs once per version; shipped issues it leaves out go through `linear release settle`, as the **release** row of `~/.claude/docs/plan-operations.md` gives.
+2. Take the plan **snapshot**: `linear snapshot godot-xaml --repo-root .`, committed on its own as `docs: plan snapshot`, and push it.
+
+**Done when** the completed release `<v>` holds every shipped issue and the snapshot is on `origin/main`.
+
+## Phase 9: Next release
+
+Run "Plan the next release with the owner" from the **release** row of `~/.claude/docs/plan-operations.md`: one `AskUserQuestion` round, applied with `linear release add`.
+
+**Done when** every candidate group is in `vNext`, in `vNext+1` or in no release, as the owner answered.
+
+## Hotfix
+
+A hotfix follows `~/.claude/docs/plan-operations.md`, "Hotfix". The same phases apply from the hotfix branch in place of `main`, with `--hotfix` on the `linear release complete` of Phase 8; Phase 9 follows the plain cut only.
