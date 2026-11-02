@@ -142,6 +142,7 @@ func _class_entry(class_title: String, api_props: Dictionary) -> Dictionary:
 		"instantiable": instantiable,
 		"enums": _class_enums(class_title),
 		"properties": props,
+		"signals": _signal_entries(class_title),
 	}
 	if _has_theme_overrides(class_title):
 		class_entry["themeOverrides"] = _theme_override_entries(class_title)
@@ -221,6 +222,27 @@ func _class_enums(class_title: String) -> Dictionary:
 			"values": values,
 		}
 	return enums
+
+
+## The signals `class_title` declares itself, in ClassDB order.
+##
+## Inherited signals are left out, as are inherited properties.
+func _signal_entries(class_title: String) -> Array:
+	var entries := []
+	for signal_info: Dictionary in ClassDB.class_get_signal_list(class_title, true):
+		var args := []
+		for arg: Dictionary in signal_info.args:
+			args.append(_signal_arg(arg))
+		entries.append({"name": String(signal_info.name), "args": args})
+	return entries
+
+
+func _signal_arg(arg: Dictionary) -> Dictionary:
+	return {
+		"name": String(arg.name),
+		"type": type_string(arg.type),
+		"className": String(arg.class_name),
+	}
 
 
 func _arg_value(name: String) -> String:

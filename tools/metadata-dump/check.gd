@@ -48,6 +48,10 @@ func _run_checks(data: Dictionary, bytes: PackedByteArray) -> void:
 	_check("K12", _k12(data))
 	_check("K13", _k13(data))
 	_check("K14", _k14(data))
+	_check("K15", _k15(data))
+	_check("K16", _k16(data))
+	_check("K17", _k17(data))
+	_check("K18", _k18(data))
 
 
 func _k1(data: Dictionary) -> String:
@@ -185,6 +189,41 @@ func _k14(data: Dictionary) -> String:
 	return ""
 
 
+func _k15(data: Dictionary) -> String:
+	var signal_info := _class_signal(data, "BaseButton", "pressed")
+	if signal_info.is_empty():
+		return "BaseButton has no own signal pressed"
+	return _mismatch("BaseButton.pressed.args", signal_info.get("args"), [])
+
+
+func _k16(data: Dictionary) -> String:
+	if _class_signal(data, "Button", "pressed").is_empty():
+		return ""
+	return "Button lists the inherited signal pressed"
+
+
+func _k17(data: Dictionary) -> String:
+	if _class_signal(data, "Node", "ready").is_empty():
+		return "Node has no own signal ready"
+	return ""
+
+
+func _k18(data: Dictionary) -> String:
+	var signal_info := _class_signal(data, "Area2D", "body_entered")
+	if signal_info.is_empty():
+		return "Area2D has no own signal body_entered"
+	var args: Array = signal_info.get("args", [])
+	if args.size() != 1:
+		return "Area2D.body_entered has %d args, expected 1" % args.size()
+	var arg: Dictionary = args[0]
+	return _first(
+		[
+			_mismatch("Area2D.body_entered.args[0].name", arg.get("name"), "body"),
+			_mismatch("Area2D.body_entered.args[0].className", arg.get("className"), "Node2D"),
+		]
+	)
+
+
 func _check(id: String, detail: String) -> void:
 	if detail.is_empty():
 		print("CHECK %s PASS" % id)
@@ -202,6 +241,13 @@ func _property(data: Dictionary, class_title: String, name: String) -> Dictionar
 	for prop: Dictionary in _class(data, class_title).get("properties", []):
 		if prop.get("name") == name:
 			return prop
+	return {}
+
+
+func _class_signal(data: Dictionary, class_title: String, name: String) -> Dictionary:
+	for signal_info: Dictionary in _class(data, class_title).get("signals", []):
+		if signal_info.get("name") == name:
+			return signal_info
 	return {}
 
 

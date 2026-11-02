@@ -4,16 +4,17 @@ Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent
 
 ## What it reads
 
-- **ClassDB**, from a headless Godot run of `dump.gd`: the classes, parents, `can_instantiate`, each class's own properties (`class_get_property_list(class, true)`), defaults (`class_get_property_default_value`) and enums.
+- **ClassDB**, from a headless Godot run of `dump.gd`: the classes, parents, `can_instantiate`, each class's own properties (`class_get_property_list(class, true)`), own signals (`class_get_signal_list(class, true)`), defaults (`class_get_property_default_value`) and enums.
 - **`extension_api.json`**, from `godot --headless --dump-extension-api`: the global enums (`Side`, `HorizontalAlignment`, …) and each property's enum or bitfield type. That type is read from the property's getter return value (`enum::Control.MouseFilter`, `bitfield::Control.SizeFlags`), since the property entry itself reads `int` for an enum registered by hint alone; the getter is looked up on the class and then its ancestors.
 
 ## Format
 
 Top level: `godot` (the engine's version string), `globalEnums`, `classes`.
 
-- A class: `parent` (null for `Object`), `instantiable`, `enums`, `properties`, and `themeOverrides` on some (below).
+- A class: `parent` (null for `Object`), `instantiable`, `enums`, `properties`, `signals`, and `themeOverrides` on some (below).
 - An enum: `{"bitfield": bool, "values": [[name, int], …]}`, members in declaration order.
 - A property: `name`, `type` (Variant type name), `enumType` (`"Control.MouseFilter"`, or null), `bitfield`, `hint`, `hintString`, `usage`, `className`, `default`.
+- A signal: `name` and `args`, an array in ClassDB order of `{name, type, className}` per argument. `type` is the argument's Variant type (`Object` for a node argument) and `className` its class (`Area2D`'s `body_entered` takes `body`, `Object`, `Node2D`). A class with no signals of its own has `[]`.
 
 `default` is Godot's own value text (`var_to_str`: `Vector2(0, 0)`, `""` as `"\"\""`, `"null"` for a null default). The key is left out when no default is known: the class cannot be instantiated, or the default is an Object.
 
@@ -37,7 +38,7 @@ pwsh -NoProfile -File tools/metadata-dump/dump.ps1 -Godot <path to a Godot 4.7 b
 godot --headless --path tools/metadata-dump --script res://check.gd -- --file <absolute path to the JSON>
 ```
 
-`check.gd` prints `CHECK <id> PASS` or `CHECK <id> FAIL <detail>` for each known fact (Control's parent, `mouse_filter` and `size_flags_horizontal` enum links, `Node2D.position` and `Label.text` defaults, no defaults on `CanvasItem`, the `Side` global enum, `layout_mode` stored, LF endings, `Label`'s `font_color` override is a `Color`, `Button`'s `styles/normal` override is an `Object` of `StyleBox`, `Window` has overrides, `Node2D` has no `themeOverrides`, no `/` name in `Control.properties`), and exits 1 when any failed.
+`check.gd` prints `CHECK <id> PASS` or `CHECK <id> FAIL <detail>` for each known fact (Control's parent, `mouse_filter` and `size_flags_horizontal` enum links, `Node2D.position` and `Label.text` defaults, no defaults on `CanvasItem`, the `Side` global enum, `layout_mode` stored, LF endings, `Label`'s `font_color` override is a `Color`, `Button`'s `styles/normal` override is an `Object` of `StyleBox`, `Window` has overrides, `Node2D` has no `themeOverrides`, no `/` name in `Control.properties`, `BaseButton` declares `pressed` and `Button` does not, `Node` declares `ready`, `Area2D`'s `body_entered` takes a `Node2D` `body`), and exits 1 when any failed.
 
 ## When to re-run it
 
