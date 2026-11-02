@@ -48,7 +48,7 @@ internal sealed class TscnTagFields(TscnTag tag)
             null => null,
             GodotString text => text.Value,
             GodotStringName name2 => name2.Value,
-            GodotNodePath path => path.Value,
+            GodotNodePath path => path.Path,
             _ => throw WrongType(name, "a string, a StringName or a NodePath"),
         };
 
