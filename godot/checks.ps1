@@ -4,8 +4,8 @@
 Runs the addon's headless checks C1 to C32 in Godot 4.7.
 
 .DESCRIPTION
-Builds the godot/ project, imports it headless (which registers the addon's global classes), then runs
-res://checks/Checks.tscn headless. The scene prints CHECK <id> PASS or CHECK <id> FAIL <detail> per check and
+Builds the godot/ project, imports it headless (which registers the addon's global classes), then imports it again, then
+runs res://checks/Checks.tscn headless. The scene prints CHECK <id> PASS or CHECK <id> FAIL <detail> per check and
 DONE <passed>/<total>.
 
 Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no check failed,
@@ -45,6 +45,13 @@ if (-not $built) {
 
 $imported = Invoke-Step 'import' { & $godot --headless --path $project --import }
 if (-not $imported) {
+    exit 1
+}
+
+# The first scan of a fresh project runs before the C# global classes register, so .xscn and .xres files get no uid
+# (docs/DECISIONS.md, "The addon registers from C#, as global classes"); the second scan has the classes.
+$reimported = Invoke-Step 'reimport' { & $godot --headless --path $project --import }
+if (-not $reimported) {
     exit 1
 }
 

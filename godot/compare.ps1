@@ -7,7 +7,8 @@ Compares each scene fixture with its converted .xscn as Godot 4.7 instantiates t
 Copies the scene fixtures (tests/fixtures/scenes/*.tscn and *.tres), their converted goldens
 (tests/fixtures/converted/*.xscn) into godot/cases/, recreated on each run, and the scripts the fixtures name
 (holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the fixtures' res:// paths point. Then builds the godot/ project,
-imports it headless (which registers the addon's loader) and runs res://compare/Compare.tscn headless. The scene prints
+imports it headless (which registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless.
+The scene prints
 COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is left in
 godot/cases/<name>.tscn.dump and <name>.xscn.dump.
 
@@ -70,6 +71,13 @@ if (-not $built) {
 
 $imported = Invoke-Step 'import' { & $godot --headless --path $project --import }
 if (-not $imported) {
+    exit 1
+}
+
+# The first scan of a fresh project runs before the C# global classes register, so .xscn and .xres files get no uid
+# (docs/DECISIONS.md, "The addon registers from C#, as global classes"); the second scan has the classes.
+$reimported = Invoke-Step 'reimport' { & $godot --headless --path $project --import }
+if (-not $reimported) {
     exit 1
 }
 

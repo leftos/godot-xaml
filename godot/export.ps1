@@ -5,7 +5,7 @@ Exports the godot/ project headless and checks that its .xscn and .xres ship as 
 
 .DESCRIPTION
 Builds the godot/ project, imports it headless (which registers the addon's global classes and enables its editor
-plugin), then exports each preset of godot/export_presets.cfg to .tmp/export/ and checks it:
+plugin), then imports it again, then exports each preset of godot/export_presets.cfg to .tmp/export/ and checks it:
 
   EXPORT all           "Windows Desktop" (all resources): no godot-xaml error. Then PROBE P1..P8 on its pack.
   EXPORT selected      "Windows Selected" (selected scenes, no include filter): the loader-drop error naming the
@@ -142,6 +142,13 @@ if (-not $built) {
 
 $imported = Invoke-Step 'import' { & $godot --headless --path $project --import }
 if (-not $imported) {
+    exit 1
+}
+
+# The first scan of a fresh project runs before the C# global classes register, so .xscn and .xres files get no uid
+# (docs/DECISIONS.md, "The addon registers from C#, as global classes"); the second scan has the classes.
+$reimported = Invoke-Step 'reimport' { & $godot --headless --path $project --import }
+if (-not $reimported) {
     exit 1
 }
 
