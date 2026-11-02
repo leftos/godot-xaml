@@ -18,14 +18,14 @@ public static partial class TscnToXscn
     /// <summary>Converts a document.</summary>
     /// <param name="document">The .tscn or .tres model.</param>
     /// <param name="metadata">The engine classes, for the element types.</param>
-    /// <param name="options">The options; the forward conversion reads none of them.</param>
+    /// <param name="options">The options; the forward conversion reads <see cref="ConversionOptions.Previous"/>.</param>
     /// <returns>The .xscn or .xres model, its issues, and the source's ids for <see cref="ConversionOptions.KeepIds"/>.</returns>
     public static ConversionResult<XscnDocument> Convert(TscnDocument document, GodotMetadata metadata, ConversionOptions options)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(options);
-        var context = new Context(document, metadata);
+        var context = new Context(document, metadata, options);
         XscnDocument converted = document.Kind == TscnKind.Scene ? context.ConvertScene() : context.ConvertResource();
         return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids() };
     }
@@ -37,7 +37,7 @@ public static partial class TscnToXscn
         private readonly TscnReferences references;
         private readonly Dictionary<XscnResource, string> subIds = new(ReferenceEqualityComparer.Instance);
 
-        public Context(TscnDocument document, GodotMetadata metadata)
+        public Context(TscnDocument document, GodotMetadata metadata, ConversionOptions options)
         {
             this.document = document;
             this.metadata = metadata;
@@ -46,7 +46,8 @@ public static partial class TscnToXscn
             references = TscnReferences.Analyze(
                 document,
                 Issues,
-                (cls, name) => names.AttributeName(cls is null ? null : metadata.FindClass(cls), name) is not null
+                (cls, name) => names.AttributeName(cls is null ? null : metadata.FindClass(cls), name) is not null,
+                options.Previous
             );
         }
 

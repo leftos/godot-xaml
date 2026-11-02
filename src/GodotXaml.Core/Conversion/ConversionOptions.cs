@@ -1,3 +1,5 @@
+using GodotXaml.Core.Xscn;
+
 namespace GodotXaml.Core.Conversion;
 
 /// <summary>What a conversion needs beyond the document and the metadata.</summary>
@@ -24,4 +26,10 @@ public sealed record ConversionOptions
     /// new ones so the text can be compared byte for byte with the source; null mints new ids from <see cref="Seed"/>.
     /// </summary>
     public ConversionIds? KeepIds { get; init; }
+
+    /// <summary>
+    /// The <c>.xscn</c> or <c>.xres</c> a forward conversion replaces, whose <c>x:Resources</c> keys are kept for the
+    /// sub-resources that match its entries; null converts from scratch.
+    /// </summary>
+    public XscnDocument? Previous { get; init; }
 }

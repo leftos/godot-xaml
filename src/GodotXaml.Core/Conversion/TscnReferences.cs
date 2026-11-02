@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Xml;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
+using GodotXaml.Core.Xscn;
 
 namespace GodotXaml.Core.Conversion;
 
@@ -47,15 +48,24 @@ internal sealed class TscnReferences
     /// with no type, an instance or an override) and the property's Godot name. A bare reference on a property that cannot
     /// is counted as one inside value text, so its sub_resource goes into <c>x:Resources</c>.
     /// </param>
+    /// <param name="previous">
+    /// The document the conversion replaces, whose <c>x:Resources</c> keys the sub_resources that match its entries keep;
+    /// null converts from scratch.
+    /// </param>
     /// <returns>The references.</returns>
-    public static TscnReferences Analyze(TscnDocument document, List<ConversionIssue> issues, Func<string?, string, bool> canInline)
+    public static TscnReferences Analyze(
+        TscnDocument document,
+        List<ConversionIssue> issues,
+        Func<string?, string, bool> canInline,
+        XscnDocument? previous
+    )
     {
         var references = new TscnReferences(issues, canInline);
         references.Index(document);
         references.Count(document);
         references.ReportUnused();
         references.FindCycles();
-        references.ChooseKeys();
+        references.ChooseKeys(previous);
         return references;
     }
 
@@ -240,13 +250,19 @@ internal sealed class TscnReferences
         return false;
     }
 
-    // The owner's ruling: the resource_name when it is an XML name no earlier entry took, else the type and a counter
-    // per type, skipping keys already taken; names are given out first so a counter never takes a later entry's name.
-    private void ChooseKeys()
+    // The previous document's key first, for a sub_resource that matches one of its entries. Then the owner's ruling: the
+    // resource_name when it is an XML name no earlier entry took, else the type and a counter per type, skipping keys
+    // already taken; names are given out first so a counter never takes a later entry's name.
+    private void ChooseKeys(XscnDocument? previous)
     {
         List<TscnSubResource> keyed = [.. KeyedSubResources];
         HashSet<string> taken = new(StringComparer.Ordinal);
         foreach (TscnSubResource sub in keyed)
+        {
+            KeepPreviousKey(sub, previous, taken);
+        }
+
+        foreach (TscnSubResource sub in keyed.Where(sub => !keys.ContainsKey(sub.Id)))
         {
             if (ResourceName(sub) is { } name && IsXmlName(name) && taken.Add(name))
             {
@@ -261,7 +277,20 @@ internal sealed class TscnReferences
         }
     }
 
-    private static string? ResourceName(TscnSubResource sub) =>
+    // The key of the previous document's first matching entry that no earlier sub_resource took.
+    private void KeepPreviousKey(TscnSubResource sub, XscnDocument? previous, HashSet<string> taken)
+    {
+        foreach (string key in PreviousKeys.Keys(sub, previous, id => Ext(id)?.Path))
+        {
+            if (taken.Add(key))
+            {
+                keys[sub.Id] = key;
+                return;
+            }
+        }
+    }
+
+    internal static string? ResourceName(TscnSubResource sub) =>
         sub.Properties.LastOrDefault(property => property.Name == "resource_name")?.Value is GodotString { Value.Length: > 0 } name
             ? name.Value
             : null;
