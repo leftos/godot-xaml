@@ -1,0 +1,62 @@
+#requires -Version 7
+<#
+.SYNOPSIS
+Runs the addon's headless checks C1 to C6 in Godot 4.7.
+
+.DESCRIPTION
+Builds the godot/ project, imports it headless (which registers the addon's global classes), then runs
+res://checks/Checks.tscn headless. The scene prints CHECK <id> PASS or CHECK <id> FAIL <detail> per check and
+DONE <passed>/<total>.
+
+Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no check failed,
+every expected check passed and the scene printed DONE with all of them.
+
+.EXAMPLE
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-checks.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/checks.ps1
+#>
+[CmdletBinding()]
+param()
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+# A step's non-zero status is this script's to report, not a throw.
+$PSNativeCommandUseErrorActionPreference = $false
+
+$godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env:GODOT_BIN } else {
+    throw 'checks.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary'
+}
+
+$project = $PSScriptRoot
+$expectedChecks = 6
+
+function Invoke-Step {
+    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][scriptblock] $Command)
+    [Console]::Out.WriteLine("STEP $Name")
+    & $Command | Out-Host
+    $code = $LASTEXITCODE
+    [Console]::Out.WriteLine("STEP $Name exit $code")
+    return $code -eq 0
+}
+
+$built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror }
+if (-not $built) {
+    exit 1
+}
+
+$imported = Invoke-Step 'import' { & $godot --headless --path $project --import }
+if (-not $imported) {
+    exit 1
+}
+
+[Console]::Out.WriteLine('STEP checks')
+$lines = @(& $godot --headless --path $project --scene 'res://checks/Checks.tscn' --quit-after 600 2>&1 | ForEach-Object { "$_" })
+$checksExit = $LASTEXITCODE
+$lines | ForEach-Object { [Console]::Out.WriteLine($_) }
+[Console]::Out.WriteLine("STEP checks exit $checksExit")
+
+$passes = @($lines | Where-Object { $_ -match '^CHECK \S+ PASS$' }).Count
+$fails = @($lines | Where-Object { $_ -match '^CHECK \S+ FAIL' }).Count
+$done = @($lines | Where-Object { $_ -eq "DONE $expectedChecks/$expectedChecks" }).Count
+$allPassed = $checksExit -eq 0 -and $fails -eq 0 -and $passes -eq $expectedChecks -and $done -eq 1
+[Console]::Out.WriteLine("CHECKS passed $passes, failed $fails, expected $expectedChecks")
+exit $(if ($allPassed) { 0 } else { 1 })

@@ -1,0 +1,17 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>GodotXaml.Addon</RootNamespace>
+    <!-- Godot.NET.Sdk adds GodotSharp as an implicit reference with its own version, which central package management
+         refuses while the repo's Directory.Packages.props lists GodotSharp (NU1009); the core keeps its central versions. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!-- Godot fixes the folders (addons/godot_xaml/, checks/), so the namespaces cannot follow them. -->
+    <NoWarn>$(NoWarn);IDE0130</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Here the addon builds against the repo's core; a game project references the GodotXaml.Core package instead. -->
+    <ProjectReference Include="../src/GodotXaml.Core/GodotXaml.Core.csproj" />
+  </ItemGroup>
+</Project>

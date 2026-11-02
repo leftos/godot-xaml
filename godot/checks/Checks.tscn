@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cbxi4m8qag7ss"]
+
+[ext_resource type="Script" uid="uid://dvfxs0l8u7iob" path="res://checks/Checks.cs" id="1_iavpi"]
+
+[node name="Checks" type="Node" unique_id=103554202]
+script = ExtResource("1_iavpi")
