@@ -381,9 +381,9 @@ internal static class ConvertCommand
         return null;
     }
 
-    // References to the files this run converts, in the scene and resource files it does not write. A source it could
-    // not convert, refused or could not write is not written either, so it is scanned like any other file; its output
-    // is not in the map, since the run did not convert it.
+    // References to the files this run converts, in the scenes, resources, scripts and project.godot it does not write. A
+    // source it could not convert, refused or could not write is not written either, so it is scanned like any other
+    // file; its output is not in the map, since the run did not convert it.
     private static void Scan(List<Planned> planned, Tally tally, InvocationConfiguration invocation)
     {
         var skip = new HashSet<string>(InputFiles.PathComparer);
@@ -408,14 +408,27 @@ internal static class ConvertCommand
         {
             foreach (ScannedReference reference in ReferenceScan.Find(root, map, skip, invocation.Error))
             {
-                string clause = reference.CarriesUid
-                    ? "still resolves by its uid once the source is removed and the uid moves with the file"
-                    : "no uid on this reference; it breaks once the source is removed";
-                string message = $"refers to {reference.Key}, which this run converts to {reference.Value}; {clause}";
                 string path = Location(reference.File, reference.Line, reference.Column);
-                Warn(invocation.Output, tally, path, CliCodes.UntouchedReference, message);
+                string code = reference.Kind == ScriptHitKind.Whole ? CliCodes.UntouchedReference : CliCodes.BuiltPath;
+                Warn(invocation.Output, tally, path, code, ReferenceMessage(reference));
             }
         }
+    }
+
+    private static string ReferenceMessage(ScannedReference reference)
+    {
+        if (reference.Kind == ScriptHitKind.Inside)
+        {
+            return $"holds {reference.Key}, which this run converts to {reference.Value}, inside a longer string; it is not rewritten";
+        }
+        if (reference.Kind == ScriptHitKind.Fragment)
+        {
+            return $"ends in {reference.Key}, and this run converts such files to {reference.Value}; a path built from it is not rewritten";
+        }
+        string clause = reference.CarriesUid
+            ? "still resolves by its uid once the source is removed and the uid moves with the file"
+            : "no uid on this reference; it breaks once the source is removed";
+        return $"refers to {reference.Key}, which this run converts to {reference.Value}; {clause}";
     }
 
     private static void Warn(TextWriter output, Tally tally, string path, string code, string message)

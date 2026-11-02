@@ -9,7 +9,7 @@ The design for GXAML-53 (CLI convert: rewrite scene and resource paths across a 
 ## Owner rulings
 
 - Every `convert` run rewrites references to the files converted in that run, in every file it writes, and warns about references to them from files it does not touch, with file and line.
-- `--project <root>` converts every `.tscn` and `.tres` under the root (forward, the default) or every `.xscn` and `.xres` (`--back`), rewrites the references between them, and edits `project.godot` and the scripts' path literals that name a converted file. It removes the originals once every converted file is written (the Recycle Bin on Windows, deleted elsewhere); plain `convert` keeps its source and warns when the source and its output share a uid.
+- `--project <root>` converts every `.tscn` and `.tres` under the root (forward, the default) or every `.xscn` and `.xres` (`--back`), rewrites the references between them, and edits `project.godot` and the scripts' path literals that name a converted file. It removes the originals once every converted file is written (`--project` always backs up the originals unless `--nobackup` is passed); plain `convert` keeps its source and warns when the source and its output share a uid.
 - Scripts: every string literal in a `.gd` or `.cs` file whose whole text equals a converted path is rewritten, found by a lexer that skips comments; a runtime-built path holding a converted path is warned about.
 - The briefs land on `main` one by one.
 

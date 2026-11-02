@@ -17,4 +17,7 @@ internal static class CliCodes
 
     /// <summary>A written file that names the output of a file this run could not write.</summary>
     internal const string FailedWrite = "GXP0005";
+
+    /// <summary>A script or <c>project.godot</c> string that holds a converted path inside longer text, or may build one at runtime.</summary>
+    internal const string BuiltPath = "GXP0006";
 }

@@ -1,13 +1,16 @@
+using GodotXaml.Core.Diagnostics;
+
 namespace GodotXaml.Cli;
 
-/// <summary>A whole quoted path in a file the run does not write that names a file it converts.</summary>
+/// <summary>A quoted string in a file the run does not write that names a file it converts, or part of such a name.</summary>
 /// <param name="File">The file that holds it.</param>
 /// <param name="Line">Its 1-based line.</param>
 /// <param name="Column">The 1-based column of the quote that opens it.</param>
-/// <param name="Key">The path it holds.</param>
-/// <param name="Value">The path the run converts it to.</param>
+/// <param name="Key">The path it holds, or for a fragment the source extension.</param>
+/// <param name="Value">The path the run converts it to, or for a fragment the output extension.</param>
 /// <param name="CarriesUid">Whether the reference carries a uid of its own, so it still resolves once the source goes.</param>
-internal sealed record ScannedReference(string File, int Line, int Column, string Key, string Value, bool CarriesUid);
+/// <param name="Kind">Whether the string is the path, holds it inside longer text, or may build one at runtime.</param>
+internal sealed record ScannedReference(string File, int Line, int Column, string Key, string Value, bool CarriesUid, ScriptHitKind Kind);
 
 /// <summary>The quoting rules of a file kind, which decide where a quoted string opens and closes.</summary>
 internal enum QuoteGrammar
@@ -19,7 +22,7 @@ internal enum QuoteGrammar
     Xml,
 }
 
-/// <summary>Finds the references to the files a run converts in the scene and resource files it does not write.</summary>
+/// <summary>Finds the references to the files a run converts in the scenes, resources, scripts and <c>project.godot</c> it does not write.</summary>
 internal static class ReferenceScan
 {
     private const string ResourceCall = "Resource(";
@@ -28,9 +31,9 @@ internal static class ReferenceScan
     private static readonly string[] Extensions = [".tscn", ".tres", ".xscn", ".xres"];
     private static readonly char[] Quotes = ['"', '\''];
 
-    /// <summary>Finds every whole quoted rename key in the scene and resource files under a root.</summary>
+    /// <summary>Finds every whole quoted rename key in the scene and resource files under a root, and every script hit.</summary>
     /// <param name="root">The project root to walk.</param>
-    /// <param name="renames">Old <c>res://</c> path to new; a path matches whole and ordinal.</param>
+    /// <param name="renames">Old <c>res://</c> path to new, compared ordinal.</param>
     /// <param name="skip">The full paths of the files the run reads or writes itself.</param>
     /// <param name="error">Where a folder or file that cannot be read is reported.</param>
     /// <returns>Every reference found, in file, line and column order.</returns>
@@ -197,10 +200,16 @@ internal static class ReferenceScan
         return -1;
     }
 
-    // A key matches only as a whole quoted string, so "res://ui/button.tscn" and Resource("res://ui/button.tscn")
-    // match and "res://ui/button.tscn.import" does not.
+    // In a scene or resource a key matches only as a whole quoted string, so "res://ui/button.tscn" and
+    // Resource("res://ui/button.tscn") match and "res://ui/button.tscn.import" does not.
     private static void ScanFile(string file, string text, IReadOnlyDictionary<string, string> renames, List<ScannedReference> references)
     {
+        ScriptKind? kind = ScriptPaths.KindOf(file);
+        if (kind is not null)
+        {
+            ScanScript(file, text, kind.Value, renames, references);
+            return;
+        }
         string[] lines = text.Split('\n');
         QuoteGrammar grammar = GrammarOf(file);
         HashSet<string>? uidTable = grammar == QuoteGrammar.Xml ? UidTablePaths(text) : null;
@@ -209,8 +218,24 @@ internal static class ReferenceScan
             if (renames.TryGetValue(span, out string? value))
             {
                 bool carriesUid = uidTable?.Contains(span) == true || CarriesUid(lines[line - 1], column, span);
-                references.Add(new ScannedReference(file, line, column, span, value, carriesUid));
+                references.Add(new ScannedReference(file, line, column, span, value, carriesUid, ScriptHitKind.Whole));
             }
+        }
+    }
+
+    private static void ScanScript(
+        string file,
+        string text,
+        ScriptKind kind,
+        IReadOnlyDictionary<string, string> renames,
+        List<ScannedReference> references
+    )
+    {
+        LineMap lines = new(text);
+        foreach (ScriptHit hit in ScriptPaths.Find(text, kind, renames))
+        {
+            LinePosition position = lines.OneBased(hit.Literal.Quote);
+            references.Add(new ScannedReference(file, position.Line, position.Column, hit.Key, hit.Value, CarriesUid: false, hit.Kind));
         }
     }
 
@@ -285,7 +310,8 @@ internal static class ReferenceScan
     }
 
     // Every accepted file under the root, in one order on every OS. A folder Godot leaves out of its file system is
-    // skipped: a hidden one, one holding .gdignore, and one holding its own project.godot, a nested project.
+    // skipped: a hidden one, one holding .gdignore, and one holding its own project.godot, a nested project. So is a
+    // .NET project's build output, its bin and obj.
     private static List<string> Files(string root, TextWriter error)
     {
         List<string> found = [];
@@ -298,16 +324,18 @@ internal static class ReferenceScan
     {
         try
         {
+            bool holdsCsproj = false;
             foreach (string path in Directory.EnumerateFiles(folder))
             {
-                if (Extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+                holdsCsproj |= string.Equals(Path.GetExtension(path), ".csproj", StringComparison.OrdinalIgnoreCase);
+                if (Accepted(path))
                 {
                     found.Add(path);
                 }
             }
             foreach (string subfolder in Directory.EnumerateDirectories(folder))
             {
-                if (!Skip(subfolder))
+                if (!Skip(subfolder) && !(holdsCsproj && IsBuildOutput(subfolder)))
                 {
                     Walk(subfolder, found, error);
                 }
@@ -323,10 +351,15 @@ internal static class ReferenceScan
         }
     }
 
+    private static bool Accepted(string path) =>
+        Extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase) || ScriptPaths.KindOf(path) is not null;
+
     private static bool Skip(string folder) =>
         Path.GetFileName(folder).StartsWith('.')
         || File.Exists(Path.Combine(folder, ".gdignore"))
         || File.Exists(Path.Combine(folder, "project.godot"));
+
+    private static bool IsBuildOutput(string folder) => Path.GetFileName(folder) is "bin" or "obj";
 
     // Where an XML scan stands at a character: in element text, a comment, a tag, or an attribute value still open.
     private enum Markup
