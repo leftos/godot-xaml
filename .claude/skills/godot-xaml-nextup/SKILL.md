@@ -22,6 +22,7 @@ linear: godot-xaml
 `./run.ps1 <verb>` runs each command through `tools/gate.ps1`, with a log in `.tmp/`:
 
 - `build`: `dotnet build GodotXaml.slnx -c Release -warnaserror`.
+- `godot-build`: `dotnet build godot/GodotXaml.Addon.csproj -c Debug -warnaserror`, the Godot addon project the solution leaves out (its build needs the Godot SDK, whose configurations are Debug, ExportDebug and ExportRelease).
 - `test`: the build, then `dotnet test --solution GodotXaml.slnx -c Release --no-build`.
 - `format-check`: `dotnet csharpier check .`.
 - `format`: `dotnet csharpier format .`.
@@ -29,5 +30,5 @@ linear: godot-xaml
 Where each runs (`.pre-commit-config.yaml`):
 
 - pre-commit: `csharpier check` on the staged C# files, the 150-character line check (`tools/linelength.py`), and gdformat and gdlint on the metadata dump tool's GDScript.
-- pre-push: `run.ps1 build`.
+- pre-push: `run.ps1 build`, then `run.ps1 godot-build`.
 - By hand: `run.ps1 test`, which no hook runs, and `run.ps1 format-check` for the whole repo.

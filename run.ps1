@@ -8,16 +8,17 @@ Builds, tests and format-checks the GodotXaml solution, every step run through t
 Every verb but help runs its command through the repo's gate wrapper, tools/gate.ps1, in a pwsh of its own: the wrapper
 hands the words to the installed gate.exe, which writes the command's whole output to the log under .tmp/ and enforces
 the ceiling, and on a machine without gate.exe it runs the command directly. The script exits with the gated command's
-status. The hooks in .pre-commit-config.yaml call build and format-check, so the same commands run there.
+status. The hooks in .pre-commit-config.yaml call build, godot-build and format-check, so the same commands run there.
 
   help          prints this usage; the verb a run without one uses
   build         dotnet build GodotXaml.slnx in Release, warnings as errors; .tmp/build.log, ceiling 600 s
+  godot-build   dotnet build godot/GodotXaml.Addon.csproj in Debug, warnings as errors; .tmp/godot-build.log, ceiling 600 s
   test          build, then dotnet test of the solution in Release without building it again; .tmp/test.log, ceiling 600 s
   format-check  dotnet tool restore, then dotnet csharpier check on the repo, changing nothing; .tmp/format.log
   format        dotnet tool restore, then dotnet csharpier format on the repo; .tmp/format.log
 
 .PARAMETER Verb
-One of help, build, test, format-check or format; help when it is not given.
+One of help, build, godot-build, test, format-check or format; help when it is not given.
 
 .EXAMPLE
 ./run.ps1 build
@@ -28,7 +29,7 @@ One of help, build, test, format-check or format; help when it is not given.
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'build', 'test', 'format-check', 'format')]
+    [ValidateSet('help', 'build', 'godot-build', 'test', 'format-check', 'format')]
     [string]$Verb = 'help'
 )
 
@@ -52,6 +53,7 @@ function Show-Help {
     Write-Host 'usage: ./run.ps1 <verb>'
     Write-Host '  help          prints this usage'
     Write-Host '  build         dotnet build GodotXaml.slnx -c Release -warnaserror (.tmp/build.log)'
+    Write-Host '  godot-build   dotnet build godot/GodotXaml.Addon.csproj -c Debug -warnaserror (.tmp/godot-build.log)'
     Write-Host '  test          build, then dotnet test the solution -c Release --no-build (.tmp/test.log)'
     Write-Host '  format-check  dotnet csharpier check . (.tmp/format.log)'
     Write-Host '  format        dotnet csharpier format . (.tmp/format.log)'
@@ -74,6 +76,12 @@ function Invoke-Gated {
 function Invoke-BuildVerb {
     return Invoke-Gated -Log '.tmp/build.log' -Slot 'heavy' -TimeoutSeconds 600 -Command @(
         'dotnet', 'build', 'GodotXaml.slnx', '-c', 'Release', '-warnaserror')
+}
+
+# The Godot addon project, which the solution leaves out because its build needs the Godot SDK, in Debug, warnings as errors.
+function Invoke-GodotBuildVerb {
+    return Invoke-Gated -Log '.tmp/godot-build.log' -Slot 'heavy' -TimeoutSeconds 600 -Command @(
+        'dotnet', 'build', 'godot/GodotXaml.Addon.csproj', '-c', 'Debug', '-warnaserror')
 }
 
 # The build, then the solution's tests against that build, so the runner never builds a configuration of its own.
@@ -105,6 +113,7 @@ Push-Location $PSScriptRoot
 try {
     $status = switch ($Verb) {
         'build' { Invoke-BuildVerb }
+        'godot-build' { Invoke-GodotBuildVerb }
         'test' { Invoke-TestVerb }
         'format-check' { Invoke-FormatVerb }
         'format' { Invoke-FormatVerb -Fix }

@@ -1,7 +1,8 @@
 # prek hooks (prek install; prek run --all-files). Only checks scoped to the staged files run at pre-commit: CSharpier on
 # the staged C# files, the 150-character line check that catches the comments CSharpier does not wrap, the GDScript format
-# and lint checks of the tools/ GDScript, and the Agent Mail guard. The warnings-as-errors build joins at pre-push. No
-# hook runs a test suite: `run.ps1 test` runs by hand, and `run.ps1 format-check` checks the whole repo by hand.
+# and lint checks of the tools/ GDScript, and the Agent Mail guard. The warnings-as-errors builds of the solution and of
+# the godot/ addon project join at pre-push. No hook runs a test suite: `run.ps1 test` runs by hand, and
+# `run.ps1 format-check` checks the whole repo by hand.
 default_install_hook_types: [pre-commit, pre-push]
 default_stages: [pre-commit]
 repos:
@@ -47,6 +48,13 @@ repos:
       - id: dotnet-build
         name: dotnet build -warnaserror
         entry: pwsh -NoProfile -File run.ps1 build
+        language: system
+        pass_filenames: false
+        files: \.(cs|csproj|props|slnx|editorconfig)$|^global\.json$
+        stages: [pre-push]
+      - id: godot-build
+        name: dotnet build godot/ addon -warnaserror
+        entry: pwsh -NoProfile -File run.ps1 godot-build
         language: system
         pass_filenames: false
         files: \.(cs|csproj|props|slnx|editorconfig)$|^global\.json$
