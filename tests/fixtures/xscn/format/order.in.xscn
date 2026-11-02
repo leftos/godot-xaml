@@ -1,0 +1,13 @@
+<Control Name="Root" xmlns:x="https://github.com/leftos/godot-xaml/format/1">
+  <Button
+      x:Index="1"
+      Text="Go"
+      Name="Go" />
+  <x:Uids>
+    <x:Uid Value="uid://b" Path="res://b.png" />
+    <x:Uid Path="res://a.png" Value="uid://a" />
+  </x:Uids>
+  <Label Text="A very long label text that keeps going on and on" Name="Long" HorizontalAlignment="Right" x:UniqueId="5" x:Groups="g" />
+  <x:Prop Value="2" Name="metadata/z key" />
+  <x:Prop Value="1" Name="metadata/a key" />
+</Control>

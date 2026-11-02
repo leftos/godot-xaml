@@ -10,10 +10,12 @@
 ## Glossary
 
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.
+- **Canonical fixture**: an `.xscn` or `.xres` under `tests/fixtures/xscn/canonical/` that the writer must reproduce byte for byte.
 - **Compat mode**: the writer flag Godot uses to write a file as format 3: byte arrays as number lists and negative infinity as `inf_neg`; off, it writes base64 and `-inf`. `ValueWriteOptions.Compat`, on by default.
 - **Diagnostic code**: the stable `GX` plus four digits that names one kind of parse problem (`GX0001` for an XML syntax error), listed in `XscnCodes`.
 - **Effective default**: a property's default for a given class, as Godot saves against it: none for a class Godot keeps no defaults for (a virtual class such as `BaseButton`); else the class's own declaration's default (none when it declares the property without one); else its override; else its parent's effective default. `GodotMetadata.FindDefault`.
 - **Fixture generator**: `tools/value-fixtures/`, the headless Godot script that writes the expected value text under `tests/fixtures/values/`; `tools/scene-fixtures/` does the same for scenes and resources under `tests/fixtures/scenes/`.
+- **Format pair**: an `.in.xscn`/`.out.xscn` pair under `tests/fixtures/xscn/format/`; the writer's output for the `.in` document must equal the `.out` file, which proves the canonical rewrite.
 - **Gate**: a command a change must pass (build, test, format check), run through `./run.ps1 <verb>` and `tools/gate.ps1`, which log to `.tmp/`; the Gates section of the `godot-xaml-nextup` skill lists them and which hook runs each.
 - **Key order**: the order Godot writes a dictionary's entries in: string keys by code point, other keys by Variant type then value; keys Godot cannot order keep their source order. `GodotKeyOrder`.
 - **Metadata dump**: the tool in `tools/metadata-dump/` that walks `ClassDB` in a headless Godot run and writes the metadata file.

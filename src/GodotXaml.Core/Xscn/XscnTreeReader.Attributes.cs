@@ -13,11 +13,13 @@ namespace GodotXaml.Core.Xscn;
 internal sealed partial class XscnTreeReader
 {
     // core/object/object.h, ConnectFlags: CONNECT_PERSIST = 2, which every connection a scene stores has.
-    private const int Persist = 2;
+    internal const int Persist = 2;
 
     private static readonly XscnValueType IntType = new("int", null);
     private static readonly XscnValueType BoolType = new("bool", null);
-    private static readonly XscnValueType ObjectType = new("Object", null);
+
+    // Script's type, which the writer shares.
+    internal static readonly XscnValueType ObjectType = new("Object", null);
 
     // The x: attributes of a node or an override, by local name.
     private static readonly FrozenDictionary<string, AttributeReader> NodeFormatAttributes = new Dictionary<string, AttributeReader>(
@@ -47,8 +49,6 @@ internal sealed partial class XscnTreeReader
         [(ElementKind.Override, "Path")] = (_, parts, attribute) => parts.Path = attribute.Value,
     }.ToFrozenDictionary();
 
-    private XscnEnumNames? connectFlags;
-
     private delegate void AttributeReader(XscnTreeReader reader, ElementParts parts, AttributeText attribute);
 
     private static bool IsNamespaceDeclaration(AttributeText attribute) => IsNamespaceDeclaration(attribute.Prefix, attribute.LocalName);
@@ -58,12 +58,7 @@ internal sealed partial class XscnTreeReader
 
     private static bool IsNamespaceDeclaration(string prefix, string localName) => prefix == "xmlns" || (prefix.Length == 0 && localName == "xmlns");
 
-    // The names of Object.ConnectFlags, GodotSharp's own; none when the metadata lacks the enum, leaving integers.
-    private XscnEnumNames ConnectFlags =>
-        connectFlags ??= new XscnEnumNames(
-            [.. metadata.FindEnum("Object.ConnectFlags")?.Members.Select(m => new XscnEnumName(m.CSharpName, m.Value)) ?? []],
-            isFlags: true
-        );
+    private XscnEnumNames ConnectFlags => XscnSignalNames.ConnectFlags(metadata);
 
     private static void SetName(ElementParts parts, string name)
     {
@@ -166,11 +161,7 @@ internal sealed partial class XscnTreeReader
         }
     }
 
-    // An attribute named by a signal of the class, or one it inherits, unless the class has a property of that name.
-    private GodotSignalInfo? SignalAttribute(GodotClassInfo cls, string name) =>
-        name.Contains('.', StringComparison.Ordinal) || metadata.FindPropertyByCSharpName(cls, name) is not null
-            ? null
-            : metadata.FindSignalByCSharpName(cls, name);
+    private GodotSignalInfo? SignalAttribute(GodotClassInfo cls, string name) => XscnSignalNames.SignalAttribute(metadata, cls, name);
 
     // A value that is not text of its type stays in the model as XscnInvalid and is reported over the value's text.
     private XscnValue ReadValue(AttributeText attribute, XscnValueType type)

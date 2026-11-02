@@ -1,0 +1,17 @@
+<Control
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    xmlns:c="res://ui/"
+    xmlns:w="res://world/"
+    Name="Root">
+  <x:Uids>
+    <x:Uid Path="res://ui/Modal.tscn" Value="uid://b1modal" />
+    <x:Uid Path="res://world/2-arena.xscn" Value="uid://c2arena" />
+  </x:Uids>
+  <c:Modal Name="Confirm" x:Editable="True" x:Index="2">
+    <x:Override Path="Centre/Panel" Visible="False" x:Index="1">
+      <Label Name="Added" Text="Hi" />
+    </x:Override>
+  </c:Modal>
+  <w:Map Name="Map" />
+  <x:Instance Name="Arena" Scene="res://world/2-arena.xscn" />
+</Control>

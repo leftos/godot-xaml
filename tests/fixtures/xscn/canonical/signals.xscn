@@ -1,0 +1,11 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" Script="res://root.gd">
+  <Button Name="Go" ButtonDown="OnGoDown" Pressed="OnGoPressed">
+    <x:Connect Signal="Pressed" To="Panel" Method="Hide" />
+    <x:Connect Signal="Toggled" Method="OnToggled" Flags="Deferred, OneShot" />
+    <x:Connect Signal="ButtonUp" Method="OnUp" Binds='[1, "a"]' Unbinds="1" />
+  </Button>
+  <PanelContainer Name="Panel" />
+  <x:Instance Name="Dialog" Scene="res://ui/dialog.xscn">
+    <x:Connect Signal="Pressed" Method="OnDialog" />
+  </x:Instance>
+</Control>

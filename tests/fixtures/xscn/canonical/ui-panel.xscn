@@ -1,0 +1,12 @@
+<PanelContainer xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+  <VBoxContainer Name="Column" Alignment="Center" ThemeOverrideConstants.separation="12">
+    <Label
+        Name="Title"
+        HorizontalAlignment="Center"
+        SizeFlagsHorizontal="ExpandFill"
+        Text="Settings"
+        ThemeOverrideColors.font_color="1, 0.5, 0, 1"
+        ThemeOverrideFontSizes.font_size="24" />
+    <Button Name="%Press" FocusMode="None" MouseFilter="Pass" Text="Press" x:Groups="buttons, ui" />
+  </VBoxContainer>
+</PanelContainer>

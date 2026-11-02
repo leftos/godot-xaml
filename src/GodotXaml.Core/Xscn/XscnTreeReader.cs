@@ -194,7 +194,8 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
         return new XscnSceneType(listed ?? stem + ".xscn");
     }
 
-    private static bool IsStemOf(string stem, string path) =>
+    // Shared with the writer, which checks that a scene tag reads back as its path.
+    internal static bool IsStemOf(string stem, string path) =>
         path.Length > stem.Length + 1
         && path.StartsWith(stem, StringComparison.Ordinal)
         && path[stem.Length] == '.'

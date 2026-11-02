@@ -1,0 +1,32 @@
+<!-- before root -->
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+  <!-- before uids -->
+  <x:Uids>
+    <!-- before uid -->
+    <x:Uid Path="res://art/frame.png" Value="uid://dframe" />
+    <!-- end of uids -->
+  </x:Uids>
+  <!-- before resources -->
+  <x:Resources>
+    <!-- before resource -->
+    <StyleBoxFlat x:Key="Panel" BgColor="0, 0, 0, 1">
+      <!-- end of resource -->
+    </StyleBoxFlat>
+    <!-- end of resources -->
+  </x:Resources>
+  <!-- before prop -->
+  <x:Prop Name="metadata/odd key" Value="1" />
+  <!-- before property element -->
+  <Control.Theme>
+    <!-- before inline resource -->
+    <Theme DefaultFontSize="20" />
+    <!-- end of property element -->
+  </Control.Theme>
+  <!-- before connect -->
+  <x:Connect Signal="Resized" Method="OnResized" />
+  <!-- before node -->
+  <Button Name="Go">
+    <!-- end of node -->
+  </Button>
+  <!-- end of root -->
+</Control>

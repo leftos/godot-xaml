@@ -39,4 +39,12 @@ How GXAML-5 is built: four briefs in order, and the choices the owner's format r
 - **`x:Groups` and `x:NodePaths`** split on commas, or read as Godot array text when the value starts with `[`.
 - **Comments** attach to the next node, property, connection, uid or resource read. Trailing ones attach to the element, property element or table they end. When the element they precede is not read, they carry over to the next element read.
 - **A document with no root** gets a stand-in root and `GX0004`.
+- **Writer entry.** `XscnWriter.Write(document, metadata)` returns the text: LF, a final newline, no XML declaration, 2-space indent. A start tag stays on one line up to 100 columns, else one attribute per line indented 4.
+- **Writer attribute order.** `Name`, `Script`, the rest ordinal, then the `x:` attributes with `x:UniqueId` last. Content order is `x:Uids`, `x:Resources`, property elements and `x:Prop` by name, `x:Connect`, children.
+- **Default omission** applies only on an element of a known class, against `GodotMetadata.FindDefault`; `layout_mode` is also omitted under a Container. A property with comments or a repeated name is never omitted.
+- **Signal attributes on write.** A connection is a signal attribute only in the simple case (scene root receiver, Persist only, no binds) and in a leading run that keeps call order; any other connection is `x:Connect`.
+- **Writer `x:Prop`.** A property whose attribute name would read back as something else, is taken, has comments or repeats a name is written as `x:Prop`; once a name is written as an element, all properties of that name are.
+- **Prefix clash.** A scene namespace whose prefix is `x` is written as `x1`, `x2`, and so on.
+- **Characters XML 1.0 cannot hold.** A string with one is written as `x:Prop` with `\uXXXX` escapes, binds included; group and node-path names fall back to escaped array text. A plain-text field (a name, a path) with one throws `ArgumentException`, and a lone surrogate anywhere throws.
+- **Writer comments.** A carriage return in a comment becomes LF. An empty table that has comments is still written.
 - **Malformed structure.** A duplicate attribute is `GX0113` (the first is kept), a scene-prefixed attribute `GX0114`, a second table `GX0115`, and a class tag that is not a Resource where a resource goes (a property element, an `x:Resources` entry, an `.xres` root) `GX0117`, the element still read. `Name=""` and `Name="%"` are `GX0104`.

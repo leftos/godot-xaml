@@ -1,7 +1,5 @@
-using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Values;
@@ -14,9 +12,6 @@ namespace GodotXaml.Core.Xscn;
 internal sealed partial class XscnTreeReader
 {
     private static readonly string[] ConnectAttributes = ["Signal", "To", "Method", "Flags", "Binds", "Unbinds", "FromUidPath", "ToUidPath"];
-
-    // Building the lookup scans every class's signals, so each metadata's is built once, on its first unknown-class x:Connect.
-    private static readonly ConditionalWeakTable<GodotMetadata, FrozenDictionary<string, string?>> AgreedSignals = new();
 
     // <x:Prop Name="…" Value="…" />: the Godot name verbatim, the value untyped Godot value text.
     private void AddProp(ElementParts parent, IXmlElementSyntax element)
@@ -61,26 +56,7 @@ internal sealed partial class XscnTreeReader
             attributes.GetValueOrDefault("ToUidPath") is { } to ? ReadIdPath(to) : []
         );
 
-    // A signal's C# name on the emitter's class or a class it inherits; on an element of unknown class, the one Godot
-    // name every class with a signal of that C# name agrees on; else the name verbatim, a script's own signal.
-    private string SignalName(GodotClassInfo? cls, string csName) =>
-        (cls is null ? AgreedSignal(csName) : metadata.FindSignalByCSharpName(cls, csName)?.Name) ?? csName;
-
-    private string? AgreedSignal(string csName) => AgreedSignals.GetValue(metadata, BuildAgreedSignals).GetValueOrDefault(csName);
-
-    // Each C# signal name, and the one Godot name every class's signal of that C# name has, or null when they differ.
-    private static FrozenDictionary<string, string?> BuildAgreedSignals(GodotMetadata metadata) =>
-        metadata
-            .Classes.SelectMany(c => c.Signals)
-            .Where(s => s.CSharpName is not null)
-            .GroupBy(s => s.CSharpName!, StringComparer.Ordinal)
-            .ToFrozenDictionary(g => g.Key, g => SingleName(g.Select(s => s.Name)), StringComparer.Ordinal);
-
-    private static string? SingleName(IEnumerable<string> names)
-    {
-        List<string> distinct = [.. names.Distinct(StringComparer.Ordinal).Take(2)];
-        return distinct.Count == 1 ? distinct[0] : null;
-    }
+    private string SignalName(GodotClassInfo? cls, string csName) => XscnSignalNames.GodotName(metadata, cls, csName);
 
     // Flag names add to Persist, which is implied; an integer is the flags as stored, Persist included or not.
     private int ReadConnectFlags(AttributeText? flags)

@@ -26,7 +26,7 @@ public static class XscnParser
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(metadata);
-        var reader = new XscnTreeReader(text, metadata, Names.GetValue(metadata, m => new XscnPropertyNames(m)));
+        var reader = new XscnTreeReader(text, metadata, NamesOf(metadata));
         XscnDocument document = reader.Read(kind);
         ImmutableArray<XscnDiagnostic> diagnostics = reader.Diagnostics;
         return new XscnParseResult(document, diagnostics, diagnostics.Any(d => d.Severity == XscnSeverity.Error));
@@ -34,4 +34,9 @@ public static class XscnParser
 
     // Indexing every class's properties is costly, so each metadata's names are built once.
     private static readonly ConditionalWeakTable<GodotMetadata, XscnPropertyNames> Names = new();
+
+    /// <summary>The attribute names of a metadata, built once per metadata and shared with the writer.</summary>
+    /// <param name="metadata">The metadata.</param>
+    /// <returns>Its attribute names.</returns>
+    internal static XscnPropertyNames NamesOf(GodotMetadata metadata) => Names.GetValue(metadata, m => new XscnPropertyNames(m));
 }

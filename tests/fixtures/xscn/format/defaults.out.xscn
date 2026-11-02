@@ -1,0 +1,17 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+  <Button Name="A" />
+  <Button Name="B" FocusMode="None" />
+  <BaseButton Name="C" FocusMode="None" />
+  <Label Name="D" />
+  <VBoxContainer Name="E">
+    <Label Name="F" />
+    <x:Instance
+        Name="G"
+        Scene="res://ui/modal.xscn"
+        FocusMode="All"
+        LayoutMode="Container"
+        MouseFilter="Ignore"
+        Visible="True" />
+  </VBoxContainer>
+  <Control Name="H" LayoutMode="Anchors" />
+</Control>

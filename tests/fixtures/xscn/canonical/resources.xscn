@@ -1,0 +1,14 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+  <x:Resources>
+    <StyleBoxFlat x:Key="Panel" BgColor="0.25, 0.25, 0.25, 1" CornerRadiusTopLeft="4" />
+    <StyleBoxFlat x:Key="Hover" BgColor="0.5, 0.5, 0.5, 1" />
+  </x:Resources>
+  <PanelContainer Name="Frame" ThemeOverrideStyles.panel="{Panel}">
+    <x:Prop Name="metadata/odd key" Value="3" />
+    <Button Name="Ok" ThemeOverrideStyles.hover="{Hover}">
+      <Button.ThemeOverrideStyles.normal>
+        <StyleBoxFlat BgColor="0, 0, 0, 1" DrawCenter="False" />
+      </Button.ThemeOverrideStyles.normal>
+    </Button>
+  </PanelContainer>
+</Control>
