@@ -4,28 +4,31 @@
 
 ## Core format
 
-- [ ] GXAML-5 Core: .xscn/.xres model, parser and canonical writer · release vNext
-  - [/] GXAML-36 Core xscn 3: parser over GuiLabs.Language.Xml · release vNext
-  - [ ] GXAML-37 Core xscn 4: canonical writer and default omission · release vNext
-- [ ] GXAML-7 Core: .tscn to .xscn conversion and back, with round-trip tests · release vNext
+- [/] GXAML-7 Core: .tscn to .xscn conversion and back, with round-trip tests · release vNext
 - [ ] GXAML-8 Converter run on delve-the-dungeon, opening-hand and openpax scenes · release vNext
 - [ ] GXAML-23 GodotNames: match Godot's case tables and UTF-32 indexing, and check names against GodotSharp.dll · release vNext+1
 - [ ] GXAML-39 Core names: check the editor-class enum names against GodotSharpEditor · release vNext+1
+- [ ] GXAML-47 Core xscn parser: second format prefix, signal attributes on instances, empty property element
+- [ ] GXAML-48 Core xscn parser: pin XmlText decoding and comment-slot equality, reject an empty x:Key
+- [ ] GXAML-49 Metadata: round-trip the default-override texts, and point GodotPropertyInfo.Default at FindDefault
+- [ ] GXAML-50 Format: how a script's PascalCase signal is named on an instance or override · release vNext
 
 ## Godot addon
 
-- [ ] GXAML-9 Addon: loader and saver for .xscn/.xres on the core · release vNext
+- [/] GXAML-9 Addon: loader and saver for .xscn/.xres on the core · release vNext
 - [ ] GXAML-10 Addon: export support for .xscn/.xres · release vNext
-- [ ] GXAML-45 Addon: install into a Godot project, packaged and documented · release vNext
+- [/] GXAML-45 Addon: install into a Godot project, packaged and documented · release vNext
 - [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+2
+- [ ] GXAML-52 Gates: build the godot/ addon project at pre-push · release vNext
 
 ## Agent tooling
 
-- [ ] GXAML-12 CLI: godot-xaml convert, check and format · release vNext
+- [/] GXAML-12 CLI: godot-xaml convert, check and format · release vNext
 - [ ] GXAML-13 godot-mcp support for .xscn scenes · release vNext
 - [ ] GXAML-44 Friction rule: repos using godot-xaml file GitHub issues here · release vNext
 - [ ] GXAML-43 Release procedure: version, tag, publish and cut the Linear release · release vNext
 - [ ] GXAML-38 CLI: upgrade a project's .xscn files across a typing-changing Godot release
+- [ ] GXAML-51 CLI check: response files, -- before paths, BOM-less UTF-16, folder metadata, cwd in a test
 
 ## Editor support
 
@@ -49,5 +52,4 @@
 
 ## Design files
 
-- [v1-design.md](v1-design.md) — GXAML-5, GXAML-7, GXAML-8, GXAML-9, GXAML-10, GXAML-11, GXAML-12, GXAML-13, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, GXAML-23, GXAML-45, Agent tooling, Core format, Editor support, Godot addon
-- [xscn-core.md](xscn-core.md) — GXAML-5, GXAML-36, GXAML-37
+- [v1-design.md](v1-design.md) — GXAML-7, GXAML-8, GXAML-9, GXAML-10, GXAML-11, GXAML-12, GXAML-13, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, GXAML-23, GXAML-45, Agent tooling, Core format, Editor support, Godot addon
