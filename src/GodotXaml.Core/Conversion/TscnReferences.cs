@@ -22,6 +22,7 @@ internal sealed class TscnReferences
     private readonly Dictionary<string, List<string>> edges = new(StringComparer.Ordinal);
     private readonly HashSet<string> onCycle = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> keys = new(StringComparer.Ordinal);
+    private readonly HashSet<string> keptPrevious = new(StringComparer.Ordinal);
     private readonly List<ConversionIssue> issues;
     private readonly Func<string?, string, bool> canInline;
 
@@ -91,6 +92,12 @@ internal sealed class TscnReferences
     /// <param name="id">The sub_resource's id.</param>
     /// <returns>The key.</returns>
     public string KeyOf(string id) => keys[id];
+
+    /// <summary>
+    /// The keys the previous document's <c>x:Resources</c> entries gave the sub_resources that matched them, which are the
+    /// only keys an entry this conversion makes shares its comments with.
+    /// </summary>
+    public IReadOnlySet<string> KeptPreviousKeys => keptPrevious;
 
     private void Index(TscnDocument document)
     {
@@ -284,6 +291,7 @@ internal sealed class TscnReferences
         {
             if (taken.Add(key))
             {
+                keptPrevious.Add(key);
                 keys[sub.Id] = key;
                 return;
             }

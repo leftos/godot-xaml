@@ -27,6 +27,11 @@ public static partial class TscnToXscn
         ArgumentNullException.ThrowIfNull(options);
         var context = new Context(document, metadata, options);
         XscnDocument converted = document.Kind == TscnKind.Scene ? context.ConvertScene() : context.ConvertResource();
+        if (options.Previous is { } previous)
+        {
+            converted = PreviousComments.Carry(previous, converted, context.KeptPreviousKeys);
+        }
+
         return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids() };
     }
 
@@ -52,6 +57,9 @@ public static partial class TscnToXscn
         }
 
         public List<ConversionIssue> Issues { get; } = [];
+
+        // The keys the previous document's x:Resources entries gave, which are the only ones that keep its comments.
+        public IReadOnlySet<string> KeptPreviousKeys => references.KeptPreviousKeys;
 
         // The first ext_resource at a path gives the path's id, as the .xscn keeps one file per path.
         public ConversionIds Ids()
@@ -108,7 +116,8 @@ public static partial class TscnToXscn
         private XscnValue SubValue(TscnSubResource sub) =>
             references.IsInline(sub.Id) ? new XscnInline(Resource(sub, null)) : new XscnKeyRef(references.KeyOf(sub.Id));
 
-        // Inside value text a file is Resource("res://…") and a sub-resource SubResource("Key") (xscn-core.md, References).
+        // Inside value text a file is Resource("res://…") and a sub-resource SubResource("Key")
+        // (docs/DECISIONS.md, "The core's implementation choices", References).
         private GodotValue Rewrite(GodotValue reference) =>
             reference switch
             {

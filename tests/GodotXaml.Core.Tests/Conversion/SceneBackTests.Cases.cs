@@ -1,6 +1,6 @@
 namespace GodotXaml.Core.Tests.Conversion;
 
-// The .xscn each scene fixture converts to by the format's rules (docs/DECISIONS.md, docs/plans/xscn-core.md). A scene
+// The .xscn each scene fixture converts to by the format's rules (docs/DECISIONS.md, "The core's implementation choices"). A scene
 // instanced or inherited by a .tscn path without a uid is <x:Instance Scene="…">, since a tag would read as .xscn.
 public sealed partial class SceneBackTests
 {

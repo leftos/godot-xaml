@@ -28,8 +28,9 @@ public sealed record ConversionOptions
     public ConversionIds? KeepIds { get; init; }
 
     /// <summary>
-    /// The <c>.xscn</c> or <c>.xres</c> a forward conversion replaces, whose <c>x:Resources</c> keys are kept for the
-    /// sub-resources that match its entries; null converts from scratch.
+    /// The <c>.xscn</c> or <c>.xres</c> a forward conversion replaces: its <c>x:Resources</c> keys are kept for the
+    /// sub-resources that match its entries, and its comments are carried onto the parts of the new document that match
+    /// it; null converts from scratch.
     /// </summary>
     public XscnDocument? Previous { get; init; }
 }
