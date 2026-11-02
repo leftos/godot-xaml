@@ -9,6 +9,7 @@ public sealed partial class CliProgramTests
     private const string BackupFolder = ".godot-xaml-backup";
     private const string StagingFolder = ".godot-xaml-staging";
     private const string ThemeResource = "[gd_resource type=\"Theme\" format=3]\n\n[resource]\ndefault_font_size = 12\n";
+    private const string BusLayout = "[gd_resource type=\"AudioBusLayout\" format=3]\n\n[resource]\n";
     private const string BrokenScene = "[gd_scene format=3]\n\n[node name=\"Root\"\n";
     private const string MainScript = "extends Node\nconst M = preload(\"res://main.tscn\")\n";
     private const string MainProject = "config_version=5\n\n[application]\nrun/main_scene=\"res://main.tscn\"\n";
@@ -104,6 +105,377 @@ public sealed partial class CliProgramTests
         Assert.Equal(Script, File.ReadAllText(gd));
         Assert.Contains(run.Lines, line => line.StartsWith($"{gd}(1,9): warning GXP0002", StringComparison.Ordinal));
         Assert.Contains("res://addons/x/plugin.tscn", File.ReadAllText(Path.Combine(folder, "main.xscn")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProjectSaysAddonsAreNotEdited()
+    {
+        Write("project.godot", Project);
+        Write("ui/button.tscn", ButtonScene);
+        string gd = Write("addons/x/a.gd", "var p = \"res://ui/\" + name + \".tscn\"\nprint(\"could not load res://ui/button.tscn\")\n");
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains(
+            $"{gd}(1,30): warning GXP0006: ends in .tscn; this run converts such files to .xscn but edits nothing under addons/, "
+                + "so a path built from it is not rewritten",
+            run.Lines
+        );
+        Assert.Contains(
+            $"{gd}(2,7): warning GXP0006: holds res://ui/button.tscn, which this run converts to res://ui/button.xscn, "
+                + "inside a longer string; addons/ is not edited, so it is not rewritten",
+            run.Lines
+        );
+    }
+
+    [Fact]
+    public void ProjectLeavesTheFilesGodotLoadsBeforeTheAddonAsText()
+    {
+        string project = Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        byte[] godotBefore = File.ReadAllBytes(project);
+        string theme = Write("t.tres", ThemeResource);
+        string bus = Write("default_bus_layout.tres", BusLayout);
+        Dictionary<string, byte[]> before = Snapshot([Write("main.tscn", ButtonScene)]);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.True(File.Exists(bus));
+        Assert.True(File.Exists(Located("main.xscn")));
+        Assert.False(File.Exists(Located("t.xres")));
+        Assert.False(File.Exists(Located("default_bus_layout.xres")));
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+        Assert.Contains($"{bus}: left as text: Godot loads it before any addon (audio/buses/default_bus_layout)", run.Lines);
+        Assert.Equal(godotBefore, File.ReadAllBytes(project));
+        Assert.Contains(run.Lines, line => line.EndsWith("0 warning(s)", StringComparison.Ordinal));
+        string backup = Assert.Single(BackupFolders());
+        AssertBackedUp(backup, before);
+        Assert.False(File.Exists(Path.Combine(backup, "t.tres")));
+        Assert.False(File.Exists(Path.Combine(backup, "default_bus_layout.tres")));
+    }
+
+    [Fact]
+    public void ProjectLeavesAFileNamedByABareSettingName()
+    {
+        Write("project.godot", "config_version=5\ngui/theme/custom=\"res://t.tres\"\n");
+        string theme = Write("t.tres", ThemeResource);
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.False(File.Exists(Located("t.xres")));
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+    }
+
+    [Fact]
+    public void ProjectLeavesAFileNamedByAFeatureTag()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom.mobile=\"res://m.tres\"\n");
+        string theme = Write("m.tres", ThemeResource);
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.False(File.Exists(Located("m.xres")));
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+    }
+
+    [Fact]
+    public void ProjectResolvesAUidSetting()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"uid://abc\"\n");
+        string theme = Write("t.tres", "[gd_resource type=\"Theme\" format=3 uid=\"uid://abc\"]\n\n[resource]\ndefault_font_size = 12\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.False(File.Exists(Located("t.xres")));
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+    }
+
+    [Fact]
+    public void ProjectSaysNothingOfAUidNoFileHolds()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"uid://none\"\n");
+        Write("t.tres", ThemeResource);
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("left as text", StringComparison.Ordinal));
+        Assert.True(File.Exists(Located("t.xres")));
+        Assert.True(File.Exists(Located("main.xscn")));
+    }
+
+    [Fact]
+    public void ProjectConvertsTheDefaultBusPathWhenTheSettingNamesAnother()
+    {
+        Write("project.godot", "config_version=5\n\n[audio]\nbuses/default_bus_layout=\"res://b.tres\"\n");
+        string bus = Write("b.tres", BusLayout);
+        Write("default_bus_layout.tres", BusLayout);
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(bus));
+        Assert.False(File.Exists(Located("b.xres")));
+        Assert.True(File.Exists(Located("default_bus_layout.xres")));
+        Assert.False(File.Exists(Located("default_bus_layout.tres")));
+        Assert.Contains($"{bus}: left as text: Godot loads it before any addon (audio/buses/default_bus_layout)", run.Lines);
+    }
+
+    [Fact]
+    public void ProjectLeavesTheDefaultEnvironmentAndTranslations()
+    {
+        Write(
+            "project.godot",
+            "config_version=5\n\n[rendering]\nenvironment/defaults/default_environment=\"res://e.tres\"\n\n"
+                + "[internationalization]\nlocale/translations=PackedStringArray(\"res://a.tres\", \"res://b.tres\")\n\n"
+                + "[display]\nmouse_cursor/custom_image=\"res://c.tres\"\n"
+        );
+        string[] left =
+        [
+            Write("e.tres", ThemeResource),
+            Write("a.tres", ThemeResource),
+            Write("b.tres", ThemeResource),
+            Write("c.tres", ThemeResource),
+        ];
+        string[] reasons =
+        [
+            "rendering/environment/defaults/default_environment",
+            "internationalization/locale/translations",
+            "internationalization/locale/translations",
+            "display/mouse_cursor/custom_image",
+        ];
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.All(left, file => Assert.True(File.Exists(file)));
+        Assert.All(left, file => Assert.False(File.Exists(Path.ChangeExtension(file, ".xres"))));
+        for (int index = 0; index < left.Length; index++)
+        {
+            Assert.Contains($"{left[index]}: left as text: Godot loads it before any addon ({reasons[index]})", run.Lines);
+        }
+    }
+
+    [Fact]
+    public void ProjectLeavesWhatALeftFileReaches()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write(
+            "t.tres",
+            "[gd_resource type=\"Theme\" load_steps=2 format=3]\n\n"
+                + "[ext_resource type=\"StyleBox\" path=\"res://s.tres\" id=\"1_s\"]\n\n"
+                + "[resource]\ndefault_font_size = 12\nButton/styles/normal = ExtResource(\"1_s\")\n"
+        );
+        string style = Write("s.tres", "[gd_resource type=\"StyleBoxFlat\" format=3]\n\n[resource]\nbg_color = Color(1, 0, 0, 1)\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.True(File.Exists(style));
+        Assert.False(File.Exists(Located("t.xres")));
+        Assert.False(File.Exists(Located("s.xres")));
+        Assert.Contains($"{style}: left as text: Godot loads it before any addon (through res://t.tres)", run.Lines);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("GXP0002", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ProjectLeavesACycleOfReferencesOnce()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write(
+            "t.tres",
+            "[gd_resource type=\"Theme\" load_steps=2 format=3]\n\n"
+                + "[ext_resource type=\"StyleBox\" path=\"res://s.tres\" id=\"1_s\"]\n\n"
+                + "[resource]\nButton/styles/normal = ExtResource(\"1_s\")\n"
+        );
+        string style = Write(
+            "s.tres",
+            "[gd_resource type=\"StyleBox\" load_steps=2 format=3]\n\n"
+                + "[ext_resource type=\"Theme\" path=\"res://t.tres\" id=\"1_t\"]\n\n"
+                + "[resource]\ntheme = ExtResource(\"1_t\")\n"
+        );
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.True(File.Exists(style));
+        Assert.Single(run.Lines, $"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)");
+        Assert.Single(run.Lines, $"{style}: left as text: Godot loads it before any addon (through res://t.tres)");
+    }
+
+    [Fact]
+    public void ProjectLeavesAFileItCannotParse()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write("t.tres", "not a resource");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal("not a resource", File.ReadAllText(theme));
+        Assert.True(File.Exists(Located("main.xscn")));
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+        Assert.Contains($"{theme}: its references were not followed: Unexpected end of file (line 1, column 1)", run.Lines);
+    }
+
+    [Fact]
+    public void ProjectFollowsAStartupFileUnderAddons()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://addons/kit/t.tres\"\n");
+        string theme = Write(
+            "addons/kit/t.tres",
+            "[gd_resource type=\"Theme\" load_steps=2 format=3]\n\n"
+                + "[ext_resource type=\"StyleBox\" path=\"res://ui/s.tres\" id=\"1_s\"]\n\n"
+                + "[resource]\nButton/styles/normal = ExtResource(\"1_s\")\n"
+        );
+        string style = Write("ui/s.tres", "[gd_resource type=\"StyleBoxFlat\" format=3]\n\n[resource]\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(File.Exists(Located("addons/kit/t.xres")));
+        Assert.DoesNotContain(run.Lines, line => line.StartsWith($"{theme}: left as text", StringComparison.Ordinal));
+        Assert.Contains($"{style}: left as text: Godot loads it before any addon (through res://addons/kit/t.tres)", run.Lines);
+        Assert.False(File.Exists(Located("ui/s.xres")));
+    }
+
+    [Fact]
+    public void ProjectFollowsAReferenceByItsUid()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        Write(
+            "t.tres",
+            "[gd_resource type=\"Theme\" load_steps=2 format=3]\n\n"
+                + "[ext_resource type=\"StyleBox\" uid=\"uid://s\" path=\"res://old/s.tres\" id=\"1_s\"]\n\n"
+                + "[resource]\nButton/styles/normal = ExtResource(\"1_s\")\n"
+        );
+        string style = Write("ui/s.tres", "[gd_resource type=\"StyleBoxFlat\" format=3 uid=\"uid://s\"]\n\n[resource]\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(style));
+        Assert.False(File.Exists(Located("ui/s.xres")));
+        Assert.Contains($"{style}: left as text: Godot loads it before any addon (through res://t.tres)", run.Lines);
+    }
+
+    [Fact]
+    public void ProjectResolvesAUidBelowALeadingBlankLine()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"uid://abc\"\n");
+        string theme = Write("t.tres", "\n[gd_resource type=\"Theme\" format=3 uid=\"uid://abc\"]\n\n[resource]\ndefault_font_size = 12\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.False(File.Exists(Located("t.xres")));
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+    }
+
+    [Fact]
+    public void ProjectLeavesTheDefaultBusBesideATaggedKey()
+    {
+        Write("project.godot", "config_version=5\n\n[audio]\nbuses/default_bus_layout.mobile=\"res://m.tres\"\n");
+        string mobile = Write("m.tres", BusLayout);
+        string standard = Write("default_bus_layout.tres", BusLayout);
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(mobile));
+        Assert.True(File.Exists(standard));
+        Assert.False(File.Exists(Located("m.xres")));
+        Assert.False(File.Exists(Located("default_bus_layout.xres")));
+        Assert.Contains($"{mobile}: left as text: Godot loads it before any addon (audio/buses/default_bus_layout)", run.Lines);
+        Assert.Contains($"{standard}: left as text: Godot loads it before any addon (audio/buses/default_bus_layout)", run.Lines);
+    }
+
+    [Fact]
+    public void ProjectConvertsTheDefaultBusWhenTheKeyIsEmpty()
+    {
+        Write("project.godot", "config_version=5\n\n[audio]\nbuses/default_bus_layout=\"\"\n");
+        Write("default_bus_layout.tres", BusLayout);
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(Located("default_bus_layout.xres")));
+        Assert.DoesNotContain(run.Lines, line => line.Contains("left as text", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ProjectWithOnlyLeftFilesConvertsNothing()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write("t.tres", ThemeResource);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(
+            [
+                $"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)",
+                $"{folder}: no .tscn or .tres files to convert",
+                "0 converted, 0 refused, 0 error(s), 0 warning(s)",
+            ],
+            run.Lines
+        );
+    }
+
+    [Fact]
+    public void ProjectBackLeavesNothing()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write("t.tres", ThemeResource);
+        Write("default_bus_layout.tres", BusLayout);
+        Write("main.tscn", ButtonScene);
+        Assert.Equal(0, RunProject().ExitCode);
+
+        RunResult run = RunProject("--back");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("left as text", StringComparison.Ordinal));
+        Assert.True(File.Exists(Located("main.tscn")));
+        Assert.Equal(ThemeResource, File.ReadAllText(theme));
+    }
+
+    [Fact]
+    public void ProjectSeesAReferenceToALeftFileUnchanged()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        Write("t.tres", ThemeResource);
+        Write("main.tscn", Instancing("res://t.tres"));
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("res://t.tres", File.ReadAllText(Located("main.xscn")), StringComparison.Ordinal);
+        Assert.DoesNotContain(run.Lines, line => line.Contains(": warning ", StringComparison.Ordinal));
     }
 
     [Fact]

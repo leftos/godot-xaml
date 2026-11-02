@@ -241,6 +241,14 @@ It always backs up what it removes or edits, unless the user passes `--nobackup`
 
 It is all or nothing. The outputs are written to a hidden staging folder first. If any source fails, the staging folder is deleted and the project is left exactly as it was, with every error listed in that run. Only when every source converts are the originals backed up, the outputs moved in, the scripts and `project.godot` edited, and the originals removed. A failure after the first move is reported as a part-converted project, naming the backup to restore from; there is no automatic rollback.
 
+## A project conversion leaves the files Godot loads before any addon as text
+
+`convert --project` leaves as text the files named by `gui/theme/custom`, `gui/theme/custom_font`, `audio/buses/default_bus_layout` (its default path `res://default_bus_layout.tres` unless an untagged key sets it, when that file exists), `display/mouse_cursor/custom_image`, `rendering/environment/defaults/default_environment` and `internationalization/locale/translations`, plus every `.tres`/`.tscn` those reach through ext_resources. Everything else converts.
+
+A `uid://` value is resolved from the sources' headers, and a feature-tagged key counts. A `uid://` that names no file leaves nothing and prints nothing. The CLI does not read `override.cfg`. Each left file is named on an uncounted line, and the run neither converts, renames, backs up, removes nor rewrites references to it.
+
+Why, from the Godot 4.7.2 source: Godot loads these files before `ResourceLoader::add_custom_loaders()` (`main/main.cpp:3880-3881` and `:3691`, before `:4494`), so the addon's loaders do not exist yet; and a left theme whose ext_resource was converted fails whole at startup (`scene/resources/resource_format_text.cpp:147-160`). Whether a left file hits an export is unmeasured.
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.

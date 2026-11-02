@@ -67,7 +67,7 @@ Every reference a converted file makes to another file converted in the same run
 
 A reference to a converted file from a scene or resource the run does not write — including a source it refused or could not convert — is left as it is and warned about, with its file, line and column (`warning GXP0002`). The message says whether the reference carries a uid of its own — an `ext_resource`'s `uid` attribute, an `.xscn` or `.xres` `<x:Uids>` entry for its path, or a `uid://` in the same `Resource(…)` call — which keeps the reference resolving once the source is removed. A folder holding its own `project.godot` is another project, and a folder whose name starts with `.` or that holds a `.gdignore` is not part of the project's resources; none of them is scanned. Nor are the `bin` and `obj` folders directly beside a `.csproj`, for any file kind.
 
-The project's `.gd` and `.cs` scripts and its `project.godot` are scanned too, and never written. A string literal that is exactly a converted path is warned about (`warning GXP0002`): `refers to res://ui/button.tscn, which this run converts to res://ui/button.xscn; no uid on this reference; it breaks once the source is removed`. A converted path inside a longer string is warned about and not rewritten (`warning GXP0006`: `holds …, which this run converts to …, inside a longer string; it is not rewritten`), and so is a literal ending in an extension the run converts, since a path built from it is not rewritten (`warning GXP0006`: `ends in .tscn, and this run converts such files to .xscn; a path built from it is not rewritten`). Comments are skipped. These warnings are counted in the summary line and do not change the exit code.
+The project's `.gd` and `.cs` scripts and its `project.godot` are scanned too, and never written. A string literal that is exactly a converted path is warned about (`warning GXP0002`): `refers to res://ui/button.tscn, which this run converts to res://ui/button.xscn; no uid on this reference; it breaks once the source is removed`. A converted path inside a longer string is warned about and not rewritten (`warning GXP0006`: `holds …, which this run converts to …, inside a longer string; it is not rewritten`), and so is a literal ending in an extension the run converts, since a path built from it is not rewritten (`warning GXP0006`: `ends in .tscn, and this run converts such files to .xscn; a path built from it is not rewritten`). A file prints at most three `GXP0006` lines; the fourth line stands for the rest (`warning GXP0006: and {n} more like it in this file; none is rewritten`) and counts as one warning. Inside `addons/`, which the run never edits, the messages say so: `ends in .tscn; this run converts such files to .xscn but edits nothing under addons/, so a path built from it is not rewritten` and `holds …, which this run converts to …, inside a longer string; addons/ is not edited, so it is not rewritten`. Comments are skipped. These warnings are counted in the summary line and do not change the exit code.
 
 `export_presets.cfg`, `.gdextension` files, `.import` files, other `.cfg` files and `.csproj` files are not scanned.
 
@@ -89,7 +89,21 @@ The exit code is 0 when every file converted, 1 when one had an error or was ref
 
 `--project <root>` converts every `.tscn` and `.tres` under the root to `.xscn` and `.xres`, or with `--back` every `.xscn` and `.xres` to `.tscn` and `.tres`, rewriting references the same way both ways. It takes no paths, and `--back` and `--nobackup` are valid only with it. Unlike a plain run, it also edits the scripts and `project.godot`, and removes the originals.
 
-The walk skips `<root>/addons` (the root's own only; there is no flag to include it), `.godot/` and every other folder whose name starts with `.`, every folder holding a `.gdignore`, a folder with its own `project.godot`, `bin` and `obj` beside a `.csproj`, and folder links and junctions. The script walk skips the same folders.
+The walk skips `<root>/addons` (the root's own only; there is no flag to include it), `.godot/` and every other folder whose name starts with `.`, every folder holding a `.gdignore`, a folder with its own `project.godot`, `bin` and `obj` beside a `.csproj`, and folder links and junctions. The script walk that edits files skips the same folders. The warning scan that follows still reads scripts and scenes under addons/ and in linked folders, so it can warn about a file the run never edits.
+
+A forward run leaves as text the files Godot loads before any addon exists, since it has no loader for `.xscn` or `.xres` yet: the files named by the settings `gui/theme/custom`, `gui/theme/custom_font`, `audio/buses/default_bus_layout` (its default `res://default_bus_layout.tres` unless an untagged key sets it, when that file exists), `display/mouse_cursor/custom_image`, `rendering/environment/defaults/default_environment` and `internationalization/locale/translations`, and every `.tres` or `.tscn` those reach through their `ext_resource` entries, by uid first.
+
+A `uid://` value is resolved from the sources' headers, and a feature-tagged key (`gui/theme/custom.mobile`) counts. A `uid://` that names no file leaves nothing and prints nothing. A named file outside the run's sources, such as one under `addons/`, is followed but not named. `override.cfg` is not read. Each left file is one line, not counted in the summary:
+
+```text
+{path}: left as text: Godot loads it before any addon (gui/theme/custom)
+{path}: left as text: Godot loads it before any addon (through res://ui/theme.tres)
+{path}: its references were not followed: {reason}
+```
+
+The last form follows a file that cannot be read or parsed: what it references may still convert.
+
+A left file is not read, converted, renamed, backed up or removed, and no reference to it is rewritten. A project whose only files are left ends at `{root}: no .tscn or .tres files to convert`. `--back` leaves nothing.
 
 The run is all or nothing, in this order:
 

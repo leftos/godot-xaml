@@ -34,6 +34,8 @@ You need a Godot 4.7+ .NET project. `GodotXaml.Core` reaches NuGet with the firs
 1. Give the project a solution file if it has none, named after `dotnet/project/assembly_name`, or an export fails on the C# step: `dotnet new sln -n <AssemblyName>`, then `dotnet sln <AssemblyName>.slnx add <AssemblyName>.csproj`.
 2. Copy `godot/addons/godot_xaml/` from this repository to `addons/godot_xaml/` in your project, dotfiles included.
 3. Add the package to your `.csproj`: `<PackageReference Include="GodotXaml.Core" Version="0.1.0" />`.
+
+   The project's own `.csproj` must compile `addons/godot_xaml/`: a `<Compile Remove="addons\**" />` makes every file fail with `No loader found`. It also needs `<EnableDynamicLoading>true</EnableDynamicLoading>`. `godot/GodotXaml.Addon.csproj` is a working example.
 4. Run `dotnet build` before you first open the project. An editor that finds no built assembly turns the plugin off.
 5. Turn the plugin on: Project > Project Settings > Plugins > godot-xaml, or add this to `project.godot` before opening:
 
@@ -49,7 +51,7 @@ To update, raise the package version and copy the folder again.
 
 ## Converting a project
 
-`godot-xaml convert --project <root>` converts every `.tscn` and `.tres` under a project to `.xscn` and `.xres` (`--back` goes the other way), rewrites the `res://` references between them, and edits the scripts and `project.godot` that name a converted file. It is all or nothing: if any file fails, the project is left as it was. Otherwise the originals are copied to `.godot-xaml-backup/` before they are removed, unless you pass `--nobackup`. `addons/` is never touched. See [the CLI README](src/GodotXaml.Cli/README.md#convert).
+`godot-xaml convert --project <root>` converts every `.tscn` and `.tres` under a project to `.xscn` and `.xres` (`--back` goes the other way), rewrites the `res://` references between them, and edits the scripts and `project.godot` that name a converted file. It is all or nothing: if any file fails, the project is left as it was. Otherwise the originals are copied to `.godot-xaml-backup/` before they are removed, unless you pass `--nobackup`. `addons/` is never touched, and the files Godot loads before any addon (the custom theme, the bus layout and the like) stay as text. See [the CLI README](src/GodotXaml.Cli/README.md#convert).
 
 ## Status
 

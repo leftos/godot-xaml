@@ -22,6 +22,7 @@
 - **Gate**: a command a change must pass (build, test, format check), run through `./run.ps1 <verb>` and `tools/gate.ps1`, which log to `.tmp/`; the Gates section of the `godot-xaml-nextup` skill lists them and which hook runs each.
 - **Kept key**: an `x:Resources` key a save carries over from the previous document to the sub_resource that pairs with its entry, so a save changes only what changed (`PreviousKeys`).
 - **Key order**: the order Godot writes a dictionary's entries in: string keys by code point, other keys by Variant type then value; keys Godot cannot order keep their source order. `GodotKeyOrder`.
+- **Left file**: a file `convert --project` keeps as text because Godot loads it before any addon (`StartupFiles`).
 - **Metadata dump**: the tool in `tools/metadata-dump/` that walks `ClassDB` in a headless Godot run and writes the metadata file.
 - **Metadata file**: `metadata/godot-<major>.<minor>.json`, the per-Godot-version file of every class's own properties (Godot name, type, enum or flags type, hint, default), the defaults it changes for inherited properties (`defaultOverrides`), enums and, for `Control` and `Window` classes, the theme-override items (name, type, hint), dumped from `ClassDB`, so tools outside Godot know what the backing integers mean. C# names are computed by the core, not stored.
 - **Metadata loader**: `GodotMetadata` in `src/GodotXaml.Core/Metadata/`, which reads the metadata file into records and looks up classes, properties, enums and signals with their C# names.

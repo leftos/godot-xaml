@@ -26,6 +26,10 @@ internal static class ConvertCommand
 {
     private const string NoRootMessage = "no project.godot above this file; its res:// references are not rewritten";
     private const string StagingFolderName = ".godot-xaml-staging";
+
+    // A file's built paths past the third each add a line without saying anything new, so the fourth says how many more
+    // there are in that file and the rest say nothing.
+    private const int RolledUpAt = 4;
     private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     private static readonly AcceptedFiles<ConvertSource> Accepted = new(
@@ -89,7 +93,7 @@ internal static class ConvertCommand
             : new ProjectSettings(FullRoot(root), parseResult.GetValue(options.NoBackup), parseResult.GetValue(options.Back));
         List<InputFile<ConvertSource>>? files = project is null
             ? InputFiles.Collect(paths, Accepted, invocation.Error, enumerate)
-            : ProjectSources(project.Root, project.Back, invocation.Error);
+            : ProjectSources(project.Root, project.Back, invocation.Output, invocation.Error);
         return files is null ? 2 : LoadAndConvert(parseResult, options, files, project, workingDirectory);
     }
 
@@ -139,14 +143,16 @@ internal static class ConvertCommand
         return File.Exists(Path.Combine(root, "project.godot")) ? null : $"{FullRoot(root)}: no project.godot in this folder.";
     }
 
-    // Every scene and resource of the direction under the root, addons/ left out with the folders Godot leaves out.
-    private static List<InputFile<ConvertSource>>? ProjectSources(string root, bool back, TextWriter error)
+    // Every scene and resource of the direction under the root, addons/ left out with the folders Godot leaves out, and
+    // the files Godot loads before any addon left as text.
+    private static List<InputFile<ConvertSource>>? ProjectSources(string root, bool back, TextWriter output, TextWriter error)
     {
         List<string>? found = ReferenceScan.ProjectFiles(root, back ? BackExtensions : ForwardExtensions, skipAddons: true, error);
         if (found is null)
         {
             return null;
         }
+        Leave(back ? [] : StartupFiles.Find(root, found), found, output);
         List<InputFile<ConvertSource>> files = [];
         foreach (string path in found)
         {
@@ -156,6 +162,32 @@ internal static class ConvertCommand
             }
         }
         return files;
+    }
+
+    // Each file Godot loads before any addon is named on a line of its own, which the summary does not count, and is
+    // left out of the run: it is not read, converted, renamed, backed up or removed, and project.godot is not edited
+    // for it. A file whose references could not be followed says so on the next line, and one outside the run's sources
+    // is only walked, so it is not named as left. When every file is left, the run reaches its no-files line.
+    private static void Leave(List<LeftFile> left, List<string> found, TextWriter output)
+    {
+        if (left.Count == 0)
+        {
+            return;
+        }
+        var leftPaths = new HashSet<string>(InputFiles.PathComparer);
+        foreach (LeftFile file in left)
+        {
+            if (file.Listed)
+            {
+                output.WriteLine($"{file.Path}: left as text: Godot loads it before any addon ({file.Reason})");
+                leftPaths.Add(Path.GetFullPath(file.Path));
+            }
+            if (file.Unread is not null)
+            {
+                output.WriteLine($"{file.Path}: its references were not followed: {file.Unread}");
+            }
+        }
+        found.RemoveAll(path => leftPaths.Contains(Path.GetFullPath(path)));
     }
 
     /// <summary>The seed of an output's new resource ids: FNV-1a over its full path's UTF-8, the same on every run.</summary>
@@ -845,24 +877,78 @@ internal static class ConvertCommand
         }
         foreach ((string root, Dictionary<string, string> map) in roots)
         {
-            foreach (ScannedReference reference in ReferenceScan.Find(root, map, skip, invocation.Error))
+            ScanRoot(root, map, skip, tally, invocation);
+        }
+    }
+
+    private static void ScanRoot(string root, Dictionary<string, string> map, HashSet<string> skip, Tally tally, InvocationConfiguration invocation)
+    {
+        List<ScannedReference> references = [.. ReferenceScan.Find(root, map, skip, invocation.Error)];
+        foreach (IGrouping<string, ScannedReference> file in references.GroupBy(reference => reference.File, InputFiles.PathComparer))
+        {
+            ScanFile(root, file, tally, invocation);
+        }
+    }
+
+    // One file's hits, in the order the scan found them. A whole reference is a line of its own; a built path prints
+    // while the file has three or fewer, and the fourth stands for the rest of that file.
+    private static void ScanFile(string root, IGrouping<string, ScannedReference> file, Tally tally, InvocationConfiguration invocation)
+    {
+        bool underAddons = tally.Project && IsUnderAddons(root, file.Key);
+        int built = file.Count(reference => reference.Kind != ScriptHitKind.Whole);
+        int printed = 0;
+        foreach (ScannedReference reference in file)
+        {
+            string path = Location(reference.File, reference.Line, reference.Column);
+            if (reference.Kind == ScriptHitKind.Whole)
             {
-                string path = Location(reference.File, reference.Line, reference.Column);
-                string code = reference.Kind == ScriptHitKind.Whole ? CliCodes.UntouchedReference : CliCodes.BuiltPath;
-                Warn(invocation.Output, tally, path, code, ReferenceMessage(reference));
+                Warn(invocation.Output, tally, path, CliCodes.UntouchedReference, ReferenceMessage(reference, underAddons));
+                continue;
+            }
+            printed++;
+            string? message = BuiltPathMessage(reference, printed, built, underAddons);
+            if (message is not null)
+            {
+                Warn(invocation.Output, tally, path, CliCodes.BuiltPath, message);
             }
         }
     }
 
-    private static string ReferenceMessage(ScannedReference reference)
+    // The message a built path prints, or null when an earlier hit of the same file already rolled the rest up.
+    private static string? BuiltPathMessage(ScannedReference reference, int printed, int built, bool underAddons)
+    {
+        if (printed > RolledUpAt)
+        {
+            return null;
+        }
+        return printed == RolledUpAt
+            ? $"and {built - (RolledUpAt - 1)} more like it in this file; none is rewritten"
+            : ReferenceMessage(reference, underAddons);
+    }
+
+    // Whether a file is under the root's own addons folder, the first segment below the root, which the run never edits.
+    private static bool IsUnderAddons(string root, string file)
+    {
+        string[] segments = Path.GetRelativePath(root, Path.GetFullPath(file))
+            .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length > 0 && InputFiles.PathComparer.Equals(segments[0], "addons");
+    }
+
+    private static string ReferenceMessage(ScannedReference reference, bool underAddons)
     {
         if (reference.Kind == ScriptHitKind.Inside)
         {
-            return $"holds {reference.Key}, which this run converts to {reference.Value}, inside a longer string; it is not rewritten";
+            return underAddons
+                ? $"holds {reference.Key}, which this run converts to {reference.Value}, inside a longer string; "
+                    + "addons/ is not edited, so it is not rewritten"
+                : $"holds {reference.Key}, which this run converts to {reference.Value}, inside a longer string; it is not rewritten";
         }
         if (reference.Kind == ScriptHitKind.Fragment)
         {
-            return $"ends in {reference.Key}, and this run converts such files to {reference.Value}; a path built from it is not rewritten";
+            return underAddons
+                ? $"ends in {reference.Key}; this run converts such files to {reference.Value} but edits nothing under addons/, "
+                    + "so a path built from it is not rewritten"
+                : $"ends in {reference.Key}, and this run converts such files to {reference.Value}; a path built from it is not rewritten";
         }
         string clause = reference.CarriesUid
             ? "still resolves by its uid once the source is removed and the uid moves with the file"

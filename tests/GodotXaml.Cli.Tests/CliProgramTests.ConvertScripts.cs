@@ -117,6 +117,67 @@ public sealed partial class CliProgramTests
         Assert.Equal(2, ScriptWarnings(run).Length);
     }
 
+    [Fact]
+    public void ConvertRollsUpBuiltPathsPerFile()
+    {
+        string file = WriteConvertedButtonAnd("a.gd", FiveFragments);
+
+        RunResult run = RunConvert(folder);
+
+        string[] expected =
+        [
+            $"{file}(1,16): warning GXP0006: {Fragment}",
+            $"{file}(2,16): warning GXP0006: {Fragment}",
+            $"{file}(3,16): warning GXP0006: {Fragment}",
+            $"{file}(4,16): warning GXP0006: and 2 more like it in this file; none is rewritten",
+        ];
+        Assert.Equal(expected, ScriptWarnings(run));
+        Assert.Contains("1 converted, 0 refused, 0 error(s), 4 warning(s)", run.Lines);
+    }
+
+    [Fact]
+    public void ConvertPrintsAllOfThreeBuiltPaths()
+    {
+        string file = WriteConvertedButtonAnd("a.gd", ThreeFragments);
+
+        RunResult run = RunConvert(folder);
+
+        string[] expected =
+        [
+            $"{file}(1,16): warning GXP0006: {Fragment}",
+            $"{file}(2,16): warning GXP0006: {Fragment}",
+            $"{file}(3,16): warning GXP0006: {Fragment}",
+        ];
+        Assert.Equal(expected, ScriptWarnings(run));
+    }
+
+    [Fact]
+    public void ConvertKeepsWholeReferencesOutOfTheRollup()
+    {
+        string file = WriteConvertedButtonAnd("a.gd", FiveFragments + "var w1 = \"res://ui/button.tscn\"\nvar w2 = \"res://ui/button.tscn\"\n");
+
+        RunResult run = RunConvert(folder);
+
+        string[] expected =
+        [
+            $"{file}(1,16): warning GXP0006: {Fragment}",
+            $"{file}(2,16): warning GXP0006: {Fragment}",
+            $"{file}(3,16): warning GXP0006: {Fragment}",
+            $"{file}(4,16): warning GXP0006: and 2 more like it in this file; none is rewritten",
+            $"{file}(6,10): {NoUidWarning}",
+            $"{file}(7,10): {NoUidWarning}",
+        ];
+        Assert.Equal(expected, ScriptWarnings(run));
+    }
+
+    private const string Fragment = "ends in .tscn, and this run converts such files to .xscn; a path built from it is not rewritten";
+
+    private const string ThreeFragments = "var aa = \"x\" + \".tscn\"\nvar bb = \"x\" + \".tscn\"\nvar cc = \"x\" + \".tscn\"\n";
+
+    private const string FiveFragments =
+        "var aa = \"x\" + \".tscn\"\nvar bb = \"x\" + \".tscn\"\nvar cc = \"x\" + \".tscn\"\n"
+        + "var dd = \"x\" + \".tscn\"\nvar ee = \"x\" + \".tscn\"\n";
+
     private string WriteConvertedButtonAnd(string script, string text)
     {
         Write("project.godot", Project);
