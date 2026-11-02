@@ -30,7 +30,9 @@ Measured on Godot 4.7.2 .NET with the GXAML-3 spike (`spikes/xscn-loader/`):
   - It still saves as `.xscn` after a C# rebuild with the scene open, and reopens after an editor restart.
 - **Rebuild.** Running a scene builds C# first (`editor/run/editor_run_bar.cpp:350-353` into GodotTools' `_Build`). The editor then reloads the assembly when its file is newer (`GodotTools/HotReloadAssemblyWatcher.cs`, `modules/mono/csharp_script.cpp:594-623`). The spike saw the build rewrite the assembly and the scene save correctly afterwards, but no script can observe the reload itself, so the addon's tests prove it with a counter that the reloaded assembly resets.
 - **First import.** A brand-new project's first import writes no `.uid` sidecar for a `.xscn`: the first file scan runs before the C# global classes register, so no loader claims the file yet. The second import writes it. The addon must give every `.xscn` a uid before a scene references it.
-- **Not measured.** The FileSystem dock's own rename (the spike renamed through the file system and rescanned) and the Open dialog as drawn are left for godot-mcp's editor tools (GMCP-407).
+- **By hand.** The owner checked the rest in the editor, and both passed:
+  - Renaming a `.xscn` in the FileSystem dock renames its `.uid` sidecar too, rewrites the `.tscn` that instances it (path and uid), and the instance still loads.
+  - The Open Scene dialog lists `*.xscn` and shows the file.
 
 ## XAML syntax with C# names
 
