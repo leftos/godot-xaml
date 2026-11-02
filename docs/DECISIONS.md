@@ -42,6 +42,24 @@ The format is XML in the XAML style: an element per node, its type as the tag, i
 - A value equal to the default is not written, and neither is a value the parent decides: `layout_mode` under a `Container` is always Container, so it is omitted.
 - Enum names come from Godot itself, dumped to a metadata file by a headless Godot run, so tools outside Godot (the language server, Visual Studio) can name them too. A property's hint string is not enough: it holds display names (`mouse_filter`'s hint is `Stop,Pass (Propagate Up),Ignore`) and leaves out combined constants such as `ExpandFill`, so the dump takes the enum's members from `ClassDB.class_get_enum_constants`, linked to the property by its enum type.
 
+## Attribute values are typed by the metadata
+
+A property whose type the metadata knows is written in compact XAML text: vectors as their components (`CustomMinimumSize="640, 0"`), `Color` as four floats (`Modulate="1, 1, 1, 0.5"`, never hex, which cannot hold Godot's float32 channels), strings and `StringName`s unquoted (`ThemeTypeVariation="TitleLabel"`), `NodePath`s as the bare path, and files as `res://` paths.
+
+Every other value is written as Godot's own value text, exactly as a `.tscn` holds it: transforms, bases, quaternions, arrays, dictionaries, packed arrays, and every property of a script (`[Export]`), whose type the core cannot know (`Target='NodePath("../..")'`). A value that starts with a constructor name and `(`, or with `[` or `{`, is always Godot text.
+
+## Format elements and attributes take the `x:` prefix
+
+The default XML namespace is Godot's classes. Everything the format adds rather than Godot's property list takes the reserved `x:` prefix: the uid table (`<x:Uids>`), overrides (`<x:Override>`), and the attributes `x:Index`, `x:UniqueId`, `x:Editable` and `x:Groups`. A script property named `Index` or `Groups` therefore never clashes with them. `Name` and `Script` stay unprefixed, since they are Godot's own `name` and `script`.
+
+## Overrides inside an instance are named by path
+
+A node inside an instanced scene that the scene changes is written as `<x:Override Path="Centre/Panel">`, a child of the instance element, holding only the changed properties; nodes the scene adds under it nest inside it. The path is relative to the instance, so the core parses the file without opening the instanced scene to learn the type of each node on the way. `x:Editable="True"` on the instance element is the `.tscn`'s `[editable path=…]`.
+
+## Slash-named properties are dotted attributes
+
+A Godot property whose name holds a `/` (`theme_override_constants/separation`, `metadata/_tab_index`, `shader_parameter/albedo`) is written as a dotted attribute: the part before the slash in PascalCase, the key after it verbatim, since keys are free strings that would not survive a case change (`ThemeOverrideConstants.separation="12"`, `Metadata._tab_index="0"`). A value that needs an element, such as an inline resource, uses the same name as a property element (`<VBoxContainer.ThemeOverrideStyles.panel>`). A key that is not a legal XML name falls back to `<x:Prop Name="…" Value="…" />` with the Godot name verbatim.
+
 ## The metadata file
 
 - The dump tool is a GDScript run by headless Godot (`godot --headless --script`), with no build step, so it shares no files with the C# core.
@@ -58,7 +76,7 @@ Every save, by the Godot editor or the formatter, writes one fixed layout, like 
 ## References: paths inline, XML namespaces for scenes
 
 - A file is referenced by its `res://` path where it is used (`Texture="res://Art/frame.png"`).
-- Each referenced file's uid is kept in a `<Scene.Uids>` table the tools maintain, so a move made outside the editor can still be resolved.
+- Each referenced file's uid is kept in an `<x:Uids>` table the tools maintain, so a move made outside the editor can still be resolved.
 - A scene folder maps to an XML namespace (`xmlns:c="res://Scenes/Components/"`), so an instanced scene is a tag: `<c:Modal Name="%Confirm" />`.
 - An inline sub-resource is a XAML property element (`<PanelContainer.ThemeOverrides><StyleBoxFlat … /></PanelContainer.ThemeOverrides>`).
 
