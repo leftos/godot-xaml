@@ -10,9 +10,11 @@ namespace GodotXaml.Core.Conversion;
 /// <summary>
 /// Converts an .xscn or .xres model to a .tscn or .tres model, making the sections and ids again as Godot 4.7.2's text
 /// saver orders them (resource_format_text.cpp:1652-1748): ext_resources numbered in first-use order and written in
-/// natural id order, sub_resources after the
-/// resources they use, a resource's references followed in the sorted order of its property names. What the .tscn
-/// cannot hold is reported as an issue, never thrown.
+/// natural id order, sub_resources after the resources they use, a resource's references followed in the sorted order of
+/// its property names. A scene's nodes are flattened in tree order, each node's instanced scene found before its
+/// properties' files and the connections' binds after every node's (packed_scene.cpp:844-853, 1000, 1325), then come the
+/// connections and the editable instances in the same order. What the .tscn cannot hold is reported as an issue, never
+/// thrown.
 /// </summary>
 public static partial class XscnToTscn
 {
@@ -57,13 +59,8 @@ public static partial class XscnToTscn
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(options);
-        if (document.Kind != XscnDocumentKind.Resource)
-        {
-            throw new NotSupportedException("Converting a scene (.xscn) to .tscn is not supported.");
-        }
-
         var context = new Context(document, metadata, options);
-        TscnDocument converted = context.ConvertResource();
+        TscnDocument converted = document.Kind == XscnDocumentKind.Scene ? context.ConvertScene() : context.ConvertResource();
         return new ConversionResult<TscnDocument>(converted, [.. context.Issues]);
     }
 
@@ -116,11 +113,13 @@ public static partial class XscnToTscn
 
         // _find_resources (resource_format_text.cpp:1680-1714): a resource's properties in sorted name order, each
         // reference followed where it is met.
-        private void Discover(XscnResource resource, string location)
+        private void Discover(XscnResource resource, string location) => DiscoverProperties(resource.Type, resource.Properties, location);
+
+        private void DiscoverProperties(XscnType? owner, ImmutableArray<XscnProperty> properties, string location)
         {
-            foreach (XscnProperty property in resource.Properties.OrderBy(property => property.GodotName, StringComparer.Ordinal))
+            foreach (XscnProperty property in properties.OrderBy(property => property.GodotName, StringComparer.Ordinal))
             {
-                DiscoverValue(property.Value, DeclaredType(resource, property.GodotName), location + "." + property.GodotName);
+                DiscoverValue(property.Value, DeclaredType(owner, property.GodotName), location + "." + property.GodotName);
             }
         }
 
@@ -214,8 +213,8 @@ public static partial class XscnToTscn
             subUses.Add(new SubUse(resource, location));
         }
 
-        private string? DeclaredType(XscnResource owner, string property) =>
-            owner.Type is XscnClassType { Class: var owningClass } && metadata.FindProperty(owningClass, property) is { ClassName.Length: > 0 } info
+        private string? DeclaredType(XscnType? owner, string property) =>
+            owner is XscnClassType { Class: var owningClass } && metadata.FindProperty(owningClass, property) is { ClassName.Length: > 0 } info
                 ? CommonClass(info.ClassName)
                 : null;
 
@@ -326,10 +325,12 @@ public static partial class XscnToTscn
 
         private ImmutableArray<TscnProperty> Properties(SubUse use) => Properties(use.Resource, use.Location);
 
-        private ImmutableArray<TscnProperty> Properties(XscnResource resource, string location)
+        private ImmutableArray<TscnProperty> Properties(XscnResource resource, string location) => Properties(resource.Properties, location);
+
+        private ImmutableArray<TscnProperty> Properties(ImmutableArray<XscnProperty> source, string location)
         {
             ImmutableArray<TscnProperty>.Builder properties = ImmutableArray.CreateBuilder<TscnProperty>();
-            foreach (XscnProperty property in resource.Properties)
+            foreach (XscnProperty property in source)
             {
                 if (Value(property.Value, location + "." + property.GodotName) is { } value)
                 {

@@ -65,4 +65,22 @@ public static class ConversionCodes
 
     /// <summary>A <c>Resource("uid://…")</c> without a path, which an <c>[ext_resource]</c> cannot be written for; it is kept as it stands.</summary>
     public const string UidWithoutPath = "GXC0111";
+
+    /// <summary>A scene document whose root is a resource, not a node; no <c>[node]</c> is written.</summary>
+    public const string SceneRootNotANode = "GXC0112";
+
+    /// <summary>An <c>x:Override</c> that is not a direct child of an instance or the inherited root; its path is taken under its parent.</summary>
+    public const string OverrideOutsideInstance = "GXC0113";
+
+    /// <summary>
+    /// An <c>x:Override</c> that has no <c>Path</c>, or a <c>Path</c> with an empty, <c>.</c> or <c>..</c> segment, which
+    /// names no node; it and what it holds are not written.
+    /// </summary>
+    public const string OverrideWithoutPath = "GXC0114";
+
+    /// <summary>A node named unique (<c>Name="%X"</c>) whose <c>unique_name_in_owner</c> is not true; it is written unique.</summary>
+    public const string UniqueNameConflict = "GXC0115";
+
+    /// <summary>A placeholder (<c>x:InstancePlaceholder</c>) whose tag names another class or a scene; the tag is dropped.</summary>
+    public const string PlaceholderTypeDropped = "GXC0116";
 }
