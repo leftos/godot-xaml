@@ -20,7 +20,7 @@ The loader and saver are C# classes marked `[GlobalClass]` and `[Tool]`, with ba
 
 An `EditorPlugin` that adds them by hand does not last: on every script-class update the editor removes every script-backed loader and saver and re-adds only global classes (`editor/file_system/editor_file_system.cpp:2199-2205`, `core/io/resource_loader.cpp:1684-1713`, `core/io/resource_saver.cpp:254-283`). And an assembly reload recreates script instances only for tool scripts (`modules/mono/csharp_script.cpp:920-952`).
 
-Measured on Godot 4.7.2 .NET with the GXAML-3 spike (`spikes/xscn-loader/`):
+Measured on Godot 4.7.2 .NET with the GXAML-3 spike; `godot/editor-checks.ps1` runs the same checks on the real addon:
 - **Headless.** `--import` and a game run both find the C# global classes. A `.xscn` loads, instances inside a `.tscn`, saves and reloads, and runs with `--scene` the way F6 does.
 - **In the editor.** These all passed:
   - The Open and Save dialogs' extension lists hold `xscn`.
@@ -202,6 +202,8 @@ Godot fact (4.7.2): the C# dispatch of a `ResourceFormatLoader._load` override c
 ## Exported games load binary through a remap
 
 An `EditorExportPlugin`, registered by an `EditorPlugin` the project enables, loads each `.xscn` and `.xres` through the loader at export, saves Godot binary and adds it with `add_file(path, bytes, remap: true)`, so the exported game loads binary through Godot's `.remap` and runs no addon code at load. The raw XML is not shipped. The loaders are packed too, as a fallback and for a `.xscn` autoload's type check (`main/main.cpp`, which asks `get_resource_type` of the original path, and that lookup does not follow a remap). The binary sits under `res://.godot/exported/godot-xaml/`, named as Godot names its own conversions, so a project holding both `a.xscn` and `a.scn` gets no clash.
+
+The `.xres` loader reports the type of the file's root tag (a prefix read, not a full parse), so a `Theme.xres` is a Theme in the editor's pickers and in "export selected resources"; an unreadable first tag reports `Resource`.
 
 A file that fails to convert fails the export, naming the file and the error. Godot 4.7.2 gives an export plugin no way to change the export's result: `export_project_files` never reads plugin messages, and a headless `--export-pack` exits 0 whatever they say. So a failure is an `AddMessage(Error)` and a `Skip()`, the way Godot's own .NET export plugin reports one: the editor's export dialog shows "Failed.", and headless the `ERROR: godot-xaml:` line is the signal.
 

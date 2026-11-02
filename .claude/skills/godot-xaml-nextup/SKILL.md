@@ -32,3 +32,4 @@ Where each runs (`.pre-commit-config.yaml`):
 - pre-commit: `csharpier check` on the staged C# files, the 150-character line check (`tools/linelength.py`), and gdformat and gdlint on the metadata dump tool's GDScript.
 - pre-push: `run.ps1 build`, then `run.ps1 godot-build`.
 - By hand: `run.ps1 test`, which no hook runs, and `run.ps1 format-check` for the whole repo.
+- By hand, after a change to the addon's editor behaviour: the editor checks, `godot/editor-checks.ps1` (command in `docs/ARCHITECTURE.md`, Test locations), routed to a builder's hidden desktop.

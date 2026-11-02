@@ -1,0 +1,8 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Sub">
+  <Panel Name="A">
+    <Panel.Material>
+      <CanvasItemMaterial LightMode="Unshaded" />
+    </Panel.Material>
+  </Panel>
+  <Panel Name="B" />
+</Control>

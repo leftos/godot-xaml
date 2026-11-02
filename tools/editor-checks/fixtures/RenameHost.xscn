@@ -1,0 +1,3 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="RenameHost">
+  <x:Instance Name="Rename" Scene="res://fixtures/Rename.xscn" />
+</Control>

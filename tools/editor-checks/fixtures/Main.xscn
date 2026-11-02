@@ -1,0 +1,8 @@
+<Control
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Name="Main"
+    Script="res://fixtures/Main.gd"
+    OffsetBottom="360"
+    OffsetRight="640">
+  <Label Name="Title" Text="Hello from xscn" />
+</Control>

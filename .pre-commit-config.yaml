@@ -38,13 +38,11 @@ repos:
         language: system
         pass_filenames: true
         types: [c#]
-        exclude: ^spikes/
       - id: cs-line-length
         name: C# line length
         entry: uv run --quiet python tools/linelength.py
         language: system
         types: [c#]
-        exclude: ^spikes/
       - id: dotnet-build
         name: dotnet build -warnaserror
         entry: pwsh -NoProfile -File run.ps1 build
@@ -63,12 +61,12 @@ repos:
         name: gdformat check
         entry: gdformat --check
         language: system
-        files: ^tools/(metadata-dump|value-fixtures|scene-fixtures|export-probe)/.*\.gd$
+        files: ^tools/(metadata-dump|value-fixtures|scene-fixtures|export-probe|editor-checks)/.*\.gd$
       - id: gdlint
         name: gdlint
         entry: gdlint
         language: system
-        files: ^tools/(metadata-dump|value-fixtures|scene-fixtures|export-probe)/.*\.gd$
+        files: ^tools/(metadata-dump|value-fixtures|scene-fixtures|export-probe|editor-checks)/.*\.gd$
       - id: agent-mail-guard
         name: agent-mail lease guard
         entry: pwsh -NoProfile -File tools/agent-mail-guard.ps1
