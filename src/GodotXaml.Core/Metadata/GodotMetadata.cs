@@ -115,6 +115,14 @@ public sealed class GodotMetadata
     public GodotPropertyInfo? FindPropertyByCSharpName(GodotClassInfo cls, string csName) =>
         Chain(Resolve(cls)).Select(c => c.OwnPropertyByCSharpName(csName)).FirstOrDefault(p => p is not null);
 
+    /// <summary>A signal of a class or of one of its ancestors, by its C# name.</summary>
+    /// <param name="cls">The class to start from.</param>
+    /// <param name="csName">The signal's C# name (<c>Pressed</c>).</param>
+    /// <returns>The nearest class's signal of that name, or null when none has it.</returns>
+    /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
+    public GodotSignalInfo? FindSignalByCSharpName(GodotClassInfo cls, string csName) =>
+        Chain(Resolve(cls)).SelectMany(c => c.Signals).FirstOrDefault(s => s.CSharpName == csName);
+
     /// <summary>An enum by the name a property's <c>enumType</c> gives.</summary>
     /// <param name="enumType">A class enum's <c>Class.Enum</c> name (the class's ancestors are searched too), or a global enum's name.</param>
     /// <returns>The enum, or null when neither a class nor the global enums have it (<c>Vector3.Axis</c>).</returns>

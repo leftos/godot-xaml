@@ -29,3 +29,14 @@ How GXAML-5 is built: four briefs in order, and the choices the owner's format r
 - **Property elements** name their own tag as owner (`<c:Modal.Theme>`, `<x:Override.Theme>`).
 - **A value that does not fit its type's compact form** (an int in a float property, a script property on an instance whose stored name matches an engine property of another type) is written as `<x:Prop Name="…" Value="…" />` with Godot value text. The codec decides by reading its own attribute text back and comparing, so every round trip is exact. On an untyped attribute or `x:Prop`, `Resource("res://…")` alone reads as a file and `{Key}` as a resource key.
 - **Groups.** A group name holding a comma or edge whitespace makes `x:Groups` fall back to Godot array text.
+- **Uids** are `<x:Uid Path="res://…" Value="uid://…" />` entries.
+- **Connections.** `<x:Connect>` carries `FromUidPath` and `ToUidPath` as comma-separated integers; `To` defaults to `.`; Persist is implied and flag names come from `Object.ConnectFlags`.
+- **Attribute values** are entity-decoded by the parser, not the XML library. A bad reference is the library's `GX0001` and the value is kept as written.
+- **Library errors** become `GX0001`. An element's diagnostics span its tag name, a value's diagnostics span the value. `GX0107` (unknown class) is the only warning.
+- **The `x:` prefix** is whatever the root binds to the format URI. An element with an undeclared prefix is kept as an unknown node; such an attribute is dropped.
+- **Signal attributes.** An attribute on a known class with no engine property of that C# name is recognised as a signal.
+- **`x:Key`** is accepted only on an `x:Resources` entry; a repeated one is `GX0116`.
+- **`x:Groups` and `x:NodePaths`** split on commas, or read as Godot array text when the value starts with `[`.
+- **Comments** attach to the next node, property, connection, uid or resource read. Trailing ones attach to the element, property element or table they end. When the element they precede is not read, they carry over to the next element read.
+- **A document with no root** gets a stand-in root and `GX0004`.
+- **Malformed structure.** A duplicate attribute is `GX0113` (the first is kept), a scene-prefixed attribute `GX0114`, a second table `GX0115`. `Name=""` and `Name="%"` are `GX0104`.

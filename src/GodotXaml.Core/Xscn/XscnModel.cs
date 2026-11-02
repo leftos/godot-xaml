@@ -52,6 +52,34 @@ public sealed record XscnDocument(
         get;
         init => field = GodotValueTables.Required(value, nameof(Resources));
     } = GodotValueTables.Required(Resources, nameof(Resources));
+
+    /// <summary>The text of each comment just before the <c>&lt;x:Uids&gt;</c> start tag, in source order.</summary>
+    public ImmutableArray<string> UidsLeadingComments
+    {
+        get;
+        init => field = GodotValueTables.Required(value, nameof(UidsLeadingComments));
+    } = [];
+
+    /// <summary>The text of each comment after the last <c>&lt;x:Uid&gt;</c> and before the table's end tag, in source order.</summary>
+    public ImmutableArray<string> UidsTrailingComments
+    {
+        get;
+        init => field = GodotValueTables.Required(value, nameof(UidsTrailingComments));
+    } = [];
+
+    /// <summary>The text of each comment just before the <c>&lt;x:Resources&gt;</c> start tag, in source order.</summary>
+    public ImmutableArray<string> ResourcesLeadingComments
+    {
+        get;
+        init => field = GodotValueTables.Required(value, nameof(ResourcesLeadingComments));
+    } = [];
+
+    /// <summary>The text of each comment after the last resource of <c>&lt;x:Resources&gt;</c> and before its end tag, in source order.</summary>
+    public ImmutableArray<string> ResourcesTrailingComments
+    {
+        get;
+        init => field = GodotValueTables.Required(value, nameof(ResourcesTrailingComments));
+    } = [];
 }
 
 /// <summary>A scene namespace: an XML prefix bound to a project folder (<c>xmlns:c="res://ui/"</c>).</summary>
@@ -62,7 +90,15 @@ public sealed record XscnNamespace(string Prefix, string Folder);
 /// <summary>One entry of the <c>&lt;x:Uids&gt;</c> table: a file the document refers to and its uid.</summary>
 /// <param name="Path">The <c>res://</c> path.</param>
 /// <param name="Uid">The <c>uid://</c> text.</param>
-public sealed record XscnUid(string Path, string Uid);
+public sealed record XscnUid(string Path, string Uid)
+{
+    /// <summary>The text of each comment just before the entry, in source order.</summary>
+    public ImmutableArray<string> LeadingComments
+    {
+        get;
+        init => field = GodotValueTables.Required(value, nameof(LeadingComments));
+    } = [];
+}
 
 /// <summary>What an element's tag names.</summary>
 public abstract record XscnType
@@ -215,7 +251,22 @@ public sealed record XscnResource : XscnElement
 /// <summary>A property set on an element; <c>script</c> is one like any other.</summary>
 /// <param name="GodotName">The property's Godot name (<c>custom_minimum_size</c>, <c>theme_override_constants/separation</c>).</param>
 /// <param name="Value">The value.</param>
-public sealed record XscnProperty(string GodotName, XscnValue Value);
+public sealed record XscnProperty(string GodotName, XscnValue Value)
+{
+    /// <summary>The text of each comment just before an <c>&lt;x:Prop&gt;</c> or a property element, in source order.</summary>
+    public ImmutableArray<string> LeadingComments
+    {
+        get;
+        init => field = GodotValueTables.Required(value, nameof(LeadingComments));
+    } = [];
+
+    /// <summary>The text of each comment after a property element's resource and before its end tag, in source order.</summary>
+    public ImmutableArray<string> TrailingComments
+    {
+        get;
+        init => field = GodotValueTables.Required(value, nameof(TrailingComments));
+    } = [];
+}
 
 /// <summary>A property's value.</summary>
 public abstract record XscnValue
@@ -284,4 +335,11 @@ public sealed record XscnConnection(
         get;
         init => field = GodotValueTables.Required(value, nameof(ToUidPath));
     } = GodotValueTables.Required(ToUidPath, nameof(ToUidPath));
+
+    /// <summary>The text of each comment just before an <c>&lt;x:Connect&gt;</c>, in source order.</summary>
+    public ImmutableArray<string> LeadingComments
+    {
+        get;
+        init => field = GodotValueTables.Required(value, nameof(LeadingComments));
+    } = [];
 }

@@ -143,6 +143,13 @@ public sealed class GodotMetadataTests
     }
 
     [Fact]
+    public void FindsASignalByItsCSharpNameOnTheClassOrAnAncestor()
+    {
+        Assert.Equal("pressed", Real.FindSignalByCSharpName(Class("Button"), "Pressed")?.Name);
+        Assert.Null(Real.FindSignalByCSharpName(Class("Button"), "pressed"));
+    }
+
+    [Fact]
     public void RejectsAClassFromMetadataThatDoesNotHaveIt()
     {
         GodotMetadata other = LoadJson(ObjectClass, Class("Foo", "Object"));
