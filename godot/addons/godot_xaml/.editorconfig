@@ -1,0 +1,6 @@
+# This folder is copied into game projects, so it carries the two rules a host project's style would otherwise raise.
+[*.cs]
+# Godot fixes the folder name, so the namespace cannot follow it.
+dotnet_diagnostic.IDE0130.severity = none
+# The annotations stay meaningful here while a host project leaves nullable off.
+dotnet_diagnostic.CS8632.severity = none

@@ -27,9 +27,29 @@ A `.tscn` file is flat: every node is a header, nesting is a `parent="Body/Layou
 
 Names are those of Godot's C# API, and values are enum names, never integers.
 
+## Install
+
+You need a Godot 4.7+ .NET project. `GodotXaml.Core` reaches NuGet with the first release; until then, run `dotnet pack src/GodotXaml.Core/GodotXaml.Core.csproj -c Release -o <folder>` here and add that folder as a NuGet source in your project's `nuget.config`.
+
+1. Give the project a solution file if it has none, named after `dotnet/project/assembly_name`, or an export fails on the C# step: `dotnet new sln -n <AssemblyName>`, then `dotnet sln <AssemblyName>.slnx add <AssemblyName>.csproj`.
+2. Copy `godot/addons/godot_xaml/` from this repository to `addons/godot_xaml/` in your project, dotfiles included.
+3. Add the package to your `.csproj`: `<PackageReference Include="GodotXaml.Core" Version="0.1.0" />`.
+4. Run `dotnet build` before you first open the project. An editor that finds no built assembly turns the plugin off.
+5. Turn the plugin on: Project > Project Settings > Plugins > godot-xaml, or add this to `project.godot` before opening:
+
+   ```ini
+   [editor_plugins]
+   enabled=PackedStringArray("res://addons/godot_xaml/plugin.cfg")
+   ```
+6. Open the project, then close it and open it again. Godot's first scan runs before the addon's classes register, so `.xscn` files show in the FileSystem dock only from the second open, which also writes their `.uid` sidecars. Commit those.
+
+An export needs nothing more: with the plugin on, scenes ship as Godot binary.
+
+To update, raise the package version and copy the folder again.
+
 ## Status
 
-In design; there is nothing to install yet. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md). Version 1 targets Godot 4.7+ with .NET:
+Not released yet. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md). Version 1 targets Godot 4.7+ with .NET:
 
 - `.xscn` and `.xres` open, edit and save in the Godot editor through a C# addon, with no `.tscn` beside them.
 - Exported games load `.xscn` and `.xres` as Godot binary, with no addon code and no raw XML shipped, once the `godot-xaml` editor plugin is enabled.
