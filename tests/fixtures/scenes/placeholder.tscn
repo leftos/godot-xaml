@@ -1,0 +1,5 @@
+[gd_scene format=3]
+
+[node name="Root" type="Node" unique_id=974068946]
+
+[node name="Later" parent="." unique_id=841232467 instance_placeholder="res://cases/lone_root.tscn"]

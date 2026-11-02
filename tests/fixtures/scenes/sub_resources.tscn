@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[sub_resource type="Gradient" id="Gradient_gr4d1"]
+colors = PackedColorArray(1, 0, 0, 1, 0, 0, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_0n3us"]
+gradient = SubResource("Gradient_gr4d1")
+width = 8
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_sh4r3"]
+light_mode = 1
+
+[node name="Root" type="Node2D" unique_id=944498477]
+
+[node name="One" type="Sprite2D" parent="." unique_id=616929792]
+texture = SubResource("GradientTexture2D_0n3us")
+
+[node name="Two" type="Sprite2D" parent="." unique_id=217975505]
+material = SubResource("CanvasItemMaterial_sh4r3")
+
+[node name="Three" type="Sprite2D" parent="." unique_id=350658218]
+material = SubResource("CanvasItemMaterial_sh4r3")

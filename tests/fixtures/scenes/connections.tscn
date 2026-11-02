@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[node name="Root" type="Node" unique_id=1060821705]
+
+[node name="Emitter" type="Node" parent="." unique_id=648309840]
+
+[node name="Receiver" type="Node" parent="." unique_id=1734189678]
+
+[connection signal="child_entered_tree" from="Emitter" to="Receiver" method="update_configuration_warnings" unbinds=1]
+[connection signal="ready" from="Emitter" to="Receiver" method="update_configuration_warnings" flags=6]
+[connection signal="renamed" from="Emitter" to="Receiver" method="update_configuration_warnings"]
+[connection signal="tree_entered" from="Emitter" to="Receiver" method="set_process" binds= [true]]
+[connection signal="tree_exited" from="Emitter" to="Receiver" method="update_configuration_warnings" flags=3]

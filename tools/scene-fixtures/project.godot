@@ -1,0 +1,9 @@
+; Engine configuration file.
+; The scene fixture generator runs from this project: `godot --headless --path tools/scene-fixtures --script res://generate.gd`.
+
+config_version=5
+
+[application]
+
+config/name="scene-fixtures"
+config/features=PackedStringArray("4.7")

@@ -11,6 +11,7 @@ The rule that shapes it: one C# core, with no Godot dependency, owns the format;
 | Change a format rule | [`DECISIONS.md`](DECISIONS.md) → [`plans/v1-design.md`](plans/v1-design.md) | — |
 | Add or change what the metadata dump records (property, enum, default) | [`DECISIONS.md`](DECISIONS.md) ("The metadata file") → `tools/metadata-dump/dump.gd` → `metadata/godot-4.7.json` → Godot source `F:\Godot\src-4.7.2`: `core/core_bind.cpp:1839-1879` (the ClassDB calls), `core/object/class_db.cpp:2172-2227` (defaults), `core/extension/extension_api_dump.cpp:53-85` (enum type strings; the dump reads the getter's return type) | [`tools/metadata-dump/README.md`](../tools/metadata-dump/README.md) |
 | Read or write a value in Godot's text grammar, or change float text | [`DECISIONS.md`](DECISIONS.md) ("The metadata file", "Test fixtures are synthetic") → `src/GodotXaml.Core/Values/` (`GodotValueLexer`, `GodotValueReader`, `GodotValueWriter`, `GodotFloatFormat`) → `tools/value-fixtures/` and `tests/fixtures/values/` → Godot source `F:\Godot\src-4.7.2`: `core/variant/variant_parser.cpp` (`VariantParser::get_token`, `parse_value`, `VariantWriter::write`, `rtos_fix`), `thirdparty/grisu2/grisu2.h` | [`tools/value-fixtures/README.md`](../tools/value-fixtures/README.md) |
+| Read or write a `.tscn`/`.tres` file | [`DECISIONS.md`](DECISIONS.md) ("Test fixtures are synthetic") → `src/GodotXaml.Core/Tscn/` (`TscnReader`, `TscnWriter`, `TscnDocument`) → `tools/scene-fixtures/` and `tests/fixtures/scenes/` → Godot source `F:\Godot\src-4.7.2`: `scene/resources/resource_format_text.cpp` (`ResourceFormatSaverTextInstance::save`, `ResourceLoaderText`), `scene/resources/packed_scene.cpp` | [`tools/scene-fixtures/README.md`](../tools/scene-fixtures/README.md) |
 | Register or debug the `.xscn` loader or saver in the editor | [`DECISIONS.md`](DECISIONS.md) ("The addon registers from C#, as global classes") → `spikes/xscn-loader/addons/xscn_spike/` → Godot source `F:\Godot\src-4.7.2`: `core/io/resource_loader.cpp:1656-1713`, `core/io/resource_saver.cpp:230-283`, `editor/file_system/editor_file_system.cpp:2199-2205`, `modules/mono/csharp_script.cpp:594-1030` | [`spikes/xscn-loader/README.md`](../spikes/xscn-loader/README.md) |
 | Add or change a C# gate, hook or test location | [`.claude/skills/godot-xaml-nextup/SKILL.md`](../.claude/skills/godot-xaml-nextup/SKILL.md) (Gates) → Test locations below → `run.ps1`, `.pre-commit-config.yaml`, `Directory.Build.props`, `.editorconfig` | — |
 
@@ -31,15 +32,22 @@ Each component gets an entry here in the commit that adds its project.
 
   Nesting past 512 arrays, dictionaries or objects raises `GodotValueParseException` ("Nesting is too deep"), so a hostile text cannot overflow the stack of the language server or editor. `GodotValueLexer` and `GodotValueReader.ReadAt` are internal, for the `.tscn` reader.
 - **Fixture generator** (`tools/value-fixtures/`): a headless Godot 4.7.2 project that writes `tests/fixtures/values/{canonical,loose,floats,format4}/`, Godot's own bytes, never edited by hand. It shares no files with the C# core.
-- **Core library** (`src/GodotXaml.Core`, net8.0): owns Godot's C# naming rules (`Names/GodotNames.cs`, a port of `modules/mono/utils/naming_utils.cpp` in the 4.7.2 source) and the value grammar above; the format, parser, writer and `.tscn` conversion are built here next (GXAML-21, GXAML-22, GXAML-5). It never references a Godot assembly, and its internals are visible to `tests/GodotXaml.Core.Tests`.
+- **Tscn** (`src/GodotXaml.Core/Tscn/`, namespace `GodotXaml.Core.Tscn`): the `.tscn`/`.tres` document model. `TscnReader.Read` gives a `TscnDocument` (header, ext and sub resources, resource properties, nodes, connections, editables) with values as `GodotValue`s; `TscnWriter.Write` writes it back byte-identical for files Godot 4.7.2 wrote.
+
+  `TscnWriter.FormatOf` picks format 3 or 4 as Godot's saver does. `TscnDocument.NewExtResourceId` and `NewSubResourceId` mint ids from a caller's seed in Godot's id alphabet.
+
+  The reader rejects what Godot's text loader rejects, with Godot's error text (`TscnParseException`), and accepts what it accepts. Unknown attributes on a known tag are kept verbatim; `load_steps` is read and dropped. The writer refuses a resource document that holds nodes and a scene that holds resource properties.
+- **Scene fixture generator** (`tools/scene-fixtures/`): a headless Godot 4.7.2 project that saves each case with `ResourceSaver.save` and copies the bytes to `tests/fixtures/scenes/`. It shares no files with the C# core.
+- **Core library** (`src/GodotXaml.Core`, net8.0): owns Godot's C# naming rules (`Names/GodotNames.cs`, a port of `modules/mono/utils/naming_utils.cpp` in the 4.7.2 source), the value grammar and the Tscn document model above; the format, parser, writer and `.tscn` conversion for `.xscn` are built here next (GXAML-21, GXAML-5). It never references a Godot assembly, and its internals are visible to `tests/GodotXaml.Core.Tests`.
 
 ## Integration Footguns
 
 - The dump needs the console build of Godot on Windows (`Godot_console.exe`); the GUI build loses Godot's output and exit code.
 - `metadata/godot-<minor>.json` is about 1.9 MB, so `.pre-commit-config.yaml` raises `check-added-large-files` to 4096 KB.
 - `tests/fixtures/values/**` is `-text` in `.gitattributes` and excluded from the trailing-whitespace, end-of-file and mixed-line-ending hooks, because the files are Godot's exact bytes (no final newline, raw control characters). Regenerate them with the generator; never edit one.
-- gdformat on Windows rewrites `.gd` with CRLF; `.gitattributes` keeps `*.gd` LF. The gdformat and gdlint hooks cover `tools/metadata-dump/` and `tools/value-fixtures/`.
+- gdformat on Windows rewrites `.gd` with CRLF; `.gitattributes` keeps `*.gd` LF. The gdformat and gdlint hooks cover `tools/metadata-dump/`, `tools/value-fixtures/` and `tools/scene-fixtures/`.
 - The fixture generator needs the console build of Godot and fails on a double-precision build.
+- `tests/fixtures/scenes/**` is Godot's exact bytes too (`tests/fixtures/** -text`, excluded from the whitespace hooks). A node's `unique_id` cannot be pinned from a script, so every run of `tools/scene-fixtures/` rewrites those numbers: regenerate only when a case changes, and commit the whole folder. No fixture has `uid=`, since a script run has no editor file system to supply uids; the writer's unit test covers it.
 
 ## Test locations
 
@@ -47,7 +55,10 @@ Each component gets an entry here in the commit that adds its project.
 - `tests/GodotXaml.Core.Tests` (net10.0, xunit.v3 on Microsoft.Testing.Platform): tests of `src/GodotXaml.Core`, in folders mirroring the core's (`Names/` for `GodotNames`). Run with `./run.ps1 test`.
 
   `Values/` holds the float format against Godot's corpus, the lexer, scalar values (`ScalarValueTests`), containers (`ContainerValueTests`), Godot's key order (`GodotKeyOrderTests`), packed arrays (`PackedValueTests`), references and `Object` (`ReferenceValueTests`), the fixture files and every default in `metadata/godot-4.7.json` read and written back unchanged (`MetadataDefaultsTests`); `RepoFiles` finds the repo root.
+
+  `Tscn/` holds the round trip of every scene fixture (`TscnRoundTripTests`), the document models and Godot's rejections and acceptances (`TscnReaderTests`), and the writer's layout, format switch, minted ids and refusals (`TscnWriterTests`).
 - `tests/fixtures/values/`: the expected value text, written by `tools/value-fixtures/` in `canonical/`, `loose/`, `floats/` and `format4/` (the saver's text with compat off); `tests/GodotXaml.Core.Tests/Values/` reads it.
+- `tests/fixtures/scenes/`: `.tscn` and `.tres` files saved by Godot's text saver, written by `tools/scene-fixtures/`; `tests/GodotXaml.Core.Tests/Tscn/` reads it.
 
 ## Deep docs
 

@@ -1,0 +1,5 @@
+[gd_scene format=3]
+
+[node name="Root" type="Node" unique_id=119704589]
+
+[node name="Child" type="Node" parent="." unique_id=75316238 groups=["alpha", "zeta"]]

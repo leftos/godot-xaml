@@ -55,12 +55,12 @@ repos:
         name: gdformat check
         entry: gdformat --check
         language: system
-        files: ^tools/(metadata-dump|value-fixtures)/.*\.gd$
+        files: ^tools/(metadata-dump|value-fixtures|scene-fixtures)/.*\.gd$
       - id: gdlint
         name: gdlint
         entry: gdlint
         language: system
-        files: ^tools/(metadata-dump|value-fixtures)/.*\.gd$
+        files: ^tools/(metadata-dump|value-fixtures|scene-fixtures)/.*\.gd$
       - id: agent-mail-guard
         name: agent-mail lease guard
         entry: pwsh -NoProfile -File tools/agent-mail-guard.ps1

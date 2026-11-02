@@ -114,7 +114,7 @@ Nine integer properties carry an enum-style hint with no C# enum behind it (`lay
 
 ## Test fixtures are synthetic
 
-The `.tscn`/`.tres` reader and writer are tested on small scenes and resources made for the tests, one per section and value type, then re-saved by headless Godot 4.7.2 so the expected bytes are 4.7.2's own. They are committed. The owner's projects are not copied into this public repo: the converter runs on them in place (GXAML-8).
+The `.tscn`/`.tres` reader and writer are tested on small scenes and resources made for the tests, one per section and value type, then re-saved by headless Godot 4.7.2 so the expected bytes are 4.7.2's own. They are committed. A node's `unique_id` cannot be pinned from a script, so regenerating the scene fixtures rewrites those numbers and nothing else. The owner's projects are not copied into this public repo: the converter runs on them in place (GXAML-8).
 
 ## Canonical formatting on save
 

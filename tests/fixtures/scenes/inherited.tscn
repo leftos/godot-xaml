@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://cases/nested.tscn" id="1_b4s3s"]
+
+[node name="Root" unique_id=187941574 instance=ExtResource("1_b4s3s")]
+
+[node name="A" parent="." index="0" unique_id=2045403667]
+position = Vector2(1, 1)
+
+[node name="Extra" type="Node" parent="." index="2" unique_id=564944056]

@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://cases/nested.tscn" id="1_n3st3"]
+
+[node name="Root" type="Node" unique_id=1300837998]
+
+[node name="Inst" parent="." unique_id=328417481 instance=ExtResource("1_n3st3")]
+process_priority = 7
+
+[node name="A" parent="Inst" index="0" unique_id=2045403667]
+position = Vector2(9, 9)
+
+[node name="Added" type="Node" parent="Inst/A" index="1" unique_id=1957543159]
+
+[editable path="Inst"]

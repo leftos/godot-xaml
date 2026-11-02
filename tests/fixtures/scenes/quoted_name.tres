@@ -1,0 +1,10 @@
+[gd_resource type="Resource" format=3]
+
+[ext_resource type="Script" path="res://quoted.gd" id="1_qu0t3"]
+
+[resource]
+script = ExtResource("1_qu0t3")
+"with space" = 1
+"key=value" = "x"
+"say \"hi\"" = 2
+"naïve" = true

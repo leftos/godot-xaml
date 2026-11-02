@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="TaggedResource" format=3]
+
+[ext_resource type="Script" path="res://tagged.gd" id="1_t4gg3"]
+
+[resource]
+script = ExtResource("1_t4gg3")
+label = "tagged"

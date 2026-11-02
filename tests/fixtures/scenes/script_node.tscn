@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://holder.gd" id="1_h0ld3"]
+
+[node name="Root" type="Node" unique_id=784806209]
+
+[node name="Holder" type="Node" parent="." unique_id=1536725368 node_paths=PackedStringArray("target")]
+script = ExtResource("1_h0ld3")
+target = NodePath("../Target")
+
+[node name="Target" type="Node" parent="." unique_id=1544414068]

@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[node name="Root" type="Node" unique_id=137123633]
+editor_description = "first line
+second \"quoted\" line"
+metadata/table = {
+"a": [1, 2],
+"b": 2,
+"c": {
+"nested": true
+}
+}
+
+[node name="After" type="Node" parent="." unique_id=1226013350]
+editor_description = "one line"

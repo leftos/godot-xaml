@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[node name="Root" type="Node" unique_id=1163440352]
+
+[node name="Child" type="Node" parent="." unique_id=1112379229]
+unique_name_in_owner = true
