@@ -1,0 +1,4 @@
+<Node2D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Holder">
+  <x:Prop Name="metadata/box" Value='Resource("box.xres")' />
+  <x:Instance Scene="sib.xscn" Name="Inst" />
+</Node2D>

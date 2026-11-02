@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using Godot;
+using FileAccess = Godot.FileAccess;
 
 namespace GodotXaml.Addon;
 
@@ -49,6 +50,7 @@ public partial class XscnFormatSaver : ResourceFormatSaver
     /// <param name="uid">The uid.</param>
     /// <returns>
     /// <see cref="Error.Ok"/>; <see cref="Error.FileUnrecognized"/> for another extension, so Godot asks the next saver;
+    /// <see cref="Error.FileNotFound"/>, with no sidecar written, when the file does not exist;
     /// <see cref="Error.FileCantWrite"/> when the sidecar could not be written.
     /// </returns>
     public override Error _SetUid(string path, long uid)
@@ -59,7 +61,12 @@ public partial class XscnFormatSaver : ResourceFormatSaver
             bool ours =
                 extension.Equals(SceneExtension, StringComparison.OrdinalIgnoreCase)
                 || extension.Equals(ResourceExtension, StringComparison.OrdinalIgnoreCase);
-            return ours ? WriteSidecar(path, uid) : Error.FileUnrecognized;
+            if (!ours)
+            {
+                return Error.FileUnrecognized;
+            }
+
+            return FileAccess.FileExists(path) ? WriteSidecar(path, uid) : Error.FileNotFound;
         }
         // Godot reads an exception escaping a virtual as a nil return, which is Error.OK.
 #pragma warning disable CA1031

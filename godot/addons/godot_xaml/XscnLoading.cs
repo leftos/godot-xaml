@@ -51,14 +51,15 @@ internal static class XscnLoading
 
     /// <summary>Loads an <c>.xscn</c> or <c>.xres</c>: parsed, converted, then loaded through Godot's text loader.</summary>
     /// <param name="path">The file.</param>
+    /// <param name="originalPath">The path asked for before any remap, which relative references resolve against.</param>
     /// <param name="cacheMode">The <see cref="ResourceFormatLoader.CacheMode"/> Godot passed.</param>
     /// <returns>The loaded resource, or the <see cref="Error"/> that stopped the load, as an int.</returns>
-    public static Variant Load(string path, int cacheMode)
+    public static Variant Load(string path, string originalPath, int cacheMode)
     {
         Interlocked.Increment(ref loadCallCount);
         try
         {
-            return LetGoNextFrame(LoadConverted(path, cacheMode));
+            return LetGoNextFrame(LoadConverted(path, originalPath, cacheMode));
         }
         // Godot reads an exception escaping a virtual as a nil return: the load would fail with no reason given.
 #pragma warning disable CA1031
@@ -155,7 +156,7 @@ internal static class XscnLoading
     /// <returns>The converted document and the conversion's issues.</returns>
     internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document) => XscnToTscn.Convert(document, XscnMetadata.Value, Options);
 
-    private static Variant LoadConverted(string path, int cacheMode)
+    private static Variant LoadConverted(string path, string originalPath, int cacheMode)
     {
         Error error = ReadAndConvert(path, pushWarnings: true, out TscnDocument? converted);
         if (converted is null)
@@ -163,6 +164,11 @@ internal static class XscnLoading
             return (int)error;
         }
 
+        // The text loader resolves a relative path against the file it reads (resource_format_text.cpp:509-512), and the
+        // converted text is read from the temp folder, so each path is made a resource path here, against the path asked for
+        // before any remap, as the text loader's own load does (:1445).
+        string asked = originalPath.Length > 0 ? originalPath : path;
+        converted = converted with { ExtResources = [.. converted.ExtResources.Select(ext => ext with { Path = Localized(asked, ext.Path) })] };
         bool isScene = IsScene(path);
         string typeHint = isScene ? "PackedScene" : converted.Header.Type ?? "Resource";
         return XscnLoadRoute.Load(path, TscnWriter.Write(converted), isScene, typeHint, (ResourceFormatLoader.CacheMode)cacheMode);
@@ -200,7 +206,7 @@ internal static class XscnLoading
     }
 
     // A path relative to the file, made a resource path as the text loader does.
-    private static string Localized(string path, string dependency) =>
+    internal static string Localized(string path, string dependency) =>
         !dependency.Contains("://", StringComparison.Ordinal) && dependency.IsRelativePath()
             ? ProjectSettings.LocalizePath(path.GetBaseDir().PathJoin(dependency))
             : dependency;

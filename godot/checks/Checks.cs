@@ -32,6 +32,8 @@ public partial class Checks : Node
     private const string SavesFolder = "user://gx-saves/";
     private const string OutFolder = "res://checks/out/";
     private const string HeldScriptPath = CasesPath + "held.gd";
+    private const string RelativeCasesPath = CasesPath + "relative/";
+    private const string RelativeHolderPath = RelativeCasesPath + "holder.xscn";
     private const string AbstractSubResource =
         "  <CollisionShape2D Name=\"Abstract\">\n"
         + "    <CollisionShape2D.Shape>\n"
@@ -105,6 +107,12 @@ public partial class Checks : Node
             ("C41", SaveLeavesANonStoredResourceAlone),
             ("C43", RenameKeepsTheLiveSubResource),
             ("C44", SaveOverAnExistingFileTakesOverTheBox),
+            ("C46", RelativeInstanceLoads),
+            ("C47", RelativeResourceLoads),
+            ("C48", HeadlessSaveKeepsUids),
+            ("C49", SetUidNeedsAFile),
+            ("C50", HeadlessSaveKeepsAnUncachedUid),
+            ("C51", RemappedFileResolvesAgainstItsOriginalPath),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -706,6 +714,7 @@ public partial class Checks : Node
         Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
         string sidecar = ProjectSettings.GlobalizePath(path) + ".uid";
         File.Delete(sidecar);
+        File.WriteAllText(ProjectSettings.GlobalizePath(path), CleanScene);
         using var saver = new XscnFormatSaver();
         long id = ResourceUid.CreateId();
         Error error = saver._SetUid(path, id);
@@ -753,6 +762,210 @@ public partial class Checks : Node
         }
 
         return string.Join("; ", failures);
+    }
+
+    // Godot calls _SetUid for a file that exists; a path with no file gets no sidecar.
+    private static string SetUidNeedsAFile()
+    {
+        const string path = OutFolder + "missing.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            string sidecar = ProjectSettings.GlobalizePath(path) + ".uid";
+            using var saver = new XscnFormatSaver();
+            Error error = saver._SetUid(path, ResourceUid.CreateId());
+            string[] failures =
+            [
+                error == Error.FileNotFound ? "" : $"_SetUid({path}) returned {error}, not FileNotFound",
+                File.Exists(sidecar) ? $"_SetUid({path}) wrote {sidecar}" : "",
+            ];
+            return string.Join("; ", failures.Where(f => f.Length > 0));
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // The text loader resolves a relative ext_resource path against the file it reads (resource_format_text.cpp:509-512),
+    // so the converted text must name the .xscn's neighbours, not the temp file's.
+    private static string RelativeInstanceLoads()
+    {
+        if (ResourceLoader.Load(RelativeHolderPath, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+        {
+            return $"loading {RelativeHolderPath} did not return a PackedScene";
+        }
+
+        Node root = scene.Instantiate();
+        try
+        {
+            const string expected = RelativeCasesPath + "sib.xscn";
+            return root.GetNodeOrNull("Inst") switch
+            {
+                null => "the scene has no node Inst",
+                { SceneFilePath: var file } when file != expected => $"Inst's SceneFilePath is \"{file}\", not \"{expected}\"",
+                _ => root.GetNodeOrNull<Node2D>("Inst/Inner") is null ? "the scene has no Node2D Inst/Inner" : "",
+            };
+        }
+        finally
+        {
+            root.Free();
+        }
+    }
+
+    private static string RelativeResourceLoads()
+    {
+        if (ResourceLoader.Load(RelativeHolderPath, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+        {
+            return $"loading {RelativeHolderPath} did not return a PackedScene";
+        }
+
+        Node root = scene.Instantiate();
+        try
+        {
+            const string expected = RelativeCasesPath + "box.xres";
+            return root.GetMeta("box", default(Variant)).Obj switch
+            {
+                StyleBoxFlat { ResourcePath: expected } => "",
+                Resource other => $"metadata/box is a {other.GetClass()} at \"{other.ResourcePath}\", not the StyleBoxFlat at {expected}",
+                _ => "metadata/box holds no resource",
+            };
+        }
+        finally
+        {
+            root.Free();
+        }
+    }
+
+    // Outside the editor the text saver writes no uid on an ext_resource (resource_format_text.cpp:1884 asks a callback only
+    // the editor registers), and the x:Uids table is built from those uids.
+    private static string HeadlessSaveKeepsUids()
+    {
+        const string path = OutFolder + "uids-save.xscn";
+        DeleteFolder(OutFolder);
+        try
+        {
+            WriteHolderWithThemeUid(path, withValueReference: false);
+            if (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+            {
+                return $"loading {path} did not return a PackedScene";
+            }
+
+            Error saved = ResourceSaver.Save(scene, path);
+            if (saved != Error.Ok)
+            {
+                return $"the save returned {saved}";
+            }
+
+            XscnParseResult parsed = ParseFile(path);
+            string expected = UidTextOf(ThemePath);
+            string? found = parsed.Document.Uids.FirstOrDefault(u => u.Path == ThemePath)?.Uid;
+            return found == expected
+                ? ""
+                : $"after the save, {path}'s x:Uids gives {ThemePath} \"{found ?? "(no entry)"}\", not \"{expected}\":\n"
+                    + File.ReadAllText(ProjectSettings.GlobalizePath(path));
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A file copied in after the last import has a .uid but no uid_cache.bin row, and outside the editor
+    // ResourceLoader.get_resource_uid reads only that cache (resource_loader.cpp:1414-1415). The scene's own x:Uids keeps
+    // the uid, under an absolute spelling and a relative one.
+    private static string HeadlessSaveKeepsAnUncachedUid()
+    {
+        const string path = OutFolder + "uncached.xscn";
+        const string absolute = OutFolder + "copied.xres";
+        const string relative = OutFolder + "neighbour.xres";
+        DeleteFolder(OutFolder);
+        try
+        {
+            string absoluteUid = CopyWithNewUid(BoxPath, absolute);
+            string relativeUid = CopyWithNewUid(BoxPath, relative);
+            File.WriteAllText(
+                ProjectSettings.GlobalizePath(path),
+                $"<Panel xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\" ThemeOverrideStyles.panel=\"{absolute}\">\n"
+                    + "  <x:Uids>\n"
+                    + $"    <x:Uid Path=\"{absolute}\" Value=\"{absoluteUid}\" />\n"
+                    + $"    <x:Uid Path=\"neighbour.xres\" Value=\"{relativeUid}\" />\n"
+                    + "  </x:Uids>\n"
+                    + "  <x:Prop Name=\"metadata/ref\" Value='Resource(\"neighbour.xres\")' />\n"
+                    + "</Panel>\n"
+            );
+            if (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+            {
+                return $"loading {path} did not return a PackedScene";
+            }
+
+            Error saved = ResourceSaver.Save(scene, path);
+            if (saved != Error.Ok)
+            {
+                return $"the save returned {saved}";
+            }
+
+            XscnParseResult parsed = ParseFile(path);
+            string table = string.Join(", ", parsed.Document.Uids.OrderBy(u => u.Path, StringComparer.Ordinal).Select(u => $"{u.Path}={u.Uid}"));
+            string expected = $"{absolute}={absoluteUid}, {relative}={relativeUid}";
+            return table == expected ? "" : $"after the save, {path}'s x:Uids is [{table}], not [{expected}]";
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    private static string CopyWithNewUid(string source, string path)
+    {
+        string target = ProjectSettings.GlobalizePath(path);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(path.GetBaseDir()));
+        File.Copy(ProjectSettings.GlobalizePath(source), target);
+        string uid = ResourceUid.IdToText(ResourceUid.CreateId());
+        File.WriteAllText(target + ".uid", uid + "\n");
+        return uid;
+    }
+
+    // A .remap sends the load to a file in another folder; the text loader still resolves relative paths against the path
+    // asked for (resource_format_text.cpp:1445, resource_loader.cpp:541).
+    private static string RemappedFileResolvesAgainstItsOriginalPath()
+    {
+        const string asked = OutFolder + "asked.xscn";
+        const string real = OutFolder + "elsewhere/real.xscn";
+        const string sibling = OutFolder + "sib.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder + "elsewhere/"));
+        try
+        {
+            File.Copy(ProjectSettings.GlobalizePath(RelativeCasesPath + "sib.xscn"), ProjectSettings.GlobalizePath(sibling));
+            File.WriteAllText(ProjectSettings.GlobalizePath(asked + ".remap"), $"[remap]\n\npath=\"{real}\"\n");
+            File.WriteAllText(
+                ProjectSettings.GlobalizePath(real),
+                "<Node xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+                    + "  <x:Instance Scene=\"sib.xscn\" Name=\"Inst\" />\n"
+                    + "</Node>\n"
+            );
+            if (ResourceLoader.Load(asked, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+            {
+                return $"loading {asked} did not return a PackedScene";
+            }
+
+            Node root = scene.Instantiate();
+            try
+            {
+                string? file = root.GetNodeOrNull("Inst")?.SceneFilePath;
+                return file == sibling ? "" : $"Inst's SceneFilePath is \"{file ?? "(no node Inst)"}\", not \"{sibling}\"";
+            }
+            finally
+            {
+                root.Free();
+            }
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
     }
 
     private static string SavingOverUnparsableTextWritesAParsableFile()

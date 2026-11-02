@@ -22,7 +22,8 @@ public partial class XresFormatLoader : ResourceFormatLoader
     public override string _GetResourceType(string path) => XscnLoading.IsResource(path) ? XscnLoading.XresRootClass(path) : "";
 
     /// <inheritdoc/>
-    public override Variant _Load(string path, string originalPath, bool useSubThreads, int cacheMode) => XscnLoading.Load(path, cacheMode);
+    public override Variant _Load(string path, string originalPath, bool useSubThreads, int cacheMode) =>
+        XscnLoading.Load(path, originalPath, cacheMode);
 
     /// <inheritdoc/>
     public override string[] _GetDependencies(string path, bool addTypes) => XscnLoading.Dependencies(path, addTypes);

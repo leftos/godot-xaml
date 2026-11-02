@@ -49,13 +49,15 @@ internal static class XscnSaveRoute
             return Error.InvalidData;
         }
 
+        XscnDocument? previous = Previous(path, isScene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource);
         var options = new ConversionOptions
         {
             Seed = 0,
             ScriptClassOf = GodotProjectLookups.ScriptClassOf,
-            Previous = Previous(path, isScene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource),
+            Previous = previous,
         };
-        ConversionResult<XscnDocument> converted = TscnToXscn.Convert(tscn, XscnMetadata.Value, options);
+        TscnDocument withUids = WithProjectUids(tscn, path, previous);
+        ConversionResult<XscnDocument> converted = TscnToXscn.Convert(withUids, XscnMetadata.Value, options);
         if (PushIssues(path, converted.Issues))
         {
             return Error.InvalidData;
@@ -79,6 +81,36 @@ internal static class XscnSaveRoute
         }
 
         return written;
+    }
+
+    // The text saver asks for an ext_resource's uid through a callback only the editor registers
+    // (resource_format_text.cpp:1884, editor_file_system.cpp:3817), so outside the editor its ext_resources carry none and
+    // x:Uids would come out empty; each takes the uid the project knows for its path, else the one the replaced file gave it,
+    // since outside the editor the project knows only uid_cache.bin (resource_loader.cpp:1414-1415).
+    private static TscnDocument WithProjectUids(TscnDocument tscn, string path, XscnDocument? previous)
+    {
+        Dictionary<string, string> kept = new(StringComparer.Ordinal);
+        foreach (XscnUid row in previous?.Uids ?? [])
+        {
+            kept.TryAdd(XscnLoading.Localized(path, row.Path), row.Uid);
+        }
+
+        return tscn with
+        {
+            ExtResources = [.. tscn.ExtResources.Select(ext => ext.Uid is null ? ext with { Uid = KnownUid(ext.Path, kept) } : ext)],
+        };
+    }
+
+    // The same paths the editor's lookup refuses (editor_file_system.cpp:3673), so a user:// copy gains no row in the editor.
+    private static string? KnownUid(string path, Dictionary<string, string> kept)
+    {
+        if (!path.StartsWith("res://", StringComparison.Ordinal) || path.StartsWith("res://.godot", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        long uid = ResourceLoader.GetResourceUid(path);
+        return uid == ResourceUid.InvalidId ? kept.GetValueOrDefault(path) : ResourceUid.IdToText(uid);
     }
 
     private static bool TakesOverPaths(string path, uint flags) =>
