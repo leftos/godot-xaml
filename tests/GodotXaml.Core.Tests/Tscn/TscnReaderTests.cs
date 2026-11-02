@@ -93,7 +93,7 @@ public sealed class TscnReaderTests
         Assert.Equal(expected, TscnWriter.Write(document));
     }
 
-    // resource_format_text.cpp:904, 839, 703: unknown tags and misplaced sections are the loader's own errors.
+    // resource_format_text.cpp:904, 839: unknown tags and misplaced sections are the loader's own errors.
     [Theory]
     [InlineData("[gd_resource type=\"Resource\" format=3]\n\n[future_tag]\n", "Unknown tag 'future_tag' in file")]
     [InlineData(
@@ -108,9 +108,12 @@ public sealed class TscnReaderTests
         "[gd_resource type=\"Resource\" format=3]\n\n[resource]\na = 1\n\n[ext_resource type=\"Script\" path=\"res://a.gd\" id=\"1_a\"]\n",
         "Extra tag found when parsing main resource file"
     )]
+    // :532-537, 646-651: a resource file that ends inside its resource loops returns the parser's ERR_FILE_EOF,
+    // which load() reports with no message of its own; GXAML-40 measured it and names it "Unexpected end of file".
+    [InlineData("[gd_resource type=\"Resource\" format=3]\n\n[sub_resource type=\"X\" id=\"X_1\"]\na = 1\n", "Unexpected end of file")]
     [InlineData(
-        "[gd_resource type=\"Resource\" format=3]\n\n[sub_resource type=\"X\" id=\"X_1\"]\na = 1\n",
-        "Premature end of file while parsing [sub_resource]"
+        "[gd_resource type=\"Resource\" format=3]\n\n[ext_resource type=\"Script\" path=\"res://a.gd\" id=\"1_a\"]\n",
+        "Unexpected end of file"
     )]
     public void RejectsSectionsGodotRejects(string text, string reason) =>
         Assert.Equal(reason, Assert.Throws<TscnParseException>(() => TscnReader.Read(text)).Reason);
@@ -130,6 +133,17 @@ public sealed class TscnReaderTests
     [InlineData("[editable path=\".\"]", "Unknown tag 'editable' in file")]
     public void RejectsASceneWhoseOnlyTagIsNotANode(string tag, string reason) =>
         Assert.Equal(reason, Assert.Throws<TscnParseException>(() => TscnReader.Read($"[gd_scene format=3]\n\n{tag}\n")).Reason);
+
+    // resource_format_text.cpp:868-908: the first tag after a scene's resources must be [node]; _parse_node_tag
+    // (:190-419) handles connection and editable only once it is inside it.
+    [Theory]
+    [InlineData("[connection signal=\"s\" from=\".\" to=\".\" method=\"m\"]", "Unknown tag 'connection' in file")]
+    [InlineData("[editable path=\".\"]", "Unknown tag 'editable' in file")]
+    public void RejectsAConnectionOrEditableBeforeTheFirstNode(string tag, string reason) =>
+        Assert.Equal(
+            reason,
+            Assert.Throws<TscnParseException>(() => TscnReader.Read($"[gd_scene format=3]\n\n{tag}\n\n[node name=\"R\" type=\"Node\"]\n")).Reason
+        );
 
     // resource_format_text.cpp:487-489, 566-567, 1153-1188 and core/variant/variant.cpp:1558-1560, 1597-1642: a
     // tag's string fields are read through Variant::operator String, so a StringName, a bool, an int, a NodePath and
@@ -178,6 +192,15 @@ public sealed class TscnReaderTests
         );
 
     // resource_format_text.cpp:202-204: a node with no name field leaves the name unassigned.
+    // resource_format_text.cpp:244 reads instance_placeholder through Variant::operator String (stringify), not
+    // through operator StringName or operator NodePath, so a number keeps its digits.
+    [Fact]
+    public void ReadsAnInstancePlaceholderAsItsStringValue() =>
+        Assert.Equal(
+            "5",
+            Assert.Single(TscnReader.Read("[gd_scene format=3]\n\n[node name=\"P\" parent=\".\" instance_placeholder=5]\n").Nodes).InstancePlaceholder
+        );
+
     [Fact]
     public void ReadsANodeWithoutAName() =>
         Assert.Equal("", Assert.Single(TscnReader.Read("[gd_scene format=3]\n\n[node type=\"Node\"]\n").Nodes).Name);
@@ -203,6 +226,15 @@ public sealed class TscnReaderTests
             "[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n\n[node name=\"C\" parent=NodePath(\"B\") index=3]\n"
         );
         Assert.Equal(("B", (int?)3), (document.Nodes[1].Parent, document.Nodes[1].Index));
+    }
+
+    // core/variant/variant.cpp:1539-1547, 1992-2000: operator StringName and operator NodePath give an empty name or
+    // path for any value that is neither a string nor one of their own types, so a number converts rather than fails.
+    [Fact]
+    public void ReadsANumberInANameOrPathFieldAsEmpty()
+    {
+        TscnDocument document = TscnReader.Read("[gd_scene format=3]\n\n[node name=1 type=\"Node\"]\n\n[node name=\"C\" type=\"Node\" parent=1]\n");
+        Assert.Equal(("", ""), (document.Nodes[0].Name, document.Nodes[1].Parent));
     }
 
     [Fact]
@@ -234,7 +266,10 @@ public sealed class TscnReaderTests
     [InlineData("[gd_scene format=5]\n", "Saved with newer format version")]
     [InlineData("[gd_resource format=3]\n", "Missing 'type' field in 'gd_resource' tag")]
     [InlineData("[gd_scene format=3]\n\n[ext_resource type=\"Script\" id=\"1\"]\n", "Missing 'path' in external resource tag")]
-    [InlineData("[gd_scene format=3]\n\n[connection signal=\"s\" to=\".\" method=\"m\"]\n", "missing 'from' field from connection tag")]
+    [InlineData(
+        "[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n\n[connection signal=\"s\" to=\".\" method=\"m\"]\n",
+        "missing 'from' field from connection tag"
+    )]
     [InlineData("[gd_resource type=\"Resource\" format=3]\n\n[node name=\"R\"]\n", "Unexpected 'node' tag in a resource file")]
     [InlineData("[gd_scene format=3]\n\n[resource]\n", "Unexpected 'resource' tag in a scene file")]
     [InlineData("[gd_scene format=3]\n\n[node name=\"R\"\n", "Unexpected EOF while parsing tag 'node'")]

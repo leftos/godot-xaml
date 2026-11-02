@@ -78,17 +78,16 @@ public static partial class TscnReader
             if (_kind == TscnKind.Resource && !_resourceSeen)
             {
                 // resource_format_text.cpp:648-651: a resource file that ends before its [resource] is an error.
-                string reason = _extOrSubSeen ? "Premature end of file while parsing [sub_resource]" : "Unknown tag '' in file";
+                string reason = _extOrSubSeen ? "Unexpected end of file" : "Unknown tag '' in file";
                 throw TscnScanner.Error(reason, scanner.Line, scanner.Column);
             }
 
             if (_kind == TscnKind.Scene && _nodes.Count == 0)
             {
-                // resource_format_text.cpp:461-538, 547-717, 868-908: a scene's first tag after its resources is [node].
-                // The resource loops end the file with ERR_FILE_EOF (:532-537), which load() reports with no message,
-                // while a file with no tag at all ends at open():1194-1200 with "Unexpected end of file" (:904 names a
-                // tag that is not one).
-                throw _firstAfterResources is { } tag ? Unknown(tag) : TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
+                // resource_format_text.cpp:532-537, 646-651, 1194-1200: the resource loops and the tag read after the
+                // header end the file with the parser's ERR_FILE_EOF, which load() reports with no message; GXAML-40
+                // measured it and names it "Unexpected end of file".
+                throw TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
             }
 
             return new TscnDocument
@@ -158,7 +157,8 @@ public static partial class TscnReader
                 UniqueId = fields.Int("unique_id"),
                 NodePaths = Strings(fields, "node_paths"),
                 Groups = Strings(fields, "groups"),
-                InstancePlaceholder = fields.Text("instance_placeholder"),
+                // :244 reads the placeholder through Variant::operator String, not a name or a path.
+                InstancePlaceholder = fields.String("instance_placeholder"),
                 Instance = fields.Value("instance"),
                 ParentIdPath = fields.Ints("parent_id_path"),
                 OwnerUidPath = fields.Ints("owner_uid_path"),
@@ -237,6 +237,11 @@ public static partial class TscnReader
                 throw WrongKind(tag);
             }
 
+            if (FirstAfterResourcesIsNotANode(tag))
+            {
+                throw Unknown(tag);
+            }
+
             _rank = rank;
             _resourceSeen |= tag.Name == "resource";
             _extOrSubSeen |= tag.Name is "ext_resource" or "sub_resource";
@@ -244,6 +249,11 @@ public static partial class TscnReader
 
         // :904.
         private static TscnParseException Unknown(TscnTag tag) => TscnScanner.Error($"Unknown tag '{tag.Name}' in file", tag.Line, tag.Column);
+
+        // :868-908: a scene's first tag after its resources enters _parse_node_tag only when it is [node]; a connection
+        // or an editable there is named as unknown.
+        private bool FirstAfterResourcesIsNotANode(TscnTag tag) =>
+            _kind == TscnKind.Scene && _firstAfterResources is null && tag.Name is not ("ext_resource" or "sub_resource" or "node");
 
         // :725, 872 name a [resource] in a scene and a [node] in a resource; :904 leaves the other scene-only tags unknown.
         private TscnParseException WrongKind(TscnTag tag)
