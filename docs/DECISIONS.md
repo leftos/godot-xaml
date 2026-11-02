@@ -60,6 +60,26 @@ A node inside an instanced scene that the scene changes is written as `<x:Overri
 
 A Godot property whose name holds a `/` (`theme_override_constants/separation`, `metadata/_tab_index`, `shader_parameter/albedo`) is written as a dotted attribute: the part before the slash in PascalCase, the key after it verbatim, since keys are free strings that would not survive a case change (`ThemeOverrideConstants.separation="12"`, `Metadata._tab_index="0"`). A value that needs an element, such as an inline resource, uses the same name as a property element (`<VBoxContainer.ThemeOverrideStyles.panel>`). A key that is not a legal XML name falls back to `<x:Prop Name="…" Value="…" />` with the Godot name verbatim.
 
+The value follows the typed-values rule. Each theme-override family has one fixed type (`scene/gui/control.cpp:400-417`: colors are `Color`, constants and font sizes `int`, fonts `Font`, icons `Texture2D`, styles `StyleBox`), so the metadata file records each family's type and the core writes them in compact text (`ThemeOverrideColors.font_color="1, 0.8, 0, 1"`). `metadata/…` and `shader_parameter/…` values have no fixed type, so they are written as Godot value text.
+
+## Signals are attributes on the emitter
+
+A connection is written on the node that emits the signal, like XAML's `Click="Handler"`. The common case, received by the scene root with default flags, is an attribute named by the signal's C# name whose value is the method (`<Button Name="Update" Pressed="on_update_button_pressed" />`). Any other receiver, non-default flags, binds or unbinds use an element on the emitter, `<x:Connect Signal="Pressed" To="Panel" Method="Hide" Flags="Deferred, OneShot" Binds='[1, "a"]' />`, as does a signal whose name clashes with a property. The method name is the script's own and is never renamed.
+
+## Shared sub-resources live in an `x:Resources` table
+
+A sub-resource used once is written inline, as a property element. One used by several properties, or referenced from inside Godot value text (an array or dictionary), sits in an `<x:Resources>` table at the top of the root with an `x:Key`, like XAML's resource dictionaries. An attribute refers to it as `{Key}`; Godot value text refers to it as `SubResource("Key")`. Inlining a shared resource twice would make Godot load two separate objects.
+
+## Canonical attribute order: Name, Script, then alphabetical
+
+The canonical writer puts `Name` first and `Script` second, then every other property in ordinal alphabetical order, then the `x:` attributes. The order needs no metadata, so a new Godot minor version never reorders a file.
+
+## One error-tolerant XML parser
+
+The core parses `.xscn` and `.xres` with GuiLabs.Language.Xml (formerly Microsoft.Language.Xml; Apache-2.0, targets net8.0 and netstandard2.0), a full-fidelity parser that keeps every span and builds a tree from half-typed text. Every host uses it: the Godot loader treats any error node as a load error, and the language server reports errors as diagnostics and keeps going. One parser means one set of parsing rules everywhere.
+
+A comment is legal XML only between elements, never inside a start tag (XML 1.0, production `STag`), so a comment attaches to the element it precedes.
+
 ## The metadata file
 
 - The dump tool is a GDScript run by headless Godot (`godot --headless --script`), with no build step, so it shares no files with the C# core.

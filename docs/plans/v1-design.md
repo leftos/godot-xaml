@@ -25,7 +25,6 @@ How godot-xaml version 1 is built and in what order. The settled choices are in 
 
 Each is settled with the recommended answer unless the work shows otherwise; the answer goes into `DECISIONS.md`.
 
-- **Signal connections.** Recommended: a `Connections` property element on the node that receives the signal, `<Connect Signal="Pressed" To=".." Method="OnPressed" />`.
 - **The node's script.** Recommended: `Script="res://…/Foo.cs"` as an attribute, the way the inspector shows it, rather than XAML's `x:Class`.
 - **Instanced scenes with edited children** (`editable_children`, a child's property overridden). Recommended: the overridden child written as a nested element marked `Override="true"`, holding only the changed properties.
 - **Inherited scenes.** Recommended: the root element names its base scene, `<c:Modal Inherits="true">`.
