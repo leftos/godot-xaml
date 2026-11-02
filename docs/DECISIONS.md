@@ -43,7 +43,7 @@ A project copies `addons/godot_xaml/` and adds one `PackageReference` to `GodotX
 The format is XML in the XAML style: an element per node, its type as the tag, its properties as attributes. Names are those of Godot's C# API: PascalCase properties (`CustomMinimumSize`, `SizeFlagsHorizontal`) and C# enum member names as values (`MouseFilter="Ignore"`, `StretchMode="KeepAspectCentered"`, `SizeFlagsHorizontal="ExpandFill"`), never the backing integers a `.tscn` stores.
 
 - `Name="%Press"` marks a unique name (`unique_name_in_owner`), the way `GetNode("%Press")` reads it.
-- A value equal to the default is not written, and neither is a value the parent decides: `layout_mode` under a `Container` is always Container, so it is omitted.
+- A value equal to the default is not written, and neither is a value the parent decides: `layout_mode` under a `Container` is always Container, so it is omitted. Outside a Container `layout_mode` is always written: its default comes from an unparented instance, and Godot's loader honours a value that is written (`scene/gui/control.cpp:981-982`).
 - Enum names come from Godot itself, dumped to a metadata file by a headless Godot run, so tools outside Godot (the language server, Visual Studio) can name them too. A property's hint string is not enough: it holds display names (`mouse_filter`'s hint is `Stop,Pass (Propagate Up),Ignore`) and leaves out combined constants such as `ExpandFill`, so the dump takes the enum's members from `ClassDB.class_get_enum_constants`, linked to the property by its enum type.
 
 ## Attribute values are typed by the metadata
@@ -179,7 +179,7 @@ Choices the format rulings above leave to the core, made by the orchestrator whi
 - **A document with no root** gets a stand-in root and `GX0004`.
 - **Writer entry.** `XscnWriter.Write(document, metadata)` returns the text: LF, a final newline, no XML declaration, 2-space indent. A start tag stays on one line up to 100 columns, else one attribute per line indented 4.
 - **Writer attribute order.** `Name`, `Script`, the rest ordinal, then the `x:` attributes with `x:UniqueId` last. Content order is `x:Uids`, `x:Resources`, property elements and `x:Prop` by name, `x:Connect`, children.
-- **Default omission** applies only on an element of a known class, against `GodotMetadata.FindDefault`; `layout_mode` is also omitted under a Container. A property with comments or a repeated name is never omitted.
+- **Default omission** applies only on an element of a known class, against `GodotMetadata.FindDefault`; `layout_mode` is never compared with its default, and is omitted only under a Container. A property with comments or a repeated name is never omitted.
 - **Signal attributes on write.** A connection is a signal attribute only in the simple case (scene root receiver, Persist only, no binds) and in a leading run that keeps call order; any other connection is `x:Connect`.
 - **Writer `x:Prop`.** A property whose attribute name would read back as something else, is taken, has comments or repeats a name is written as `x:Prop`; once a name is written as an element, all properties of that name are.
 - **Prefix clash.** A scene namespace whose prefix is `x` is written as `x1`, `x2`, and so on.

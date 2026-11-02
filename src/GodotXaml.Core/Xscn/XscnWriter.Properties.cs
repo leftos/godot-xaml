@@ -107,7 +107,9 @@ public static partial class XscnWriter
 
         // A scalar equal to the class's own default, and a scalar layout_mode under a Container, which the parent decides;
         // never on an element whose class is not known, on a placeholder (saved against the instanced scene's state,
-        // packed_scene.cpp:833-845), for the script, or where comments would be lost.
+        // packed_scene.cpp:833-845), for the script, or where comments would be lost. layout_mode is the one property never
+        // omitted for equalling the default: the default is an unparented instance's (control.cpp:981-982), which says
+        // nothing about the scene the element is read into.
         private bool Omitted(PropertyOwner owner, XscnProperty property)
         {
             if (owner.Class is not { } cls || !MayOmit(owner, property) || property.Value is not XscnScalar scalar)
@@ -120,8 +122,15 @@ public static partial class XscnWriter
                 return true;
             }
 
-            return metadata.FindDefault(cls, property.GodotName) is { } fallback && GodotText(fallback.Value) == GodotText(scalar.Value);
+            return EqualsDefault(cls, property, scalar);
         }
+
+        // The value equals the class's own default, which an unparented instance reports. layout_mode is never omitted that
+        // way: Godot honours one that is written, and the scene rather than the class decides it (control.cpp:981-982).
+        private bool EqualsDefault(GodotClassInfo cls, XscnProperty property, XscnScalar scalar) =>
+            property.GodotName != LayoutModeName
+            && metadata.FindDefault(cls, property.GodotName) is { } fallback
+            && GodotText(fallback.Value) == GodotText(scalar.Value);
 
         private static bool MayOmit(PropertyOwner owner, XscnProperty property) =>
             !owner.IsPlaceholder && property.GodotName != ScriptName && property.LeadingComments.IsEmpty && property.TrailingComments.IsEmpty;

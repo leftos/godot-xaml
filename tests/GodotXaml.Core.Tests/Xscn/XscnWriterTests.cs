@@ -475,6 +475,52 @@ public sealed class XscnWriterTests
     }
 
     [Fact]
+    public void LayoutModeOutsideAContainerIsKeptThoughItEqualsTheFreshInstanceDefault()
+    {
+        XscnNode root = Root("ColorRect", new XscnProperty("layout_mode", new XscnScalar(new GodotInt(3))));
+        string expected = $"""
+            <ColorRect
+                {X}
+                Name="Root"
+                LayoutMode="Uncontrolled" />
+
+            """;
+
+        Assert.Equal(expected, XscnWriter.Write(SceneOf(root), Real));
+        Assert.Equal(expected, Rewrite(expected));
+    }
+
+    [Fact]
+    public void LayoutModeOnAChildOutsideAContainerIsKept()
+    {
+        XscnDocument document = RewriteStably(
+            $"""
+            <Control {X} Name="Root">
+              <Label Name="L" LayoutMode="Uncontrolled" />
+            </Control>
+            """
+        );
+
+        var root = (XscnNode)document.Root;
+        Assert.Equal(1, ((XscnNode)root.Children[0]).Properties.Count(p => p.GodotName == "layout_mode"));
+    }
+
+    [Fact]
+    public void LayoutModeUnderAContainerIsOmitted()
+    {
+        XscnDocument document = RewriteStably(
+            $"""
+            <VBoxContainer {X} Name="Root">
+              <Label Name="L" LayoutMode="Container" />
+            </VBoxContainer>
+            """
+        );
+
+        var root = (XscnNode)document.Root;
+        Assert.Equal(0, ((XscnNode)root.Children[0]).Properties.Count(p => p.GodotName == "layout_mode"));
+    }
+
+    [Fact]
     public void ACommentWithCarriageReturnsIsWrittenWithLineFeeds()
     {
         string text = $"<Control {X} Name=\"Root\">\r\n  <!-- one\r\n       two\rthree -->\r\n  <Label Name=\"L\" />\r\n</Control>\r\n";
