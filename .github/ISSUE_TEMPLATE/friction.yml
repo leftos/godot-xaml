@@ -1,0 +1,43 @@
+name: Friction report
+description: Something in godot-xaml got in the way while using it in a Godot project.
+labels: ["friction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One issue per friction: a conversion that came out wrong, a load error, an editor save that changed a scene it should not, a CLI or tooling gap.
+
+        This repository is public. If the problem comes from a private project, reduce it to a small example; never paste the project's scene whole.
+  - type: input
+    id: version
+    attributes:
+      label: godot-xaml version
+      description: The `GodotXaml.Core` package version, or the `godot-xaml --version` output for the CLI.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: godot-version
+    attributes:
+      label: Godot version
+      placeholder: 4.7.2
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What was expected
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: The steps, the error text and a minimal example.
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: What you did to get past it, if anything.
