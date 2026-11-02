@@ -14,6 +14,7 @@
 - **Compat mode**: the writer flag Godot uses to write a file as format 3: byte arrays as number lists and negative infinity as `inf_neg`; off, it writes base64 and `-inf`. `ValueWriteOptions.Compat`, on by default.
 - **Diagnostic code**: the stable `GX` plus four digits that names one kind of parse problem (`GX0001` for an XML syntax error), listed in `XscnCodes`.
 - **Effective default**: a property's default for a given class, as Godot saves against it: none for a class Godot keeps no defaults for (a virtual class such as `BaseButton`); else the class's own declaration's default (none when it declares the property without one); else its override; else its parent's effective default. `GodotMetadata.FindDefault`.
+- **Export plugin**: `XscnExportPlugin`, the Godot `EditorExportPlugin` that converts each `.xscn`/`.xres` to Godot binary when a project is exported; the editor plugin `XscnEditorPlugin` registers it.
 - **Fixture generator**: `tools/value-fixtures/`, the headless Godot script that writes the expected value text under `tests/fixtures/values/`; `tools/scene-fixtures/` does the same for scenes and resources under `tests/fixtures/scenes/`.
 - **Format pair**: an `.in.xscn`/`.out.xscn` pair under `tests/fixtures/xscn/format/`; the writer's output for the `.in` document must equal the `.out` file, which proves the canonical rewrite.
 - **Gate**: a command a change must pass (build, test, format check), run through `./run.ps1 <verb>` and `tools/gate.ps1`, which log to `.tmp/`; the Gates section of the `godot-xaml-nextup` skill lists them and which hook runs each.
@@ -26,6 +27,7 @@
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
 - **Project root**: the folder holding the nearest `project.godot` above a file; `res://` paths are relative to it, and `convert` rewrites references only within one project root (`ProjectRoot`).
 - **`res://` path**: a path from a project root, written with each folder and file name in its on-disk casing.
+- **Remap**: a `.remap` file Godot adds beside a path in an export, naming the file to load instead; the export plugin uses it to send an `.xscn`/`.xres` path to its binary copy.
 - **Round trip**: converting a `.tscn` to `.xscn` and back (or the reverse) and getting the same scene as Godot loads it.
 - **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn` in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
 - **Seed scene**: the one-node scene `tools/scene-fixtures/` saves first so the inherited-scene case can be saved from it; a script cannot set up scene inheritance directly.

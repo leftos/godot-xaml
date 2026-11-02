@@ -11,7 +11,7 @@ Why it is possible, from the Godot 4.7.2 source (`F:\Godot\src-4.7.2`):
 - A script can register both: `ResourceLoader.add_resource_format_loader` and `ResourceSaver.add_resource_format_saver` are bound in `core/core_bind.cpp`, and the virtuals cover uids (`_get_resource_uid`, `_set_uid`), dependencies (`_get_dependencies`) and the FileSystem dock's move and rename (`_rename_dependencies`) in `core/io/resource_loader.h` and `core/io/resource_saver.h`.
 - The editor's scene Open and Save dialogs list the extensions every registered loader and saver reports for `PackedScene` (`ResourceLoader::get_recognized_extensions_for_type` and `ResourceSaver::get_recognized_extensions` in `editor/editor_node.cpp`).
 - "Run current scene" passes the scene as `--scene <path>` (`editor/run/editor_run.cpp` L151), which takes any extension. Only a bare positional path on the command line must end in `.scn`, `.tscn`, `.escn`, `.res` or `.tres` (`main/main.cpp`).
-- Export converts only `.tscn` and `.tres` to binary (`editor/export/editor_export_platform.cpp` L1714), so the addon converts `.xscn` and `.xres` itself at export, or registers its loader in the exported game.
+- Export converts only `.tscn` and `.tres` to binary (`editor/export/editor_export_platform.cpp` L1714), so the addon converts `.xscn` and `.xres` itself at export ("Exported games load binary through a remap").
 - About ten other places in the editor match `.tscn` by name, none of them on the open, edit, save or run path (for example the large-file warning in `editor/editor_node.cpp` L2539 and the FileSystem dock's open action in `editor/docks/filesystem_dock.cpp`).
 
 ## The addon registers from C#, as global classes
@@ -180,6 +180,14 @@ Choices the format rulings above leave to the core, made by the orchestrator whi
 - **Characters XML 1.0 cannot hold.** A string with one is written as `x:Prop` with `\uXXXX` escapes, binds included; group and node-path names fall back to escaped array text. A plain-text field (a name, a path) with one throws `ArgumentException`, and a lone surrogate anywhere throws.
 - **Writer comments.** A carriage return in a comment becomes LF. An empty table that has comments is still written.
 - **Malformed structure.** A duplicate attribute is `GX0113` (the first is kept), a scene-prefixed attribute `GX0114`, a second table `GX0115`, and a class tag that is not a Resource where a resource goes (a property element, an `x:Resources` entry, an `.xres` root) `GX0117`, the element still read. `Name=""` and `Name="%"` are `GX0104`.
+
+## Exported games load binary through a remap
+
+An `EditorExportPlugin`, registered by an `EditorPlugin` the project enables, loads each `.xscn` and `.xres` through the loader at export, saves Godot binary and adds it with `add_file(path, bytes, remap: true)`, so the exported game loads binary through Godot's `.remap` and runs no addon code at load. The raw XML is not shipped. The loaders are packed too, as a fallback and for a `.xscn` autoload's type check (`main/main.cpp`, which asks `get_resource_type` of the original path, and that lookup does not follow a remap). The binary sits under `res://.godot/exported/godot-xaml/`, named as Godot names its own conversions, so a project holding both `a.xscn` and `a.scn` gets no clash.
+
+A file that fails to convert fails the export, naming the file and the error. Godot 4.7.2 gives an export plugin no way to change the export's result: `export_project_files` never reads plugin messages, and a headless `--export-pack` exits 0 whatever they say. So a failure is an `AddMessage(Error)` and a `Skip()`, the way Godot's own .NET export plugin reports one: the editor's export dialog shows "Failed.", and headless the `ERROR: godot-xaml:` line is the signal.
+
+The filtered global class list keeps a script only when the script is exported, and a loader dropped from it silently fails every `.xscn` that was not converted. So the export plugin checks, in every export mode, that both loader scripts survive the mode's own rule and the include and exclude filters, and otherwise fails the export naming the filter to fix.
 
 ## Version 1 scope
 

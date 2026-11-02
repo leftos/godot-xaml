@@ -1,0 +1,9 @@
+; The export probe: a GDScript-only project, with no godot-xaml addon, that loads an exported pack and checks what
+; it holds. Run by godot/export.ps1 as `godot --headless --path tools/export-probe --script res://probe.gd -- <pck>`.
+
+config_version=5
+
+[application]
+
+config/name="export-probe"
+config/features=PackedStringArray("4.7")

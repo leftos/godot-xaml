@@ -32,6 +32,7 @@ Names are those of Godot's C# API, and values are enum names, never integers.
 In design; there is nothing to install yet. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md). Version 1 targets Godot 4.7+ with .NET:
 
 - `.xscn` and `.xres` open, edit and save in the Godot editor through a C# addon, with no `.tscn` beside them.
+- Exported games load `.xscn` and `.xres` as Godot binary, with no addon code and no raw XML shipped, once the `godot-xaml` editor plugin is enabled.
 - A converter for existing `.tscn` and `.tres` files, which rewrites the `res://` references between the files it converts.
 - A language server for Visual Studio and VS Code, and a live preview pane in Visual Studio.
 - A CLI to convert, check and format.
