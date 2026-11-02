@@ -23,7 +23,9 @@ Each component gets an entry here in the commit that adds its project.
 - **Loader spike** (`spikes/xscn-loader/`): a throwaway Godot 4.7 .NET project that proved a C# loader and saver for `.xscn` work in the editor (`DECISIONS.md`, "The addon registers from C#, as global classes"). Its spike `.xscn` format is not the real one. It is deleted once the Godot addon (GXAML-9) replaces it, and nothing else may depend on it.
 - **Value grammar** (`src/GodotXaml.Core/Values/`): Godot's text syntax for a value, as `GodotValue` records read by `GodotValueReader.Read` and written by `GodotValueWriter.Write` (`ValueWriteOptions` sets compat mode). Float text is `GodotFloatFormat`, over a port of Godot's grisu2 (`Grisu2.cs`).
 
-  It covers the whole grammar: null, bool, int, float, String, StringName, NodePath, the math and colour constructors, RID, Signal and Callable; arrays and typed arrays (`GodotArray`, `GodotTypeRef`); dictionaries and typed dictionaries (`GodotDictionary`, `GodotEntry`); the packed arrays (`GodotPackedBytes`, `GodotPackedInts`, `GodotPackedLongs`, `GodotPackedFloats`, `GodotPackedDoubles`, `GodotPackedStrings`, `GodotPackedReals`) with their legacy `Pool*Array` aliases; references (`GodotResourceRef` for `ExtResource` and `SubResource`, `GodotPathRef` for `Resource(...)`); and `Object(...)` (`GodotObject`, `GodotProperty`).
+  It covers the whole grammar: null, bool, int, float, String, StringName, NodePath, the math and colour constructors, RID, Signal and Callable; arrays and typed arrays (`GodotArray`, `GodotTypeRef`); dictionaries and typed dictionaries (`GodotDictionary`, `GodotEntry`).
+
+  It also covers the packed arrays (`GodotPackedBytes`, `GodotPackedInts`, `GodotPackedLongs`, `GodotPackedFloats`, `GodotPackedDoubles`, `GodotPackedStrings`, `GodotPackedReals`) with their legacy `Pool*Array` aliases; references (`GodotResourceRef` for `ExtResource` and `SubResource`, `GodotPathRef` for `Resource(...)`); and `Object(...)` (`GodotObject`, `GodotProperty`).
 
   Dictionaries are written in Godot's key order (`GodotKeyOrder`, internal): string keys by code point, other keys by Variant type then value, and keys Godot cannot order keep source order. `ValueWriteOptions.Compat` also decides `PackedByteArray`: a number list on, `PackedByteArray("base64")` off.
 
@@ -42,7 +44,9 @@ Each component gets an entry here in the commit that adds its project.
 ## Test locations
 
 - `tools/metadata-dump/check.gd`: facts about a dumped file, run with `godot --headless --path tools/metadata-dump --script res://check.gd -- --file <abs>`; prints `CHECK <id> PASS|FAIL`.
-- `tests/GodotXaml.Core.Tests` (net10.0, xunit.v3 on Microsoft.Testing.Platform): tests of `src/GodotXaml.Core`, in folders mirroring the core's (`Names/` for `GodotNames`). Run with `./run.ps1 test`. `Values/` holds the float format against Godot's corpus, the lexer, scalar values (`ScalarValueTests`), containers (`ContainerValueTests`), Godot's key order (`GodotKeyOrderTests`), packed arrays (`PackedValueTests`), references and `Object` (`ReferenceValueTests`), the fixture files and every default in `metadata/godot-4.7.json` read and written back unchanged (`MetadataDefaultsTests`); `RepoFiles` finds the repo root.
+- `tests/GodotXaml.Core.Tests` (net10.0, xunit.v3 on Microsoft.Testing.Platform): tests of `src/GodotXaml.Core`, in folders mirroring the core's (`Names/` for `GodotNames`). Run with `./run.ps1 test`.
+
+  `Values/` holds the float format against Godot's corpus, the lexer, scalar values (`ScalarValueTests`), containers (`ContainerValueTests`), Godot's key order (`GodotKeyOrderTests`), packed arrays (`PackedValueTests`), references and `Object` (`ReferenceValueTests`), the fixture files and every default in `metadata/godot-4.7.json` read and written back unchanged (`MetadataDefaultsTests`); `RepoFiles` finds the repo root.
 - `tests/fixtures/values/`: the expected value text, written by `tools/value-fixtures/` in `canonical/`, `loose/`, `floats/` and `format4/` (the saver's text with compat off); `tests/GodotXaml.Core.Tests/Values/` reads it.
 
 ## Deep docs
