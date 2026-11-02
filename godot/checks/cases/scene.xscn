@@ -1,0 +1,11 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+  <Label Name="Label" Text="hi" />
+  <Panel Name="Panel">
+    <Panel.ThemeOverrideStyles.panel>
+      <StyleBoxFlat BgColor="1, 0, 0, 1" />
+    </Panel.ThemeOverrideStyles.panel>
+  </Panel>
+  <Button Name="Button">
+    <x:Connect Signal="Pressed" To="." Method="OnPressed" Flags="Deferred" />
+  </Button>
+</Control>

@@ -1,0 +1,8 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Holder" Theme="res://checks/cases/theme.xres">
+  <Panel Name="External" ThemeOverrideStyles.panel="res://checks/cases/box.xres" />
+  <Panel Name="Inline">
+    <Panel.ThemeOverrideStyles.panel>
+      <StyleBoxFlat BgColor="0, 0, 1, 1" />
+    </Panel.ThemeOverrideStyles.panel>
+  </Panel>
+</Control>

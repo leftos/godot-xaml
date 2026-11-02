@@ -1,0 +1,5 @@
+<Node2D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Parent">
+  <x:Instance Scene="res://checks/cases/child.xscn" Name="Inst">
+    <x:Override Path="Inner" Visible="False" />
+  </x:Instance>
+</Node2D>

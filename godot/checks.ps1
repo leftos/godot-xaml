@@ -1,7 +1,7 @@
 #requires -Version 7
 <#
 .SYNOPSIS
-Runs the addon's headless checks C1 to C6 in Godot 4.7.
+Runs the addon's headless checks C1 to C18 in Godot 4.7.
 
 .DESCRIPTION
 Builds the godot/ project, imports it headless (which registers the addon's global classes), then runs
@@ -27,7 +27,7 @@ $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env
 }
 
 $project = $PSScriptRoot
-$expectedChecks = 6
+$expectedChecks = 17
 
 function Invoke-Step {
     param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][scriptblock] $Command)

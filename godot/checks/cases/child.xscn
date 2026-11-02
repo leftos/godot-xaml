@@ -1,0 +1,3 @@
+<Node2D Name="Child">
+  <Node2D Name="Inner" />
+</Node2D>

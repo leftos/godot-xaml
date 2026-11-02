@@ -1,0 +1,5 @@
+<Theme xmlns:x="https://github.com/leftos/godot-xaml/format/1" DefaultFont="{Font}">
+  <x:Resources>
+    <SystemFont x:Key="Font" />
+  </x:Resources>
+</Theme>
