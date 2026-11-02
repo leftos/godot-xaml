@@ -254,6 +254,69 @@ public sealed class XscnParserErrorTests
     }
 
     [Fact]
+    public void ANonResourceInAPropertyElementIsOneError()
+    {
+        string text = $"""
+            <PanelContainer {X} Name="Root">
+              <PanelContainer.ThemeOverrideStyles.panel>
+                <Label />
+              </PanelContainer.ThemeOverrideStyles.panel>
+            </PanelContainer>
+            """;
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(text);
+
+        Assert.Equal([("GX0117", 3, 6)], positions);
+        XscnDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(XscnSeverity.Error, diagnostic.Severity);
+        Assert.Equal("<Label> is a Label, not a Resource; only a resource can be held here.", diagnostic.Message);
+        XscnProperty property = Assert.Single(Assert.IsType<XscnNode>(result.Document.Root).Properties);
+        Assert.Equal("Label", Assert.IsType<XscnClassType>(Assert.IsType<XscnInline>(property.Value).Resource.Type).Class.Name);
+    }
+
+    [Fact]
+    public void ANonResourceInTheResourceTableIsOneError()
+    {
+        string text = $"""
+            <Control {X} Name="Root">
+              <x:Resources>
+                <Node2D x:Key="a" />
+              </x:Resources>
+            </Control>
+            """;
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(text);
+
+        Assert.Equal([("GX0117", 3, 6)], positions);
+        Assert.Equal(XscnSeverity.Error, Assert.Single(result.Diagnostics).Severity);
+        Assert.Equal("Node2D", Assert.IsType<XscnClassType>(Assert.Single(result.Document.Resources).Type).Class.Name);
+    }
+
+    [Fact]
+    public void ANonResourceAsTheRootOfAnXresIsOneError()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = ParseResource("<Node2D />");
+
+        Assert.Equal([("GX0117", 1, 2)], positions);
+        Assert.Equal(XscnSeverity.Error, Assert.Single(result.Diagnostics).Severity);
+        Assert.Equal("Node2D", Assert.IsType<XscnClassType>(Assert.IsType<XscnResource>(result.Document.Root).Type).Class.Name);
+    }
+
+    [Fact]
+    public void AnUnknownClassInAPropertyElementIsOnlyAWarning()
+    {
+        string text = $"""
+            <PanelContainer {X} Name="Root">
+              <PanelContainer.ThemeOverrideStyles.panel>
+                <Gadget />
+              </PanelContainer.ThemeOverrideStyles.panel>
+            </PanelContainer>
+            """;
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(text);
+
+        Assert.Equal([("GX0107", 3, 6)], positions);
+        Assert.Equal(XscnSeverity.Warning, Assert.Single(result.Diagnostics).Severity);
+    }
+
+    [Fact]
     public void AScenePrefixedAttributeIsAnError()
     {
         (_, List<(string, int, int)> positions) = Parse($"<Control {X} xmlns:ui=\"res://ui/\" Name=\"Root\"\n  ui:Foo=\"1\" />");
@@ -281,10 +344,20 @@ public sealed class XscnParserErrorTests
 
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text) => Parse(text, Real);
 
+    private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text, GodotMetadata metadata) =>
+        ParseAs(text, XscnDocumentKind.Scene, metadata);
+
+    private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) ParseResource(string text) =>
+        ParseAs(text, XscnDocumentKind.Resource, Real);
+
     // The result, and each diagnostic's code and the 1-based line and column of its start, in the result's order.
-    private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text, GodotMetadata metadata)
+    private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) ParseAs(
+        string text,
+        XscnDocumentKind kind,
+        GodotMetadata metadata
+    )
     {
-        XscnParseResult result = XscnParser.Parse(text, XscnDocumentKind.Scene, metadata);
+        XscnParseResult result = XscnParser.Parse(text, kind, metadata);
         var map = new LineMap(text);
         return (result, [.. result.Diagnostics.Select(d => (d.Code, map.OneBased(d.Span.Start).Line, map.OneBased(d.Span.Start).Column))]);
     }

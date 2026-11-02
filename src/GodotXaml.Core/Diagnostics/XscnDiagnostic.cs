@@ -82,4 +82,10 @@ public static class XscnCodes
 
     /// <summary>An <c>x:Key</c> an earlier entry of <c>&lt;x:Resources&gt;</c> already has; the later resource is not read.</summary>
     public const string RepeatedKey = "GX0116";
+
+    /// <summary>
+    /// A class tag that is not a Resource where a resource is expected (inside a property element, in x:Resources, the root
+    /// of an .xres).
+    /// </summary>
+    public const string NotAResource = "GX0117";
 }

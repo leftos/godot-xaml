@@ -36,7 +36,21 @@ internal sealed partial class XscnTreeReader
     private XscnResource ReadRootResource(IXmlElementSyntax root)
     {
         XscnType type = KindOf(root) == TagKind.Class ? ClassTag(root) : MisplacedRoot(root, "resource tagged with its class");
+        CheckIsResource(root, type);
         return ReadResource(new ElementParts(root, ElementKind.Resource, ClassOf(type), isRoot: true), type, []);
+    }
+
+    // Only a Resource can be held where a resource goes; the element is still read, so the mistake gives one error.
+    private void CheckIsResource(IXmlElementSyntax element, XscnType type)
+    {
+        if (ClassOf(type) is { } cls && !metadata.Inherits(cls, "Resource"))
+        {
+            Report(
+                XscnCodes.NotAResource,
+                $"<{FullName(element)}> is a {cls.Name}, not a Resource; only a resource can be held here.",
+                NameSpan(element)
+            );
+        }
     }
 
     private XscnUnknownType MisplacedRoot(IXmlElementSyntax root, string expected)
@@ -364,6 +378,7 @@ internal sealed partial class XscnTreeReader
         }
 
         XscnType type = ClassTag(element);
+        CheckIsResource(element, type);
         var parts = new ElementParts(element, kind, ClassOf(type), isRoot: false);
         XscnResource resource = ReadResource(parts, type, leading);
         return kind != ElementKind.TableEntry || HasNewKey(parts) ? resource : null;

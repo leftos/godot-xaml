@@ -39,4 +39,4 @@ How GXAML-5 is built: four briefs in order, and the choices the owner's format r
 - **`x:Groups` and `x:NodePaths`** split on commas, or read as Godot array text when the value starts with `[`.
 - **Comments** attach to the next node, property, connection, uid or resource read. Trailing ones attach to the element, property element or table they end. When the element they precede is not read, they carry over to the next element read.
 - **A document with no root** gets a stand-in root and `GX0004`.
-- **Malformed structure.** A duplicate attribute is `GX0113` (the first is kept), a scene-prefixed attribute `GX0114`, a second table `GX0115`. `Name=""` and `Name="%"` are `GX0104`.
+- **Malformed structure.** A duplicate attribute is `GX0113` (the first is kept), a scene-prefixed attribute `GX0114`, a second table `GX0115`, and a class tag that is not a Resource where a resource goes (a property element, an `x:Resources` entry, an `.xres` root) `GX0117`, the element still read. `Name=""` and `Name="%"` are `GX0104`.
