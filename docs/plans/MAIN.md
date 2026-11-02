@@ -4,7 +4,6 @@
 
 ## Core format
 
-- [/] GXAML-7 Core: .tscn to .xscn conversion and back, with round-trip tests · release vNext
 - [ ] GXAML-8 Converter run on delve-the-dungeon, opening-hand and openpax scenes · release vNext
 - [ ] GXAML-23 GodotNames: match Godot's case tables and UTF-32 indexing, and check names against GodotSharp.dll · release vNext+1
 - [ ] GXAML-39 Core names: check the editor-class enum names against GodotSharpEditor · release vNext+1
@@ -17,10 +16,9 @@
 ## Godot addon
 
 - [/] GXAML-9 Addon: loader and saver for .xscn/.xres on the core · release vNext
-- [ ] GXAML-10 Addon: export support for .xscn/.xres · release vNext
 - [/] GXAML-45 Addon: install into a Godot project, packaged and documented · release vNext
 - [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+2
-- [ ] GXAML-57 Addon loader: make the editor type lookup safe on loader worker threads
+- [ ] GXAML-60 Addon: refresh the editor's cached dependencies of .xscn/.xres after an upgrade
 
 ## Agent tooling
 
@@ -31,6 +29,8 @@
 - [ ] GXAML-51 CLI check: response files, -- before paths, BOM-less UTF-16, folder metadata, cwd in a test
 - [/] GXAML-53 CLI convert: rewrite scene and resource paths across a project conversion · release vNext
 - [ ] GXAML-56 CLI convert: seed new ids from the res:// path, not the OS path
+- [ ] GXAML-58 CLI convert: a back conversion the rewrite breaks leaves dangling references
+- [ ] GXAML-59 CLI convert: reference scan misses entity-encoded quotes and matches Path= as a substring
 
 ## Editor support
 
@@ -54,6 +54,6 @@
 
 ## Design files
 
-- [addon-export.md](addon-export.md) — GXAML-9, GXAML-10
+- [addon-export.md](addon-export.md) — GXAML-9
 - [convert-path-rewrite.md](convert-path-rewrite.md) — GXAML-53
-- [v1-design.md](v1-design.md) — GXAML-7, GXAML-8, GXAML-9, GXAML-10, GXAML-11, GXAML-13, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, GXAML-23, GXAML-45, Agent tooling, Core format, Editor support, Godot addon
+- [v1-design.md](v1-design.md) — GXAML-8, GXAML-9, GXAML-11, GXAML-13, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, GXAML-23, GXAML-45, Agent tooling, Core format, Editor support, Godot addon
