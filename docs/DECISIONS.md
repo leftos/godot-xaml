@@ -141,6 +141,46 @@ Every save, by the Godot editor or the formatter, writes one fixed layout, like 
 
 One C# core (parser, writer, metadata, `.tscn` conversion) serves the Godot addon, the CLI, the language server and the Visual Studio extension. The Godot addon is C#; the target is Godot 4.7+ .NET.
 
+## The core's implementation choices
+
+Choices the format rulings above leave to the core, made by the orchestrator while the core was built; they are open to the owner like any orchestrator decision.
+
+- **Tags** are the C# class names (`CpuParticles2D`), following "XAML syntax with C# names".
+- **Script properties** keep their stored name verbatim (`rowScene`); one that collides with an engine property's C# name uses `x:Prop`.
+- **The `x:` namespace** is `https://github.com/leftos/godot-xaml/format/1`, which doubles as the format version. There is no default `xmlns`: unprefixed tags are Godot classes.
+- **Scene namespaces.** The project root folder is `xmlns:res="res://"`. A tag's file extension comes from the matching `<x:Uids>` path, else `.xscn`. A file name that is not an XML name uses `<x:Instance Scene="res://…">`. Namespace declarations sit only on the root.
+- **Diagnostics** live in `GodotXaml.Core.Diagnostics`: stable `GX` codes, UTF-16 offsets, a line map giving 0-based positions for the language server and 1-based ones for the loader. Any error fails a Godot load.
+- **Unknown elements.** An unknown class tag (a GDExtension class) is kept as a node of unknown type with a warning. An unknown `x:` element or attribute is an error and is not kept.
+- **String or StringName.** The value's kind follows the metadata default when the declared type and the default disagree (`theme_type_variation` is declared String with a StringName default), so conversion back keeps `&"…"`.
+- **Flags** are written as .NET's `[Flags]` text joined with `", "`; leftover bits mean the integer. FLAGS-hint integers without an enum take bit `1 << i` unless the hint gives `:value`. A hint display name becomes PascalCase by splitting on anything not a letter or digit. An empty hint means the integer.
+- **References.** An explicit null is `{x:Null}`. A file inside Godot value text is `Resource("res://…")`; `ExtResource(…)` is rejected in `.xscn`.
+- **Rect2, Plane, AABB** are Godot value text.
+- **Quoting.** Values use `"`, or `'` when they hold `"` and no `'`. `&`, `<`, the quote character, newline, carriage return and tab are written as references; reading decodes per XML.
+- **Order details.** `xmlns` declarations first on the root; `x:Key` first on a resource; signal attributes join the alphabetical run; `x:` attributes alphabetical with `x:UniqueId` last; property elements and `x:Prop` by name; `x:Connect` in model order (connection order is call order); `<x:Uids>` by path; `<x:Resources>` in model order; no blank lines.
+- **Connection flags.** Persist is implied and never written in `Flags`; a connection without Persist writes the integer.
+- **Property elements** name their own tag as owner (`<c:Modal.Theme>`, `<x:Override.Theme>`).
+- **A value that does not fit its type's compact form** (an int in a float property, a script property on an instance whose stored name matches an engine property of another type) is written as `<x:Prop Name="…" Value="…" />` with Godot value text. The codec decides by reading its own attribute text back and comparing, so every round trip is exact. On an untyped attribute or `x:Prop`, `Resource("res://…")` alone reads as a file and `{Key}` as a resource key.
+- **Groups.** A group name holding a comma or edge whitespace makes `x:Groups` fall back to Godot array text.
+- **Uids** are `<x:Uid Path="res://…" Value="uid://…" />` entries.
+- **Connections.** `<x:Connect>` names its signal with `Signal`, or with `GodotSignal` (Godot's name verbatim) where `Signal` would read back as another signal; it carries `FromUidPath` and `ToUidPath` as comma-separated integers; `To` defaults to `.`; Persist is implied and flag names come from `Object.ConnectFlags`.
+- **Attribute values** are entity-decoded by the parser, not the XML library. A bad reference is the library's `GX0001` and the value is kept as written.
+- **Library errors** become `GX0001`. An element's diagnostics span its tag name, a value's diagnostics span the value. `GX0107` (unknown class) is the only warning.
+- **The `x:` prefix** is whatever the root binds to the format URI. An element with an undeclared prefix is kept as an unknown node; such an attribute is dropped.
+- **Signal attributes.** An attribute on a known class with no engine property of that C# name is recognised as a signal.
+- **`x:Key`** is accepted only on an `x:Resources` entry; a repeated one is `GX0116`.
+- **`x:Groups` and `x:NodePaths`** split on commas, or read as Godot array text when the value starts with `[`.
+- **Comments** attach to the next node, property, connection, uid or resource read. Trailing ones attach to the element, property element or table they end. When the element they precede is not read, they carry over to the next element read.
+- **A document with no root** gets a stand-in root and `GX0004`.
+- **Writer entry.** `XscnWriter.Write(document, metadata)` returns the text: LF, a final newline, no XML declaration, 2-space indent. A start tag stays on one line up to 100 columns, else one attribute per line indented 4.
+- **Writer attribute order.** `Name`, `Script`, the rest ordinal, then the `x:` attributes with `x:UniqueId` last. Content order is `x:Uids`, `x:Resources`, property elements and `x:Prop` by name, `x:Connect`, children.
+- **Default omission** applies only on an element of a known class, against `GodotMetadata.FindDefault`; `layout_mode` is also omitted under a Container. A property with comments or a repeated name is never omitted.
+- **Signal attributes on write.** A connection is a signal attribute only in the simple case (scene root receiver, Persist only, no binds) and in a leading run that keeps call order; any other connection is `x:Connect`.
+- **Writer `x:Prop`.** A property whose attribute name would read back as something else, is taken, has comments or repeats a name is written as `x:Prop`; once a name is written as an element, all properties of that name are.
+- **Prefix clash.** A scene namespace whose prefix is `x` is written as `x1`, `x2`, and so on.
+- **Characters XML 1.0 cannot hold.** A string with one is written as `x:Prop` with `\uXXXX` escapes, binds included; group and node-path names fall back to escaped array text. A plain-text field (a name, a path) with one throws `ArgumentException`, and a lone surrogate anywhere throws.
+- **Writer comments.** A carriage return in a comment becomes LF. An empty table that has comments is still written.
+- **Malformed structure.** A duplicate attribute is `GX0113` (the first is kept), a scene-prefixed attribute `GX0114`, a second table `GX0115`, and a class tag that is not a Resource where a resource goes (a property element, an `x:Resources` entry, an `.xres` root) `GX0117`, the element still read. `Name=""` and `Name="%"` are `GX0104`.
+
 ## Version 1 scope
 
 - `.xscn` scenes and `.xres` resources, opened, edited and saved in Godot 4.7+.

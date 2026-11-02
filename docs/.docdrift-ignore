@@ -1,3 +1,4 @@
 # Files in Godot's own source or output, not in this repo.
 extension_api.json
 GodotTools/*
+godot-xaml.json
