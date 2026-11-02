@@ -480,7 +480,8 @@ internal static class ConvertCommand
         return false;
     }
 
-    // The staging folder goes whatever the run's outcome, and the folder above it once no other run's is left in it.
+    // The staging folder goes whatever the run's outcome, and the folder above it, with its .gitignore, once no other
+    // run's is left in it.
     private static void RemoveStaging(ProjectRun run)
     {
         if (run.Staging is null)
@@ -491,8 +492,10 @@ internal static class ConvertCommand
         {
             Directory.Delete(run.Staging, recursive: true);
             string parent = Path.GetDirectoryName(run.Staging)!;
-            if (!Directory.EnumerateFileSystemEntries(parent).Any())
+            string gitIgnore = Path.Combine(parent, OriginalsBackup.GitIgnoreName);
+            if (Directory.EnumerateFileSystemEntries(parent).All(entry => entry == gitIgnore))
             {
+                File.Delete(gitIgnore);
                 Directory.Delete(parent);
             }
         }

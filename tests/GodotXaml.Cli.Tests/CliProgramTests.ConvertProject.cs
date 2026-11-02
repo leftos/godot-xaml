@@ -661,6 +661,27 @@ public sealed partial class CliProgramTests
     }
 
     [Fact]
+    public void ProjectBackupIsIgnoredByGit()
+    {
+        WriteThreeScenes(ThemedButton);
+
+        Assert.Equal(0, RunProject().ExitCode);
+
+        Assert.Equal("*\n", File.ReadAllText(Path.Combine(Located(BackupFolder), ".gitignore")));
+    }
+
+    [Fact]
+    public void ProjectKeepsAnExistingBackupGitignore()
+    {
+        WriteThreeScenes(ThemedButton);
+        string gitignore = Write(Path.Combine(BackupFolder, ".gitignore"), "*.tscn\n");
+
+        Assert.Equal(0, RunProject().ExitCode);
+
+        Assert.Equal("*.tscn\n", File.ReadAllText(gitignore));
+    }
+
+    [Fact]
     public void ProjectLeavesNoStagingFolder()
     {
         WriteThreeScenes(ThemedButton);

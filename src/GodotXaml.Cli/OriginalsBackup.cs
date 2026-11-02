@@ -82,15 +82,24 @@ internal static class OriginalsBackup
     internal static bool TryCreateUnique(string parent, [NotNullWhen(true)] out string? folder) =>
         TryCreate(Path.Combine(parent, $"{Stamp()}-{Guid.NewGuid().ToString("N")[..8]}"), out folder);
 
+    /// <summary>The file in a parent folder that tells git to leave the folder out, as a Python venv does.</summary>
+    internal const string GitIgnoreName = ".gitignore";
+
     private static string Stamp() => DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
 
-    // A failure is reported by the caller, which names what the folder was for.
+    // A failure is reported by the caller, which names what the folder was for. The parent gets a .gitignore holding
+    // "*" unless it has one already, so git leaves the parent out without an edit to the project's own .gitignore.
     private static bool TryCreate(string candidate, [NotNullWhen(true)] out string? folder)
     {
         folder = null;
         try
         {
             Directory.CreateDirectory(candidate);
+            string gitIgnore = Path.Combine(Path.GetDirectoryName(candidate)!, GitIgnoreName);
+            if (!File.Exists(gitIgnore))
+            {
+                File.WriteAllText(gitIgnore, "*\n");
+            }
             folder = candidate;
             return true;
         }
