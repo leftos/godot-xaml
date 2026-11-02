@@ -104,6 +104,19 @@ public sealed class ContainerValueTests
         Assert.Equal(text, RoundTrip(text));
     }
 
+    // The writer streams into one builder, so a value near the parser's 512-level limit is written and read back whole.
+    [Fact]
+    public void WritesAndReadsAValueNestedFiveHundredLevelsDeep()
+    {
+        GodotValue value = new GodotInt(7);
+        for (int level = 0; level < 500; level++)
+        {
+            value = level % 2 == 0 ? new GodotArray([value], null) : new GodotDictionary([new GodotEntry(new GodotString("a"), value)], null, null);
+        }
+
+        Assert.Equal(value, GodotValueReader.Read(Write(value)));
+    }
+
     [Fact]
     public void RejectsNestingThroughDictionariesAndObjects()
     {
