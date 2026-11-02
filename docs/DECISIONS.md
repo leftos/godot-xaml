@@ -22,7 +22,16 @@ The format is XML in the XAML style: an element per node, its type as the tag, i
 
 - `Name="%Press"` marks a unique name (`unique_name_in_owner`), the way `GetNode("%Press")` reads it.
 - A value equal to the default is not written, and neither is a value the parent decides: `layout_mode` under a `Container` is always Container, so it is omitted.
-- Enum names come from Godot itself (each property's enum hint), dumped to a metadata file by a headless Godot run, so tools outside Godot (the language server, Visual Studio) can name them too.
+- Enum names come from Godot itself, dumped to a metadata file by a headless Godot run, so tools outside Godot (the language server, Visual Studio) can name them too. A property's hint string is not enough: it holds display names (`mouse_filter`'s hint is `Stop,Pass (Propagate Up),Ignore`) and leaves out combined constants such as `ExpandFill`, so the dump takes the enum's members from `ClassDB.class_get_enum_constants`, linked to the property by its enum type.
+
+## The metadata file
+
+- The dump tool is a GDScript run by headless Godot (`godot --headless --script`), with no build step, so it shares no files with the C# core.
+- Its output is JSON, one file per Godot minor version (`metadata/godot-4.7.json`). Each class lists only its own properties, with a link to its parent. Defaults are stored as Godot's own value text (`Vector2(0, 0)`), the grammar a `.tscn` uses, so the core reads them with its `.tscn` value reader.
+
+## Test fixtures are synthetic
+
+The `.tscn`/`.tres` reader and writer are tested on small scenes and resources made for the tests, one per section and value type, then re-saved by headless Godot 4.7.2 so the expected bytes are 4.7.2's own. They are committed. The owner's projects are not copied into this public repo: the converter runs on them in place (GXAML-8).
 
 ## Canonical formatting on save
 
