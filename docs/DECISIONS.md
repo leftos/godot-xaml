@@ -46,7 +46,9 @@ The format is XML in the XAML style: an element per node, its type as the tag, i
 
 A property whose type the metadata knows is written in compact XAML text: vectors as their components (`CustomMinimumSize="640, 0"`), `Color` as four floats (`Modulate="1, 1, 1, 0.5"`, never hex, which cannot hold Godot's float32 channels), strings and `StringName`s unquoted (`ThemeTypeVariation="TitleLabel"`), `NodePath`s as the bare path, and files as `res://` paths.
 
-Every other value is written as Godot's own value text, exactly as a `.tscn` holds it: transforms, bases, quaternions, arrays, dictionaries, packed arrays, and every property of a script (`[Export]`), whose type the core cannot know (`Target='NodePath("../..")'`). A value that starts with a constructor name and `(`, or with `[` or `{`, is always Godot text.
+Every other value is written as Godot's own value text, exactly as a `.tscn` holds it: transforms, bases, quaternions, arrays, dictionaries, packed arrays, and every property of a script (`[Export]`), whose type the core cannot know (`Target='NodePath("../..")'`).
+
+The property's type decides how its text is read, never the text's first character. A property the metadata types as `String` or `StringName` is always literal text, so `Text="[b]Bold[/b]"` and `Text="{0} items"` need no escape. A property with no known type (a script property, or one Godot declares as any Variant) is always Godot value text, its strings quoted (`Title='"[Esc] to close"'`).
 
 ## Format elements and attributes take the `x:` prefix
 
