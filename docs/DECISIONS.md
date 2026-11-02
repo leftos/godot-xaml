@@ -14,7 +14,23 @@ Why it is possible, from the Godot 4.7.2 source (`F:\Godot\src-4.7.2`):
 - Export converts only `.tscn` and `.tres` to binary (`editor/export/editor_export_platform.cpp` L1714), so the addon converts `.xscn` and `.xres` itself at export, or registers its loader in the exported game.
 - About ten other places in the editor match `.tscn` by name, none of them on the open, edit, save or run path (for example the large-file warning in `editor/editor_node.cpp` L2539 and the FileSystem dock's open action in `editor/docks/filesystem_dock.cpp`).
 
-The risk to measure first: the addon is C#, and Godot reloads C# assemblies on every rebuild, which may leave a registered loader or saver stale or unregistered until the editor restarts.
+## The addon registers from C#, as global classes
+
+The loader and saver are C# classes marked `[GlobalClass]` and `[Tool]`, with bases `ResourceFormatLoader` and `ResourceFormatSaver`. No `EditorPlugin` adds them and no GDScript shim is needed.
+
+An `EditorPlugin` that adds them by hand does not last: on every script-class update the editor removes every script-backed loader and saver and re-adds only global classes (`editor/file_system/editor_file_system.cpp:2199-2205`, `core/io/resource_loader.cpp:1684-1713`, `core/io/resource_saver.cpp:254-283`). And an assembly reload recreates script instances only for tool scripts (`modules/mono/csharp_script.cpp:920-952`).
+
+Measured on Godot 4.7.2 .NET with the GXAML-3 spike (`spikes/xscn-loader/`):
+- **Headless.** `--import` and a game run both find the C# global classes. A `.xscn` loads, instances inside a `.tscn`, saves and reloads, and runs with `--scene` the way F6 does.
+- **In the editor.** These all passed:
+  - The Open and Save dialogs' extension lists hold `xscn`.
+  - A `.xscn` opens as a scene tab, is edited and saved back as `.xscn`, and runs as the current scene.
+  - It is instanced into a `.tscn`, which records its path and uid.
+  - A move resolves through the uid sidecar.
+  - It still saves as `.xscn` after a C# rebuild with the scene open, and reopens after an editor restart.
+- **Rebuild.** Running a scene builds C# first (`editor/run/editor_run_bar.cpp:350-353` into GodotTools' `_Build`). The editor then reloads the assembly when its file is newer (`GodotTools/HotReloadAssemblyWatcher.cs`, `modules/mono/csharp_script.cpp:594-623`). The spike saw the build rewrite the assembly and the scene save correctly afterwards, but no script can observe the reload itself, so the addon's tests prove it with a counter that the reloaded assembly resets.
+- **First import.** A brand-new project's first import writes no `.uid` sidecar for a `.xscn`: the first file scan runs before the C# global classes register, so no loader claims the file yet. The second import writes it. The addon must give every `.xscn` a uid before a scene references it.
+- **Not measured.** The FileSystem dock's own rename (the spike renamed through the file system and rescanned) and the Open dialog as drawn are left for godot-mcp's editor tools (GMCP-407).
 
 ## XAML syntax with C# names
 

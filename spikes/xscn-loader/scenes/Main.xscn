@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Control Name="Main" Script="res://scenes/Main.gd" layout_mode="3" anchors_preset="0" offset_right="640.0" offset_bottom="360.0">
+  <Label Name="Title" layout_mode="0" offset_left="16.0" offset_top="16.0" offset_right="16.0" offset_bottom="16.0" text="&quot;Hello from xscn&quot;" />
+</Control>

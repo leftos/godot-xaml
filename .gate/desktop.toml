@@ -1,0 +1,1 @@
+patterns = ['pwsh -NoProfile -File spikes?xscn-loader?editor-checks.ps1']
