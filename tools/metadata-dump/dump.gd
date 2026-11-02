@@ -9,6 +9,9 @@ extends SceneTree
 const SKIPPED_USAGE := PROPERTY_USAGE_CATEGORY | PROPERTY_USAGE_GROUP | PROPERTY_USAGE_SUBGROUP
 const ENUM_PREFIX := "enum::"
 const BITFIELD_PREFIX := "bitfield::"
+const THEME_OVERRIDE_PREFIX := "theme_override_"
+
+var _instantiate_failures := PackedStringArray()
 
 
 func _initialize() -> void:
@@ -37,14 +40,31 @@ func _run() -> String:
 		"globalEnums": _global_enums(api),
 		"classes": _classes(_api_property_types(api)),
 	}
+	if not _instantiate_failures.is_empty():
+		return _instantiate_error()
 	var out_path := out_dir.path_join("godot-%d.%d.json" % [version.major, version.minor])
-	var file := FileAccess.open(out_path, FileAccess.WRITE)
-	if file == null:
-		return "cannot write %s (%s)" % [out_path, error_string(FileAccess.get_open_error())]
-	if not file.store_string(JSON.stringify(data, "  ", true) + "\n"):
-		return "cannot write %s (%s)" % [out_path, error_string(file.get_error())]
-	file.close()
+	var write_error := _write_metadata(out_path, data)
+	if not write_error.is_empty():
+		return write_error
 	print("dump.gd: wrote %s" % out_path)
+	return ""
+
+
+func _instantiate_error() -> String:
+	return "cannot instantiate %s to read its theme overrides" % ", ".join(_instantiate_failures)
+
+
+## Writes `data` to `path` as two-space, key-sorted JSON ending in a line feed.
+func _write_metadata(path: String, data: Dictionary) -> String:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return "cannot write %s (%s)" % [path, error_string(FileAccess.get_open_error())]
+	var stored := file.store_string(JSON.stringify(data, "  ", true) + "\n")
+	if not stored:
+		var write_error := "cannot write %s (%s)" % [path, error_string(file.get_error())]
+		file.close()
+		return write_error
+	file.close()
 	return ""
 
 
@@ -117,12 +137,49 @@ func _class_entry(class_title: String, api_props: Dictionary) -> Dictionary:
 		if entry.usage & SKIPPED_USAGE or String(entry.name).contains("/"):
 			continue
 		props.append(_property_entry(class_title, entry, instantiable, api_props))
-	return {
+	var class_entry := {
 		"parent": null if parent.is_empty() else parent,
 		"instantiable": instantiable,
 		"enums": _class_enums(class_title),
 		"properties": props,
 	}
+	if _has_theme_overrides(class_title):
+		class_entry["themeOverrides"] = _theme_override_entries(class_title)
+	return class_entry
+
+
+## Whether `class_title` exposes theme-override properties, which only Control and Window do.
+func _has_theme_overrides(class_title: String) -> bool:
+	if not ClassDB.can_instantiate(class_title):
+		return false
+	return (
+		ClassDB.is_parent_class(class_title, "Control")
+		or ClassDB.is_parent_class(class_title, "Window")
+	)
+
+
+## The theme-override properties an instance of `class_title` exposes, inherited items included.
+##
+## These are instance properties: ClassDB's class property list does not carry them.
+func _theme_override_entries(class_title: String) -> Array:
+	var instance: Object = ClassDB.instantiate(class_title)
+	if instance == null:
+		_instantiate_failures.append(class_title)
+		return []
+	var entries := []
+	for entry: Dictionary in instance.get_property_list():
+		var name := String(entry.name)
+		if not name.begins_with(THEME_OVERRIDE_PREFIX) or not name.contains("/"):
+			continue
+		var override := {
+			"name": name,
+			"type": type_string(entry.type),
+			"hint": entry.hint,
+			"hintString": entry.hint_string,
+		}
+		entries.append(override)
+	instance.free()
+	return entries
 
 
 func _property_entry(

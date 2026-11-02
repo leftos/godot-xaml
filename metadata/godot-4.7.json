@@ -306,6 +306,20 @@
           "type": "bool",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/buttons_separation",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        }
       ]
     },
     "AccessibilityServer": {
@@ -3318,7 +3332,8 @@
           "type": "int",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "AtlasTexture": {
       "enums": {},
@@ -6780,7 +6795,8 @@
           "type": "bool",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "BaseMaterial3D": {
       "enums": {
@@ -9012,6 +9028,14 @@
           "type": "bool",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        }
       ]
     },
     "BoxMesh": {
@@ -9248,6 +9272,200 @@
           "name": "language",
           "type": "String",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_normal_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/icon",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/align_to_largest_stylebox",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
         }
       ]
     },
@@ -13586,7 +13804,8 @@
           "type": "bool",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "ChainIK3D": {
       "enums": {},
@@ -14154,13 +14373,533 @@
       "enums": {},
       "instantiable": true,
       "parent": "Button",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_normal_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/icon",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/align_to_largest_stylebox",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/check_v_offset",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/radio_checked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/radio_unchecked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/radio_checked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/radio_unchecked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/checkbox_checked_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/checkbox_unchecked_color",
+          "type": "Color"
+        }
+      ]
     },
     "CheckButton": {
       "enums": {},
       "instantiable": true,
       "parent": "Button",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_normal_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/icon",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/align_to_largest_stylebox",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/check_v_offset",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked_disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked_disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/button_checked_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/button_unchecked_color",
+          "type": "Color"
+        }
+      ]
     },
     "CircleShape2D": {
       "enums": {},
@@ -14529,6 +15268,308 @@
           "name": "auto_brace_completion_pairs",
           "type": "Dictionary",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/search_result_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/search_result_border_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/caret_width",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/caret_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/caret_background_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/selection_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/read_only",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/tab",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/space",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_readonly_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_placeholder_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/wrap_offset",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/background_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/current_line_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/word_highlighted_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/code_folding_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/folded_code_region_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/can_fold",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/folded",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/can_fold_code_region",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/folded_code_region",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/folded_eol_icon",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/completion_color_bg",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/breakpoint_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/breakpoint",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/bookmark_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/bookmark",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/executing_line_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/executing_line",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/line_number_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/completion",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/completion_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/completion_lines",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/completion_scroll_width",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/completion_scroll_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/completion_scroll_hovered_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/completion_background_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/completion_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/completion_existing_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/line_length_guideline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/brace_mismatch_color",
+          "type": "Color"
         }
       ]
     },
@@ -15274,6 +16315,176 @@
           "type": "bool",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/margin",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/label_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/sv_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/sv_height",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/center_slider_grabbers",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/sample_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/picker_focus_rectangle",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/picker_focus_circle",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/focused_not_editing_cursor_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu_option",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/screen_picker",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/expanded_arrow",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/folded_arrow",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/add_preset",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/shape_rect",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/shape_rect_wheel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/shape_circle",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/bar_arrow",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/sample_bg",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/sample_revert",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/overbright_indicator",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/picker_cursor",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/picker_cursor_bg",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/color_hue",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/color_script",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/color_copy",
+          "type": "Object"
+        }
       ]
     },
     "ColorPickerButton": {
@@ -15314,6 +16525,206 @@
           "type": "bool",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_normal_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/icon",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/align_to_largest_stylebox",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/bg",
+          "type": "Object"
+        }
       ]
     },
     "ColorRect": {
@@ -15332,7 +16743,8 @@
           "type": "Color",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "Compositor": {
       "enums": {},
@@ -15698,7 +17110,8 @@
           "type": "String",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "Container": {
       "enums": {},
@@ -15716,7 +17129,8 @@
           "type": "bool",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "Control": {
       "enums": {
@@ -16765,7 +18179,8 @@
           "type": "String",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "ConvertTransformModifier3D": {
       "enums": {
@@ -22665,6 +24080,188 @@
           "type": "String",
           "usage": 0
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/folder_icon_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/file_icon_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/file_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/thumbnail_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/load",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/save",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/clear",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/parent_folder",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/back_folder",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/forward_folder",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/reload",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/favorite",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/toggle_hidden",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/toggle_filename_filter",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/folder",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/file",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/thumbnail_mode",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/list_mode",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/create_folder",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/sort",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/favorite_up",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/favorite_down",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/file_thumbnail",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/folder_thumbnail",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu_copy_path",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu_delete",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu_new_folder",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu_refresh",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu_show_in_file_manager",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu_open_bundle",
+          "type": "Object"
+        }
       ]
     },
     "FileSystemDock": {
@@ -22760,6 +24357,20 @@
           "name": "reverse_fill",
           "type": "bool",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/v_separation",
+          "type": "int"
         }
       ]
     },
@@ -22982,6 +24593,116 @@
           "name": "language",
           "type": "String",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/title_panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/title_hover_panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/title_collapsed_panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/title_collapsed_hover_panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/hover_font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/collapsed_font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/expanded_arrow",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/expanded_arrow_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/folded_arrow",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/folded_arrow_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
         }
       ]
     },
@@ -27617,6 +29338,134 @@
           "type": "bool",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/grid_major",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/grid_minor",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/activity",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/connection_hover_tint_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/connection_hover_thickness",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/connection_valid_target_tint_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/connection_rim_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/selection_fill",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/selection_stroke",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/menu_panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/zoom_in",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/zoom_out",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/zoom_reset",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/snapping_toggle",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grid_toggle",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/minimap_toggle",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/layout",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/port_hotzone_inner_extent",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/port_hotzone_outer_extent",
+          "type": "int"
+        }
       ]
     },
     "GraphElement": {
@@ -27689,6 +29538,14 @@
           "name": "scaling_menus",
           "type": "bool",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/resizer",
+          "type": "Object"
         }
       ]
     },
@@ -27763,6 +29620,44 @@
           "type": "Color",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/resizer",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/titlebar",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/titlebar_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/resizer_color",
+          "type": "Color"
+        }
       ]
     },
     "GraphNode": {
@@ -27803,6 +29698,80 @@
           "type": "int",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/resizer",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/titlebar",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/titlebar_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/slot",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/slot_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/port_h_offset",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/port",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/resizer_color",
+          "type": "Color"
+        }
       ]
     },
     "GridContainer": {
@@ -27820,6 +29789,20 @@
           "name": "columns",
           "type": "int",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/v_separation",
+          "type": "int"
         }
       ]
     },
@@ -28030,13 +30013,35 @@
       "enums": {},
       "instantiable": true,
       "parent": "BoxContainer",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        }
+      ]
     },
     "HFlowContainer": {
       "enums": {},
       "instantiable": true,
       "parent": "FlowContainer",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/v_separation",
+          "type": "int"
+        }
+      ]
     },
     "HMACContext": {
       "enums": {},
@@ -28048,25 +30053,261 @@
       "enums": {},
       "instantiable": true,
       "parent": "ScrollBar",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/scroll",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/scroll_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/padding_top",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/padding_bottom",
+          "type": "int"
+        }
+      ]
     },
     "HSeparator": {
       "enums": {},
       "instantiable": true,
       "parent": "Separator",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/separator",
+          "type": "Object"
+        }
+      ]
     },
     "HSlider": {
       "enums": {},
       "instantiable": true,
       "parent": "Slider",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/slider",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber_area",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber_area_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/tick",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/center_grabber",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/grabber_offset",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/tick_offset",
+          "type": "int"
+        }
+      ]
     },
     "HSplitContainer": {
       "enums": {},
       "instantiable": true,
       "parent": "SplitContainer",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/minimum_grab_thickness",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/autohide",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/h_touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/v_touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/h_grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/v_grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/split_bar_background",
+          "type": "Object"
+        }
+      ]
     },
     "HTTPClient": {
       "enums": {
@@ -30610,6 +32851,152 @@
           "type": "Vector2i",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/v_separation",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hovered_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hovered_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/scroll_hint",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/scroll_hint_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_margin",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hovered",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hovered_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hovered_selected_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/selected_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/cursor_unfocused",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/cursor",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/guide_color",
+          "type": "Color"
+        }
       ]
     },
     "IterateIK3D": {
@@ -31137,6 +33524,86 @@
           "name": "structured_text_bidi_override_options",
           "type": "Array",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/paragraph_spacing",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_shadow_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/shadow_offset_x",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/shadow_offset_y",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/shadow_outline_size",
+          "type": "int"
         }
       ]
     },
@@ -33670,6 +36137,116 @@
           "type": "float",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/read_only",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_uneditable_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_placeholder_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/caret_width",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/caret_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/minimum_character_width",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/selection_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/clear",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/clear_button_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/clear_button_color_pressed",
+          "type": "Color"
+        }
       ]
     },
     "LinkButton": {
@@ -33793,6 +36370,80 @@
           "name": "structured_text_bidi_override_options",
           "type": "Array",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/underline_spacing",
+          "type": "int"
         }
       ]
     },
@@ -34195,7 +36846,33 @@
       "enums": {},
       "instantiable": true,
       "parent": "Container",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/margin_left",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/margin_top",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/margin_right",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/margin_bottom",
+          "type": "int"
+        }
+      ]
     },
     "Marker2D": {
       "enums": {},
@@ -34339,6 +37016,134 @@
           "type": "String",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        }
       ]
     },
     "MenuButton": {
@@ -34367,6 +37172,200 @@
           "name": "item_count",
           "type": "int",
           "usage": 262150
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_normal_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/icon",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/align_to_largest_stylebox",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
         }
       ]
     },
@@ -38437,7 +41436,8 @@
           "type": "int",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "Node": {
       "enums": {
@@ -42037,6 +45037,218 @@
           "type": "int",
           "usage": 262150
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover_pressed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/disabled_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_normal_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_focus_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hover_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/icon",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/align_to_largest_stylebox",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/arrow",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/arrow_margin",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/modulate_arrow",
+          "type": "int"
+        }
       ]
     },
     "PCKPacker": {
@@ -42214,13 +45426,29 @@
       "enums": {},
       "instantiable": true,
       "parent": "Control",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        }
+      ]
     },
     "PanelContainer": {
       "enums": {},
       "instantiable": true,
       "parent": "Container",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        }
+      ]
     },
     "PanoramaSkyMaterial": {
       "enums": {},
@@ -47899,7 +51127,8 @@
       "enums": {},
       "instantiable": true,
       "parent": "Window",
-      "properties": []
+      "properties": [],
+      "themeOverrides": []
     },
     "PopupMenu": {
       "enums": {},
@@ -48060,13 +51289,245 @@
           "type": "int",
           "usage": 262150
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_accelerator_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_separator_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_separator_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/indent",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/v_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/search_bar_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separator_outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/item_start_padding",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/item_end_padding",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/gutter_compact",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font_separator",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_separator_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/radio_checked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/radio_checked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/radio_unchecked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/radio_unchecked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/submenu",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/submenu_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/search",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/separator",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/labeled_separator_left",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/labeled_separator_right",
+          "type": "Object"
+        }
       ]
     },
     "PopupPanel": {
       "enums": {},
       "instantiable": true,
       "parent": "Popup",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        }
+      ]
     },
     "PortableCompressedTexture2D": {
       "enums": {
@@ -48497,6 +51958,50 @@
           "name": "editor_preview_indeterminate",
           "type": "bool",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/background",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/fill",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
         }
       ]
     },
@@ -50536,7 +54041,8 @@
           "type": "bool",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "RayCast2D": {
       "enums": {},
@@ -50801,7 +54307,8 @@
           "type": "bool",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "ReflectionProbe": {
       "enums": {
@@ -57223,6 +60730,206 @@
           "type": "Array",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/horizontal_rule",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/paragraph_separation",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/normal_font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/normal_font_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/default_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/selection_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_shadow_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/shadow_outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/shadow_offset_x",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/shadow_offset_y",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/bold_font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/bold_font_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/bold_italics_font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/bold_italics_font_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/italics_font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/italics_font_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/mono_font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/mono_font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/text_highlight_h_padding",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/text_highlight_v_padding",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/underline_alpha",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/strikethrough_alpha",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/table_h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/table_v_separation",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/table_odd_row_bg",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/table_even_row_bg",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/table_border",
+          "type": "Color"
+        }
       ]
     },
     "RigidBody2D": {
@@ -58653,6 +62360,56 @@
           "name": "tile_scroll_hint",
           "type": "bool",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scrollbar_h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scrollbar_v_separation",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/scroll_hint_vertical",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/scroll_hint_horizontal",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/scroll_hint_vertical_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/scroll_hint_horizontal_color",
+          "type": "Color"
         }
       ]
     },
@@ -60560,6 +64317,194 @@
           "type": "bool",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/buttons_vertical_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/field_and_buttons_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/buttons_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/set_min_buttons_width_from_icons",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/updown",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/up",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/up_hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/up_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/up_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/down",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/down_hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/down_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/down_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/up_background",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/up_background_hovered",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/up_background_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/up_background_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/down_background",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/down_background_hovered",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/down_background_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/down_background_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/up_icon_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/up_hover_icon_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/up_pressed_icon_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/up_disabled_icon_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/down_icon_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/down_hover_icon_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/down_pressed_icon_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/down_disabled_icon_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/field_and_buttons_separator",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/up_down_buttons_separator",
+          "type": "Object"
+        }
       ]
     },
     "SplineIK3D": {
@@ -60734,6 +64679,86 @@
           "name": "split_offset",
           "type": "int",
           "usage": 2
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/minimum_grab_thickness",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/autohide",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/h_touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/v_touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/h_grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/v_grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/split_bar_background",
+          "type": "Object"
         }
       ]
     },
@@ -62519,7 +66544,8 @@
           "type": "bool",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "SubtweenTweener": {
       "enums": {},
@@ -63002,6 +67028,188 @@
           "type": "int",
           "usage": 262150
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/tab_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/hover_switch_wait_msec",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_unselected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_hovered",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/drop_mark",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/drop_mark_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hovered_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_unselected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hovered_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_unselected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/close",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/button_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/button_highlight",
+          "type": "Object"
+        }
       ]
     },
     "TabContainer": {
@@ -63158,6 +67366,194 @@
           "name": "deselect_enabled",
           "type": "bool",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/side_margin",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/tab_separation",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tabbar_background",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/menu_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_unselected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_hovered",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/tab_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/drop_mark",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/drop_mark_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hovered_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_unselected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_hovered_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_unselected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/icon_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
         }
       ]
     },
@@ -63922,6 +68318,152 @@
           "name": "structured_text_bidi_override_options",
           "type": "Array",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/search_result_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/search_result_border_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/caret_width",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/caret_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/caret_background_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/selection_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/read_only",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/tab",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/space",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_readonly_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_placeholder_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/line_spacing",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/wrap_offset",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/background_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/current_line_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/word_highlighted_color",
+          "type": "Color"
         }
       ]
     },
@@ -65187,7 +69729,8 @@
           "type": "bool",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "TextureCubemapArrayRD": {
       "enums": {},
@@ -65465,7 +70008,8 @@
           "type": "Color",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "TextureRect": {
       "enums": {
@@ -65590,7 +70134,8 @@
           "type": "bool",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "Theme": {
       "enums": {
@@ -67284,6 +71829,470 @@
           "type": "bool",
           "usage": 6
         }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/panel",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/font_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/title_button_font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/title_button_font_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hovered",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hovered_dimmed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hovered_selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/hovered_selected_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/selected",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/selected_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/cursor",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/cursor_unfocused",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/button_hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/button_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/checked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/unchecked_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/indeterminate",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/indeterminate_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/arrow",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/arrow_collapsed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/arrow_collapsed_mirrored",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/select_arrow",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/updown",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/scroll_hint",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/scroll_hint_color",
+          "type": "Color"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/custom_button",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/custom_button_hover",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/custom_button_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/custom_button_font_highlight",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hovered_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hovered_dimmed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_hovered_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_selected_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_disabled_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/drop_on_item_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/drop_position_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/v_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/inner_item_margin_bottom",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/inner_item_margin_left",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/inner_item_margin_right",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/inner_item_margin_top",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/item_margin",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/check_h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/button_margin",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/icon_max_width",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/font_outline_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/draw_guides",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/guide_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/draw_relationship_lines",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/relationship_line_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/parent_hl_line_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/children_hl_line_width",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/parent_hl_line_margin",
+          "type": "int"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/relationship_line_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/parent_hl_line_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/children_hl_line_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/dragging_unfold_wait_msec",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scroll_border",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scroll_speed",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scrollbar_margin_top",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scrollbar_margin_right",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scrollbar_margin_bottom",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scrollbar_margin_left",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scrollbar_h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/scrollbar_v_separation",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/title_button_normal",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/title_button_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/title_button_hover",
+          "type": "Object"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/title_button_color",
+          "type": "Color"
+        }
       ]
     },
     "TreeItem": {
@@ -67946,37 +72955,295 @@
       "enums": {},
       "instantiable": true,
       "parent": "BoxContainer",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        }
+      ]
     },
     "VFlowContainer": {
       "enums": {},
       "instantiable": true,
       "parent": "FlowContainer",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/h_separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/v_separation",
+          "type": "int"
+        }
+      ]
     },
     "VScrollBar": {
       "enums": {},
       "instantiable": true,
       "parent": "ScrollBar",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/scroll",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/scroll_focus",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/increment_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/decrement_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/padding_left",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/padding_right",
+          "type": "int"
+        }
+      ]
     },
     "VSeparator": {
       "enums": {},
       "instantiable": true,
       "parent": "Separator",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/separator",
+          "type": "Object"
+        }
+      ]
     },
     "VSlider": {
       "enums": {},
       "instantiable": true,
       "parent": "Slider",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/slider",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber_area",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/grabber_area_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber_highlight",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber_disabled",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/tick",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/center_grabber",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/grabber_offset",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/tick_offset",
+          "type": "int"
+        }
+      ]
     },
     "VSplitContainer": {
       "enums": {},
       "instantiable": true,
       "parent": "SplitContainer",
-      "properties": []
+      "properties": [],
+      "themeOverrides": [
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_pressed_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/touch_dragger_hover_color",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/separation",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/minimum_grab_thickness",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/autohide",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/h_touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/v_touch_dragger",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/h_grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/v_grabber",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/split_bar_background",
+          "type": "Object"
+        }
+      ]
     },
     "VehicleBody3D": {
       "enums": {},
@@ -68340,7 +73607,8 @@
           "type": "StringName",
           "usage": 6
         }
-      ]
+      ],
+      "themeOverrides": []
     },
     "VideoStreamTheora": {
       "enums": {},
@@ -69480,6 +74748,32 @@
           "name": "visibility_mode",
           "type": "int",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_joystick",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/normal_tip",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_joystick",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/pressed_tip",
+          "type": "Object"
         }
       ]
     },
@@ -74705,6 +79999,86 @@
           "name": "theme_type_variation",
           "type": "String",
           "usage": 6
+        }
+      ],
+      "themeOverrides": [
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/title_color",
+          "type": "Color"
+        },
+        {
+          "hint": 0,
+          "hintString": "",
+          "name": "theme_override_colors/title_outline_modulate",
+          "type": "Color"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/title_outline_size",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/title_height",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/resize_margin",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/close_h_offset",
+          "type": "int"
+        },
+        {
+          "hint": 1,
+          "hintString": "-16384,16384",
+          "name": "theme_override_constants/close_v_offset",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Font",
+          "name": "theme_override_fonts/title_font",
+          "type": "Object"
+        },
+        {
+          "hint": 1,
+          "hintString": "1,256,1,or_greater,suffix:px",
+          "name": "theme_override_font_sizes/title_font_size",
+          "type": "int"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/close",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "Texture2D",
+          "name": "theme_override_icons/close_pressed",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/embedded_border",
+          "type": "Object"
+        },
+        {
+          "hint": 17,
+          "hintString": "StyleBox",
+          "name": "theme_override_styles/embedded_unfocused_border",
+          "type": "Object"
         }
       ]
     },

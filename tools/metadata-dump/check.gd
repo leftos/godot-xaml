@@ -43,6 +43,11 @@ func _run_checks(data: Dictionary, bytes: PackedByteArray) -> void:
 	_check("K7", _k7(data))
 	_check("K8", _k8(data))
 	_check("K9", _k9(bytes))
+	_check("K10", _k10(data))
+	_check("K11", _k11(data))
+	_check("K12", _k12(data))
+	_check("K13", _k13(data))
+	_check("K14", _k14(data))
 
 
 func _k1(data: Dictionary) -> String:
@@ -136,6 +141,50 @@ func _k9(bytes: PackedByteArray) -> String:
 	return ""
 
 
+func _k10(data: Dictionary) -> String:
+	var entry := _theme_override(data, "Label", "theme_override_colors/font_color")
+	if entry.is_empty():
+		return "Label has no theme_override_colors/font_color"
+	return _mismatch("Label.theme_override_colors/font_color.type", entry.get("type"), "Color")
+
+
+func _k11(data: Dictionary) -> String:
+	var entry := _theme_override(data, "Button", "theme_override_styles/normal")
+	if entry.is_empty():
+		return "Button has no theme_override_styles/normal"
+	return _first(
+		[
+			_mismatch("Button.theme_override_styles/normal.type", entry.get("type"), "Object"),
+			_mismatch(
+				"Button.theme_override_styles/normal.hintString",
+				entry.get("hintString"),
+				"StyleBox"
+			),
+		]
+	)
+
+
+func _k12(data: Dictionary) -> String:
+	var entries: Array = _class(data, "Window").get("themeOverrides", [])
+	for entry: Dictionary in entries:
+		if String(entry.get("name", "")).begins_with("theme_override_"):
+			return ""
+	return "Window.themeOverrides has no theme_override_ entry"
+
+
+func _k13(data: Dictionary) -> String:
+	if _class(data, "Node2D").has("themeOverrides"):
+		return "Node2D has a themeOverrides key"
+	return ""
+
+
+func _k14(data: Dictionary) -> String:
+	for prop: Dictionary in _class(data, "Control").get("properties", []):
+		if String(prop.get("name", "")).contains("/"):
+			return "Control.properties has %s" % prop.get("name")
+	return ""
+
+
 func _check(id: String, detail: String) -> void:
 	if detail.is_empty():
 		print("CHECK %s PASS" % id)
@@ -153,6 +202,13 @@ func _property(data: Dictionary, class_title: String, name: String) -> Dictionar
 	for prop: Dictionary in _class(data, class_title).get("properties", []):
 		if prop.get("name") == name:
 			return prop
+	return {}
+
+
+func _theme_override(data: Dictionary, class_title: String, name: String) -> Dictionary:
+	for entry: Dictionary in _class(data, class_title).get("themeOverrides", []):
+		if entry.get("name") == name:
+			return entry
 	return {}
 
 

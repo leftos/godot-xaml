@@ -12,7 +12,7 @@
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.
 - **Gate**: a command a change must pass (build, test, format check), run through `./run.ps1 <verb>` and `tools/gate.ps1`, which log to `.tmp/`; the Gates section of the `godot-xaml-nextup` skill lists them and which hook runs each.
 - **Metadata dump**: the tool in `tools/metadata-dump/` that walks `ClassDB` in a headless Godot run and writes the metadata file.
-- **Metadata file**: `metadata/godot-<major>.<minor>.json`, the per-Godot-version file of every class's own properties (Godot name, type, enum or flags type, hint, default) and enums, dumped from `ClassDB`, so tools outside Godot know what the backing integers mean. C# names are computed by the core, not stored.
+- **Metadata file**: `metadata/godot-<major>.<minor>.json`, the per-Godot-version file of every class's own properties (Godot name, type, enum or flags type, hint, default), enums and, for `Control` and `Window` classes, the theme-override items (name, type, hint), dumped from `ClassDB`, so tools outside Godot know what the backing integers mean. C# names are computed by the core, not stored.
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
 - **Round trip**: converting a `.tscn` to `.xscn` and back (or the reverse) and getting the same scene as Godot loads it.
 - **`.xres`**: a Godot resource (a theme, a StyleBox) in the XAML format; the counterpart of `.tres`.
