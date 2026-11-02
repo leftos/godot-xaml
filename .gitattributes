@@ -5,3 +5,6 @@
 
 # gdformat on Windows rewrites a file with CRLF endings; GDScript is stored and checked out LF.
 *.gd text eol=lf
+
+# Godot writes these bytes exactly (raw CR, no final newline); git must not touch their line endings.
+tests/fixtures/values/** -text

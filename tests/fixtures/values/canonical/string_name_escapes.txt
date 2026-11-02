@@ -1,0 +1,1 @@
+&"nl\n quote\" backslash\\ tab\t apostrophe\' ff\f bs\b cr\r"

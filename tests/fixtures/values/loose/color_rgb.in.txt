@@ -1,0 +1,1 @@
+#f80 ; a colour ends at a non-hex character, not at the end of the text

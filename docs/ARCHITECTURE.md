@@ -1,6 +1,6 @@
 # godot-xaml — architecture
 
-godot-xaml lets a Godot 4.7+ .NET project keep its scenes and resources as XAML-style `.xscn` and `.xres` files that Godot opens, edits and saves directly. The only code so far is the metadata dump; the planned components and their order are in [`plans/v1-design.md`](plans/v1-design.md), and the settled choices in [`DECISIONS.md`](DECISIONS.md). Terms used in a project sense are in the glossary in [`README.md`](README.md).
+godot-xaml lets a Godot 4.7+ .NET project keep its scenes and resources as XAML-style `.xscn` and `.xres` files that Godot opens, edits and saves directly. The code so far is the metadata dump and the start of the C# core; the planned components and their order are in [`plans/v1-design.md`](plans/v1-design.md), and the settled choices in [`DECISIONS.md`](DECISIONS.md). Terms used in a project sense are in the glossary in [`README.md`](README.md).
 
 The rule that shapes it: one C# core, with no Godot dependency, owns the format; the Godot addon, the CLI and the language server are thin hosts over it.
 
@@ -10,6 +10,7 @@ The rule that shapes it: one C# core, with no Godot dependency, owns the format;
 |---|---|---|
 | Change a format rule | [`DECISIONS.md`](DECISIONS.md) → [`plans/v1-design.md`](plans/v1-design.md) | — |
 | Add or change what the metadata dump records (property, enum, default) | [`DECISIONS.md`](DECISIONS.md) ("The metadata file") → `tools/metadata-dump/dump.gd` → `metadata/godot-4.7.json` → Godot source `F:\Godot\src-4.7.2`: `core/core_bind.cpp:1839-1879` (the ClassDB calls), `core/object/class_db.cpp:2172-2227` (defaults), `core/extension/extension_api_dump.cpp:53-85` (enum type strings; the dump reads the getter's return type) | [`tools/metadata-dump/README.md`](../tools/metadata-dump/README.md) |
+| Read or write a value in Godot's text grammar, or change float text | [`DECISIONS.md`](DECISIONS.md) ("The metadata file", "Test fixtures are synthetic") → `src/GodotXaml.Core/Values/` (`GodotValueLexer`, `GodotValueReader`, `GodotValueWriter`, `GodotFloatFormat`) → `tools/value-fixtures/` and `tests/fixtures/values/` → Godot source `F:\Godot\src-4.7.2`: `core/variant/variant_parser.cpp` (`VariantParser::get_token`, `parse_value`, `VariantWriter::write`, `rtos_fix`), `thirdparty/grisu2/grisu2.h` | [`tools/value-fixtures/README.md`](../tools/value-fixtures/README.md) |
 | Register or debug the `.xscn` loader or saver in the editor | [`DECISIONS.md`](DECISIONS.md) ("The addon registers from C#, as global classes") → `spikes/xscn-loader/addons/xscn_spike/` → Godot source `F:\Godot\src-4.7.2`: `core/io/resource_loader.cpp:1656-1713`, `core/io/resource_saver.cpp:230-283`, `editor/file_system/editor_file_system.cpp:2199-2205`, `modules/mono/csharp_script.cpp:594-1030` | [`spikes/xscn-loader/README.md`](../spikes/xscn-loader/README.md) |
 | Add or change a C# gate, hook or test location | [`.claude/skills/godot-xaml-nextup/SKILL.md`](../.claude/skills/godot-xaml-nextup/SKILL.md) (Gates) → Test locations below → `run.ps1`, `.pre-commit-config.yaml`, `Directory.Build.props`, `.editorconfig` | — |
 
@@ -20,17 +21,25 @@ Each component gets an entry here in the commit that adds its project.
 - **Metadata dump** (`tools/metadata-dump/`): a GDScript run by headless Godot that writes `metadata/godot-<major>.<minor>.json` from `ClassDB` and `extension_api.json`. It shares no files with the C# core; `dump.ps1` runs it and `check.gd` checks its output.
 - **Metadata file** (`metadata/godot-4.7.json`): the committed output, one per Godot minor version; the core and the language server read it, never a running Godot.
 - **Loader spike** (`spikes/xscn-loader/`): a throwaway Godot 4.7 .NET project that proved a C# loader and saver for `.xscn` work in the editor (`DECISIONS.md`, "The addon registers from C#, as global classes"). Its spike `.xscn` format is not the real one. It is deleted once the Godot addon (GXAML-9) replaces it, and nothing else may depend on it.
-- **Core library** (`src/GodotXaml.Core`, net8.0): owns Godot's C# naming rules (`Names/GodotNames.cs`, a port of `modules/mono/utils/naming_utils.cpp` in the 4.7.2 source); the format, parser, writer and `.tscn` conversion are built here next (GXAML-21, GXAML-22, GXAML-5). It never references a Godot assembly, and its internals are visible to `tests/GodotXaml.Core.Tests`.
+- **Value grammar** (`src/GodotXaml.Core/Values/`): Godot's text syntax for a value, as `GodotValue` records read by `GodotValueReader.Read` and written by `GodotValueWriter.Write` (`ValueWriteOptions` sets compat mode). Float text is `GodotFloatFormat`, over a port of Godot's grisu2 (`Grisu2.cs`).
+
+  It covers null, bool, int, float, String, StringName, NodePath, the math and colour constructors, RID, Signal and Callable; arrays, dictionaries, typed containers, packed arrays, references and `Object` raise `GodotValueParseException` ("Unexpected identifier"), and part B adds containers. `GodotValueLexer` and `GodotValueReader.ReadAt` are internal, for the `.tscn` reader.
+- **Fixture generator** (`tools/value-fixtures/`): a headless Godot 4.7.2 project that writes `tests/fixtures/values/{canonical,loose,floats}/`, Godot's own bytes, never edited by hand. It shares no files with the C# core.
+- **Core library** (`src/GodotXaml.Core`, net8.0): owns Godot's C# naming rules (`Names/GodotNames.cs`, a port of `modules/mono/utils/naming_utils.cpp` in the 4.7.2 source) and the value grammar above; the format, parser, writer and `.tscn` conversion are built here next (GXAML-21, GXAML-22, GXAML-5). It never references a Godot assembly, and its internals are visible to `tests/GodotXaml.Core.Tests`.
 
 ## Integration Footguns
 
 - The dump needs the console build of Godot on Windows (`Godot_console.exe`); the GUI build loses Godot's output and exit code.
 - `metadata/godot-<minor>.json` is about 1.9 MB, so `.pre-commit-config.yaml` raises `check-added-large-files` to 4096 KB.
+- `tests/fixtures/values/**` is `-text` in `.gitattributes` and excluded from the trailing-whitespace, end-of-file and mixed-line-ending hooks, because the files are Godot's exact bytes (no final newline, raw control characters). Regenerate them with the generator; never edit one.
+- gdformat on Windows rewrites `.gd` with CRLF; `.gitattributes` keeps `*.gd` LF. The gdformat and gdlint hooks cover `tools/metadata-dump/` and `tools/value-fixtures/`.
+- The fixture generator needs the console build of Godot and fails on a double-precision build.
 
 ## Test locations
 
 - `tools/metadata-dump/check.gd`: facts about a dumped file, run with `godot --headless --path tools/metadata-dump --script res://check.gd -- --file <abs>`; prints `CHECK <id> PASS|FAIL`.
-- `tests/GodotXaml.Core.Tests` (net10.0, xunit.v3 on Microsoft.Testing.Platform): tests of `src/GodotXaml.Core`, in folders mirroring the core's (`Names/` for `GodotNames`). Run with `./run.ps1 test`.
+- `tests/GodotXaml.Core.Tests` (net10.0, xunit.v3 on Microsoft.Testing.Platform): tests of `src/GodotXaml.Core`, in folders mirroring the core's (`Names/` for `GodotNames`). Run with `./run.ps1 test`. `Values/` holds the float format against Godot's corpus, the lexer, scalar values, the fixture files and every part-A default in `metadata/godot-4.7.json` read and written back unchanged; `RepoFiles` finds the repo root.
+- `tests/fixtures/values/`: the expected value text, written by `tools/value-fixtures/`; `tests/GodotXaml.Core.Tests/Values/` reads it.
 
 ## Deep docs
 

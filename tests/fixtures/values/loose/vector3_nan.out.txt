@@ -1,0 +1,1 @@
+Vector3(nan, inf_neg, 0)

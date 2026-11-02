@@ -39,3 +39,5 @@ In design; there is nothing to install yet. The plan is in [`docs/plans/v1-desig
 ## License
 
 MIT.
+
+The float text writer in `src/GodotXaml.Core/Values/Grisu2.cs` is a port of Godot's grisu2 and carries its MIT and Apache-2.0 notice, the one in Godot's `thirdparty/grisu2/LICENSE`.

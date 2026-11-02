@@ -1,0 +1,65 @@
+# Loose and legacy value texts: one case per line, `name<TAB>text`.
+# In the text, <LF> stands for a newline; every other character is taken as written.
+# Lines that are empty or start with # are skipped.
+# A case named null_* may read as null; one named expects_error_* must fail to parse (str_to_var
+# returns null), and gets an .in.txt only. An error Godot raises after it has built the value
+# (Signal(1), NodePath("a" 1)) leaves str_to_var a value, so it cannot be an expects_error_ case.
+null_nil	nil
+null_spaced	  null
+bool_comment	; a comment<LF>true ; trailing comment
+int_leading_zeros	007
+int_negative_zero	-0
+float_trailing_point	1.
+float_exponent	1e5
+float_exponent_upper_negative	-1E-3
+float_exponent_plus	2.5e+3
+float_negative_zero	-0.0
+float_long_digits	0.1000000000000000055511151231257827
+float_inf	inf
+float_negative_inf	-inf
+float_inf_neg	inf_neg
+float_nan	nan
+string_escapes_read	"a\b\t\n\f\r\"\\\'\/\a\v\0z"
+string_unicode_escapes	"é…\U01F600😀"
+string_raw_newline	"line1<LF>line2"
+string_name_legacy	@"legacy"
+string_name_escapes	&"tab\tquote\"nl\n"
+node_path_escapes	NodePath("a\tb")
+vector2_spaced	Vector2( 1 ,2 )
+vector2_multiline	Vector2(<LF>1,<LF>2<LF>)
+vector2_narrowed	Vector2(0.1, 0.2)
+vector2_ints	Vector2(1, 2)
+vector2_non_finite	Vector2(inf, inf_neg)
+vector3_nan	Vector3(nan, -inf, 0)
+vector2i_truncates	Vector2i(1.7, -2.9)
+rect2i_plain	Rect2i(1,2,3,4)
+transform2d_matrix32	Matrix32(1, 0, 0, 1, 5, 6)
+quaternion_quat	Quat(0, 0, 0, 1)
+aabb_rect3	Rect3(0, 0, 0, 1, 1, 1)
+basis_matrix3	Matrix3(1, 0, 0, 0, 1, 0, 0, 0, 1)
+transform3d_transform	Transform(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 8, 9)
+projection_plain	Projection(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
+color_rgb	#f80 ; a colour ends at a non-hex character, not at the end of the text
+color_rgba	#f808 ; a colour ends at a non-hex character, not at the end of the text
+color_rrggbb	#ff8000 ; a colour ends at a non-hex character, not at the end of the text
+color_rrggbbaa	#ff800080 ; a colour ends at a non-hex character, not at the end of the text
+color_upper	#FF8000 ; a colour ends at a non-hex character, not at the end of the text
+color_constructor	Color(1, 0.5, 0, 1)
+rid_id	RID(42)
+rid_empty_spaced	RID( )
+signal_spaced	Signal( )
+callable_plain	Callable()
+expects_error_trailing_comma	Vector2(1,)
+expects_error_wrong_count	Vector2(1, 2, 3)
+expects_error_leading_plus	+1
+expects_error_leading_point	.5
+expects_error_bare_ampersand	&x
+expects_error_unterminated	"abc
+expects_error_lone_surrogate	"\uD800"
+expects_error_lone_trail	"\uDC00"
+expects_error_bad_hex	"\u12G4"
+expects_error_negative_nan	-nan
+expects_error_unknown	Foo(1)
+expects_error_node_path_number	NodePath(1)
+expects_error_constructor_string	Vector2("1", 2)
+expects_error_color_at_end	#f80

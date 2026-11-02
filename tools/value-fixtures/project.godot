@@ -1,0 +1,9 @@
+; Engine configuration file.
+; The value fixture generator runs from this project: `godot --headless --path tools/value-fixtures --script res://generate.gd`.
+
+config_version=5
+
+[application]
+
+config/name="value-fixtures"
+config/features=PackedStringArray("4.7")

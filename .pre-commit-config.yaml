@@ -1,6 +1,6 @@
 # prek hooks (prek install; prek run --all-files). Only checks scoped to the staged files run at pre-commit: CSharpier on
 # the staged C# files, the 150-character line check that catches the comments CSharpier does not wrap, the GDScript format
-# and lint checks of the metadata dump tool, and the Agent Mail guard. The warnings-as-errors build joins at pre-push. No
+# and lint checks of the tools/ GDScript, and the Agent Mail guard. The warnings-as-errors build joins at pre-push. No
 # hook runs a test suite: `run.ps1 test` runs by hand, and `run.ps1 format-check` checks the whole repo by hand.
 default_install_hook_types: [pre-commit, pre-push]
 default_stages: [pre-commit]
@@ -8,14 +8,16 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # tests/fixtures/values/ holds Godot's exact output: no final newline, trailing spaces and raw control characters.
       - id: mixed-line-ending
         args: [--fix=lf]
-        exclude: '\.(bat|cmd)$'
+        exclude: '\.(bat|cmd)$|^tests/fixtures/values/'
       - id: trailing-whitespace
         stages: [pre-commit]
-        exclude: '\.md$'
+        exclude: '\.md$|^tests/fixtures/values/'
       - id: end-of-file-fixer
         stages: [pre-commit]
+        exclude: '^tests/fixtures/values/'
       - id: check-added-large-files
         # metadata/godot-<minor>.json, the committed ClassDB dump, is about 1.9 MB.
         args: [--maxkb=4096]
@@ -53,12 +55,12 @@ repos:
         name: gdformat check
         entry: gdformat --check
         language: system
-        files: ^tools/metadata-dump/.*\.gd$
+        files: ^tools/(metadata-dump|value-fixtures)/.*\.gd$
       - id: gdlint
         name: gdlint
         entry: gdlint
         language: system
-        files: ^tools/metadata-dump/.*\.gd$
+        files: ^tools/(metadata-dump|value-fixtures)/.*\.gd$
       - id: agent-mail-guard
         name: agent-mail lease guard
         entry: pwsh -NoProfile -File tools/agent-mail-guard.ps1
