@@ -336,7 +336,7 @@ public static partial class TscnToXscn
             }
         }
 
-        private static string PrefixOf(string folder)
+        internal static string PrefixOf(string folder)
         {
             if (folder == "res://")
             {
@@ -353,7 +353,7 @@ public static partial class TscnToXscn
         // Namespaces in XML 1.0 reserves every name that starts with "xml" in any case, xml and xmlns among them.
         private static bool IsReservedPrefix(string name) => name.StartsWith("xml", StringComparison.OrdinalIgnoreCase);
 
-        private static string FreePrefix(string prefix, HashSet<string> taken)
+        internal static string FreePrefix(string prefix, HashSet<string> taken)
         {
             if (taken.Add(prefix))
             {
@@ -401,4 +401,15 @@ public static partial class TscnToXscn
                 };
         }
     }
+
+    /// <summary>The prefix a scene folder is named for, shared with the path rewriter.</summary>
+    /// <param name="folder">The <c>res://</c> folder.</param>
+    /// <returns>The folder's prefix.</returns>
+    internal static string FolderPrefix(string folder) => Context.PrefixOf(folder);
+
+    /// <summary>A prefix no namespace of the document has taken yet, shared with the path rewriter.</summary>
+    /// <param name="prefix">The prefix wanted.</param>
+    /// <param name="taken">The prefixes taken so far, which the returned one is added to.</param>
+    /// <returns>The prefix, or the first number after it that is free.</returns>
+    internal static string FreeFolderPrefix(string prefix, HashSet<string> taken) => Context.FreePrefix(prefix, taken);
 }
