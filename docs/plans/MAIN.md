@@ -5,12 +5,14 @@
 ## Core format
 
 - [ ] GXAML-5 Core: .xscn/.xres model, parser and canonical writer
+  - [/] GXAML-36 Core xscn 3: parser over GuiLabs.Language.Xml
+  - [ ] GXAML-37 Core xscn 4: canonical writer and default omission
 - [ ] GXAML-6 Core: .tscn/.tres reader and writer
   - [ ] GXAML-21 Core: Godot text value grammar reader and writer
-  - [ ] GXAML-22 Core: .tscn/.tres document model, reader and writer
 - [ ] GXAML-7 Core: .tscn to .xscn conversion and back, with round-trip tests
 - [ ] GXAML-8 Converter run on delve-the-dungeon, opening-hand and openpax scenes
 - [ ] GXAML-23 GodotNames: match Godot's case tables and UTF-32 indexing, and check names against GodotSharp.dll
+- [ ] GXAML-39 Core names: check the editor-class enum names against GodotSharpEditor
 
 ## Godot addon
 
@@ -22,6 +24,7 @@
 
 - [ ] GXAML-12 CLI: godot-xaml convert, check and format
 - [ ] GXAML-13 godot-mcp support for .xscn scenes
+- [ ] GXAML-38 CLI: upgrade a project's .xscn files across a typing-changing Godot release
 
 ## Editor support
 
@@ -38,7 +41,12 @@
 ## Backlog
 
 - [ ] GXAML-24 Write docs/DEVELOPMENT.md: toolchain, run.ps1 verbs, hooks, metadata regeneration
+- [ ] GXAML-28 Metadata dump: silence or fix the OpenXR render_model_extension errors
+- [ ] GXAML-29 Docs: drop counts and path:line references from durable docs
+- [ ] GXAML-33 Metadata dump: defaults that do not match their declared type
+- [ ] GXAML-42 Core tscn: two remaining loader differences (bare resource file, cross-typed name and path fields)
 
 ## Design files
 
-- [v1-design.md](v1-design.md) — GXAML-5, GXAML-6, GXAML-7, GXAML-8, GXAML-9, GXAML-10, GXAML-11, GXAML-12, GXAML-13, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, GXAML-21, GXAML-22, GXAML-23, Agent tooling, Core format, Editor support, Godot addon
+- [v1-design.md](v1-design.md) — GXAML-5, GXAML-6, GXAML-7, GXAML-8, GXAML-9, GXAML-10, GXAML-11, GXAML-12, GXAML-13, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, GXAML-21, GXAML-23, Agent tooling, Core format, Editor support, Godot addon
+- [xscn-core.md](xscn-core.md) — GXAML-5, GXAML-36, GXAML-37
