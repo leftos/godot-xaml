@@ -79,6 +79,9 @@ public sealed class GodotMetadata
         }
     }
 
+    /// <summary>Every class in the file, in no set order.</summary>
+    public IEnumerable<GodotClassInfo> Classes => classes.Values;
+
     /// <summary>The class with a Godot name.</summary>
     /// <param name="godotName">The class's Godot name (<c>CPUParticles2D</c>).</param>
     /// <returns>The class, or null when the file has no such class.</returns>
