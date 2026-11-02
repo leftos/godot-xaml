@@ -1,0 +1,98 @@
+{
+  "issues": {
+    "addon-export": {
+      "id": "c21b3014-cf4d-46db-993e-534818016d76",
+      "identifier": "GXAML-10",
+      "linked": true
+    },
+    "addon-loader": {
+      "id": "de261b4d-3a1b-4e72-a4db-ed01c49a97e5",
+      "identifier": "GXAML-9",
+      "linked": true
+    },
+    "addon-preview": {
+      "id": "a297a149-a263-42e8-9a87-791248a91602",
+      "identifier": "GXAML-11",
+      "linked": true
+    },
+    "cli": {
+      "id": "098b4c95-4a22-40b5-ba97-fb129be2466b",
+      "identifier": "GXAML-12",
+      "linked": true
+    },
+    "gmcp": {
+      "id": "d3c18ad8-8449-49a8-b7f2-b41d74abe05d",
+      "identifier": "GXAML-13",
+      "linked": true
+    },
+    "lsp": {
+      "id": "641f4dd4-5af6-44c1-8857-cab5684afdba",
+      "identifier": "GXAML-14",
+      "linked": true
+    },
+    "metadata": {
+      "id": "84e818c7-7bf5-43b3-8d74-232556265506",
+      "identifier": "GXAML-4",
+      "linked": true
+    },
+    "model": {
+      "id": "323827ba-441f-40ab-906d-d99db48a4884",
+      "identifier": "GXAML-5",
+      "linked": true
+    },
+    "preview-pane": {
+      "id": "2385bad5-b223-4c0b-abd2-12a80ef85e87",
+      "identifier": "GXAML-17",
+      "linked": true
+    },
+    "real-scenes": {
+      "id": "f9b1285a-a517-4158-a9a3-8cace36f8c31",
+      "identifier": "GXAML-8",
+      "linked": true
+    },
+    "roundtrip": {
+      "id": "fc0bc1d9-c910-4fc4-8863-36f8df16903b",
+      "identifier": "GXAML-7",
+      "linked": true
+    },
+    "spike-loader": {
+      "id": "2fc4a42e-d81f-446c-b1ad-41cd5f3b5acf",
+      "identifier": "GXAML-3",
+      "linked": true
+    },
+    "tscn": {
+      "id": "91d1f193-5878-4ddd-a5ab-03f178d88004",
+      "identifier": "GXAML-6",
+      "linked": true
+    },
+    "vs": {
+      "id": "e208959b-edf3-4385-8b97-2eac451df229",
+      "identifier": "GXAML-16",
+      "linked": true
+    },
+    "vs-designer": {
+      "id": "e72a05af-c8e9-409c-ba00-2023787525c8",
+      "identifier": "GXAML-19",
+      "linked": true
+    },
+    "vs-props": {
+      "id": "22352f63-a000-471f-80c4-97fc08c3fde9",
+      "identifier": "GXAML-18",
+      "linked": true
+    },
+    "vscode": {
+      "id": "4ff7c3d8-0b71-4e9f-8389-fe70d461fa77",
+      "identifier": "GXAML-15",
+      "linked": true
+    }
+  },
+  "projects": {
+    "addon": "d6f5a98c-6089-4da6-a5af-f6d2240bd8e9",
+    "agent": "4bbbeb66-34af-4115-81e7-3fee92695eed",
+    "backlog": "abb12873-4fe4-4fa9-a4bb-428e4501c418",
+    "core": "d70221ab-666c-49eb-8a2a-32e432291c6d",
+    "editor": "0f7f27cc-0d76-4d42-b58f-67e19d7acd9c",
+    "later": "2ddbe3a4-3372-4804-80e4-68c8b8fd9565",
+    "spike": "0fe9ce6b-4865-470b-b8a9-c1f6b61ee1d1"
+  }
+}
