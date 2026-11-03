@@ -4,25 +4,25 @@
 
 ## Core format
 
-- [ ] GXAML-78 Metadata dump: slash-named ClassDB properties · release vNext+1
+- [ ] GXAML-78 Metadata dump: slash-named ClassDB properties · release vNext
 - [ ] GXAML-103 Dynamic-family table: tests, shared helpers, ordinal matching and the Godot version tie
 - [ ] GXAML-105 Metadata: type misdeclared properties by their getter, for classes with no defaults too
 - [ ] GXAML-109 Dynamic families: Skeleton3D's 3.x bone keys, ASCII entry indexes, and the untested ranking paths
-- [/] GXAML-114 Dynamic families: a compare fixture for every stored family, enforced by a coverage test · release vNext+1
-  - [ ] GXAML-121 Fixture physics_bones.tscn: PhysicalBone3D joints and SoftBody3D attachments · release vNext+1
-  - [ ] GXAML-122 Fixture tile_set_layers.tres: TileSet layers, sources and proxies · release vNext+1
-  - [ ] GXAML-123 Fixture tile_map_grid_map.tscn: TileMap layers, GridMap and MeshLibrary · release vNext+1
-  - [ ] GXAML-124 Fixture gui_item_arrays.tscn: TabBar, PopupMenu, ItemList, OptionButton, MenuButton, FileDialog · release vNext+1
-  - [ ] GXAML-125 Fixture gui_tabs_graph.tscn: TabContainer, GraphNode, audio listeners and players · release vNext+1
-  - [ ] GXAML-126 Fixtures theme_font_resources.tres and audio_resources.tres · release vNext+1
-  - [ ] GXAML-128 Coverage test: every dynamic-family row matched by a fixture or a reviewed exception · release vNext+1
-  - [ ] GXAML-129 Fixture shader_parameters.tscn: instance shader parameters, ShaderMaterial and ShaderGlobalsOverride · release vNext+1
+- [/] GXAML-114 Dynamic families: a compare fixture for every stored family, enforced by a coverage test · release vNext
+  - [ ] GXAML-121 Fixture physics_bones.tscn: PhysicalBone3D joints and SoftBody3D attachments · release vNext
+  - [ ] GXAML-122 Fixture tile_set_layers.tres: TileSet layers, sources and proxies · release vNext
+  - [ ] GXAML-123 Fixture tile_map_grid_map.tscn: TileMap layers, GridMap and MeshLibrary · release vNext
+  - [ ] GXAML-124 Fixture gui_item_arrays.tscn: TabBar, PopupMenu, ItemList, OptionButton, MenuButton, FileDialog · release vNext
+  - [ ] GXAML-125 Fixture gui_tabs_graph.tscn: TabContainer, GraphNode, audio listeners and players · release vNext
+  - [ ] GXAML-126 Fixtures theme_font_resources.tres and audio_resources.tres · release vNext
+  - [ ] GXAML-128 Coverage test: every dynamic-family row matched by a fixture or a reviewed exception · release vNext
+  - [ ] GXAML-129 Fixture shader_parameters.tscn: instance shader parameters, ShaderMaterial and ShaderGlobalsOverride · release vNext
 - [ ] GXAML-131 Conversion back: VisualShader flags/ order follows the shader's mode
 
 ## Godot addon
 
-- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+2
-- [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit · release vNext+1
+- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+1
+- [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit · release vNext
 - [ ] GXAML-104 Addon saver: after B's save takes over A's built-in, a later save of A may lose its key
 - [ ] GXAML-106 Addon saver: the owned-ids walk's cost, and one path form for the map and the takeover
 - [ ] GXAML-107 Editor: every changed .xscn is loaded in full for its scene groups
@@ -35,10 +35,10 @@
 
 ## Editor support
 
-- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext+1
-- [ ] GXAML-15 VS Code extension over the language server · release vNext+1
-- [ ] GXAML-16 Visual Studio extension over the language server · release vNext+2
-- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+2
+- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext
+- [ ] GXAML-15 VS Code extension over the language server · release vNext
+- [ ] GXAML-16 Visual Studio extension over the language server · release vNext+1
+- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+1
 
 ## Later
 
@@ -47,7 +47,7 @@
 
 ## Backlog
 
-- [ ] GXAML-84 Find the cause of two rare Godot crashes during first import · release vNext+1
+- [ ] GXAML-84 Find the cause of two rare Godot crashes during first import · release vNext
 - [ ] GXAML-99 Release: check nuget.org before the release commit, and allow for the index lag
 - [ ] GXAML-100 ARCHITECTURE.md: the sub-resource check range and two missing Task Index rows
 - [ ] GXAML-101 A -Local addon zip's plugin.cfg still names the release version
