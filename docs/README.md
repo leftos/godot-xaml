@@ -6,6 +6,7 @@
 - [`../agents/skill/godot-xaml/SKILL.md`](../agents/skill/godot-xaml/SKILL.md): the docs for agents, a Claude Code skill installed user-level by `tools/install-skill.ps1`; the same rules ship in the addon as [`AGENTS.md`](../godot/addons/godot_xaml/AGENTS.md), and [`../llms.txt`](../llms.txt) indexes the docs.
 - [`format/README.md`](format/README.md): the `.xscn` and `.xres` format reference, with [`format/values.md`](format/values.md) for every value type's text and [`format/diagnostics.md`](format/diagnostics.md) for every error and warning code.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): the components, what each owns, and where to start for a change.
+- [`DEVELOPMENT.md`](DEVELOPMENT.md): the toolchain, the `run.ps1` verbs, the hooks, the Godot-side harnesses and regenerating the metadata file.
 - [`DECISIONS.md`](DECISIONS.md): the owner's decisions and the Godot source facts behind them.
 - [`plans/v1-design.md`](plans/v1-design.md): version 1's components, order of work and open questions.
 - [`plans/MAIN.md`](plans/MAIN.md): a snapshot of the Linear plan (team GXAML), generated, never edited by hand.
@@ -13,6 +14,7 @@
 ## Glossary
 
 - **Backup folder**: `<root>/.godot-xaml-backup/<UTC stamp>/`, where `convert --project` copies each original, its `.uid`, each script or `project.godot` it edits and each output it overwrites, at their paths under the root, before changing anything.
+- **Builder**: another machine the gate routes a run to, by this PC's gate `remote.json` (`gate remote add`); the editor checks run there, on a hidden desktop.
 - **Built path**: a path a script assembles at run time (`"res://ui/" + name + ".tscn"`) instead of writing whole; `convert` cannot rewrite it and warns (`GXP0006`) when a literal ends in an extension the run converts.
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.
 - **Canonical fixture**: an `.xscn` or `.xres` under `tests/fixtures/xscn/canonical/` that the writer must reproduce byte for byte.
