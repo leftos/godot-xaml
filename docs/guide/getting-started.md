@@ -14,16 +14,16 @@ The format itself is in the [format reference](../format/README.md).
 
 ## What you need
 
-- **A Godot 4.7 or later .NET project** (the editor build with C# support). The addon is written in C#, so a GDScript-only build of Godot cannot load it. GDScript scripts in the project are fine.
+- **A Godot 4.7 .NET project** (the editor build with C# support; tested on 4.7.2). The addon is written in C#, so a GDScript-only build of Godot cannot load it. GDScript scripts in the project are fine.
 - **The .NET SDK** that build of Godot asks for.
 
 ## Install the addon
 
-1. **Give the project a solution file**, if it has none, named after `dotnet/project/assembly_name`; otherwise an export fails on the C# step:
+1. **Give the project a solution file** (`.sln` or `.slnx`) that contains its `.csproj`, if it has none; otherwise an export fails on the C# step:
 
    ```sh
    dotnet new sln -n <AssemblyName>
-   dotnet sln <AssemblyName>.slnx add <AssemblyName>.csproj
+   dotnet sln add <AssemblyName>.csproj
    ```
 2. **Copy the addon in.** Download `godot-xaml-addon-<version>.zip` from [the latest release](https://github.com/leftos/godot-xaml/releases/latest) and unzip it at the project root, which puts it at `addons/godot_xaml/`, dotfiles included.
 3. **Reference the core package** in the project's `.csproj`, at the same version as the addon:
@@ -41,7 +41,7 @@ The format itself is in the [format reference](../format/README.md).
    enabled=PackedStringArray("res://addons/godot_xaml/plugin.cfg")
    ```
 
-   The plugin makes exports work. The loader and saver work without it, but an export without it ships XML the game cannot read.
+   The plugin makes exports convert each `.xscn` and `.xres` to binary. The loader and saver work without it, but an export without it ships the raw XML instead, a setup that is neither supported nor tested.
 6. **Open the project, close it, and open it again.** Godot scans the project's files before the addon's classes register, so `.xscn` files show in the FileSystem dock only from the second open. That open also writes their `.uid` sidecars. Commit those.
 
 To update, raise the package version and replace `addons/godot_xaml/` with the new release's folder.
@@ -77,7 +77,7 @@ It is as editable by hand as by the editor:
 
 Edit the file in any text editor, and Godot picks up the change as it does for a `.tscn`. Edit it in Godot and the file is rewritten in one fixed layout, so a diff shows only what changed.
 
-To check files from the command line:
+To check the files for parse problems from the command line:
 
 ```sh
 godot-xaml check ui/

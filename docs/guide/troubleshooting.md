@@ -14,7 +14,7 @@ This happens on the first open after installing the addon, or after deleting `.g
 
 ## A scene does not load
 
-The Output panel names the file, the line and column, and each problem with a `GX` code, such as `res://ui/main_menu.xscn:4:6: GX0104: <Button> has no Name; every node needs one.` Look the code up in [the diagnostics reference](../format/diagnostics.md), fix the text, and reload. `godot-xaml check <file>` prints the same list from the command line.
+The Output panel names the file, the line and column, and each problem with a `GX` code, such as `res://ui/main_menu.xscn:4:6: GX0104: <Button> has no Name; every node needs one.` Look the code up in [the diagnostics reference](../format/diagnostics.md), fix the text, and reload. `godot-xaml check <file>` prints the parse problems (`GX` codes) from the command line; problems found while converting for a load (`GXC` codes) show only in the Output panel.
 
 ## A uid reference breaks after a move
 
@@ -24,7 +24,7 @@ A file whose `.uid` sidecar was not committed gets a new uid. Commit every `*.xs
 
 Check, in order:
 
-1. **The plugin is on.** Without it, the raw XML is exported.
+1. **The plugin is on.** Without it, the raw XML is exported instead of binary copies.
 2. **The export log has no `ERROR: godot-xaml:` lines.** A file that failed to convert is skipped, and a headless export still exits 0.
 3. **The preset's filters keep `addons/godot_xaml/`.** The export says so when they do not.
 

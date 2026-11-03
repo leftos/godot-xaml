@@ -67,7 +67,9 @@ godot-xaml check <files or folder>
 godot-xaml format <files or folder>
 ```
 
-`check` reports every problem as `path(line,col): error GXnnnn: message`. Fix each one; [reference.md](reference.md#codes-you-will-meet) lists the common codes. `format` rewrites files into the canonical layout the editor writes, so a later editor save does not produce a noisy diff. Commit only files that `check` passes.
+`check` reports every parse problem as `path(line,col): error GXnnnn: message`. Fix each one; [reference.md](reference.md#codes-you-will-meet) lists the common codes. `format` rewrites files into the canonical layout the editor writes, so a later editor save does not produce a noisy diff. Commit only files that `check` passes.
+
+`check` does not run the conversion a load runs. A few problems show only when Godot loads the file, as `GXC` codes in the Output panel; an unknown `{Key}` (`GXC0102`) is the common one. When a Godot run is available, load the scene once, for example with godot-mcp, to catch them.
 
 When the tool is missing, it installs with `dotnet tool install -g GodotXaml.Cli`.
 
@@ -84,7 +86,7 @@ godot-xaml convert --project <root>          # every .tscn/.tres to .xscn/.xres,
 godot-xaml convert --project <root> --back   # and back
 ```
 
-Run these only when the owner asks. The run backs up the originals to `.godot-xaml-backup/`, rewrites references and script strings, and lists every path it could not rewrite as `GXP0006`. Those need a change by hand.
+Run these only when the owner asks. The run backs up the originals to `.godot-xaml-backup/`, rewrites references and script strings, and warns about paths it could not rewrite as `GXP0006`, up to three lines per file and then one line for the rest. Those need a change by hand.
 
 ## When godot-xaml itself is wrong
 

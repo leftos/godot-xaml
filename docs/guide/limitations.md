@@ -4,7 +4,7 @@ What godot-xaml 0.1 does not do, or does differently from a `.tscn`.
 
 ## Platform
 
-- **Godot 4.7 or later, with .NET.** The addon is C#, so the GDScript-only build of Godot cannot load it.
+- **Godot 4.7 with .NET, tested on 4.7.2.** The addon is C#, so the GDScript-only build of Godot cannot load it.
 - **One metadata file per Godot version.** Property types and enum names come from Godot 4.7's metadata, shipped in the package. A later Godot version that renames or retypes a property can change how a file reads; such a release of godot-xaml will say so and say how to upgrade.
 
 ## Format
@@ -16,8 +16,9 @@ What godot-xaml 0.1 does not do, or does differently from a `.tscn`.
 
 ## Projects
 
-- **Files Godot loads before any addon stay `.tscn` and `.tres`:** the custom theme and font, the default bus layout, the custom mouse cursor, the default environment, the translations, and what they reference. No loader for `.xscn` exists that early.
-- **A path a script builds at runtime is not rewritten** by `convert --project`; it warns about each one.
+- **Files Godot loads before any addon stay `.tscn` and `.tres`:** the files named by six project settings (the custom theme and font, the default bus layout, the custom mouse cursor, the default environment, the translations), and what they reference. No loader for `.xscn` exists that early.
+- **A path a script builds at runtime is not rewritten** by `convert --project`; it warns about them (`GXP0006`).
+- **`godot-xaml check` reports parse problems only.** Problems found while converting a file for a load (`GXC` codes) show in the editor's Output panel.
 - **The first open after installing** does not list `.xscn` files; the second does ([Working in the editor](editor.md#the-first-open)).
 - **A headless export exits 0** even when a file failed to convert; check the log for `ERROR: godot-xaml:` ([Exporting a game](export.md)).
 

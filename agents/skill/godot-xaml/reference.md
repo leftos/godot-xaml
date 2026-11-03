@@ -76,5 +76,5 @@ A line break inside a value is `&#10;`.
 | GX0108 | Missing attribute | `x:Override` needs `Path`, `x:Resources` entries need `x:Key` |
 | GX0111 | Element in the wrong place | Tables on the root only; no nodes inside a resource |
 | GX0112 | Bad property element | Name it `<ParentTag.Property>` and give it one resource |
-| GXC0102 | `{Key}` names no `x:Resources` entry | Add the entry or fix the key |
+| GXC0102 | `{Key}` names no `x:Resources` entry; shown on a Godot load, not by `check` | Add the entry or fix the key |
 | GXP0006 | A path a script builds was not rewritten | Edit the script by hand |

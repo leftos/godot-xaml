@@ -24,10 +24,20 @@ Before running it:
 What the run guarantees:
 
 - **All or nothing.** Every output is staged first. If any source fails to convert, nothing in the project changes, and the run lists the errors.
-- **A backup.** The originals, their `.uid` files and every script it edits are copied to `.godot-xaml-backup/<time>/` before anything changes, and git ignores that folder. Pass `--nobackup` to skip it, for example when the project is in git.
-- **What it skips.** It never touches `addons/`, `.godot/`, folders starting with `.`, folders holding a `.gdignore`, nested projects, or folder links.
-- **What stays text.** Files Godot loads before any addon exists stay `.tscn` and `.tres`, since no loader for `.xscn` is registered yet: the custom theme, the default bus layout, the custom mouse cursor, the default environment, the translations, and every file those reach. Each such file is named on its own line.
-- **What it cannot change.** A path a script builds at runtime (`"res://levels/" + name + ".tscn"`) is not rewritten. The run warns about each one (`GXP0006`), and they need a change by hand.
+- **A backup.** Before anything changes, the run copies to `.godot-xaml-backup/<time>/`:
+  - the originals and their `.uid` files;
+  - every script and `project.godot` it edits;
+  - every output `--force` overwrites.
+
+  Git ignores the backup folder. Pass `--nobackup` to skip it, for example when the project is in git.
+- **What it skips.** It never touches:
+  - the project's top-level `addons/` and `.godot/`;
+  - folders whose names start with `.`, and folders holding a `.gdignore`;
+  - nested projects;
+  - the `bin` and `obj` folders beside a `.csproj`;
+  - folder links.
+- **What stays text.** Files Godot loads before any addon exists stay `.tscn` and `.tres`, since no loader for `.xscn` is registered yet. Those are the custom theme and font, the default bus layout, the custom mouse cursor, the default environment, the translations, and every file those reach. Each such file is named on its own line.
+- **What it cannot change.** A path a script builds at runtime (`"res://levels/" + name + ".tscn"`) is not rewritten. The run warns about such paths (`GXP0006`, up to three lines per file, then one line for the rest), and they need a change by hand.
 
 Read the warnings it prints: each names a file and a line.
 
@@ -45,7 +55,7 @@ This does the same the other way. A converted project round-trips: back to `.tsc
 godot-xaml convert ui/main_menu.tscn
 ```
 
-This writes `ui/main_menu.xscn` beside the source and keeps the source. References in the files it converts are rewritten. Scripts and `project.godot` are only warned about, never edited, so the `--project` form is the one to use for a whole project.
+This writes `ui/main_menu.xscn` beside the source and keeps the source. References between files converted in the same run are rewritten; a reference to a file the run did not convert stays as it is. Scripts and `project.godot` are only warned about, never edited, so the `--project` form is the one to use for a whole project.
 
 ## Keeping files canonical
 
@@ -54,4 +64,4 @@ godot-xaml check .
 godot-xaml format --check .
 ```
 
-`check` reports every problem in every `.xscn` and `.xres`. `format --check` lists the files that are not in the canonical layout, and `format` rewrites them. Both exit non-zero on a finding, for a pre-commit hook or CI.
+`check` reports every parse problem (`GX` codes) in every `.xscn` and `.xres`, and exits 1 when a file has an error. `format --check` lists the files that are not in the canonical layout and exits 1 when any would change; `format` rewrites them. Either suits a pre-commit hook or CI.

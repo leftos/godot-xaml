@@ -106,7 +106,7 @@ Each component gets an entry here in the commit that adds its project.
 - Comparing two `convert` runs needs one fixed project path, since new ids seed from the output's full path (`ConvertCommand.SeedOf`).
 - `ContainsDiagnostics` on a `Microsoft.Language.Xml` root stays false when the tree below it holds errors, so the parser's error walk cannot be skipped on that flag.
 - Never dispose a Godot object's C# wrapper in the addon's walks: it is shared with other C# holders. A C# `_Load` override must dispose the Variant it returns, since Godot's generated dispatch copies it and never disposes the original (`DECISIONS.md`, "Sub-resource ids follow where they are used").
-- The `godot-xaml` editor plugin must be enabled in a game project, or an export ships the raw XML, which the game cannot load without the addon.
+- The `godot-xaml` editor plugin must be enabled in a game project, or an export ships the raw XML instead of binary copies. The loaders ship and register in the game either way (`DECISIONS.md`, "Exported games load binary through a remap"), but a plugin-off export is neither supported nor measured.
 - The loaders' `.cs` files still ship in an export (the game's assembly needs them); an include or exclude filter that drops them is reported by the plugin, and the filter must be fixed.
 - A file that fails to convert is skipped and the export dialog shows "Failed.", but headless `--export-pack` still exits 0: Godot 4.7.2 gives an export plugin no way to change it, so a script must read the log for `ERROR: godot-xaml:`.
 
