@@ -1,0 +1,345 @@
+[gd_scene format=3]
+
+[sub_resource type="SkeletonModification2DCCDIK" id="SkeletonModification2DCCDIK_epp0w"]
+ccdik_data_chain_length = 12
+joint_data/0/bone_index = 0
+joint_data/0/bone2d_node = NodePath("")
+joint_data/0/rotate_from_joint = false
+joint_data/0/enable_constraint = true
+joint_data/0/constraint_angle_min = -4.9999995
+joint_data/0/constraint_angle_max = 9.999999
+joint_data/0/constraint_angle_invert = false
+joint_data/0/constraint_in_localspace = true
+joint_data/1/bone_index = 1
+joint_data/1/bone2d_node = NodePath("")
+joint_data/1/rotate_from_joint = true
+joint_data/1/enable_constraint = false
+joint_data/2/bone_index = 2
+joint_data/2/bone2d_node = NodePath("")
+joint_data/2/rotate_from_joint = false
+joint_data/2/enable_constraint = false
+joint_data/3/bone_index = 3
+joint_data/3/bone2d_node = NodePath("")
+joint_data/3/rotate_from_joint = true
+joint_data/3/enable_constraint = true
+joint_data/3/constraint_angle_min = -19.999998
+joint_data/3/constraint_angle_max = 39.999996
+joint_data/3/constraint_angle_invert = true
+joint_data/3/constraint_in_localspace = false
+joint_data/4/bone_index = 4
+joint_data/4/bone2d_node = NodePath("")
+joint_data/4/rotate_from_joint = false
+joint_data/4/enable_constraint = false
+joint_data/5/bone_index = 5
+joint_data/5/bone2d_node = NodePath("")
+joint_data/5/rotate_from_joint = true
+joint_data/5/enable_constraint = false
+joint_data/6/bone_index = 6
+joint_data/6/bone2d_node = NodePath("")
+joint_data/6/rotate_from_joint = false
+joint_data/6/enable_constraint = true
+joint_data/6/constraint_angle_min = -34.999996
+joint_data/6/constraint_angle_max = 69.99999
+joint_data/6/constraint_angle_invert = false
+joint_data/6/constraint_in_localspace = true
+joint_data/7/bone_index = 7
+joint_data/7/bone2d_node = NodePath("")
+joint_data/7/rotate_from_joint = true
+joint_data/7/enable_constraint = false
+joint_data/8/bone_index = 8
+joint_data/8/bone2d_node = NodePath("")
+joint_data/8/rotate_from_joint = false
+joint_data/8/enable_constraint = false
+joint_data/9/bone_index = 9
+joint_data/9/bone2d_node = NodePath("")
+joint_data/9/rotate_from_joint = true
+joint_data/9/enable_constraint = true
+joint_data/9/constraint_angle_min = -49.999996
+joint_data/9/constraint_angle_max = 99.99999
+joint_data/9/constraint_angle_invert = true
+joint_data/9/constraint_in_localspace = false
+joint_data/10/bone_index = 10
+joint_data/10/bone2d_node = NodePath("")
+joint_data/10/rotate_from_joint = false
+joint_data/10/enable_constraint = false
+joint_data/11/bone_index = 11
+joint_data/11/bone2d_node = NodePath("")
+joint_data/11/rotate_from_joint = true
+joint_data/11/enable_constraint = false
+
+[sub_resource type="SkeletonModification2DFABRIK" id="SkeletonModification2DFABRIK_uct8v"]
+fabrik_data_chain_length = 12
+joint_data/0/bone_index = 0
+joint_data/0/bone2d_node = NodePath("")
+joint_data/1/bone_index = 1
+joint_data/1/bone2d_node = NodePath("")
+joint_data/1/magnet_position = Vector2(1, -0.5)
+joint_data/2/bone_index = 2
+joint_data/2/bone2d_node = NodePath("")
+joint_data/2/magnet_position = Vector2(2, -1)
+joint_data/3/bone_index = 3
+joint_data/3/bone2d_node = NodePath("")
+joint_data/3/magnet_position = Vector2(3, -1.5)
+joint_data/4/bone_index = 4
+joint_data/4/bone2d_node = NodePath("")
+joint_data/4/magnet_position = Vector2(4, -2)
+joint_data/5/bone_index = 5
+joint_data/5/bone2d_node = NodePath("")
+joint_data/5/magnet_position = Vector2(5, -2.5)
+joint_data/6/bone_index = 6
+joint_data/6/bone2d_node = NodePath("")
+joint_data/6/magnet_position = Vector2(6, -3)
+joint_data/7/bone_index = 7
+joint_data/7/bone2d_node = NodePath("")
+joint_data/7/magnet_position = Vector2(7, -3.5)
+joint_data/8/bone_index = 8
+joint_data/8/bone2d_node = NodePath("")
+joint_data/8/magnet_position = Vector2(8, -4)
+joint_data/9/bone_index = 9
+joint_data/9/bone2d_node = NodePath("")
+joint_data/9/magnet_position = Vector2(9, -4.5)
+joint_data/10/bone_index = 10
+joint_data/10/bone2d_node = NodePath("")
+joint_data/10/magnet_position = Vector2(10, -5)
+joint_data/11/bone_index = 11
+joint_data/11/bone2d_node = NodePath("")
+joint_data/11/magnet_position = Vector2(11, -5.5)
+joint_data/11/use_target_rotation = false
+
+[sub_resource type="SkeletonModification2DLookAt" id="SkeletonModification2DLookAt_k5xnk"]
+enable_constraint = true
+constraint_angle_min = -60.0
+constraint_angle_max = 360.0
+constraint_angle_invert = false
+constraint_in_localspace = true
+
+[sub_resource type="SkeletonModification2DTwoBoneIK" id="SkeletonModification2DTwoBoneIK_qq6ie"]
+joint_one_bone_idx = 3
+joint_two_bone_idx = 4
+
+[sub_resource type="SkeletonModification2DJiggle" id="SkeletonModification2DJiggle_lkoqp"]
+jiggle_data_chain_length = 12
+use_colliders = true
+collision_mask = 6
+joint_data/0/bone_index = 0
+joint_data/0/bone2d_node = NodePath("")
+joint_data/0/override_defaults = true
+joint_data/0/stiffness = 0.5
+joint_data/0/mass = 0.75
+joint_data/0/damping = 0.75
+joint_data/0/use_gravity = false
+joint_data/1/bone_index = 1
+joint_data/1/bone2d_node = NodePath("")
+joint_data/1/override_defaults = true
+joint_data/1/stiffness = 1.0
+joint_data/1/mass = 0.75
+joint_data/1/damping = 0.75
+joint_data/1/use_gravity = false
+joint_data/2/bone_index = 2
+joint_data/2/bone2d_node = NodePath("")
+joint_data/2/override_defaults = true
+joint_data/2/stiffness = 1.5
+joint_data/2/mass = 0.75
+joint_data/2/damping = 0.75
+joint_data/2/use_gravity = false
+joint_data/3/bone_index = 3
+joint_data/3/bone2d_node = NodePath("")
+joint_data/3/override_defaults = true
+joint_data/3/stiffness = 2.0
+joint_data/3/mass = 0.75
+joint_data/3/damping = 0.75
+joint_data/3/use_gravity = false
+joint_data/4/bone_index = 4
+joint_data/4/bone2d_node = NodePath("")
+joint_data/4/override_defaults = true
+joint_data/4/stiffness = 2.5
+joint_data/4/mass = 0.75
+joint_data/4/damping = 0.75
+joint_data/4/use_gravity = false
+joint_data/5/bone_index = 5
+joint_data/5/bone2d_node = NodePath("")
+joint_data/5/override_defaults = true
+joint_data/5/stiffness = 3.0
+joint_data/5/mass = 0.75
+joint_data/5/damping = 0.75
+joint_data/5/use_gravity = false
+joint_data/6/bone_index = 6
+joint_data/6/bone2d_node = NodePath("")
+joint_data/6/override_defaults = true
+joint_data/6/stiffness = 3.5
+joint_data/6/mass = 0.75
+joint_data/6/damping = 0.75
+joint_data/6/use_gravity = false
+joint_data/7/bone_index = 7
+joint_data/7/bone2d_node = NodePath("")
+joint_data/7/override_defaults = true
+joint_data/7/stiffness = 4.0
+joint_data/7/mass = 0.75
+joint_data/7/damping = 0.75
+joint_data/7/use_gravity = false
+joint_data/8/bone_index = 8
+joint_data/8/bone2d_node = NodePath("")
+joint_data/8/override_defaults = true
+joint_data/8/stiffness = 4.5
+joint_data/8/mass = 0.75
+joint_data/8/damping = 0.75
+joint_data/8/use_gravity = false
+joint_data/9/bone_index = 9
+joint_data/9/bone2d_node = NodePath("")
+joint_data/9/override_defaults = true
+joint_data/9/stiffness = 5.0
+joint_data/9/mass = 0.75
+joint_data/9/damping = 0.75
+joint_data/9/use_gravity = false
+joint_data/10/bone_index = 10
+joint_data/10/bone2d_node = NodePath("")
+joint_data/10/override_defaults = true
+joint_data/10/stiffness = 5.5
+joint_data/10/mass = 0.75
+joint_data/10/damping = 0.75
+joint_data/10/use_gravity = false
+joint_data/11/bone_index = 11
+joint_data/11/bone2d_node = NodePath("")
+joint_data/11/override_defaults = true
+joint_data/11/stiffness = 6.0
+joint_data/11/mass = 0.75
+joint_data/11/damping = 0.75
+joint_data/11/use_gravity = false
+
+[sub_resource type="SkeletonModification2DPhysicalBones" id="SkeletonModification2DPhysicalBones_aajag"]
+physical_bone_chain_length = 12
+joint_0_nodepath = NodePath("Physical0")
+joint_1_nodepath = NodePath("Physical1")
+joint_2_nodepath = NodePath("Physical2")
+joint_3_nodepath = NodePath("Physical3")
+joint_4_nodepath = NodePath("Physical4")
+joint_5_nodepath = NodePath("Physical5")
+joint_6_nodepath = NodePath("Physical6")
+joint_7_nodepath = NodePath("Physical7")
+joint_8_nodepath = NodePath("Physical8")
+joint_9_nodepath = NodePath("Physical9")
+joint_10_nodepath = NodePath("Physical10")
+joint_11_nodepath = NodePath("Physical11")
+
+[sub_resource type="SkeletonModification2DLookAt" id="SkeletonModification2DLookAt_r04cx"]
+enable_constraint = true
+constraint_angle_min = -15.0
+constraint_angle_max = 360.0
+constraint_angle_invert = false
+constraint_in_localspace = true
+
+[sub_resource type="SkeletonModification2DTwoBoneIK" id="SkeletonModification2DTwoBoneIK_22gu5"]
+joint_one_bone_idx = 0
+joint_two_bone_idx = 1
+
+[sub_resource type="SkeletonModification2DLookAt" id="SkeletonModification2DLookAt_ubcad"]
+enable_constraint = true
+constraint_angle_min = -30.0
+constraint_angle_max = 360.0
+constraint_angle_invert = false
+constraint_in_localspace = true
+
+[sub_resource type="SkeletonModification2DTwoBoneIK" id="SkeletonModification2DTwoBoneIK_jgexr"]
+joint_one_bone_idx = 1
+joint_two_bone_idx = 2
+
+[sub_resource type="SkeletonModification2DLookAt" id="SkeletonModification2DLookAt_xf486"]
+enable_constraint = true
+constraint_angle_min = -45.0
+constraint_angle_max = 360.0
+constraint_angle_invert = false
+constraint_in_localspace = true
+
+[sub_resource type="SkeletonModification2DTwoBoneIK" id="SkeletonModification2DTwoBoneIK_6oqub"]
+joint_one_bone_idx = 2
+joint_two_bone_idx = 3
+
+[sub_resource type="SkeletonModificationStack2D" id="SkeletonModificationStack2D_ytpqm"]
+modification_count = 12
+modifications/0 = SubResource("SkeletonModification2DCCDIK_epp0w")
+modifications/1 = SubResource("SkeletonModification2DFABRIK_uct8v")
+modifications/2 = SubResource("SkeletonModification2DJiggle_lkoqp")
+modifications/3 = SubResource("SkeletonModification2DPhysicalBones_aajag")
+modifications/4 = SubResource("SkeletonModification2DLookAt_r04cx")
+modifications/5 = SubResource("SkeletonModification2DTwoBoneIK_22gu5")
+modifications/6 = SubResource("SkeletonModification2DLookAt_ubcad")
+modifications/7 = SubResource("SkeletonModification2DTwoBoneIK_jgexr")
+modifications/8 = SubResource("SkeletonModification2DLookAt_xf486")
+modifications/9 = SubResource("SkeletonModification2DTwoBoneIK_6oqub")
+modifications/10 = SubResource("SkeletonModification2DLookAt_k5xnk")
+modifications/11 = SubResource("SkeletonModification2DTwoBoneIK_qq6ie")
+
+[node name="Root" type="Skeleton2D" unique_id=801381991]
+modification_stack = SubResource("SkeletonModificationStack2D_ytpqm")
+
+[node name="bone_0" type="Bone2D" parent="." unique_id=216729607]
+auto_calculate_length_and_angle = false
+length = 8.0
+bone_angle = 4.9999995
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_1" type="Bone2D" parent="bone_0" unique_id=1888168202]
+auto_calculate_length_and_angle = false
+length = 9.0
+bone_angle = 9.999999
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_2" type="Bone2D" parent="bone_0/bone_1" unique_id=1840485383]
+auto_calculate_length_and_angle = false
+length = 10.0
+bone_angle = 15.0
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_3" type="Bone2D" parent="bone_0/bone_1/bone_2" unique_id=171401187]
+auto_calculate_length_and_angle = false
+length = 11.0
+bone_angle = 19.999998
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_4" type="Bone2D" parent="bone_0/bone_1/bone_2/bone_3" unique_id=1659641066]
+auto_calculate_length_and_angle = false
+length = 12.0
+bone_angle = 24.999998
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_5" type="Bone2D" parent="bone_0/bone_1/bone_2/bone_3/bone_4" unique_id=527860236]
+auto_calculate_length_and_angle = false
+length = 13.0
+bone_angle = 30.0
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_6" type="Bone2D" parent="bone_0/bone_1/bone_2/bone_3/bone_4/bone_5" unique_id=366867611]
+auto_calculate_length_and_angle = false
+length = 14.0
+bone_angle = 34.999996
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_7" type="Bone2D" parent="bone_0/bone_1/bone_2/bone_3/bone_4/bone_5/bone_6" unique_id=1830899996]
+auto_calculate_length_and_angle = false
+length = 15.0
+bone_angle = 39.999996
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_8" type="Bone2D" parent="bone_0/bone_1/bone_2/bone_3/bone_4/bone_5/bone_6/bone_7" unique_id=1390558387]
+auto_calculate_length_and_angle = false
+length = 16.0
+bone_angle = 45.0
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_9" type="Bone2D" parent="bone_0/bone_1/bone_2/bone_3/bone_4/bone_5/bone_6/bone_7/bone_8" unique_id=373030407]
+auto_calculate_length_and_angle = false
+length = 17.0
+bone_angle = 49.999996
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_10" type="Bone2D" parent="bone_0/bone_1/bone_2/bone_3/bone_4/bone_5/bone_6/bone_7/bone_8/bone_9" unique_id=822478629]
+auto_calculate_length_and_angle = false
+length = 18.0
+bone_angle = 54.999996
+editor_settings/show_bone_gizmo = false
+
+[node name="bone_11" type="Bone2D" parent="bone_0/bone_1/bone_2/bone_3/bone_4/bone_5/bone_6/bone_7/bone_8/bone_9/bone_10" unique_id=1821237875]
+auto_calculate_length_and_angle = false
+length = 19.0
+bone_angle = 60.0
+editor_settings/show_bone_gizmo = false

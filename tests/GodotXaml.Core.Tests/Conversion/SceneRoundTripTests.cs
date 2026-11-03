@@ -36,6 +36,7 @@ public sealed class SceneRoundTripTests
             "property_order",
             "script_node",
             "skeleton_bones",
+            "skeleton_modification_chains",
             "sub_resources",
             "two_bone_ik_modifiers",
             "unique_name"

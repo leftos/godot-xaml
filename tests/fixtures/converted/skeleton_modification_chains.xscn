@@ -1,0 +1,363 @@
+<Skeleton2D
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Name="Root"
+    x:UniqueId="801381991">
+  <Skeleton2D.modification_stack>
+    <SkeletonModificationStack2D ModificationCount="12">
+      <SkeletonModificationStack2D.Modifications.0>
+        <SkeletonModification2DCcdik CcdikDataChainLength="12">
+          <x:Prop Name="joint_data/0/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/0/bone_index" Value="0" />
+          <x:Prop Name="joint_data/0/constraint_angle_invert" Value="false" />
+          <x:Prop Name="joint_data/0/constraint_angle_max" Value="9.999999" />
+          <x:Prop Name="joint_data/0/constraint_angle_min" Value="-4.9999995" />
+          <x:Prop Name="joint_data/0/constraint_in_localspace" Value="true" />
+          <x:Prop Name="joint_data/0/enable_constraint" Value="true" />
+          <x:Prop Name="joint_data/0/rotate_from_joint" Value="false" />
+          <x:Prop Name="joint_data/1/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/1/bone_index" Value="1" />
+          <x:Prop Name="joint_data/1/enable_constraint" Value="false" />
+          <x:Prop Name="joint_data/1/rotate_from_joint" Value="true" />
+          <x:Prop Name="joint_data/10/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/10/bone_index" Value="10" />
+          <x:Prop Name="joint_data/10/enable_constraint" Value="false" />
+          <x:Prop Name="joint_data/10/rotate_from_joint" Value="false" />
+          <x:Prop Name="joint_data/11/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/11/bone_index" Value="11" />
+          <x:Prop Name="joint_data/11/enable_constraint" Value="false" />
+          <x:Prop Name="joint_data/11/rotate_from_joint" Value="true" />
+          <x:Prop Name="joint_data/2/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/2/bone_index" Value="2" />
+          <x:Prop Name="joint_data/2/enable_constraint" Value="false" />
+          <x:Prop Name="joint_data/2/rotate_from_joint" Value="false" />
+          <x:Prop Name="joint_data/3/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/3/bone_index" Value="3" />
+          <x:Prop Name="joint_data/3/constraint_angle_invert" Value="true" />
+          <x:Prop Name="joint_data/3/constraint_angle_max" Value="39.999996" />
+          <x:Prop Name="joint_data/3/constraint_angle_min" Value="-19.999998" />
+          <x:Prop Name="joint_data/3/constraint_in_localspace" Value="false" />
+          <x:Prop Name="joint_data/3/enable_constraint" Value="true" />
+          <x:Prop Name="joint_data/3/rotate_from_joint" Value="true" />
+          <x:Prop Name="joint_data/4/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/4/bone_index" Value="4" />
+          <x:Prop Name="joint_data/4/enable_constraint" Value="false" />
+          <x:Prop Name="joint_data/4/rotate_from_joint" Value="false" />
+          <x:Prop Name="joint_data/5/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/5/bone_index" Value="5" />
+          <x:Prop Name="joint_data/5/enable_constraint" Value="false" />
+          <x:Prop Name="joint_data/5/rotate_from_joint" Value="true" />
+          <x:Prop Name="joint_data/6/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/6/bone_index" Value="6" />
+          <x:Prop Name="joint_data/6/constraint_angle_invert" Value="false" />
+          <x:Prop Name="joint_data/6/constraint_angle_max" Value="69.99999" />
+          <x:Prop Name="joint_data/6/constraint_angle_min" Value="-34.999996" />
+          <x:Prop Name="joint_data/6/constraint_in_localspace" Value="true" />
+          <x:Prop Name="joint_data/6/enable_constraint" Value="true" />
+          <x:Prop Name="joint_data/6/rotate_from_joint" Value="false" />
+          <x:Prop Name="joint_data/7/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/7/bone_index" Value="7" />
+          <x:Prop Name="joint_data/7/enable_constraint" Value="false" />
+          <x:Prop Name="joint_data/7/rotate_from_joint" Value="true" />
+          <x:Prop Name="joint_data/8/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/8/bone_index" Value="8" />
+          <x:Prop Name="joint_data/8/enable_constraint" Value="false" />
+          <x:Prop Name="joint_data/8/rotate_from_joint" Value="false" />
+          <x:Prop Name="joint_data/9/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/9/bone_index" Value="9" />
+          <x:Prop Name="joint_data/9/constraint_angle_invert" Value="true" />
+          <x:Prop Name="joint_data/9/constraint_angle_max" Value="99.99999" />
+          <x:Prop Name="joint_data/9/constraint_angle_min" Value="-49.999996" />
+          <x:Prop Name="joint_data/9/constraint_in_localspace" Value="false" />
+          <x:Prop Name="joint_data/9/enable_constraint" Value="true" />
+          <x:Prop Name="joint_data/9/rotate_from_joint" Value="true" />
+        </SkeletonModification2DCcdik>
+      </SkeletonModificationStack2D.Modifications.0>
+      <SkeletonModificationStack2D.Modifications.1>
+        <SkeletonModification2DFabrik FabrikDataChainLength="12">
+          <x:Prop Name="joint_data/0/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/0/bone_index" Value="0" />
+          <x:Prop Name="joint_data/1/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/1/bone_index" Value="1" />
+          <x:Prop Name="joint_data/1/magnet_position" Value="Vector2(1, -0.5)" />
+          <x:Prop Name="joint_data/10/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/10/bone_index" Value="10" />
+          <x:Prop Name="joint_data/10/magnet_position" Value="Vector2(10, -5)" />
+          <x:Prop Name="joint_data/11/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/11/bone_index" Value="11" />
+          <x:Prop Name="joint_data/11/magnet_position" Value="Vector2(11, -5.5)" />
+          <x:Prop Name="joint_data/11/use_target_rotation" Value="false" />
+          <x:Prop Name="joint_data/2/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/2/bone_index" Value="2" />
+          <x:Prop Name="joint_data/2/magnet_position" Value="Vector2(2, -1)" />
+          <x:Prop Name="joint_data/3/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/3/bone_index" Value="3" />
+          <x:Prop Name="joint_data/3/magnet_position" Value="Vector2(3, -1.5)" />
+          <x:Prop Name="joint_data/4/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/4/bone_index" Value="4" />
+          <x:Prop Name="joint_data/4/magnet_position" Value="Vector2(4, -2)" />
+          <x:Prop Name="joint_data/5/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/5/bone_index" Value="5" />
+          <x:Prop Name="joint_data/5/magnet_position" Value="Vector2(5, -2.5)" />
+          <x:Prop Name="joint_data/6/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/6/bone_index" Value="6" />
+          <x:Prop Name="joint_data/6/magnet_position" Value="Vector2(6, -3)" />
+          <x:Prop Name="joint_data/7/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/7/bone_index" Value="7" />
+          <x:Prop Name="joint_data/7/magnet_position" Value="Vector2(7, -3.5)" />
+          <x:Prop Name="joint_data/8/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/8/bone_index" Value="8" />
+          <x:Prop Name="joint_data/8/magnet_position" Value="Vector2(8, -4)" />
+          <x:Prop Name="joint_data/9/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/9/bone_index" Value="9" />
+          <x:Prop Name="joint_data/9/magnet_position" Value="Vector2(9, -4.5)" />
+        </SkeletonModification2DFabrik>
+      </SkeletonModificationStack2D.Modifications.1>
+      <SkeletonModificationStack2D.Modifications.10>
+        <SkeletonModification2DLookAt
+            constraint_angle_invert="false"
+            constraint_angle_max="360.0"
+            constraint_angle_min="-60.0"
+            constraint_in_localspace="true"
+            enable_constraint="true" />
+      </SkeletonModificationStack2D.Modifications.10>
+      <SkeletonModificationStack2D.Modifications.11>
+        <SkeletonModification2DTwoBoneIK joint_one_bone_idx="3" joint_two_bone_idx="4" />
+      </SkeletonModificationStack2D.Modifications.11>
+      <SkeletonModificationStack2D.Modifications.2>
+        <SkeletonModification2DJiggle
+            JiggleDataChainLength="12"
+            collision_mask="6"
+            use_colliders="true">
+          <x:Prop Name="joint_data/0/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/0/bone_index" Value="0" />
+          <x:Prop Name="joint_data/0/damping" Value="0.75" />
+          <x:Prop Name="joint_data/0/mass" Value="0.75" />
+          <x:Prop Name="joint_data/0/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/0/stiffness" Value="0.5" />
+          <x:Prop Name="joint_data/0/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/1/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/1/bone_index" Value="1" />
+          <x:Prop Name="joint_data/1/damping" Value="0.75" />
+          <x:Prop Name="joint_data/1/mass" Value="0.75" />
+          <x:Prop Name="joint_data/1/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/1/stiffness" Value="1.0" />
+          <x:Prop Name="joint_data/1/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/10/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/10/bone_index" Value="10" />
+          <x:Prop Name="joint_data/10/damping" Value="0.75" />
+          <x:Prop Name="joint_data/10/mass" Value="0.75" />
+          <x:Prop Name="joint_data/10/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/10/stiffness" Value="5.5" />
+          <x:Prop Name="joint_data/10/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/11/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/11/bone_index" Value="11" />
+          <x:Prop Name="joint_data/11/damping" Value="0.75" />
+          <x:Prop Name="joint_data/11/mass" Value="0.75" />
+          <x:Prop Name="joint_data/11/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/11/stiffness" Value="6.0" />
+          <x:Prop Name="joint_data/11/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/2/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/2/bone_index" Value="2" />
+          <x:Prop Name="joint_data/2/damping" Value="0.75" />
+          <x:Prop Name="joint_data/2/mass" Value="0.75" />
+          <x:Prop Name="joint_data/2/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/2/stiffness" Value="1.5" />
+          <x:Prop Name="joint_data/2/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/3/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/3/bone_index" Value="3" />
+          <x:Prop Name="joint_data/3/damping" Value="0.75" />
+          <x:Prop Name="joint_data/3/mass" Value="0.75" />
+          <x:Prop Name="joint_data/3/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/3/stiffness" Value="2.0" />
+          <x:Prop Name="joint_data/3/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/4/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/4/bone_index" Value="4" />
+          <x:Prop Name="joint_data/4/damping" Value="0.75" />
+          <x:Prop Name="joint_data/4/mass" Value="0.75" />
+          <x:Prop Name="joint_data/4/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/4/stiffness" Value="2.5" />
+          <x:Prop Name="joint_data/4/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/5/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/5/bone_index" Value="5" />
+          <x:Prop Name="joint_data/5/damping" Value="0.75" />
+          <x:Prop Name="joint_data/5/mass" Value="0.75" />
+          <x:Prop Name="joint_data/5/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/5/stiffness" Value="3.0" />
+          <x:Prop Name="joint_data/5/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/6/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/6/bone_index" Value="6" />
+          <x:Prop Name="joint_data/6/damping" Value="0.75" />
+          <x:Prop Name="joint_data/6/mass" Value="0.75" />
+          <x:Prop Name="joint_data/6/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/6/stiffness" Value="3.5" />
+          <x:Prop Name="joint_data/6/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/7/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/7/bone_index" Value="7" />
+          <x:Prop Name="joint_data/7/damping" Value="0.75" />
+          <x:Prop Name="joint_data/7/mass" Value="0.75" />
+          <x:Prop Name="joint_data/7/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/7/stiffness" Value="4.0" />
+          <x:Prop Name="joint_data/7/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/8/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/8/bone_index" Value="8" />
+          <x:Prop Name="joint_data/8/damping" Value="0.75" />
+          <x:Prop Name="joint_data/8/mass" Value="0.75" />
+          <x:Prop Name="joint_data/8/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/8/stiffness" Value="4.5" />
+          <x:Prop Name="joint_data/8/use_gravity" Value="false" />
+          <x:Prop Name="joint_data/9/bone2d_node" Value='NodePath("")' />
+          <x:Prop Name="joint_data/9/bone_index" Value="9" />
+          <x:Prop Name="joint_data/9/damping" Value="0.75" />
+          <x:Prop Name="joint_data/9/mass" Value="0.75" />
+          <x:Prop Name="joint_data/9/override_defaults" Value="true" />
+          <x:Prop Name="joint_data/9/stiffness" Value="5.0" />
+          <x:Prop Name="joint_data/9/use_gravity" Value="false" />
+        </SkeletonModification2DJiggle>
+      </SkeletonModificationStack2D.Modifications.2>
+      <SkeletonModificationStack2D.Modifications.3>
+        <SkeletonModification2DPhysicalBones
+            PhysicalBoneChainLength="12"
+            joint_0_nodepath='NodePath("Physical0")'
+            joint_10_nodepath='NodePath("Physical10")'
+            joint_11_nodepath='NodePath("Physical11")'
+            joint_1_nodepath='NodePath("Physical1")'
+            joint_2_nodepath='NodePath("Physical2")'
+            joint_3_nodepath='NodePath("Physical3")'
+            joint_4_nodepath='NodePath("Physical4")'
+            joint_5_nodepath='NodePath("Physical5")'
+            joint_6_nodepath='NodePath("Physical6")'
+            joint_7_nodepath='NodePath("Physical7")'
+            joint_8_nodepath='NodePath("Physical8")'
+            joint_9_nodepath='NodePath("Physical9")' />
+      </SkeletonModificationStack2D.Modifications.3>
+      <SkeletonModificationStack2D.Modifications.4>
+        <SkeletonModification2DLookAt
+            constraint_angle_invert="false"
+            constraint_angle_max="360.0"
+            constraint_angle_min="-15.0"
+            constraint_in_localspace="true"
+            enable_constraint="true" />
+      </SkeletonModificationStack2D.Modifications.4>
+      <SkeletonModificationStack2D.Modifications.5>
+        <SkeletonModification2DTwoBoneIK joint_one_bone_idx="0" joint_two_bone_idx="1" />
+      </SkeletonModificationStack2D.Modifications.5>
+      <SkeletonModificationStack2D.Modifications.6>
+        <SkeletonModification2DLookAt
+            constraint_angle_invert="false"
+            constraint_angle_max="360.0"
+            constraint_angle_min="-30.0"
+            constraint_in_localspace="true"
+            enable_constraint="true" />
+      </SkeletonModificationStack2D.Modifications.6>
+      <SkeletonModificationStack2D.Modifications.7>
+        <SkeletonModification2DTwoBoneIK joint_one_bone_idx="1" joint_two_bone_idx="2" />
+      </SkeletonModificationStack2D.Modifications.7>
+      <SkeletonModificationStack2D.Modifications.8>
+        <SkeletonModification2DLookAt
+            constraint_angle_invert="false"
+            constraint_angle_max="360.0"
+            constraint_angle_min="-45.0"
+            constraint_in_localspace="true"
+            enable_constraint="true" />
+      </SkeletonModificationStack2D.Modifications.8>
+      <SkeletonModificationStack2D.Modifications.9>
+        <SkeletonModification2DTwoBoneIK joint_one_bone_idx="2" joint_two_bone_idx="3" />
+      </SkeletonModificationStack2D.Modifications.9>
+    </SkeletonModificationStack2D>
+  </Skeleton2D.modification_stack>
+  <Bone2D
+      Name="bone_0"
+      EditorSettings.show_bone_gizmo="false"
+      auto_calculate_length_and_angle="false"
+      bone_angle="4.9999995"
+      length="8.0"
+      x:UniqueId="216729607">
+    <Bone2D
+        Name="bone_1"
+        EditorSettings.show_bone_gizmo="false"
+        auto_calculate_length_and_angle="false"
+        bone_angle="9.999999"
+        length="9.0"
+        x:UniqueId="1888168202">
+      <Bone2D
+          Name="bone_2"
+          EditorSettings.show_bone_gizmo="false"
+          auto_calculate_length_and_angle="false"
+          bone_angle="15.0"
+          length="10.0"
+          x:UniqueId="1840485383">
+        <Bone2D
+            Name="bone_3"
+            EditorSettings.show_bone_gizmo="false"
+            auto_calculate_length_and_angle="false"
+            bone_angle="19.999998"
+            length="11.0"
+            x:UniqueId="171401187">
+          <Bone2D
+              Name="bone_4"
+              EditorSettings.show_bone_gizmo="false"
+              auto_calculate_length_and_angle="false"
+              bone_angle="24.999998"
+              length="12.0"
+              x:UniqueId="1659641066">
+            <Bone2D
+                Name="bone_5"
+                EditorSettings.show_bone_gizmo="false"
+                auto_calculate_length_and_angle="false"
+                bone_angle="30.0"
+                length="13.0"
+                x:UniqueId="527860236">
+              <Bone2D
+                  Name="bone_6"
+                  EditorSettings.show_bone_gizmo="false"
+                  auto_calculate_length_and_angle="false"
+                  bone_angle="34.999996"
+                  length="14.0"
+                  x:UniqueId="366867611">
+                <Bone2D
+                    Name="bone_7"
+                    EditorSettings.show_bone_gizmo="false"
+                    auto_calculate_length_and_angle="false"
+                    bone_angle="39.999996"
+                    length="15.0"
+                    x:UniqueId="1830899996">
+                  <Bone2D
+                      Name="bone_8"
+                      EditorSettings.show_bone_gizmo="false"
+                      auto_calculate_length_and_angle="false"
+                      bone_angle="45.0"
+                      length="16.0"
+                      x:UniqueId="1390558387">
+                    <Bone2D
+                        Name="bone_9"
+                        EditorSettings.show_bone_gizmo="false"
+                        auto_calculate_length_and_angle="false"
+                        bone_angle="49.999996"
+                        length="17.0"
+                        x:UniqueId="373030407">
+                      <Bone2D
+                          Name="bone_10"
+                          EditorSettings.show_bone_gizmo="false"
+                          auto_calculate_length_and_angle="false"
+                          bone_angle="54.999996"
+                          length="18.0"
+                          x:UniqueId="822478629">
+                        <Bone2D
+                            Name="bone_11"
+                            EditorSettings.show_bone_gizmo="false"
+                            auto_calculate_length_and_angle="false"
+                            bone_angle="60.0"
+                            length="19.0"
+                            x:UniqueId="1821237875" />
+                      </Bone2D>
+                    </Bone2D>
+                  </Bone2D>
+                </Bone2D>
+              </Bone2D>
+            </Bone2D>
+          </Bone2D>
+        </Bone2D>
+      </Bone2D>
+    </Bone2D>
+  </Bone2D>
+</Skeleton2D>

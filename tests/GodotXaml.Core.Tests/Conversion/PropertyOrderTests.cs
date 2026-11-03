@@ -901,6 +901,164 @@ public sealed class PropertyOrderTests
         );
     }
 
+    // SkeletonModification2DCCDIK::_get_property_list lists the joints in numeric order, each joint's keys in a fixed order.
+    [Fact]
+    public void ACcdikJointListsItsBoneFirstAndJointsRunInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <SkeletonModification2DCcdik {{X}} CcdikDataChainLength="11">
+              <x:Prop Name="joint_data/0/bone2d_node" Value='NodePath("")' />
+              <x:Prop Name="joint_data/0/bone_index" Value="0" />
+              <x:Prop Name="joint_data/0/constraint_angle_invert" Value="true" />
+              <x:Prop Name="joint_data/0/constraint_angle_max" Value="10.0" />
+              <x:Prop Name="joint_data/0/constraint_angle_min" Value="-5.0" />
+              <x:Prop Name="joint_data/0/constraint_in_localspace" Value="false" />
+              <x:Prop Name="joint_data/0/enable_constraint" Value="true" />
+              <x:Prop Name="joint_data/0/rotate_from_joint" Value="true" />
+              <x:Prop Name="joint_data/10/bone2d_node" Value='NodePath("")' />
+              <x:Prop Name="joint_data/10/bone_index" Value="10" />
+              <x:Prop Name="joint_data/10/enable_constraint" Value="false" />
+              <x:Prop Name="joint_data/10/rotate_from_joint" Value="false" />
+              <x:Prop Name="joint_data/2/bone_index" Value="2" />
+            </SkeletonModification2DCcdik>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "ccdik_data_chain_length",
+                "joint_data/0/bone_index",
+                "joint_data/0/bone2d_node",
+                "joint_data/0/rotate_from_joint",
+                "joint_data/0/enable_constraint",
+                "joint_data/0/constraint_angle_min",
+                "joint_data/0/constraint_angle_max",
+                "joint_data/0/constraint_angle_invert",
+                "joint_data/0/constraint_in_localspace",
+                "joint_data/2/bone_index",
+                "joint_data/10/bone_index",
+                "joint_data/10/bone2d_node",
+                "joint_data/10/rotate_from_joint",
+                "joint_data/10/enable_constraint",
+            ],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // SkeletonModification2DFABRIK::_get_property_list lists the joints in numeric order, each joint's keys in a fixed order.
+    [Fact]
+    public void AFabrikJointListsItsBoneFirstAndJointsRunInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <SkeletonModification2DFabrik {{X}} FabrikDataChainLength="11">
+              <x:Prop Name="joint_data/1/bone2d_node" Value='NodePath("")' />
+              <x:Prop Name="joint_data/1/bone_index" Value="1" />
+              <x:Prop Name="joint_data/1/magnet_position" Value="Vector2(1, 2)" />
+              <x:Prop Name="joint_data/10/bone2d_node" Value='NodePath("")' />
+              <x:Prop Name="joint_data/10/bone_index" Value="10" />
+              <x:Prop Name="joint_data/10/magnet_position" Value="Vector2(3, 4)" />
+              <x:Prop Name="joint_data/10/use_target_rotation" Value="true" />
+              <x:Prop Name="joint_data/2/bone_index" Value="2" />
+            </SkeletonModification2DFabrik>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "fabrik_data_chain_length",
+                "joint_data/1/bone_index",
+                "joint_data/1/bone2d_node",
+                "joint_data/1/magnet_position",
+                "joint_data/2/bone_index",
+                "joint_data/10/bone_index",
+                "joint_data/10/bone2d_node",
+                "joint_data/10/magnet_position",
+                "joint_data/10/use_target_rotation",
+            ],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // SkeletonModification2DJiggle::_get_property_list lists use_colliders and collision_mask, then the joints in numeric
+    // order, each joint's keys in a fixed order.
+    [Fact]
+    public void AJiggleJointListsItsBoneFirstAndJointsRunInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <SkeletonModification2DJiggle {{X}} JiggleDataChainLength="11">
+              <x:Prop Name="collision_mask" Value="6" />
+              <x:Prop Name="joint_data/0/bone2d_node" Value='NodePath("")' />
+              <x:Prop Name="joint_data/0/bone_index" Value="0" />
+              <x:Prop Name="joint_data/0/damping" Value="0.5" />
+              <x:Prop Name="joint_data/0/gravity" Value="Vector2(0, 6)" />
+              <x:Prop Name="joint_data/0/mass" Value="0.5" />
+              <x:Prop Name="joint_data/0/override_defaults" Value="true" />
+              <x:Prop Name="joint_data/0/stiffness" Value="2.0" />
+              <x:Prop Name="joint_data/0/use_gravity" Value="true" />
+              <x:Prop Name="joint_data/10/bone_index" Value="10" />
+              <x:Prop Name="joint_data/2/bone_index" Value="2" />
+              <x:Prop Name="use_colliders" Value="true" />
+            </SkeletonModification2DJiggle>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "jiggle_data_chain_length",
+                "use_colliders",
+                "collision_mask",
+                "joint_data/0/bone_index",
+                "joint_data/0/bone2d_node",
+                "joint_data/0/override_defaults",
+                "joint_data/0/stiffness",
+                "joint_data/0/mass",
+                "joint_data/0/damping",
+                "joint_data/0/use_gravity",
+                "joint_data/0/gravity",
+                "joint_data/2/bone_index",
+                "joint_data/10/bone_index",
+            ],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // SkeletonModification2DPhysicalBones::_get_property_list lists the joints' node paths in numeric order.
+    [Fact]
+    public void PhysicalBoneJointsRunInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <SkeletonModification2DPhysicalBones {{X}} PhysicalBoneChainLength="11">
+              <x:Prop Name="joint_0_nodepath" Value='NodePath("A")' />
+              <x:Prop Name="joint_10_nodepath" Value='NodePath("C")' />
+              <x:Prop Name="joint_2_nodepath" Value='NodePath("B")' />
+            </SkeletonModification2DPhysicalBones>
+            """
+        );
+
+        Assert.Equal(["physical_bone_chain_length", "joint_0_nodepath", "joint_2_nodepath", "joint_10_nodepath"], Names(resource.ResourceProperties));
+    }
+
+    // SkeletonModificationStack2D::_get_property_list lists the modifications in numeric order.
+    [Fact]
+    public void StackModificationsRunInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <SkeletonModificationStack2D {{X}} ModificationCount="11">
+              <x:Prop Name="modifications/0" Value='Resource("res://m0.tres")' />
+              <x:Prop Name="modifications/10" Value='Resource("res://m10.tres")' />
+              <x:Prop Name="modifications/2" Value='Resource("res://m2.tres")' />
+            </SkeletonModificationStack2D>
+            """
+        );
+
+        Assert.Equal(["modification_count", "modifications/0", "modifications/2", "modifications/10"], Names(resource.ResourceProperties));
+    }
+
     private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
 
     // Parses a resource document and converts it with no issue.

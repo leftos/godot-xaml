@@ -71,6 +71,7 @@ func _run() -> String:
 		_tile_set_patterns,
 		_animation_nodes,
 		_animation_player_library,
+		_skeleton_modification_chains,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -752,6 +753,77 @@ func _animation_player_library() -> String:
 	tree.get_property_list()
 	tree.set("parameters/blend_position", 0.375)
 	return _save_scene("animation_player_library", root)
+
+
+## A Skeleton2D of a 12-bone Bone2D chain whose modification stack holds 12 modifications: a CCDIK,
+## a FABRIK, a Jiggle and a PhysicalBones each with 12 joints, then LookAt and TwoBoneIK ones. Each
+## value is set in its class's _get_property_list order (skeleton_2d.cpp and
+## scene/resources/2d/skeleton/). The stack is never set up outside the tree, so the bone index
+## setters store the index unchecked. PhysicalBones fetch_bones and the editor/ rows are listed
+## only under an editor hint and are never stored by a script run.
+func _skeleton_modification_chains() -> String:
+	var skeleton: Skeleton2D = _root("Skeleton2D")
+	var parent: Node = skeleton
+	for index in 12:
+		var bone: Node = _add(parent, "bone_%d" % index, "Bone2D")
+		bone.set("auto_calculate_length_and_angle", false)
+		bone.set("length", 8.0 + index)
+		bone.set("bone_angle", 5.0 * (index + 1))
+		bone.set("editor_settings/show_bone_gizmo", false)
+		parent = bone
+
+	var ccdik := SkeletonModification2DCCDIK.new()
+	ccdik.set("ccdik_data_chain_length", 12)
+	for joint in 12:
+		var prefix := "joint_data/%d/" % joint
+		ccdik.set(prefix + "bone_index", joint)
+		ccdik.set(prefix + "rotate_from_joint", joint % 2 == 1)
+		if joint % 3 == 0:
+			ccdik.set(prefix + "enable_constraint", true)
+			ccdik.set(prefix + "constraint_angle_min", -5.0 * (joint + 1))
+			ccdik.set(prefix + "constraint_angle_max", 10.0 * (joint + 1))
+			ccdik.set(prefix + "constraint_angle_invert", joint % 2 == 1)
+			ccdik.set(prefix + "constraint_in_localspace", joint % 2 == 0)
+
+	var fabrik := SkeletonModification2DFABRIK.new()
+	fabrik.set("fabrik_data_chain_length", 12)
+	for joint in 12:
+		var prefix := "joint_data/%d/" % joint
+		fabrik.set(prefix + "bone_index", joint)
+		# The first joint has no magnet position (SkeletonModification2DFABRIK::_get_property_list).
+		if joint > 0:
+			fabrik.set(prefix + "magnet_position", Vector2(joint, -0.5 * joint))
+
+	var jiggle := SkeletonModification2DJiggle.new()
+	jiggle.set("jiggle_data_chain_length", 12)
+	jiggle.set("use_colliders", true)
+	jiggle.set("collision_mask", 6)
+	for joint in 12:
+		var prefix := "joint_data/%d/" % joint
+		jiggle.set(prefix + "bone_index", joint)
+		# A joint's stiffness is listed only once it overrides the defaults.
+		jiggle.set(prefix + "override_defaults", true)
+		jiggle.set(prefix + "stiffness", 0.5 * (joint + 1))
+
+	var physical := SkeletonModification2DPhysicalBones.new()
+	physical.set("physical_bone_chain_length", 12)
+	for joint in 12:
+		physical.set("joint_%d_nodepath" % joint, NodePath("Physical%d" % joint))
+
+	var stack := SkeletonModificationStack2D.new()
+	for modification: SkeletonModification2D in [ccdik, fabrik, jiggle, physical]:
+		stack.add_modification(modification)
+	for index in 4:
+		var look_at := SkeletonModification2DLookAt.new()
+		look_at.set("enable_constraint", true)
+		look_at.set("constraint_angle_min", -15.0 * (index + 1))
+		stack.add_modification(look_at)
+		var two_bone := SkeletonModification2DTwoBoneIK.new()
+		two_bone.set("joint_one_bone_idx", index)
+		two_bone.set("joint_two_bone_idx", index + 1)
+		stack.add_modification(two_bone)
+	skeleton.set("modification_stack", stack)
+	return _save_scene("skeleton_modification_chains", skeleton)
 
 
 ## An AnimationNodeAnimation that plays the named animation.

@@ -201,6 +201,39 @@ internal static class DynamicPropertyFamilies
     // scene/3d/limit_angular_velocity_modifier_3d.cpp, LimitAngularVelocityModifier3D::_get_property_list: one chain's keys.
     private static readonly string[] LimitChainKeys = ["root_bone_name", "root_bone", "end_bone_name", "end_bone"];
 
+    // scene/resources/2d/skeleton/skeleton_modification_2d_ccdik.cpp, SkeletonModification2DCCDIK::_get_property_list: one
+    // joint's keys (editor_draw_gizmo only under an editor hint).
+    private static readonly string[] CcdikJointKeys =
+    [
+        "bone_index",
+        "bone2d_node",
+        "rotate_from_joint",
+        "enable_constraint",
+        "constraint_angle_min",
+        "constraint_angle_max",
+        "constraint_angle_invert",
+        "constraint_in_localspace",
+        "editor_draw_gizmo",
+    ];
+
+    // scene/resources/2d/skeleton/skeleton_modification_2d_fabrik.cpp, SkeletonModification2DFABRIK::_get_property_list: one
+    // joint's keys.
+    private static readonly string[] FabrikJointKeys = ["bone_index", "bone2d_node", "magnet_position", "use_target_rotation"];
+
+    // scene/resources/2d/skeleton/skeleton_modification_2d_jiggle.cpp, SkeletonModification2DJiggle::_get_property_list: one
+    // joint's keys.
+    private static readonly string[] JiggleJointKeys =
+    [
+        "bone_index",
+        "bone2d_node",
+        "override_defaults",
+        "stiffness",
+        "mass",
+        "damping",
+        "use_gravity",
+        "gravity",
+    ];
+
     // scene/3d/bone_constraint_3d.cpp, BoneConstraint3D::get_property_list: one setting's constraint keys. Each subclass's
     // _get_property_list calls it for every setting before it lists every setting's own keys.
     private static readonly string[] ConstraintKeys =
@@ -456,14 +489,14 @@ internal static class DynamicPropertyFamilies
         // input_<count>/name, and input_count is an editor-only property the file never holds.
         Row.OnKey("AnimationNodeTransition", @"^input_(?<index>\d+)/(?<key>[^/]*)", TransitionInputKeys),
         // scene/resources/2d/skeleton/skeleton_modification_2d_ccdik.cpp, SkeletonModification2DCCDIK::_get_property_list
-        Row.SizedFirst("SkeletonModification2DCCDIK", @"^joint_data/\d+/", "ccdik_data_chain_length"),
+        Row.SizedFirst("SkeletonModification2DCCDIK", @"^joint_data/(?<index>\d+)/(?<key>.*)", "ccdik_data_chain_length", CcdikJointKeys, []),
         Row.AnyOrder("SkeletonModification2DCCDIK", @"^editor/draw_gizmo$"),
         // scene/resources/2d/skeleton/skeleton_modification_2d_fabrik.cpp, SkeletonModification2DFABRIK::_get_property_list
-        Row.SizedFirst("SkeletonModification2DFABRIK", @"^joint_data/\d+/", "fabrik_data_chain_length"),
+        Row.SizedFirst("SkeletonModification2DFABRIK", @"^joint_data/(?<index>\d+)/(?<key>.*)", "fabrik_data_chain_length", FabrikJointKeys, []),
         // scene/resources/2d/skeleton/skeleton_modification_2d_jiggle.cpp, SkeletonModification2DJiggle::_get_property_list
         Row.AnyOrder("SkeletonModification2DJiggle", @"^use_colliders$"),
         Row.AnyOrder("SkeletonModification2DJiggle", @"^collision_mask$"),
-        Row.SizedFirst("SkeletonModification2DJiggle", @"^joint_data/\d+/", "jiggle_data_chain_length"),
+        Row.SizedFirst("SkeletonModification2DJiggle", @"^joint_data/(?<index>\d+)/(?<key>.*)", "jiggle_data_chain_length", JiggleJointKeys, []),
         // scene/resources/2d/skeleton/skeleton_modification_2d_lookat.cpp, SkeletonModification2DLookAt::_get_property_list
         Row.AnyOrder("SkeletonModification2DLookAt", @"^enable_constraint$"),
         Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_angle_min$"),
@@ -474,7 +507,14 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("SkeletonModification2DLookAt", @"^editor/draw_gizmo$"),
         // scene/resources/2d/skeleton/skeleton_modification_2d_physicalbones.cpp, SkeletonModification2DPhysicalBones::_get_property_list
         Row.AnyOrder("SkeletonModification2DPhysicalBones", @"^fetch_bones$"),
-        Row.SizedFirst("SkeletonModification2DPhysicalBones", @"^joint_\d+_nodepath$", "physical_bone_chain_length"),
+        // Each joint's one key, the joints in numeric order.
+        Row.SizedFirst(
+            "SkeletonModification2DPhysicalBones",
+            @"^joint_(?<index>\d+)_(?<key>nodepath)$",
+            "physical_bone_chain_length",
+            ["nodepath"],
+            []
+        ),
         // scene/resources/2d/skeleton/skeleton_modification_2d_stackholder.cpp, SkeletonModification2DStackHolder::_get_property_list
         Row.AnyOrder("SkeletonModification2DStackHolder", @"^held_modification_stack$"),
         Row.AnyOrder("SkeletonModification2DStackHolder", @"^editor/draw_gizmo$"),
@@ -486,7 +526,8 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^editor/draw_gizmo$"),
         Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^editor/draw_min_max$"),
         // scene/resources/2d/skeleton/skeleton_modification_stack_2d.cpp, SkeletonModificationStack2D::_get_property_list
-        Row.SizedFirst("SkeletonModificationStack2D", @"^modifications/\d+$", "modification_count"),
+        // Each entry is one modification, the entries in numeric order.
+        Row.SizedFirst("SkeletonModificationStack2D", @"^(?<key>modifications)/(?<index>\d+)$", "modification_count", ["modifications"], []),
         // scene/resources/material.cpp, ShaderMaterial::_get_property_list
         Row.AnyOrder("ShaderMaterial", @"^shader_parameter/"),
         // scene/resources/animation.cpp, Animation::_get_property_list
