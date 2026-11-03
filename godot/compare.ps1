@@ -9,7 +9,8 @@ Copies the fixtures (tests/fixtures/scenes/*.tscn and *.tres), their converted g
 (tests/fixtures/converted/*.xscn and *.xres) into godot/cases/, recreated on each run, and the scripts the fixtures name
 (holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the
 fixtures' res:// paths point. Then builds the godot/ project, imports it headless (which registers the addon's loader),
-then imports it again, and runs res://compare/Compare.tscn headless. The scene prints
+then imports it again, and runs res://compare/Compare.tscn headless. The expected pair count is the number of fixtures in
+tests/fixtures/scenes (its .tscn and .tres files), passed to the scene as --expected-pairs=<n>. The scene prints
 COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is left in
 godot/cases/<name>.tscn.dump and <name>.xscn.dump, or <name>.tres.dump and <name>.xres.dump.
 
@@ -35,7 +36,15 @@ $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env
 $project = $PSScriptRoot
 $repo = Split-Path $project -Parent
 $cases = Join-Path $project 'cases'
-$expectedFixtures = 27
+# The expected count is the fixtures themselves: the same .tscn and .tres globs the copy step below copies.
+$expectedFixtures = @(Get-ChildItem -File -Path @(
+        (Join-Path $repo 'tests/fixtures/scenes/*.tscn'),
+        (Join-Path $repo 'tests/fixtures/scenes/*.tres')
+    )).Count
+if ($expectedFixtures -eq 0) {
+    [Console]::Error.WriteLine('compare.ps1: no fixtures in tests/fixtures/scenes')
+    exit 1
+}
 # The scripts the fixtures name by res:// path, copied from the generator's project; .gitignore lists each copy.
 $fixtureScripts = @('holder.gd', 'quoted.gd', 'tagged.gd')
 
@@ -85,7 +94,10 @@ if (-not $reimported) {
 }
 
 [Console]::Out.WriteLine('STEP compare')
-$lines = @(& $godot --headless --path $project --scene 'res://compare/Compare.tscn' --quit-after 600 2>&1 | ForEach-Object { "$_" })
+$lines = @(
+    & $godot --headless --path $project --scene 'res://compare/Compare.tscn' --quit-after 600 `
+        -- "--expected-pairs=$expectedFixtures" 2>&1 | ForEach-Object { "$_" }
+)
 $compareExit = $LASTEXITCODE
 $lines | ForEach-Object { [Console]::Out.WriteLine($_) }
 [Console]::Out.WriteLine("STEP compare exit $compareExit")

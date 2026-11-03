@@ -14,7 +14,9 @@ namespace GodotXaml.Addon.Compare;
 /// Loads each fixture in <c>res://cases/</c> with its converted counterpart and compares a canonical dump of the two: a
 /// scene's packed state and node ids, then the tree it instantiates, or a resource and its stored properties. Prints
 /// <c>COMPARE &lt;name&gt; PASS</c> or <c>COMPARE &lt;name&gt; FAIL &lt;detail&gt;</c> per fixture, then
-/// <c>DONE &lt;passed&gt;/&lt;total&gt;</c>, and quits with exit code 0 only when every fixture passed.
+/// <c>DONE &lt;passed&gt;/&lt;total&gt;</c>, and quits with exit code 0 only when every fixture passed. The expected pair
+/// count is the <c>--expected-pairs=&lt;n&gt;</c> user argument, which <c>godot/compare.ps1</c> passes from the number of
+/// fixture files it copied.
 /// </summary>
 /// <remarks>
 /// The dump normalises exactly two things: a path's <c>.tscn</c>, <c>.xscn</c>, <c>.tres</c> or <c>.xres</c> extension
@@ -25,7 +27,6 @@ namespace GodotXaml.Addon.Compare;
 public partial class Compare : Node
 {
     private const string CasesPath = "res://cases/";
-    private const int ExpectedPairs = 27;
 
     // Each pair kind's source and golden extension, paired as the two sides of one dump.
     private static readonly (PairKind Kind, string Source, string Converted)[] Kinds =
@@ -46,13 +47,20 @@ public partial class Compare : Node
     /// <inheritdoc/>
     public override void _Ready()
     {
+        int expected = ExpectedPairs();
         int passed = 0;
         try
         {
-            Pair[] pairs = PairNames();
-            if (pairs.Length != ExpectedPairs)
+            if (expected == 0)
             {
-                GD.Print($"COMPARE setup FAIL expected {ExpectedPairs} pairs, found {pairs.Length}");
+                GD.Print("COMPARE setup FAIL no --expected-pairs=<n> argument");
+                return;
+            }
+
+            Pair[] pairs = PairNames();
+            if (pairs.Length != expected)
+            {
+                GD.Print($"COMPARE setup FAIL expected {expected} pairs, found {pairs.Length}");
                 return;
             }
 
@@ -63,13 +71,32 @@ public partial class Compare : Node
         }
         finally
         {
-            GD.Print($"DONE {passed}/{ExpectedPairs}");
+            GD.Print($"DONE {passed}/{expected}");
 
             // A Variant the dump left to its finalizer, freed once the engine has shut down, crashes the process at exit.
             GC.Collect();
             GC.WaitForPendingFinalizers();
-            GetTree().Quit(passed == ExpectedPairs ? 0 : 1);
+            GetTree().Quit(passed == expected && expected > 0 ? 0 : 1);
         }
+    }
+
+    // The expected pair count, from the compare script's --expected-pairs=<n> user argument, or 0 when absent or invalid.
+    private static int ExpectedPairs()
+    {
+        const string Prefix = "--expected-pairs=";
+        foreach (string argument in OS.GetCmdlineUserArgs())
+        {
+            if (
+                argument.StartsWith(Prefix, StringComparison.Ordinal)
+                && int.TryParse(argument[Prefix.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out int count)
+                && count > 0
+            )
+            {
+                return count;
+            }
+        }
+
+        return 0;
     }
 
     // The fixtures in res://cases/ that have both a source and a golden, sorted ordinal within each kind. A stem that holds
