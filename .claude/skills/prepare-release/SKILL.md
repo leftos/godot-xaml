@@ -74,6 +74,10 @@ pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/pack.log --slot heavy --time
 
 **Done when** it exits 0 and lists `GodotXaml.Core.<v>.nupkg`, `GodotXaml.Cli.<v>.nupkg` and `godot-xaml-addon-<v>.zip`, all under `.tmp/release/<v>/`.
 
+To try an install before a release, pack with `-Local` and point the trial project at that folder, naming the exact version the pack printed (`<PackageReference Include="GodotXaml.Core" Version="<v>-local.<UTC stamp>" />`, or `dotnet tool install --prerelease --version <v>-local.<UTC stamp>` for the CLI): a reference to `<v>` restores the published package instead.
+
+A local version never takes a published version's place in the shared NuGet packages folder, which keeps the first package restored under a version and never fetches it again. Delete the `*-local.*` folders under `godotxaml.core` and `godotxaml.cli` in that packages folder once the trial is done. `tools/pack-release.ps1` refuses, without `-Local`, a version already on nuget.org.
+
 ## Phase 7: Push and publish
 
 1. Push the branch, then the tag: `git push origin main`, `git push origin v<v>`.
