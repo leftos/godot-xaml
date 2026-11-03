@@ -10,6 +10,7 @@
 - A signal-named attribute on an instance that fails as a property now suggests `<x:Connect>`.
 - A property Godot registers with a type its getter does not return (`Oversampling` on `AudioEffectPitchShift`) is written as an attribute of its default's kind instead of `x:Prop`.
 - A `.tscn` property name holding a control character is reported as error GXC0119 instead of crashing the conversion.
+- A scene holding another scene's built-in sub-resource, through Make Local or a drag in the inspector, keeps its own `x:Resources` keys and comments on save.
 - Converting back warns (GXC0120) when `x:Uids` gives one path two different uids, as `convert` can make by rewriting one file's path onto another's.
 - The core's `.tscn` reader rejects and reads a bare resource header, cross-typed name and path fields, and a first-node placeholder as Godot does.
 - `convert` mints the same new ids for a project in any checkout, seeding them from each file's `res://` path.

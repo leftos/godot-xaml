@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Godot;
 using GodotXaml.Addon;
+using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
@@ -51,6 +52,35 @@ public partial class Checks : Node
         + "  <Sprite2D Name=\"One\" Material=\"{HandKey}\" />\n"
         + "  <Sprite2D Name=\"Two\" Material=\"{HandKey}\" />\n"
         + "</Node2D>\n";
+
+    // C54-C56's scene A: a red box both its panels use, so it is an x:Resources entry.
+    private const string ForeignAScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"A\">\n"
+        + "  <x:Resources>\n"
+        + "    <StyleBoxFlat x:Key=\"StyleBoxFlat1\" BgColor=\"1, 0, 0, 1\" />\n"
+        + "  </x:Resources>\n"
+        + "  <Panel Name=\"P1\" ThemeOverrideStyles.panel=\"{StyleBoxFlat1}\" />\n"
+        + "  <Panel Name=\"P2\" ThemeOverrideStyles.panel=\"{StyleBoxFlat1}\" />\n"
+        + "</Control>\n";
+
+    private const string OwnBoxComment = "<!-- B's own blue box -->";
+
+    // C54-C56's scene B: its own blue box under the same key, used by the two panels below F1 and F2, which get A's box.
+    private const string ForeignBScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"B\">\n"
+        + "  <x:Resources>\n"
+        + "    "
+        + OwnBoxComment
+        + "\n"
+        + "    <StyleBoxFlat x:Key=\"StyleBoxFlat1\" BgColor=\"0, 0, 1, 1\" />\n"
+        + "  </x:Resources>\n"
+        + "  <Panel Name=\"F1\" />\n"
+        + "  <Panel Name=\"F2\" />\n"
+        + "  <Panel Name=\"Own1\" ThemeOverrideStyles.panel=\"{StyleBoxFlat1}\" />\n"
+        + "  <Panel Name=\"Own2\" ThemeOverrideStyles.panel=\"{StyleBoxFlat1}\" />\n"
+        + "</Control>\n";
+
+    private const string OwnKeyUse = "ThemeOverrideStyles.panel=\"{StyleBoxFlat1}\"";
 
     private static readonly string LoaderTempFolder = Path.Combine(Path.GetTempPath(), "godot-xaml");
 
@@ -118,6 +148,9 @@ public partial class Checks : Node
             ("C50", HeadlessSaveKeepsAnUncachedUid),
             ("C51", RemappedFileResolvesAgainstItsOriginalPath),
             ("C52", EditingAKeyedResourceKeepsItsKey),
+            ("C54", ForeignSubResourceDoesNotTakeAKey),
+            ("C55", ForeignSubResourceDoesNotTakeAnEditedKey),
+            ("C56", OneForeignUserKeepsTheOwnComment),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -734,6 +767,204 @@ public partial class Checks : Node
         int keys = Occurrences(saved, "x:Key=\"HandKey\"");
         int uses = Occurrences(saved, "Material=\"{HandKey}\"");
         return keys == 1 && uses == 2 ? "" : $"the saved text has x:Key=\"HandKey\" {keys} times and Material=\"{{HandKey}}\" {uses} times:\n{saved}";
+    }
+
+    // Make Local gives B's F1 and F2 A's box, which loaded with the same scene-unique id as B's own box; Godot's text saver
+    // keeps the id on the first of the two it meets, A's. Only B's own box pairs with B's entry, so it keeps the key and
+    // the comment, and A's box takes the next key.
+    private static string ForeignSubResourceDoesNotTakeAKey() =>
+        ForeignBoxFailure(
+            "foreign-two",
+            ["F1", "F2"],
+            null,
+            (text, _) =>
+                Failures(
+                    OwnBoxFailure(text, "0, 0, 1, 1"),
+                    text.Contains("<StyleBoxFlat x:Key=\"StyleBoxFlat2\" BgColor=\"1, 0, 0, 1\" />", StringComparison.Ordinal)
+                        ? ""
+                        : "A's red box is not StyleBoxFlat2"
+                )
+        );
+
+    // As C54 with B's own box edited before the save, so its value no longer matches its entry and only the id pairs it.
+    private static string ForeignSubResourceDoesNotTakeAnEditedKey() =>
+        ForeignBoxFailure("foreign-edited", ["F1", "F2"], new Color(0, 1, 0), (text, _) => OwnBoxFailure(text, "0, 1, 0, 1"));
+
+    // A's box on F1 alone goes inline, and an inline resource with an entry's id drops the entry's key; A's box is not B's
+    // own, so B's entry keeps its key and its comment, and nothing is dropped.
+    private static string OneForeignUserKeepsTheOwnComment() =>
+        ForeignBoxFailure(
+            "foreign-one",
+            ["F1"],
+            null,
+            (text, warnings) =>
+                Failures(
+                    OwnBoxFailure(text, "0, 0, 1, 1"),
+                    warnings.FirstOrDefault(w => w.Contains(ConversionCodes.CommentDropped, StringComparison.Ordinal)) is { } dropped
+                        ? $"the save warned: {dropped}"
+                        : ""
+                )
+        );
+
+    private static string Failures(params string[] failures) => string.Join("; ", failures.Where(f => f.Length > 0));
+
+    // B's own box keeps its key with its comment directly above it, and its two panels use it.
+    private static string OwnBoxFailure(string text, string color)
+    {
+        string entry = $"{OwnBoxComment}\n    <StyleBoxFlat x:Key=\"StyleBoxFlat1\" BgColor=\"{color}\" />";
+        int uses = Occurrences(text, OwnKeyUse);
+        string failure = Failures(
+            text.Contains(entry, StringComparison.Ordinal) ? "" : $"the text has no StyleBoxFlat1 of {color} under B's comment",
+            uses == 2 ? "" : $"{OwnKeyUse} appears {uses} times, not twice"
+        );
+        return failure.Length == 0 ? "" : $"{failure}:\n{text}";
+    }
+
+    // Writes A and B, loads both into the cache, gives the named nodes of B A's box (and B's own box a new colour), saves B
+    // and hands its text and the warnings the save logged to the verdict.
+    private static string ForeignBoxFailure(string name, string[] foreignUsers, Color? ownColor, Func<string, IReadOnlyList<string>, string> verdict)
+    {
+        string folder = OutFolder + name + "/";
+        string aPath = folder + "a.xscn";
+        string bPath = folder + "b.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(folder));
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(aPath), ForeignAScene);
+            File.WriteAllText(ProjectSettings.GlobalizePath(bPath), ForeignBScene);
+            if (ResourceLoader.Load(aPath) is not PackedScene a || ResourceLoader.Load(bPath) is not PackedScene b)
+            {
+                return $"loading {aPath} or {bPath} did not return a PackedScene";
+            }
+
+            Node aRoot = a.Instantiate();
+            Node bRoot = b.Instantiate();
+            var log = new WarningLog();
+            string failure;
+            try
+            {
+                failure = GiveForeignBox(aRoot, bRoot, foreignUsers, ownColor);
+                if (failure.Length == 0)
+                {
+                    OS.AddLogger(log);
+                    try
+                    {
+                        failure = PackAndSave(bRoot, bPath, "saving B");
+                    }
+                    finally
+                    {
+                        OS.RemoveLogger(log);
+                    }
+                }
+            }
+            finally
+            {
+                aRoot.Free();
+                bRoot.Free();
+            }
+
+            GC.KeepAlive(a);
+            GC.KeepAlive(b);
+            return failure.Length > 0
+                ? failure
+                : verdict(File.ReadAllText(ProjectSettings.GlobalizePath(bPath)).ReplaceLineEndings("\n"), log.Messages);
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    private static string GiveForeignBox(Node aRoot, Node bRoot, string[] foreignUsers, Color? ownColor)
+    {
+        if (aRoot.GetNodeOrNull("P1")?.Get("theme_override_styles/panel").AsGodotObject() is not StyleBoxFlat foreign)
+        {
+            return "A's P1 has no StyleBoxFlat";
+        }
+
+        if (bRoot.GetNodeOrNull("Own1")?.Get("theme_override_styles/panel").AsGodotObject() is not StyleBoxFlat own)
+        {
+            return "B's Own1 has no StyleBoxFlat";
+        }
+
+        if (foreign.ResourceSceneUniqueId != own.ResourceSceneUniqueId)
+        {
+            return $"setup: A's box loaded as {foreign.ResourceSceneUniqueId} and B's as {own.ResourceSceneUniqueId}; the check needs one id";
+        }
+
+        foreach (string user in foreignUsers)
+        {
+            bRoot.GetNode<Control>(user).AddThemeStyleboxOverride("panel", foreign);
+        }
+
+        if (ownColor is { } color)
+        {
+            own.BgColor = color;
+        }
+
+        return ForeignMetFirstFailure(bRoot, foreign, own);
+    }
+
+    // The checks hold only when Godot's text saver meets A's box first: it keeps a repeated id on the first of two resources
+    // it meets and re-mints the other's on the live resource. A save to user://, where it takes over no path, shows which
+    // it met first; both ids are put back after it, so B's save meets the same clash.
+    private static string ForeignMetFirstFailure(Node bRoot, Resource foreign, Resource own)
+    {
+        string id = own.ResourceSceneUniqueId;
+        string orderPath = SavesFolder + "foreign-order.tscn";
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        var scene = new PackedScene();
+        Error packed = scene.Pack(bRoot);
+        Error saved = packed == Error.Ok ? ResourceSaver.Save(scene, orderPath) : packed;
+        string foreignAfter = foreign.ResourceSceneUniqueId;
+        string ownAfter = own.ResourceSceneUniqueId;
+        foreign.ResourceSceneUniqueId = id;
+        own.ResourceSceneUniqueId = id;
+        GC.KeepAlive(scene);
+        File.Delete(ProjectSettings.GlobalizePath(orderPath));
+        if (saved != Error.Ok)
+        {
+            return $"setup: the save that finds the saver's order returned {saved}";
+        }
+
+        return foreignAfter == id && ownAfter != id
+            ? ""
+            : $"setup: Godot's text saver did not meet A's box first (A's box became {foreignAfter}, B's {ownAfter}, from {id})";
+    }
+
+    // The errors and warnings Godot logs while it is added, which may come from any thread.
+    private sealed partial class WarningLog : Logger
+    {
+        private readonly List<string> messages = [];
+
+        public IReadOnlyList<string> Messages
+        {
+            get
+            {
+                lock (messages)
+                {
+                    return [.. messages];
+                }
+            }
+        }
+
+        public override void _LogError(
+            string function,
+            string file,
+            int line,
+            string code,
+            string rationale,
+            bool editorNotify,
+            int errorType,
+            Godot.Collections.Array<ScriptBacktrace> scriptBacktraces
+        )
+        {
+            lock (messages)
+            {
+                messages.Add($"{code} {rationale}");
+            }
+        }
     }
 
     private static string RecognizesEveryResourceButAScript()

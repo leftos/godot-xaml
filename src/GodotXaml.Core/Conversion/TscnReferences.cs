@@ -57,13 +57,18 @@ internal sealed class TscnReferences
     /// The previous document's keyed entries by the id its conversion back gives each, which a loaded sub_resource keeps
     /// through a save; a sub_resource whose id names one of them of the same type takes its key.
     /// </param>
+    /// <param name="owned">
+    /// The save's own sub_resources, each text id to the id it loaded with, so only those pair by id; null pairs every
+    /// sub_resource by its text id (<see cref="ConversionOptions.OwnedSubResourceIds"/>).
+    /// </param>
     /// <returns>The references.</returns>
     public static TscnReferences Analyze(
         TscnDocument document,
         List<ConversionIssue> issues,
         Func<string?, string, bool> canInline,
         XscnDocument? previous,
-        IReadOnlyDictionary<string, XscnResource> previousById
+        IReadOnlyDictionary<string, XscnResource> previousById,
+        IReadOnlyDictionary<string, string>? owned
     )
     {
         var references = new TscnReferences(issues, canInline);
@@ -71,7 +76,7 @@ internal sealed class TscnReferences
         references.Count(document);
         references.ReportUnused();
         references.FindCycles();
-        references.ChooseKeys(previous, previousById);
+        references.ChooseKeys(previous, previousById, owned);
         return references;
     }
 
@@ -267,14 +272,18 @@ internal sealed class TscnReferences
     // properties, never one whose resource went inline, which dropped it. Then the owner's ruling: the resource_name when
     // it is an XML name no earlier entry took, else the type and a counter per type, skipping keys already taken; names
     // are given out first so a counter never takes a later entry's name.
-    private void ChooseKeys(XscnDocument? previous, IReadOnlyDictionary<string, XscnResource> previousById)
+    private void ChooseKeys(
+        XscnDocument? previous,
+        IReadOnlyDictionary<string, XscnResource> previousById,
+        IReadOnlyDictionary<string, string>? owned
+    )
     {
         List<TscnSubResource> keyed = [.. KeyedSubResources];
         HashSet<string> taken = new(StringComparer.Ordinal);
-        PairByPreviousId(keyed, previousById, taken);
+        PairByPreviousId(keyed, previousById, owned, taken);
         HashSet<string> dropped =
         [
-            .. subResources.Where(sub => IsInline(sub.Id)).Select(sub => PreviousKeys.KeyById(sub, previousById)).OfType<string>(),
+            .. subResources.Where(sub => IsInline(sub.Id)).Select(sub => PreviousKeys.KeyById(sub, previousById, owned)).OfType<string>(),
         ];
 
         foreach (TscnSubResource sub in keyed.Where(sub => !keys.ContainsKey(sub.Id)))
@@ -298,12 +307,18 @@ internal sealed class TscnReferences
     }
 
     // The key of the entry whose id a loaded sub_resource keeps through a save, so an edited entry keeps it and a
-    // value-equal duplicate gets a new one.
-    private void PairByPreviousId(List<TscnSubResource> keyed, IReadOnlyDictionary<string, XscnResource> previousById, HashSet<string> taken)
+    // value-equal duplicate gets a new one. Only the save's own sub_resources pair, when the host says which they are: one
+    // from another file can carry an entry's id.
+    private void PairByPreviousId(
+        List<TscnSubResource> keyed,
+        IReadOnlyDictionary<string, XscnResource> previousById,
+        IReadOnlyDictionary<string, string>? owned,
+        HashSet<string> taken
+    )
     {
         foreach (TscnSubResource sub in keyed)
         {
-            if (PreviousKeys.KeyById(sub, previousById) is { } key && taken.Add(key))
+            if (PreviousKeys.KeyById(sub, previousById, owned) is { } key && taken.Add(key))
             {
                 keptPrevious.Add(key);
                 keys[sub.Id] = key;

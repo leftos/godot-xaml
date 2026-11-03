@@ -39,6 +39,15 @@ public sealed record ConversionOptions
     public XscnDocument? Previous { get; init; }
 
     /// <summary>
+    /// The sub_resources the file being saved owns, for a forward conversion with <see cref="Previous"/>: each one's id in
+    /// the <c>.tscn</c> text to the id it had when the file being replaced loaded it. Only these pair with an entry of
+    /// <see cref="Previous"/> by id: a sub-resource of another file can carry an entry's id, and Godot's text saver then
+    /// re-mints the id of whichever of the two it meets second. The save route builds it from the live resources' paths
+    /// (<c>&lt;file&gt;::&lt;id&gt;</c>); null pairs every sub_resource by its text id, as the CLI and a conversion of a file do.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? OwnedSubResourceIds { get; init; }
+
+    /// <summary>
     /// The host's reader of the scenes the document instances, which gives the way back the class of an instanced node,
     /// an inherited root or an <c>x:Override</c>, so their properties come back in Godot's order; with this or
     /// <see cref="SourceKey"/> null, those sections keep source order.

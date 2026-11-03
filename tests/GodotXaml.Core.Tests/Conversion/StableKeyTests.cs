@@ -270,6 +270,82 @@ public sealed class StableKeyTests
         AssertKeys(forward, "Box");
     }
 
+    // Another file's sub-resource that loaded with the entry's id comes first in the text and keeps the id; the
+    // save's own resource was re-minted, and the map takes it back to the entry's id.
+    [Fact]
+    public void AForeignSubResourceWithTheEntrysIdTakesNoKey()
+    {
+        XscnDocument previous = Parse(CommentedBoxScene);
+        string id = Assert.Single(SavedDocument(previous).SubResources).Id;
+
+        ConversionResult<XscnDocument> forward = Forward(ForeignFirst(id), previous, new Dictionary<string, string> { ["own"] = id });
+
+        AssertKeys(forward, "StyleBoxFlat1", "Box");
+        Assert.Contains(CommentAboveBox, Written(forward), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnOwnedSubResourceRemintedInTheTextKeepsItsKey()
+    {
+        XscnDocument previous = Parse(CommentedBoxScene);
+        string id = Assert.Single(SavedDocument(previous).SubResources).Id;
+        string text = Scene(Section("StyleBoxFlat", "own", "bg_color = Color(0, 0, 1, 1)"), UsedTwice("own"));
+
+        ConversionResult<XscnDocument> forward = Forward(text, previous, new Dictionary<string, string> { ["own"] = id });
+
+        AssertKeys(forward, "Box");
+        Assert.Contains(
+            "<!-- about the box -->\n    <StyleBoxFlat x:Key=\"Box\" BgColor=\"0, 0, 1, 1\" />",
+            Written(forward),
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void NoMapPairsByIdAsBefore()
+    {
+        XscnDocument previous = Parse(CommentedBoxScene);
+        string id = Assert.Single(SavedDocument(previous).SubResources).Id;
+
+        ConversionResult<XscnDocument> forward = Forward(ForeignFirst(id), previous, owned: null);
+
+        AssertKeys(forward, "Box", "StyleBoxFlat1");
+    }
+
+    // Another file's sub_resource used once goes inline under the entry's id; not the save's own, it drops no key, so the
+    // save's own resource, new and equal to the entry, still takes the key and the comment by value.
+    [Fact]
+    public void AForeignInlineSubResourceWithTheEntrysIdDropsNoKey()
+    {
+        XscnDocument previous = Parse(CommentedBoxScene);
+        string id = Assert.Single(SavedDocument(previous).SubResources).Id;
+        string text = Scene(
+            Section("StyleBoxFlat", id, "bg_color = Color(0, 0, 1, 1)"),
+            Section("StyleBoxFlat", "own", "bg_color = Color(1, 0, 0, 1)"),
+            RootNode[0],
+            Panel(0, "A", id),
+            Panel(1, "A", "own"),
+            Panel(1, "B", "own")
+        );
+
+        ConversionResult<XscnDocument> forward = Forward(text, previous, new Dictionary<string, string>());
+
+        AssertKeys(forward, "Box");
+        Assert.Contains(CommentAboveBox, Written(forward), StringComparison.Ordinal);
+    }
+
+    private const string CommentAboveBox = "<!-- about the box -->\n    <StyleBoxFlat x:Key=\"Box\" BgColor=\"1, 0, 0, 1\" />";
+
+    // A blue sub_resource of another file under the entry's id, then the save's own red one under another id, each used twice.
+    private static string ForeignFirst(string id) =>
+        Scene(
+            Section("StyleBoxFlat", id, "bg_color = Color(0, 0, 1, 1)"),
+            Section("StyleBoxFlat", "own", "bg_color = Color(1, 0, 0, 1)"),
+            UsedTwice(id, "own")
+        );
+
+    private static string Written(ConversionResult<XscnDocument> forward) => XscnWriter.Write(forward.Document, Metadata).ReplaceLineEndings("\n");
+
     private const string X = "xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\"";
 
     // The previous document of a save that edits its keyed entry: used twice, the entry is in x:Resources, not inline.
@@ -337,8 +413,10 @@ public sealed class StableKeyTests
         return converted.Document with { Resources = [.. converted.Document.Resources.Select((entry, index) => entry with { Key = keys[index] })] };
     }
 
-    private static ConversionResult<XscnDocument> Forward(string text, XscnDocument? previous) =>
-        TscnToXscn.Convert(TscnReader.Read(text), Metadata, Options with { Previous = previous });
+    private static ConversionResult<XscnDocument> Forward(string text, XscnDocument? previous) => Forward(text, previous, owned: null);
+
+    private static ConversionResult<XscnDocument> Forward(string text, XscnDocument? previous, IReadOnlyDictionary<string, string>? owned) =>
+        TscnToXscn.Convert(TscnReader.Read(text), Metadata, Options with { Previous = previous, OwnedSubResourceIds = owned });
 
     private static void AssertKeys(ConversionResult<XscnDocument> forward, params string[] keys)
     {

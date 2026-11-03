@@ -148,6 +148,8 @@ A save goes through `.tscn` text, which holds no comments, so they are carried o
 
 A save keeps an `x:Resources` key: the saver pairs a sub_resource with the previous document's entry by id first (the id the conversion back gives the entry, the same conversion the loader ran, and the type must agree), so an edited resource keeps its key and every reference, and its comments carry. A resource with no id hit falls back to the same `resource_name` or equal properties.
 
+Only a sub-resource the saved file owns pairs by id, because Godot's text saver re-mints the second of two repeated ids and a sub-resource from another file can carry the same id.
+
 When an id pairs, the original keeps the key and a value-equal duplicate takes `Type1`; a resource whose type changed under the same id gets a new key; a keyed entry used once goes inline and drops its key, which no duplicate then takes.
 
 The first save of a hand-written file writes it in this canonical form, with no attempt to keep the file's own spelling: an instance written `x:Instance` becomes its scene's namespace tag, the `x:Uids` table and the nodes' `x:UniqueId` are added, and a relative reference is written as its `res://` path, since loading resolves it before Godot sees the scene. Comments still carry.

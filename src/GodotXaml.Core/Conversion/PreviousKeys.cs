@@ -73,14 +73,28 @@ internal static class PreviousKeys
         return entries;
     }
 
-    /// <summary>The key of the previous entry a sub_resource pairs with by id: its id names an entry of the same type, else null.</summary>
+    /// <summary>
+    /// The key of the previous entry a sub_resource pairs with by id: the id it had when the file being replaced loaded it
+    /// names an entry of the same type, else null.
+    /// </summary>
     /// <param name="sub">The sub_resource that needs a key.</param>
     /// <param name="entries">The previous document's entries by id.</param>
-    /// <returns>The entry's key, or null when no entry has the id or the types differ.</returns>
-    public static string? KeyById(TscnSubResource sub, IReadOnlyDictionary<string, XscnResource> entries) =>
-        entries.TryGetValue(sub.Id, out XscnResource? entry) && TypeName(entry) is { } type && string.Equals(type, sub.Type, StringComparison.Ordinal)
+    /// <param name="owned">
+    /// The save's own sub_resources, each text id to the id it loaded with (<see cref="ConversionOptions.OwnedSubResourceIds"/>);
+    /// a sub_resource not in it pairs by no id. Null takes every sub_resource's text id as the id it loaded with.
+    /// </param>
+    /// <returns>The entry's key, or null when the sub_resource is not the save's own, no entry has the id or the types differ.</returns>
+    public static string? KeyById(TscnSubResource sub, IReadOnlyDictionary<string, XscnResource> entries, IReadOnlyDictionary<string, string>? owned)
+    {
+        string? loadedId = owned is null ? sub.Id : owned.GetValueOrDefault(sub.Id);
+        return
+            loadedId is not null
+            && entries.TryGetValue(loadedId, out XscnResource? entry)
+            && TypeName(entry) is { } type
+            && string.Equals(type, sub.Type, StringComparison.Ordinal)
             ? entry.Key
             : null;
+    }
 
     private static bool Matches(TscnSubResource sub, XscnResource entry, Func<string, string?> extPath) =>
         TypeName(entry) is { } type

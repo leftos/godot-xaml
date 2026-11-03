@@ -61,7 +61,8 @@ public static partial class TscnToXscn
                 Issues,
                 (cls, name) => names.AttributeName(cls is null ? null : metadata.FindClass(cls), name) is not null,
                 options.Previous,
-                previousById
+                previousById,
+                options.OwnedSubResourceIds
             );
         }
 

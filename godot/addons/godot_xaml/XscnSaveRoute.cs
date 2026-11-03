@@ -55,6 +55,7 @@ internal static class XscnSaveRoute
             Seed = XscnLoading.Seed,
             ScriptClassOf = GodotProjectLookups.ScriptClassOf,
             Previous = previous,
+            OwnedSubResourceIds = OwnedSubResourceIds(resource, path),
         };
         TscnDocument withUids = WithProjectUids(tscn, path, previous);
         ConversionResult<XscnDocument> converted = TscnToXscn.Convert(withUids, XscnMetadata.Value, options);
@@ -111,6 +112,31 @@ internal static class XscnSaveRoute
 
         long uid = ResourceLoader.GetResourceUid(path);
         return uid == ResourceUid.InvalidId ? kept.GetValueOrDefault(path) : ResourceUid.IdToText(uid);
+    }
+
+    // The sub-resources the saved file owns, each id the text was written with to the id the file being replaced loaded it
+    // with. Make Local and inspector drag-and-drop give a scene another file's built-in sub-resources, which can carry the
+    // same id as one of its own; Godot's text saver then keeps the id on the first of the two it meets and re-mints the
+    // other's on the live resource (resource_format_text.cpp, ResourceFormatSaverTextInstance::save), so the live id is the
+    // text's and the path still names the id it loaded with. ResourceSaver hands the saver the path unlocalized
+    // (resource_saver.cpp, ResourceSaver::save). Read before TakeOverSubResourcePaths renames them.
+    private static Dictionary<string, string> OwnedSubResourceIds(Resource saved, string path)
+    {
+        string prefix = ProjectSettings.LocalizePath(path) + "::";
+        Dictionary<string, string> owned = new(StringComparer.Ordinal);
+        XscnLoadRoute.WalkOwnResources(
+            saved,
+            IsBuiltIn,
+            resource =>
+            {
+                // The root's path is the file's or empty, never "<file>::<id>", so the prefix alone skips it.
+                if (resource.ResourcePath.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    owned[resource.ResourceSceneUniqueId] = resource.ResourcePath[prefix.Length..];
+                }
+            }
+        );
+        return owned;
     }
 
     private static bool TakesOverPaths(string path, uint flags) =>
