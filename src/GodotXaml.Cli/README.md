@@ -91,17 +91,18 @@ The exit code is 0 when every file converted, 1 when one had an error or was ref
 
 The walk skips `<root>/addons` (the root's own only; there is no flag to include it), `.godot/` and every other folder whose name starts with `.`, every folder holding a `.gdignore`, a folder with its own `project.godot`, `bin` and `obj` beside a `.csproj`, and folder links and junctions. The script walk that edits files skips the same folders. The warning scan that follows still reads scripts and scenes under addons/ and in linked folders, so it can warn about a file the run never edits.
 
-A forward run leaves as text the files Godot loads before any addon exists, since it has no loader for `.xscn` or `.xres` yet: the files named by the settings `gui/theme/custom`, `gui/theme/custom_font`, `audio/buses/default_bus_layout` (its default `res://default_bus_layout.tres` unless an untagged key sets it, when that file exists), `display/mouse_cursor/custom_image`, `rendering/environment/defaults/default_environment` and `internationalization/locale/translations`, and every `.tres` or `.tscn` those reach through their `ext_resource` entries, by uid first.
+A forward run leaves as text the files Godot loads before any addon exists, since it has no loader for `.xscn` or `.xres` yet: the files named by the settings `gui/theme/custom`, `gui/theme/custom_font`, `audio/buses/default_bus_layout` (its default `res://default_bus_layout.tres` unless an untagged key sets it, when that file exists), `display/mouse_cursor/custom_image`, `rendering/environment/defaults/default_environment` and `internationalization/locale/translations`, and every `.tres` or `.tscn` those reach through their `ext_resource` entries, by uid first. A `.gd` or `.cs` script that a left file attaches is read too: any string literal holding a `res://` or `uid://` path to an existing source is a reference, followed through scripts transitively (a cycle is named once). `.cs` is followed as a conservative choice: a C# load runs after the addon's loaders exist, but a wrongly left file only stays text, while a wrongly converted one breaks the game.
 
 A `uid://` value is resolved from the sources' headers, and a feature-tagged key (`gui/theme/custom.mobile`) counts. A `uid://` that names no file leaves nothing and prints nothing. A named file outside the run's sources, such as one under `addons/`, is followed but not named. `override.cfg` is not read. Each left file is one line, not counted in the summary:
 
 ```text
 {path}: left as text: Godot loads it before any addon (gui/theme/custom)
 {path}: left as text: Godot loads it before any addon (through res://ui/theme.tres)
-{path}: its references were not followed: {reason}
+{path}: left as text: Godot loads it before any addon (through res://s.gd)
+{script}: its references were not followed: {reason}
 ```
 
-The last form follows a file that cannot be read or parsed: what it references may still convert.
+The last form names a file or script (by its full path) that cannot be read or parsed: what it references may still convert.
 
 A left file is not read, converted, renamed, backed up or removed, and no reference to it is rewritten. A project whose only files are left ends at `{root}: no .tscn or .tres files to convert`. `--back` leaves nothing.
 

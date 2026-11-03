@@ -254,7 +254,7 @@ It is all or nothing. The outputs are written to a hidden staging folder first. 
 
 ## A project conversion leaves the files Godot loads before any addon as text
 
-`convert --project` leaves as text the files named by `gui/theme/custom`, `gui/theme/custom_font`, `audio/buses/default_bus_layout` (its default path `res://default_bus_layout.tres` unless an untagged key sets it, when that file exists), `display/mouse_cursor/custom_image`, `rendering/environment/defaults/default_environment` and `internationalization/locale/translations`, plus every `.tres`/`.tscn` those reach through ext_resources. Everything else converts.
+`convert --project` leaves as text the files named by `gui/theme/custom`, `gui/theme/custom_font`, `audio/buses/default_bus_layout` (its default path `res://default_bus_layout.tres` unless an untagged key sets it, when that file exists), `display/mouse_cursor/custom_image`, `rendering/environment/defaults/default_environment` and `internationalization/locale/translations`, plus every `.tres`/`.tscn` those reach through ext_resources, and every file a left file's `.gd` or `.cs` script names by a `res://` or `uid://` string literal, transitively. `.cs` is followed on purpose though a C# load runs after the addon's loaders exist: a wrongly left file only stays text, while a wrongly converted one breaks the game. Everything else converts.
 
 A `uid://` value is resolved from the sources' headers, and a feature-tagged key counts. A `uid://` that names no file leaves nothing and prints nothing. The CLI does not read `override.cfg`. Each left file is named on an uncounted line, and the run neither converts, renames, backs up, removes nor rewrites references to it.
 

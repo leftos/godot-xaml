@@ -358,6 +358,123 @@ public sealed partial class CliProgramTests
         Assert.Single(run.Lines, $"{style}: left as text: Godot loads it before any addon (through res://t.tres)");
     }
 
+    // A script compiles when the file that attaches it loads, so a file it preloads has to load then too, before the
+    // addon's loaders exist: it stays as text, and the script itself is not rewritten.
+    [Fact]
+    public void ProjectLeavesWhatAScriptOfALeftFilePreloads()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write("t.tres", AttachesScript("res://s.gd"));
+        string script = Write("s.gd", "extends Resource\nconst S = preload(\"res://s.tres\")\n");
+        byte[] scriptBefore = File.ReadAllBytes(script);
+        string style = Write("s.tres", "[gd_resource type=\"StyleBoxFlat\" format=3]\n\n[resource]\nbg_color = Color(1, 0, 0, 1)\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.True(File.Exists(style));
+        Assert.False(File.Exists(Located("t.xres")));
+        Assert.False(File.Exists(Located("s.xres")));
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+        Assert.Contains($"{style}: left as text: Godot loads it before any addon (through res://s.gd)", run.Lines);
+        Assert.Equal(scriptBefore, File.ReadAllBytes(script));
+        Assert.DoesNotContain(run.Lines, line => line.Contains("GXP0002", StringComparison.Ordinal));
+    }
+
+    // A preloaded script compiles at once, so a file it in turn preloads loads then too: scripts are followed transitively.
+    [Fact]
+    public void ProjectFollowsAScriptThatPreloadsAScript()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        Write("t.tres", AttachesScript("res://s.gd"));
+        Write("s.gd", "extends Resource\nconst U = preload(\"res://u.gd\")\n");
+        Write("u.gd", "extends Resource\nconst V = preload(\"res://v.tres\")\n");
+        string resource = Write("v.tres", "[gd_resource type=\"StyleBoxFlat\" format=3]\n\n[resource]\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(resource));
+        Assert.False(File.Exists(Located("v.xres")));
+        Assert.Contains($"{resource}: left as text: Godot loads it before any addon (through res://u.gd)", run.Lines);
+    }
+
+    // Only a literal naming an existing file is followed: a missing file and a string that is no path leave nothing.
+    [Fact]
+    public void ProjectDoesNotFollowAScriptLiteralToAFileThatIsNotASource()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write("t.tres", AttachesScript("res://s.gd"));
+        Write("s.gd", "extends Resource\nconst M = preload(\"res://missing.tres\")\nvar label = \"not a path\"\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Single(run.Lines, line => line.Contains("left as text", StringComparison.Ordinal));
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("its references were not followed", StringComparison.Ordinal));
+        Assert.True(File.Exists(Located("main.xscn")));
+    }
+
+    // An addon's script is followed like any other, though the run edits nothing under addons/.
+    [Fact]
+    public void ProjectFollowsAScriptUnderAddons()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        Write("t.tres", AttachesScript("res://addons/kit/s.gd"));
+        string script = Write("addons/kit/s.gd", "extends Resource\nconst S = preload(\"res://ui/s.tres\")\n");
+        byte[] scriptBefore = File.ReadAllBytes(script);
+        string style = Write("ui/s.tres", "[gd_resource type=\"StyleBoxFlat\" format=3]\n\n[resource]\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains($"{style}: left as text: Godot loads it before any addon (through res://addons/kit/s.gd)", run.Lines);
+        Assert.False(File.Exists(Located("ui/s.xres")));
+        Assert.Equal(scriptBefore, File.ReadAllBytes(script));
+    }
+
+    // A script that cannot be read says so on a line of its own, and the run goes on with the files it has.
+    [Fact]
+    public void ProjectNamesAnUnreadableScript()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write("t.tres", AttachesScript("res://s.gd"));
+        string script = WriteBytes("s.gd", [0xFF, 0xFE]);
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
+        Assert.Contains(run.Lines, line => line.StartsWith($"{script}: its references were not followed: ", StringComparison.Ordinal));
+        Assert.True(File.Exists(Located("main.xscn")));
+    }
+
+    // A script that preloads the file attaching it closes a cycle the walk has already been through: each file is named
+    // once.
+    [Fact]
+    public void ProjectFollowsACycleOnce()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");
+        string theme = Write("t.tres", AttachesScript("res://s.gd"));
+        Write("s.gd", "extends Resource\nconst T = preload(\"res://t.tres\")\n");
+        Write("main.tscn", ButtonScene);
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(File.Exists(theme));
+        Assert.False(File.Exists(Located("t.xres")));
+        Assert.Single(run.Lines, line => line.Contains("left as text", StringComparison.Ordinal));
+        Assert.Single(run.Lines, $"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)");
+    }
+
     [Fact]
     public void ProjectLeavesAFileItCannotParse()
     {
@@ -1422,6 +1539,12 @@ public sealed partial class CliProgramTests
                 .EnumerateFiles(root, "*", SearchOption.AllDirectories)
                 .Where(path => Path.GetExtension(path) is ".xscn" or ".xres" || path.EndsWith(".uid", StringComparison.Ordinal)),
         ];
+
+    // A theme that attaches a script, which Godot compiles when it loads the theme.
+    private static string AttachesScript(string script) =>
+        "[gd_resource type=\"Theme\" load_steps=2 format=3]\n\n"
+        + $"[ext_resource type=\"Script\" path=\"{script}\" id=\"1_s\"]\n\n"
+        + "[resource]\nscript = ExtResource(\"1_s\")\n";
 
     private string Located(string relativePath) => Path.Combine(folder, relativePath.Replace('/', Path.DirectorySeparatorChar));
 }

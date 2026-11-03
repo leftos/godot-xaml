@@ -1,3 +1,4 @@
+using System.Text;
 using GodotXaml.Core.Tscn;
 
 namespace GodotXaml.Cli;
@@ -18,6 +19,11 @@ internal static class StartupFiles
     private const string BusLayoutSetting = "audio/buses/default_bus_layout";
     private const string BusLayoutDefault = "res://default_bus_layout.tres";
     private static readonly string[] StartupExtensions = [".tscn", ".tres"];
+
+    // A script is read as strictly as a source, as SourceText.Read does: the decoder rejects every UTF-16 and UTF-32
+    // byte order mark, so only a UTF-8 one is stripped.
+    private static readonly UTF8Encoding Strict = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+    private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
 
     // Godot loads these before it adds the addon's loaders (main/main.cpp:3691, 3847-3849, 3880-3881,
     // scene/main/scene_tree.cpp:2194, all before main.cpp:4494), so a file one names that this run converts to .xscn or
@@ -46,59 +52,161 @@ internal static class StartupFiles
         {
             sourcePaths.TryAdd(Path.GetFullPath(source), source);
         }
-        var uids = new UidClaims(sources);
-        var queue = new Queue<(string File, string Reason)>();
+        var walk = new Walk(new UidClaims(sources));
         foreach ((string setting, string value) in NamedValues(Path.Combine(root, SettingsFile)))
         {
-            string? target = Resolve(root, value, uids);
+            string? target = Resolve(root, value, walk.Uids);
             if (target is not null && IsStartupResource(target))
             {
-                queue.Enqueue((target, setting));
+                walk.Queue.Enqueue((target, setting));
             }
         }
-        return Reach(root, queue, sourcePaths, uids);
+        return Reach(root, walk, sourcePaths);
     }
 
     // Every file a setting names and every file those reach, breadth first and once: a left theme whose reference was
     // converted fails whole at startup (resource_format_text.cpp:147-160). A file is listed, so printed and left out of
     // the run, only when it is one of the run's sources; one under addons/ or outside the walk is still followed.
-    private static List<LeftFile> Reach(
-        string root,
-        Queue<(string File, string Reason)> queue,
-        Dictionary<string, string> sourcePaths,
-        UidClaims uids
-    )
+    private static List<LeftFile> Reach(string root, Walk walk, Dictionary<string, string> sourcePaths)
     {
-        var left = new List<LeftFile>();
         var walked = new HashSet<string>(InputFiles.PathComparer);
-        while (queue.Count > 0)
+        while (walk.Queue.Count > 0)
         {
-            (string file, string reason) = queue.Dequeue();
+            (string file, string reason) = walk.Queue.Dequeue();
             if (!walked.Add(file))
             {
                 continue;
             }
             TscnDocument? document = Read(file, out string? unread);
             bool listed = sourcePaths.TryGetValue(file, out string? path);
-            left.Add(new LeftFile(listed ? path! : file, reason, unread, listed));
+            walk.Left.Add(new LeftFile(listed ? path! : file, reason, unread, listed));
             if (document is not null)
             {
-                EnqueueReached(root, file, document, queue, uids);
+                EnqueueReached(root, file, document, walk);
             }
         }
-        return left;
+        return walk.Left;
     }
 
-    private static void EnqueueReached(string root, string file, TscnDocument document, Queue<(string File, string Reason)> queue, UidClaims uids)
+    // The files a left file reaches: a scene or resource it names is left too, and a script it attaches is followed,
+    // since Godot compiles the script when it loads the file, before the addon's loaders exist.
+    private static void EnqueueReached(string root, string file, TscnDocument document, Walk walk)
     {
         foreach (TscnExtResource resource in document.ExtResources)
         {
-            string reached = Referenced(root, file, resource, uids);
+            string reached = Referenced(root, file, resource, walk.Uids);
             if (IsStartupResource(reached))
             {
-                queue.Enqueue((reached, $"through {ProjectRoot.ResPath(root, file)}"));
+                walk.Queue.Enqueue((reached, $"through {ProjectRoot.ResPath(root, file)}"));
+            }
+            else if (ScriptOf(reached) is ScriptKind kind)
+            {
+                FollowScript(root, reached, kind, walk);
             }
         }
+    }
+
+    // The files a script names, at once: a preload resolves when the script compiles, so a script it names is followed
+    // the same way and the walk is transitive. Any literal counts, since the lexers do not tell a preload from another
+    // path. A script read twice is walked once, which stops a cycle.
+    private static void FollowScript(string root, string script, ScriptKind kind, Walk walk)
+    {
+        if (!walk.Scripts.Add(script))
+        {
+            return;
+        }
+        string? text = ScriptText(script, out string? unread);
+        if (text is null)
+        {
+            walk.Left.Add(new LeftFile(script, "", unread, Listed: false));
+            return;
+        }
+        string reason = $"through {ProjectRoot.ResPath(root, script)}";
+        foreach (ScriptLiteral literal in ScriptPaths.Literals(text, kind))
+        {
+            string? named = NamedFile(root, literal.Text, walk.Uids);
+            if (named is null)
+            {
+                continue;
+            }
+            if (ScriptOf(named) is ScriptKind namedKind)
+            {
+                FollowScript(root, named, namedKind, walk);
+            }
+            else if (IsStartupResource(named))
+            {
+                walk.Queue.Enqueue((named, reason));
+            }
+        }
+    }
+
+    // The file a script's literal names: its res:// path under the root, like a setting's value, or a uid:// value
+    // through the sources' claim map; null for any other literal, which names no file.
+    private static string? NamedFile(string root, string literal, UidClaims uids)
+    {
+        if (literal.StartsWith(ResPrefix, StringComparison.Ordinal))
+        {
+            return Path.GetFullPath(Path.Combine(root, literal[ResPrefix.Length..]));
+        }
+        return literal.StartsWith(UidPrefix, StringComparison.Ordinal) ? uids.Claimant(literal) : null;
+    }
+
+    // The kind of a script this run follows: an existing .gd or .cs, never project.godot. A GDScript compiles when the
+    // file attaching it loads, so what it preloads loads then too; a C# script is followed as well, though its GD.Load
+    // calls run after the loaders exist, since a file wrongly left as text only stays text.
+    private static ScriptKind? ScriptOf(string path)
+    {
+        ScriptKind? kind = ScriptPaths.KindOf(path);
+        return kind is (ScriptKind.GdScript or ScriptKind.CSharp) && File.Exists(path) ? kind : null;
+    }
+
+    // A script's text and why it could not be read. The script is only walked, never left or converted, so its failure is
+    // a line of its own and the run goes on with the files it has.
+    private static string? ScriptText(string file, out string? unread)
+    {
+        unread = null;
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(file);
+        }
+        catch (IOException error)
+        {
+            unread = error.Message;
+            return null;
+        }
+        catch (UnauthorizedAccessException error)
+        {
+            unread = error.Message;
+            return null;
+        }
+        ReadOnlySpan<byte> text = bytes;
+        if (text.StartsWith(Utf8Bom))
+        {
+            text = text[3..];
+        }
+        try
+        {
+            return Strict.GetString(text);
+        }
+        catch (DecoderFallbackException error)
+        {
+            unread = error.Message;
+            return null;
+        }
+    }
+
+    // What the walk of a project's startup files carries between the files it visits: the files still to visit, the
+    // scripts already read, the uid map every reference resolves through, and the files the run leaves.
+    private sealed class Walk(UidClaims uids)
+    {
+        public Queue<(string File, string Reason)> Queue { get; } = new();
+
+        public HashSet<string> Scripts { get; } = new(InputFiles.PathComparer);
+
+        public UidClaims Uids { get; } = uids;
+
+        public List<LeftFile> Left { get; } = [];
     }
 
     // The file an ext_resource names: its uid when the map holds one, which Godot prefers
