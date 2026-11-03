@@ -1,0 +1,126 @@
+<VisualShader
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Flags.depth_prepass_alpha="true"
+    Flags.fog_disabled="true"
+    Flags.shadows_disabled="true"
+    Flags.unshaded="true"
+    Flags.wireframe="true"
+    Modes.blend="1"
+    Modes.cull="2"
+    Modes.depth_draw="1"
+    Modes.diffuse="2"
+    Modes.specular="1"
+    Stencil.enabled="true"
+    Stencil.reference="5"
+    StencilFlags.write="true"
+    StencilModes.compare="3"
+    Varyings.v0='"0,0"'
+    Varyings.v1='"1,1"'
+    Varyings.v10='"0,2"'
+    Varyings.v11='"1,3"'
+    Varyings.v2='"0,2"'
+    Varyings.v3='"1,3"'
+    Varyings.v4='"0,0"'
+    Varyings.v5='"1,1"'
+    Varyings.v6='"0,2"'
+    Varyings.v7='"1,3"'
+    Varyings.v8='"0,0"'
+    Varyings.v9='"1,1"'>
+  <x:Resources>
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant1" Constant="0.25" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp1" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant2" Constant="6.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp2" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant3" Constant="10.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp3" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant4" Constant="2.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp4" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant5" Constant="3.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp5" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant6" Constant="5.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp6" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant7" Constant="8.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp7" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant8" Constant="9.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp8" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant9" Constant="4.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp9" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant10" Constant="7.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp10" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant11" Constant="11.5" />
+    <VisualShaderNodeFloatOp x:Key="VisualShaderNodeFloatOp11" Operator="Mul" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant12" Constant="1.5" />
+  </x:Resources>
+  <VisualShader.Metadata.extra>
+    <VisualShader Flags.light_only="false" mode="1">
+      <x:Prop Name="nodes/fragment/2/node" Value="{VisualShaderNodeFloatConstant1}" />
+      <x:Prop Name="nodes/fragment/2/position" Value="Vector2(30, 70)" />
+    </VisualShader>
+  </VisualShader.Metadata.extra>
+  <x:Prop Name="nodes/collide/0/position" Value="Vector2(650, 80)" />
+  <x:Prop Name="nodes/collide/12/node" Value="{VisualShaderNodeFloatOp1}" />
+  <x:Prop Name="nodes/collide/12/position" Value="Vector2(270, 60)" />
+  <x:Prop Name="nodes/collide/2/node" Value="{VisualShaderNodeFloatConstant2}" />
+  <x:Prop Name="nodes/collide/2/position" Value="Vector2(70, 40)" />
+  <x:Prop Name="nodes/collide/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/fog/0/position" Value="Vector2(690, 80)" />
+  <x:Prop Name="nodes/fog/12/node" Value="{VisualShaderNodeFloatOp2}" />
+  <x:Prop Name="nodes/fog/12/position" Value="Vector2(310, 60)" />
+  <x:Prop Name="nodes/fog/2/node" Value="{VisualShaderNodeFloatConstant3}" />
+  <x:Prop Name="nodes/fog/2/position" Value="Vector2(110, 40)" />
+  <x:Prop Name="nodes/fog/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/fragment/0/position" Value="Vector2(610, 80)" />
+  <x:Prop Name="nodes/fragment/12/node" Value="{VisualShaderNodeFloatOp3}" />
+  <x:Prop Name="nodes/fragment/12/position" Value="Vector2(230, 60)" />
+  <x:Prop Name="nodes/fragment/2/node" Value="{VisualShaderNodeFloatConstant4}" />
+  <x:Prop Name="nodes/fragment/2/position" Value="Vector2(30, 40)" />
+  <x:Prop Name="nodes/fragment/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/light/0/position" Value="Vector2(620, 80)" />
+  <x:Prop Name="nodes/light/12/node" Value="{VisualShaderNodeFloatOp4}" />
+  <x:Prop Name="nodes/light/12/position" Value="Vector2(240, 60)" />
+  <x:Prop Name="nodes/light/2/node" Value="{VisualShaderNodeFloatConstant5}" />
+  <x:Prop Name="nodes/light/2/position" Value="Vector2(40, 40)" />
+  <x:Prop Name="nodes/light/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/process/0/position" Value="Vector2(640, 80)" />
+  <x:Prop Name="nodes/process/12/node" Value="{VisualShaderNodeFloatOp5}" />
+  <x:Prop Name="nodes/process/12/position" Value="Vector2(260, 60)" />
+  <x:Prop Name="nodes/process/2/node" Value="{VisualShaderNodeFloatConstant6}" />
+  <x:Prop Name="nodes/process/2/position" Value="Vector2(60, 40)" />
+  <x:Prop Name="nodes/process/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/process_custom/0/position" Value="Vector2(670, 80)" />
+  <x:Prop Name="nodes/process_custom/12/node" Value="{VisualShaderNodeFloatOp6}" />
+  <x:Prop Name="nodes/process_custom/12/position" Value="Vector2(290, 60)" />
+  <x:Prop Name="nodes/process_custom/2/node" Value="{VisualShaderNodeFloatConstant7}" />
+  <x:Prop Name="nodes/process_custom/2/position" Value="Vector2(90, 40)" />
+  <x:Prop Name="nodes/process_custom/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/sky/0/position" Value="Vector2(680, 80)" />
+  <x:Prop Name="nodes/sky/12/node" Value="{VisualShaderNodeFloatOp7}" />
+  <x:Prop Name="nodes/sky/12/position" Value="Vector2(300, 60)" />
+  <x:Prop Name="nodes/sky/2/node" Value="{VisualShaderNodeFloatConstant8}" />
+  <x:Prop Name="nodes/sky/2/position" Value="Vector2(100, 40)" />
+  <x:Prop Name="nodes/sky/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/start/0/position" Value="Vector2(630, 80)" />
+  <x:Prop Name="nodes/start/12/node" Value="{VisualShaderNodeFloatOp8}" />
+  <x:Prop Name="nodes/start/12/position" Value="Vector2(250, 60)" />
+  <x:Prop Name="nodes/start/2/node" Value="{VisualShaderNodeFloatConstant9}" />
+  <x:Prop Name="nodes/start/2/position" Value="Vector2(50, 40)" />
+  <x:Prop Name="nodes/start/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/start_custom/0/position" Value="Vector2(660, 80)" />
+  <x:Prop Name="nodes/start_custom/12/node" Value="{VisualShaderNodeFloatOp9}" />
+  <x:Prop Name="nodes/start_custom/12/position" Value="Vector2(280, 60)" />
+  <x:Prop Name="nodes/start_custom/2/node" Value="{VisualShaderNodeFloatConstant10}" />
+  <x:Prop Name="nodes/start_custom/2/position" Value="Vector2(80, 40)" />
+  <x:Prop Name="nodes/start_custom/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/texture_blit/0/position" Value="Vector2(700, 80)" />
+  <x:Prop Name="nodes/texture_blit/12/node" Value="{VisualShaderNodeFloatOp10}" />
+  <x:Prop Name="nodes/texture_blit/12/position" Value="Vector2(320, 60)" />
+  <x:Prop Name="nodes/texture_blit/2/node" Value="{VisualShaderNodeFloatConstant11}" />
+  <x:Prop Name="nodes/texture_blit/2/position" Value="Vector2(120, 40)" />
+  <x:Prop Name="nodes/texture_blit/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+  <x:Prop Name="nodes/vertex/0/position" Value="Vector2(600, 80)" />
+  <x:Prop Name="nodes/vertex/12/node" Value="{VisualShaderNodeFloatOp11}" />
+  <x:Prop Name="nodes/vertex/12/position" Value="Vector2(220, 60)" />
+  <x:Prop Name="nodes/vertex/2/node" Value="{VisualShaderNodeFloatConstant12}" />
+  <x:Prop Name="nodes/vertex/2/position" Value="Vector2(20, 40)" />
+  <x:Prop Name="nodes/vertex/connections" Value="PackedInt32Array(2, 0, 12, 0)" />
+</VisualShader>

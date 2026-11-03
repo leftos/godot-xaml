@@ -65,6 +65,7 @@ func _run() -> String:
 		_skeleton_bones,
 		_bone_chain_settings,
 		_two_bone_ik_modifiers,
+		_visual_shader_types,
 		_visual_shader_nodes,
 		_replication_properties,
 		_tile_set_patterns,
@@ -544,6 +545,55 @@ func _visual_shader_nodes() -> String:
 	var vertex := VisualShader.TYPE_VERTEX
 	shader.add_node(vertex, _expression("result = vec3(input_a * 2.0);"), Vector2(-200, 80), 10)
 	return _save("visual_shader_nodes.tres", shader)
+
+
+## A spatial VisualShader with a constant at id 2 wired into a FloatOp at id 12 and the output
+## node moved in each of the 11 graph types, render modes and flags, the stencil keys and 12
+## varyings: VisualShader::_get_property_list (visual_shader.cpp) lists the modes, flags,
+## stencil keys and varyings in its own order, then the graphs in type_string order. Godot
+## keeps and saves every graph whatever the mode. preview_params/ is set too, though _set
+## accepts it only in the editor.
+func _visual_shader_types() -> String:
+	var shader := VisualShader.new()
+	for type in VisualShader.TYPE_MAX:
+		var constant := VisualShaderNodeFloatConstant.new()
+		constant.constant = 1.5 + type
+		shader.add_node(type, constant, Vector2(20 + 10 * type, 40), 2)
+		var operation := VisualShaderNodeFloatOp.new()
+		operation.operator = VisualShaderNodeFloatOp.OP_MUL
+		shader.add_node(type, operation, Vector2(220 + 10 * type, 60), 12)
+		shader.connect_nodes(type, 2, 0, 12, 0)
+		shader.set_node_position(type, 0, Vector2(600 + 10 * type, 80))
+	shader.set("modes/blend", 1)
+	shader.set("modes/depth_draw", 1)
+	shader.set("modes/cull", 2)
+	shader.set("modes/diffuse", 2)
+	shader.set("modes/specular", 1)
+	shader.set("flags/depth_prepass_alpha", true)
+	shader.set("flags/unshaded", true)
+	shader.set("flags/wireframe", true)
+	shader.set("flags/shadows_disabled", true)
+	shader.set("flags/fog_disabled", true)
+	shader.set("stencil/enabled", true)
+	shader.set("stencil/reference", 5)
+	shader.set("stencil_flags/write", true)
+	shader.set("stencil_modes/compare", 3)
+	for index in 12:
+		shader.add_varying(
+			"v%d" % index,
+			index % 2 as VisualShader.VaryingMode,
+			index % 4 as VisualShader.VaryingType
+		)
+	shader.set("preview_params/tint", "Color(1, 0, 0, 1)")
+	# A spatial shader stores no mode (spatial is the default), and only spatial lists stencil
+	# keys: a second, canvas item shader carries mode.
+	var canvas := VisualShader.new()
+	canvas.set_mode(Shader.MODE_CANVAS_ITEM)
+	var canvas_constant := VisualShaderNodeFloatConstant.new()
+	canvas_constant.constant = 0.25
+	canvas.add_node(VisualShader.TYPE_FRAGMENT, canvas_constant, Vector2(30, 70), 2)
+	shader.set_meta("extra", canvas)
+	return _save("visual_shader_types.tres", shader)
 
 
 ## An Expression node with one scalar input, one vec3 output and the code.

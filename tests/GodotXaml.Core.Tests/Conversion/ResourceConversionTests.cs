@@ -31,7 +31,8 @@ public sealed partial class ResourceConversionTests
             "animation_tracks.tres",
             "visual_shader_nodes.tres",
             "replication_properties.tres",
-            "tile_set_patterns.tres"
+            "tile_set_patterns.tres",
+            "visual_shader_types.tres"
         );
 
     // With the forward pass's ids kept, the way back writes the bytes Godot wrote.
