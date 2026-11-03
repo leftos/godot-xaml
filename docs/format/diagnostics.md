@@ -87,6 +87,7 @@ Error. An element lacks an attribute it needs:
 - `<x:Instance> needs Scene="res://…".`
 - `<x:Override> needs Path="…", the node's path inside the instance.`
 - `<tag> in x:Resources needs x:Key.`
+- `<StyleBoxFlat> in x:Resources has an empty x:Key; every entry needs one.` The message spans the whole `x:Key` attribute. The entry is not read, as with `GX0116`, so two empty keys give two `GX0108` and no `GX0116`.
 - `<x:Connect> needs Signal="…" or GodotSignal="…".`
 - `<x:Uid>` needs `Path` and `Value`; `<x:Prop>` needs `Name` and `Value`; `<x:Connect>` needs `Method`.
 
@@ -99,7 +100,8 @@ Error. `Namespace declarations belong on the root element.` Move the `xmlns:` de
 Error. The declaration is not one the format accepts:
 
 - a default `xmlns` (`A default namespace is not used: Godot classes are tags without a prefix.`);
-- a prefix bound to something other than a `res://` folder ending in `/` or the format's own URI.
+- a prefix bound to something other than a `res://` folder ending in `/` or the format's own URI;
+- a second prefix bound to the format's URI (`The format namespace is already bound to the prefix 'x'; xmlns:y is not used.`). The first binding stays the format prefix, and an element or attribute using the second prefix reports `GX0103`.
 
 ### GX0111 Misplaced element
 
@@ -117,6 +119,8 @@ The message names the case.
 ### GX0112 Invalid property element
 
 Error. A property element (`<Owner.Property>`) does not begin with its parent's own tag, or does not hold exactly one resource element. Rename it after the parent's tag, as `<Button.Theme>` inside `<Button>`, and give it one resource.
+
+A property element with an empty name or an empty dotted segment (`<Control.>`, `<Control.Theme.>`, `<Control..a>`) reports `<Control.> names no property; write <Control.Property>.` at the tag name, and adds no property.
 
 ### GX0113 Repeated attribute
 

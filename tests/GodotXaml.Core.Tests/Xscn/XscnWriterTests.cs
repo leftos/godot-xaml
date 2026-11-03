@@ -172,6 +172,20 @@ public sealed class XscnWriterTests
             )
         );
 
+    // An element with no class of its own has no signal attributes: its connection stays an <x:Connect>.
+    [Fact]
+    public void AnInstanceConnectionIsAConnectElement() =>
+        AssertCanonical(
+            $"""
+            <Control {X} Name="Root">
+              <x:Instance Name="M" Scene="res://dialog.xscn">
+                <x:Connect Signal="Pressed" Method="OnPressed" />
+              </x:Instance>
+            </Control>
+
+            """
+        );
+
     [Theory]
     [InlineData("""<x:Connect Signal="Pressed" To="Other" Method="M" />""")]
     [InlineData("""<x:Connect Signal="Pressed" Method="M" Flags="Deferred" />""")]

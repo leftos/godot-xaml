@@ -190,6 +190,36 @@ public sealed class XscnParserTests
         Assert.Empty(connection.Binds);
     }
 
+    // An element with no class of its own has no signal attributes, so an unprefixed attribute names a property.
+    [Fact]
+    public void ASignalNamedAttributeOnAnInstanceIsAProperty()
+    {
+        XscnParseResult result = XscnParser.Parse(
+            $"""<Control {X} xmlns:c="res://ui/" Name="Root"><c:Modal Name="M" Pressed="OnPressed" /></Control>""",
+            XscnDocumentKind.Scene,
+            Real
+        );
+
+        XscnNode modal = ChildNode(result.Document.Root, 0);
+        Assert.Empty(modal.Connections);
+        // Pressed is also an agreed engine property name (pressed, a bool), so the text is not that property's value.
+        Assert.Equal("pressed", Assert.Single(modal.Properties).GodotName);
+    }
+
+    [Fact]
+    public void ASignalNamedAttributeOnAnXInstanceIsAProperty()
+    {
+        XscnParseResult result = XscnParser.Parse(
+            $"""<Control {X} Name="Root"><x:Instance Scene="res://m.tscn" Name="M" Pressed="OnPressed" /></Control>""",
+            XscnDocumentKind.Scene,
+            Real
+        );
+
+        XscnNode instance = ChildNode(result.Document.Root, 0);
+        Assert.Empty(instance.Connections);
+        Assert.Equal("pressed", Assert.Single(instance.Properties).GodotName);
+    }
+
     [Fact]
     public void ARootTaggedWithASceneInheritsIt()
     {
@@ -396,19 +426,84 @@ public sealed class XscnParserTests
         Assert.Empty(Assert.IsType<XscnInline>(property.Value).Resource.TrailingComments);
     }
 
+    // XML 1.0 3.3.3, decoded by XmlText rather than the XML library: references are replaced once, whitespace in the value
+    // becomes a space, and a bad reference is kept as written with the library's own error.
+    [Theory]
+    [InlineData("a&amp;b", "a&b", false)]
+    [InlineData("&lt;&gt;", "<>", false)]
+    [InlineData("&quot;x&quot;", "\"x\"", false)]
+    [InlineData("\"x\"", "\"x\"", false)]
+    [InlineData("&apos;", "'", false)]
+    [InlineData("&#65;", "A", false)]
+    [InlineData("&#x41;", "A", false)]
+    [InlineData("&#x1F600;", "\U0001F600", false)]
+    [InlineData("&amp;lt;", "&lt;", false)]
+    [InlineData("a\tb", "a b", false)]
+    [InlineData("a\nb", "a b", false)]
+    [InlineData("a\rb", "a b", false)]
+    [InlineData("a\r\nb", "a b", false)]
+    [InlineData("&#9;", "\t", false)]
+    [InlineData("&#10;", "\n", false)]
+    [InlineData("&#13;", "\r", false)]
+    [InlineData("&foo;", "&foo;", true)]
+    [InlineData("&#xD800;", "&#xD800;", true)]
+    public void ATextAttributeIsDecodedPerXml(string written, string expected, bool reported)
+    {
+        XscnParseResult result = XscnParser.Parse(
+            $"<Control Name=\"Root\"><Label Name=\"L\" Text='{written}' /></Control>",
+            XscnDocumentKind.Scene,
+            Real
+        );
+
+        XscnProperty property = Assert.Single(ChildNode(result.Document.Root, 0).Properties);
+        Assert.Equal(expected, Assert.IsType<GodotString>(Assert.IsType<XscnScalar>(property.Value).Value).Value);
+        if (reported)
+        {
+            Assert.Equal("GX0001", Assert.Single(result.Diagnostics).Code);
+        }
+        else
+        {
+            Assert.Empty(result.Diagnostics);
+        }
+    }
+
     [Fact]
     public void RecordsWithoutCommentsEqualThemselvesWithEmptyCommentLists()
     {
         XscnDocument document = Parse(
             $"""
             <PanelContainer {X} Name="Root">
+              <x:Uids>
+                <x:Uid Path="res://a.png" Value="uid://a" />
+              </x:Uids>
+              <x:Resources>
+                <StyleBoxFlat x:Key="Panel" />
+              </x:Resources>
               <PanelContainer.ThemeOverrideStyles.panel><StyleBoxFlat /></PanelContainer.ThemeOverrideStyles.panel>
+              <Button Name="B" Text="a" Pressed="OnPressed">
+                <x:Connect Signal="Pressed" Method="M" />
+              </Button>
+              <x:Override Path="Centre/Panel" Visible="False" />
             </PanelContainer>
             """
         );
 
-        XscnResource inline = Assert.IsType<XscnInline>(Assert.Single(Assert.IsType<XscnNode>(document.Root).Properties).Value).Resource;
+        XscnNode root = Assert.IsType<XscnNode>(document.Root);
+        Assert.Equal(new XscnUid("res://a.png", "uid://a"), Assert.Single(document.Uids));
+        XscnResource table = Assert.Single(document.Resources);
+        Assert.Equal(table with { LeadingComments = [], TrailingComments = [] }, table);
+        XscnResource inline = Assert.IsType<XscnInline>(Assert.Single(root.Properties).Value).Resource;
         Assert.Equal(inline with { LeadingComments = [], TrailingComments = [] }, inline);
+
+        XscnNode button = ChildNode(root, 0);
+        Assert.Equal(button with { LeadingComments = [], TrailingComments = [] }, button);
+        Assert.Equal(new XscnProperty("text", new XscnScalar(new GodotString("a"))), Assert.Single(button.Properties));
+        Assert.Contains(new XscnConnection("pressed", ".", "OnPressed", 2, [], 0, [], []), button.Connections);
+        Assert.Contains(new XscnConnection("pressed", ".", "M", 2, [], 0, [], []), button.Connections);
+
+        XscnOverride change = Assert.IsType<XscnOverride>(root.Children[1]);
+        Assert.Equal(change with { LeadingComments = [], TrailingComments = [] }, change);
+
         XscnDocument emptied = document with
         {
             UidsLeadingComments = [],

@@ -55,7 +55,7 @@ The root element declares the format namespace, and binds it to a prefix, conven
 xmlns:x="https://github.com/leftos/godot-xaml/format/1"
 ```
 
-The namespace URI carries the format's version.
+The namespace URI carries the format's version. A second prefix bound to the same URI is an error (`GX0110`); the first binding stays the format prefix.
 
 Godot classes have no prefix, so a default namespace (`xmlns="…"`) is refused (`GX0110`). The only other declarations allowed are scene namespaces, each binding a prefix to a `res://` folder ending in `/` ([Instanced scenes](#instanced-scenes)). Every declaration belongs on the root element (`GX0109`).
 
@@ -192,7 +192,7 @@ Inlining a shared resource twice would make Godot load two separate objects. An 
 The table rules:
 
 - There is one table, on the root only (`GX0115` for a second; `GX0111` elsewhere). It holds only resource elements.
-- Every entry has an `x:Key` (`GX0108`), unique in the table (`GX0116`). A key is at least one character, with no whitespace, braces, `:`, `,` or `"`.
+- Every entry has a non-empty `x:Key` (`GX0108`), unique in the table (`GX0116`). A key is at least one character, with no whitespace, braces, `:`, `,` or `"`.
 - `x:Key` appears nowhere else (`GX0102`).
 
 Entries may refer to each other by key.
@@ -306,7 +306,7 @@ A connection is written on the node that emits the signal.
 </Control>
 ```
 
-An attribute is read as a signal only on a known class with no property of that name.
+An attribute is read as a signal only on an element of a known class with no property of that name. On an instance, an override or an element of an unknown class, an attribute named like a signal is a property, never a connection; write the connection there as `<x:Connect>`.
 
 **Every other connection** is an `<x:Connect>` child of the emitter:
 

@@ -132,6 +132,7 @@ internal sealed partial class XscnTreeReader
         {
             parts.Key = attribute.Value;
             parts.KeySpan = attribute.ValueSpan;
+            parts.KeyAttributeSpan = attribute.Span;
         }
         else
         {

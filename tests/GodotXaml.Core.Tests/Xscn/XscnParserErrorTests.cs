@@ -10,6 +10,7 @@ namespace GodotXaml.Core.Tests.Xscn;
 public sealed class XscnParserErrorTests
 {
     private const string X = "xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\"";
+    private const string Format = "https://github.com/leftos/godot-xaml/format/1";
     private static readonly GodotMetadata Real = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
 
     [Fact]
@@ -145,6 +146,44 @@ public sealed class XscnParserErrorTests
         Assert.Equal(1, Assert.Single(result.Diagnostics).Span.Length);
         XscnResource kept = Assert.Single(result.Document.Resources);
         Assert.Equal("StyleBoxFlat", Assert.IsType<XscnClassType>(kept.Type).Class.Name);
+    }
+
+    [Fact]
+    public void AnEmptyKeyIsAnErrorAndTheEntryIsNotRead()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Resources>\n    <StyleBoxFlat x:Key=\"\" />\n  </x:Resources>\n</Control>"
+        );
+
+        Assert.Equal([("GX0108", 3, 19)], positions);
+        XscnDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal("<StyleBoxFlat> in x:Resources has an empty x:Key; every entry needs one.", diagnostic.Message);
+        Assert.Equal(8, diagnostic.Span.Length);
+        Assert.Empty(result.Document.Resources);
+    }
+
+    [Fact]
+    public void TwoEmptyKeysAreTwoErrors()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Resources>\n    <StyleBoxFlat x:Key=\"\" />\n"
+                + "    <StyleBoxLine x:Key=\"\" />\n  </x:Resources>\n</Control>"
+        );
+
+        Assert.Equal([("GX0108", 3, 19), ("GX0108", 4, 19)], positions);
+        Assert.Empty(result.Document.Resources);
+    }
+
+    [Fact]
+    public void AnEmptyKeyThenAGoodOneKeepsTheGoodOne()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Resources>\n    <StyleBoxFlat x:Key=\"\" />\n"
+                + "    <StyleBoxLine x:Key=\"P\" />\n  </x:Resources>\n</Control>"
+        );
+
+        Assert.Equal([("GX0108", 3, 19)], positions);
+        Assert.Equal("P", Assert.Single(result.Document.Resources).Key);
     }
 
     [Fact]
@@ -364,6 +403,104 @@ public sealed class XscnParserErrorTests
         Assert.Equal([("GX0108", 2, 4)], positions);
         Assert.Equal("<x:Connect> needs Signal=\"…\" or GodotSignal=\"…\".", Assert.Single(result.Diagnostics).Message);
         Assert.Empty(Assert.IsType<XscnNode>(result.Document.Root).Connections);
+    }
+
+    [Fact]
+    public void ASecondFormatNamespaceIsOneErrorAndTheFirstPrefixIsKept()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} xmlns:y=\"{Format}\" Name=\"Root\"><x:Connect Signal=\"Pressed\" Method=\"M\" /></Control>"
+        );
+
+        Assert.Equal([("GX0110", 1, 66)], positions);
+        XscnDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(XscnSeverity.Error, diagnostic.Severity);
+        Assert.Equal("The format namespace is already bound to the prefix 'x'; xmlns:y is not used.", diagnostic.Message);
+        Assert.Equal(55, diagnostic.Span.Length);
+        // Control has no Pressed signal, so the name is kept verbatim, as a script's own signal.
+        Assert.Equal("Pressed", Assert.Single(Assert.IsType<XscnNode>(result.Document.Root).Connections).Signal);
+    }
+
+    [Fact]
+    public void ASecondFormatNamespaceDeclaredFirstKeepsTheFirstPrefix()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control xmlns:y=\"{Format}\" {X} Name=\"Root\"><y:Connect Signal=\"Pressed\" Method=\"M\" /></Control>"
+        );
+
+        Assert.Equal([("GX0110", 1, 66)], positions);
+        Assert.Equal("The format namespace is already bound to the prefix 'y'; xmlns:x is not used.", Assert.Single(result.Diagnostics).Message);
+        Assert.Equal("Pressed", Assert.Single(Assert.IsType<XscnNode>(result.Document.Root).Connections).Signal);
+    }
+
+    [Fact]
+    public void TheSecondFormatPrefixIsNotDeclared()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} xmlns:y=\"{Format}\" Name=\"Root\">\n  <Label Name=\"L\" y:Index=\"1\" />\n</Control>"
+        );
+
+        Assert.Equal([("GX0110", 1, 66), ("GX0103", 2, 19)], positions);
+        Assert.Equal("The prefix 'y' is not declared on the root.", result.Diagnostics[1].Message);
+    }
+
+    [Fact]
+    public void APropertyElementWithoutAPropertyNameIsOneError()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"""
+            <Control {X} Name="Root">
+              <Control.>
+                <Theme />
+              </Control.>
+            </Control>
+            """
+        );
+
+        Assert.Equal([("GX0112", 2, 4)], positions);
+        Assert.Equal("<Control.> names no property; write <Control.Property>.", Assert.Single(result.Diagnostics).Message);
+        Assert.Empty(Assert.IsType<XscnNode>(result.Document.Root).Properties);
+    }
+
+    [Fact]
+    public void APropertyElementWithoutAPropertyNameHoldingNothingIsOneError()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"""
+            <Control {X} Name="Root">
+              <Control.></Control.>
+            </Control>
+            """
+        );
+
+        Assert.Equal([("GX0112", 2, 4)], positions);
+        Assert.Equal("<Control.> names no property; write <Control.Property>.", Assert.Single(result.Diagnostics).Message);
+        Assert.Empty(Assert.IsType<XscnNode>(result.Document.Root).Properties);
+    }
+
+    [Theory]
+    [InlineData("Control.Theme.")]
+    [InlineData("Control..a")]
+    public void APropertyElementWithAnEmptySegmentIsOneError(string tag)
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <{tag}><StyleBoxFlat /></{tag}>\n</Control>"
+        );
+
+        Assert.Equal([("GX0112", 2, 4)], positions);
+        Assert.Equal($"<{tag}> names no property; write <Control.Property>.", Assert.Single(result.Diagnostics).Message);
+        Assert.Empty(Assert.IsType<XscnNode>(result.Document.Root).Properties);
+    }
+
+    [Fact]
+    public void ASignalNamedAttributeOnAnUnknownClassIsAProperty()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse("<Gadget Name=\"G\" Pressed=\"OnPressed\" />");
+
+        Assert.Equal([("GX0107", 1, 2), ("GX0105", 1, 27)], positions);
+        XscnNode gadget = Assert.IsType<XscnNode>(result.Document.Root);
+        Assert.Empty(gadget.Connections);
+        Assert.Equal("pressed", Assert.Single(gadget.Properties).GodotName);
     }
 
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text) => Parse(text, Real);

@@ -316,6 +316,17 @@ internal sealed partial class XscnTreeReader
         ImmutableArray<string> leading = TakePending(parent);
         List<string> trailing = [];
         List<XscnResource> held = ReadResourceList(element, ElementKind.Resource, trailing);
+        if (NamesNoProperty(fullName[(dot + 1)..]))
+        {
+            Report(
+                XscnCodes.InvalidPropertyElement,
+                $"<{fullName}> names no property; write <{FullName(parent.Syntax)}.Property>.",
+                NameSpan(element)
+            );
+            parent.Pending.AddRange([.. leading, .. trailing]);
+            return;
+        }
+
         CheckHoldsOne(element, held.Count);
         if (held.Count == 0)
         {
@@ -328,6 +339,9 @@ internal sealed partial class XscnTreeReader
             new XscnProperty(property.GodotName, new XscnInline(held[0])) { LeadingComments = leading, TrailingComments = CommentList(trailing) }
         );
     }
+
+    // <Owner.Property> with a segment left empty names no property, the same as a property element with no name at all.
+    private static bool NamesNoProperty(string name) => name.Length == 0 || name.Split('.').Any(segment => segment.Length == 0);
 
     private void CheckOwner(ElementParts parent, IXmlElementSyntax element, string owner)
     {
@@ -384,13 +398,24 @@ internal sealed partial class XscnTreeReader
         return kind != ElementKind.TableEntry || HasNewKey(parts) ? resource : null;
     }
 
-    // A table entry needs x:Key, and a key no earlier entry has; an entry whose key is taken is dropped, the first kept.
+    // A table entry needs x:Key, and a key no earlier entry has; an entry with no key, an empty one, or a key that is taken
+    // is dropped, the first of a repeated key kept.
     private bool HasNewKey(ElementParts parts)
     {
         if (parts.Key is null)
         {
             Report(XscnCodes.MissingAttribute, $"<{FullName(parts.Syntax)}> in x:Resources needs x:Key.", NameSpan(parts.Syntax));
             return true;
+        }
+
+        if (parts.Key.Length == 0)
+        {
+            Report(
+                XscnCodes.MissingAttribute,
+                $"<{FullName(parts.Syntax)}> in x:Resources has an empty x:Key; every entry needs one.",
+                parts.KeyAttributeSpan
+            );
+            return false;
         }
 
         if (resourceKeys.Add(parts.Key))

@@ -144,6 +144,16 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
 
         if (attribute.Value == XscnParser.FormatNamespace)
         {
+            if (formatPrefix is { } first)
+            {
+                Report(
+                    XscnCodes.InvalidNamespace,
+                    $"The format namespace is already bound to the prefix '{first}'; xmlns:{attribute.LocalName} is not used.",
+                    attribute.Span
+                );
+                return null;
+            }
+
             formatPrefix = attribute.LocalName;
             return null;
         }

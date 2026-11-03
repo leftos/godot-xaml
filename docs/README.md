@@ -25,6 +25,7 @@
 - **Export plugin**: `XscnExportPlugin`, the Godot `EditorExportPlugin` that converts each `.xscn`/`.xres` to Godot binary when a project is exported; the editor plugin `XscnEditorPlugin` registers it.
 - **Fixture generator**: `tools/value-fixtures/`, the headless Godot script that writes the expected value text under `tests/fixtures/values/`; `tools/scene-fixtures/` does the same for scenes and resources under `tests/fixtures/scenes/`.
 - **Format pair**: an `.in.xscn`/`.out.xscn` pair under `tests/fixtures/xscn/format/`; the writer's output for the `.in` document must equal the `.out` file, which proves the canonical rewrite.
+- **Format prefix**: the XML prefix a document binds to the format's own namespace URI, `x` by convention; the first binding in a document is the one that counts.
 - **Gate**: a command a change must pass (build, test, format check), run through `./run.ps1 <verb>` and `tools/gate.ps1`, which log to `.tmp/`; the Gates section of the `godot-xaml-nextup` skill lists them and which hook runs each.
 - **Godot property order**: the order Godot lists a section's properties in, which the way back restores (`PropertyOrder`).
 - **GodotSignal**: the `<x:Connect>` attribute holding a signal's Godot name verbatim, used where `Signal` (the C# name) would read back as another signal, as a C# script's `Finished` would as the engine's `finished`.

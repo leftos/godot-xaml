@@ -216,6 +216,9 @@ internal sealed partial class XscnTreeReader
         // The x:Key value's text between the quotes.
         public TextSpan KeySpan { get; set; }
 
+        // The x:Key attribute, from its first character to the closing quote.
+        public TextSpan KeyAttributeSpan { get; set; }
+
         public int? Index { get; set; }
 
         public string? Owner { get; set; }
