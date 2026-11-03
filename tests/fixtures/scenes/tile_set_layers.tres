@@ -1,0 +1,473 @@
+[gd_resource type="TileSet" format=3]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_gfi81"]
+friction = 0.25
+
+[sub_resource type="NavigationPolygon" id="NavigationPolygon_ea17s"]
+vertices = PackedVector2Array(-8, -8, 8, -8, 8, 8)
+polygons = Array[PackedInt32Array]([PackedInt32Array(0, 1, 2)])
+
+[sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_gx5co"]
+polygon = PackedVector2Array(-4, -4, 4, -4, 0, 4)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_umwu3"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_gic2u"]
+texture = SubResource("GradientTexture2D_umwu3")
+0:0/next_alternative_id = 2
+0:0/0 = 0
+0:0/0/terrain_set = 0
+0:0/0/terrain = 0
+0:0/0/occlusion_layer_0/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/occlusion_layer_6/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/physics_layer_0/linear_velocity = Vector2(1, 0)
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_0/polygon_0/one_way = true
+0:0/0/physics_layer_6/linear_velocity = Vector2(7, 0)
+0:0/0/physics_layer_6/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_6/polygon_0/one_way = true
+0:0/0/terrains_peering_bit/right_side = 1
+0:0/0/navigation_layer_0/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/navigation_layer_6/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/custom_data_0 = 1
+0:0/0/custom_data_6 = 7
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/10 = 10
+0:0/10/modulate = Color(0.5, 0.5, 1, 1)
+1:0/animation_speed = 2.0
+1:0/animation_frame_0/duration = 1.0
+1:0/animation_frame_1/duration = 0.5
+1:0/0 = 0
+0:2/size_in_atlas = Vector2i(2, 1)
+0:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0gabt"]
+texture = SubResource("GradientTexture2D_umwu3")
+0:0/next_alternative_id = 2
+0:0/0 = 0
+0:0/0/terrain_set = 1
+0:0/0/terrain = 0
+0:0/0/occlusion_layer_1/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/occlusion_layer_7/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/physics_layer_1/linear_velocity = Vector2(2, 0)
+0:0/0/physics_layer_1/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_7/linear_velocity = Vector2(8, 0)
+0:0/0/physics_layer_7/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/terrains_peering_bit/bottom_right_corner = 1
+0:0/0/navigation_layer_1/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/navigation_layer_7/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/custom_data_1 = "value_1"
+0:0/0/custom_data_7 = "value_7"
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/10 = 10
+0:0/10/modulate = Color(0.5, 0.5, 1, 1)
+1:0/animation_speed = 2.0
+1:0/animation_frame_0/duration = 1.0
+1:0/animation_frame_1/duration = 0.5
+1:0/0 = 0
+0:2/size_in_atlas = Vector2i(2, 1)
+0:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0cp47"]
+texture = SubResource("GradientTexture2D_umwu3")
+0:0/next_alternative_id = 2
+0:0/0 = 0
+0:0/0/terrain_set = 10
+0:0/0/terrain = 0
+0:0/0/occlusion_layer_4/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/occlusion_layer_10/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/physics_layer_4/linear_velocity = Vector2(5, 0)
+0:0/0/physics_layer_4/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_4/polygon_0/one_way = true
+0:0/0/physics_layer_10/linear_velocity = Vector2(11, 0)
+0:0/0/physics_layer_10/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_10/polygon_0/one_way = true
+0:0/0/terrains_peering_bit/bottom_right_corner = 1
+0:0/0/navigation_layer_4/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/navigation_layer_10/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/custom_data_4 = true
+0:0/0/custom_data_10 = true
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/10 = 10
+0:0/10/modulate = Color(0.5, 0.5, 1, 1)
+1:0/animation_speed = 2.0
+1:0/animation_frame_0/duration = 1.0
+1:0/animation_frame_1/duration = 0.5
+1:0/0 = 0
+0:2/size_in_atlas = Vector2i(2, 1)
+0:2/0 = 0
+
+[sub_resource type="PackedScene" id="PackedScene_jhflg"]
+_bundled = {
+"conn_count": 0,
+"conns": PackedInt32Array(),
+"editable_instances": [],
+"id_paths": [],
+"names": PackedStringArray("SceneTile", "Node2D"),
+"node_count": 1,
+"node_ids": PackedInt32Array(880027561),
+"node_paths": [],
+"nodes": PackedInt32Array(-1, -1, 1, 0, -1, 0, 0),
+"variants": [],
+"version": 3
+}
+
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_f8hrk"]
+scenes/1/scene = SubResource("PackedScene_jhflg")
+scenes/10/scene = SubResource("PackedScene_jhflg")
+scenes/10/display_placeholder = true
+scenes/12/scene = SubResource("PackedScene_jhflg")
+scenes/12/display_placeholder = true
+
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_17md0"]
+scenes/1/scene = SubResource("PackedScene_jhflg")
+scenes/10/scene = SubResource("PackedScene_jhflg")
+scenes/10/display_placeholder = true
+scenes/12/scene = SubResource("PackedScene_jhflg")
+scenes/12/display_placeholder = true
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7d8bs"]
+texture = SubResource("GradientTexture2D_umwu3")
+0:0/next_alternative_id = 2
+0:0/0 = 0
+0:0/0/terrain_set = 3
+0:0/0/terrain = 0
+0:0/0/occlusion_layer_3/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/occlusion_layer_9/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/physics_layer_3/linear_velocity = Vector2(4, 0)
+0:0/0/physics_layer_3/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_9/linear_velocity = Vector2(10, 0)
+0:0/0/physics_layer_9/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/terrains_peering_bit/right_side = 1
+0:0/0/navigation_layer_3/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/navigation_layer_9/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/custom_data_3 = Color(0.25, 0.5, 0.75, 1)
+0:0/0/custom_data_9 = Color(0.25, 0.5, 0.75, 1)
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/10 = 10
+0:0/10/modulate = Color(0.5, 0.5, 1, 1)
+1:0/animation_speed = 2.0
+1:0/animation_frame_0/duration = 1.0
+1:0/animation_frame_1/duration = 0.5
+1:0/0 = 0
+0:2/size_in_atlas = Vector2i(2, 1)
+0:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0q5cx"]
+texture = SubResource("GradientTexture2D_umwu3")
+0:0/next_alternative_id = 2
+0:0/0 = 0
+0:0/0/terrain_set = 4
+0:0/0/terrain = 0
+0:0/0/occlusion_layer_4/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/occlusion_layer_10/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/physics_layer_4/linear_velocity = Vector2(5, 0)
+0:0/0/physics_layer_4/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_4/polygon_0/one_way = true
+0:0/0/physics_layer_10/linear_velocity = Vector2(11, 0)
+0:0/0/physics_layer_10/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_10/polygon_0/one_way = true
+0:0/0/terrains_peering_bit/bottom_right_corner = 1
+0:0/0/navigation_layer_4/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/navigation_layer_10/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/custom_data_4 = true
+0:0/0/custom_data_10 = true
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/10 = 10
+0:0/10/modulate = Color(0.5, 0.5, 1, 1)
+1:0/animation_speed = 2.0
+1:0/animation_frame_0/duration = 1.0
+1:0/animation_frame_1/duration = 0.5
+1:0/0 = 0
+0:2/size_in_atlas = Vector2i(2, 1)
+0:2/0 = 0
+
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_lnxp8"]
+scenes/1/scene = SubResource("PackedScene_jhflg")
+scenes/10/scene = SubResource("PackedScene_jhflg")
+scenes/10/display_placeholder = true
+scenes/12/scene = SubResource("PackedScene_jhflg")
+scenes/12/display_placeholder = true
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ieiby"]
+texture = SubResource("GradientTexture2D_umwu3")
+0:0/next_alternative_id = 2
+0:0/0 = 0
+0:0/0/terrain_set = 6
+0:0/0/terrain = 0
+0:0/0/occlusion_layer_0/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/occlusion_layer_6/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/physics_layer_0/linear_velocity = Vector2(1, 0)
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_0/polygon_0/one_way = true
+0:0/0/physics_layer_6/linear_velocity = Vector2(7, 0)
+0:0/0/physics_layer_6/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_6/polygon_0/one_way = true
+0:0/0/terrains_peering_bit/right_side = 1
+0:0/0/navigation_layer_0/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/navigation_layer_6/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/custom_data_0 = 1
+0:0/0/custom_data_6 = 7
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/10 = 10
+0:0/10/modulate = Color(0.5, 0.5, 1, 1)
+1:0/animation_speed = 2.0
+1:0/animation_frame_0/duration = 1.0
+1:0/animation_frame_1/duration = 0.5
+1:0/0 = 0
+0:2/size_in_atlas = Vector2i(2, 1)
+0:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_v6kfx"]
+texture = SubResource("GradientTexture2D_umwu3")
+0:0/next_alternative_id = 2
+0:0/0 = 0
+0:0/0/terrain_set = 7
+0:0/0/terrain = 0
+0:0/0/occlusion_layer_1/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/occlusion_layer_7/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/physics_layer_1/linear_velocity = Vector2(2, 0)
+0:0/0/physics_layer_1/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_7/linear_velocity = Vector2(8, 0)
+0:0/0/physics_layer_7/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/terrains_peering_bit/bottom_right_corner = 1
+0:0/0/navigation_layer_1/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/navigation_layer_7/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/custom_data_1 = "value_1"
+0:0/0/custom_data_7 = "value_7"
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/10 = 10
+0:0/10/modulate = Color(0.5, 0.5, 1, 1)
+1:0/animation_speed = 2.0
+1:0/animation_frame_0/duration = 1.0
+1:0/animation_frame_1/duration = 0.5
+1:0/0 = 0
+0:2/size_in_atlas = Vector2i(2, 1)
+0:2/0 = 0
+
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_f2emo"]
+scenes/1/scene = SubResource("PackedScene_jhflg")
+scenes/10/scene = SubResource("PackedScene_jhflg")
+scenes/10/display_placeholder = true
+scenes/12/scene = SubResource("PackedScene_jhflg")
+scenes/12/display_placeholder = true
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_g0v38"]
+texture = SubResource("GradientTexture2D_umwu3")
+0:0/next_alternative_id = 2
+0:0/0 = 0
+0:0/0/terrain_set = 9
+0:0/0/terrain = 0
+0:0/0/occlusion_layer_3/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/occlusion_layer_9/polygon_0/polygon = SubResource("OccluderPolygon2D_gx5co")
+0:0/0/physics_layer_3/linear_velocity = Vector2(4, 0)
+0:0/0/physics_layer_3/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/physics_layer_9/linear_velocity = Vector2(10, 0)
+0:0/0/physics_layer_9/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 0, 8)
+0:0/0/terrains_peering_bit/right_side = 1
+0:0/0/navigation_layer_3/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/navigation_layer_9/polygon = SubResource("NavigationPolygon_ea17s")
+0:0/0/custom_data_3 = Color(0.25, 0.5, 0.75, 1)
+0:0/0/custom_data_9 = Color(0.25, 0.5, 0.75, 1)
+0:0/1 = 1
+0:0/1/flip_h = true
+0:0/10 = 10
+0:0/10/modulate = Color(0.5, 0.5, 1, 1)
+1:0/animation_speed = 2.0
+1:0/animation_frame_0/duration = 1.0
+1:0/animation_frame_1/duration = 0.5
+1:0/0 = 0
+0:2/size_in_atlas = Vector2i(2, 1)
+0:2/0 = 0
+
+[resource]
+occlusion_layer_0/light_mask = 2
+occlusion_layer_1/light_mask = 4
+occlusion_layer_1/sdf_collision = true
+occlusion_layer_2/light_mask = 8
+occlusion_layer_3/light_mask = 16
+occlusion_layer_3/sdf_collision = true
+occlusion_layer_4/light_mask = 32
+occlusion_layer_5/light_mask = 64
+occlusion_layer_5/sdf_collision = true
+occlusion_layer_6/light_mask = 128
+occlusion_layer_7/light_mask = 256
+occlusion_layer_7/sdf_collision = true
+occlusion_layer_8/light_mask = 512
+occlusion_layer_9/light_mask = 1024
+occlusion_layer_9/sdf_collision = true
+occlusion_layer_10/light_mask = 2048
+occlusion_layer_11/light_mask = 4096
+occlusion_layer_11/sdf_collision = true
+physics_layer_0/collision_layer = 2
+physics_layer_0/collision_mask = 5
+physics_layer_0/collision_priority = 2.0
+physics_layer_0/physics_material = SubResource("PhysicsMaterial_gfi81")
+physics_layer_1/collision_layer = 4
+physics_layer_1/collision_mask = 6
+physics_layer_1/collision_priority = 3.0
+physics_layer_2/collision_layer = 8
+physics_layer_2/collision_mask = 4
+physics_layer_2/collision_priority = 4.0
+physics_layer_2/physics_material = SubResource("PhysicsMaterial_gfi81")
+physics_layer_3/collision_layer = 16
+physics_layer_3/collision_mask = 12
+physics_layer_3/collision_priority = 5.0
+physics_layer_4/collision_layer = 32
+physics_layer_4/collision_mask = 20
+physics_layer_4/collision_priority = 6.0
+physics_layer_4/physics_material = SubResource("PhysicsMaterial_gfi81")
+physics_layer_5/collision_layer = 64
+physics_layer_5/collision_mask = 36
+physics_layer_5/collision_priority = 7.0
+physics_layer_6/collision_layer = 128
+physics_layer_6/collision_mask = 68
+physics_layer_6/collision_priority = 8.0
+physics_layer_6/physics_material = SubResource("PhysicsMaterial_gfi81")
+physics_layer_7/collision_layer = 256
+physics_layer_7/collision_mask = 132
+physics_layer_7/collision_priority = 9.0
+physics_layer_8/collision_layer = 512
+physics_layer_8/collision_mask = 260
+physics_layer_8/collision_priority = 10.0
+physics_layer_8/physics_material = SubResource("PhysicsMaterial_gfi81")
+physics_layer_9/collision_layer = 1024
+physics_layer_9/collision_mask = 516
+physics_layer_9/collision_priority = 11.0
+physics_layer_10/collision_layer = 2048
+physics_layer_10/collision_mask = 1028
+physics_layer_10/collision_priority = 12.0
+physics_layer_10/physics_material = SubResource("PhysicsMaterial_gfi81")
+physics_layer_11/collision_layer = 4096
+physics_layer_11/collision_mask = 2052
+physics_layer_11/collision_priority = 13.0
+terrain_set_0/mode = 0
+terrain_set_0/terrain_0/name = "terrain_0_0"
+terrain_set_0/terrain_0/color = Color(0, 0, 0.5, 1)
+terrain_set_0/terrain_1/name = "terrain_0_1"
+terrain_set_0/terrain_1/color = Color(0.1, 0, 0.5, 1)
+terrain_set_1/mode = 1
+terrain_set_1/terrain_0/name = "terrain_1_0"
+terrain_set_1/terrain_0/color = Color(0, 0.05, 0.5, 1)
+terrain_set_1/terrain_1/name = "terrain_1_1"
+terrain_set_1/terrain_1/color = Color(0.1, 0.05, 0.5, 1)
+terrain_set_1/terrain_2/name = "terrain_1_2"
+terrain_set_1/terrain_2/color = Color(0.2, 0.05, 0.5, 1)
+terrain_set_2/mode = 2
+terrain_set_2/terrain_0/name = "terrain_2_0"
+terrain_set_2/terrain_0/color = Color(0, 0.1, 0.5, 1)
+terrain_set_2/terrain_1/name = "terrain_2_1"
+terrain_set_2/terrain_1/color = Color(0.1, 0.1, 0.5, 1)
+terrain_set_3/mode = 0
+terrain_set_3/terrain_0/name = "terrain_3_0"
+terrain_set_3/terrain_0/color = Color(0, 0.15, 0.5, 1)
+terrain_set_3/terrain_1/name = "terrain_3_1"
+terrain_set_3/terrain_1/color = Color(0.1, 0.15, 0.5, 1)
+terrain_set_3/terrain_2/name = "terrain_3_2"
+terrain_set_3/terrain_2/color = Color(0.2, 0.15, 0.5, 1)
+terrain_set_4/mode = 1
+terrain_set_4/terrain_0/name = "terrain_4_0"
+terrain_set_4/terrain_0/color = Color(0, 0.2, 0.5, 1)
+terrain_set_4/terrain_1/name = "terrain_4_1"
+terrain_set_4/terrain_1/color = Color(0.1, 0.2, 0.5, 1)
+terrain_set_5/mode = 2
+terrain_set_5/terrain_0/name = "terrain_5_0"
+terrain_set_5/terrain_0/color = Color(0, 0.25, 0.5, 1)
+terrain_set_5/terrain_1/name = "terrain_5_1"
+terrain_set_5/terrain_1/color = Color(0.1, 0.25, 0.5, 1)
+terrain_set_5/terrain_2/name = "terrain_5_2"
+terrain_set_5/terrain_2/color = Color(0.2, 0.25, 0.5, 1)
+terrain_set_6/mode = 0
+terrain_set_6/terrain_0/name = "terrain_6_0"
+terrain_set_6/terrain_0/color = Color(0, 0.3, 0.5, 1)
+terrain_set_6/terrain_1/name = "terrain_6_1"
+terrain_set_6/terrain_1/color = Color(0.1, 0.3, 0.5, 1)
+terrain_set_7/mode = 1
+terrain_set_7/terrain_0/name = "terrain_7_0"
+terrain_set_7/terrain_0/color = Color(0, 0.35, 0.5, 1)
+terrain_set_7/terrain_1/name = "terrain_7_1"
+terrain_set_7/terrain_1/color = Color(0.1, 0.35, 0.5, 1)
+terrain_set_7/terrain_2/name = "terrain_7_2"
+terrain_set_7/terrain_2/color = Color(0.2, 0.35, 0.5, 1)
+terrain_set_8/mode = 2
+terrain_set_8/terrain_0/name = "terrain_8_0"
+terrain_set_8/terrain_0/color = Color(0, 0.4, 0.5, 1)
+terrain_set_8/terrain_1/name = "terrain_8_1"
+terrain_set_8/terrain_1/color = Color(0.1, 0.4, 0.5, 1)
+terrain_set_9/mode = 0
+terrain_set_9/terrain_0/name = "terrain_9_0"
+terrain_set_9/terrain_0/color = Color(0, 0.45, 0.5, 1)
+terrain_set_9/terrain_1/name = "terrain_9_1"
+terrain_set_9/terrain_1/color = Color(0.1, 0.45, 0.5, 1)
+terrain_set_9/terrain_2/name = "terrain_9_2"
+terrain_set_9/terrain_2/color = Color(0.2, 0.45, 0.5, 1)
+terrain_set_10/mode = 1
+terrain_set_10/terrain_0/name = "terrain_10_0"
+terrain_set_10/terrain_0/color = Color(0, 0.5, 0.5, 1)
+terrain_set_10/terrain_1/name = "terrain_10_1"
+terrain_set_10/terrain_1/color = Color(0.1, 0.5, 0.5, 1)
+terrain_set_11/mode = 2
+terrain_set_11/terrain_0/name = "terrain_11_0"
+terrain_set_11/terrain_0/color = Color(0, 0.55, 0.5, 1)
+terrain_set_11/terrain_1/name = "terrain_11_1"
+terrain_set_11/terrain_1/color = Color(0.1, 0.55, 0.5, 1)
+terrain_set_11/terrain_2/name = "terrain_11_2"
+terrain_set_11/terrain_2/color = Color(0.2, 0.55, 0.5, 1)
+navigation_layer_0/layers = 2
+navigation_layer_1/layers = 4
+navigation_layer_2/layers = 8
+navigation_layer_3/layers = 16
+navigation_layer_4/layers = 32
+navigation_layer_5/layers = 64
+navigation_layer_6/layers = 128
+navigation_layer_7/layers = 256
+navigation_layer_8/layers = 512
+navigation_layer_9/layers = 1024
+navigation_layer_10/layers = 2048
+navigation_layer_11/layers = 4096
+custom_data_layer_0/name = "data_0"
+custom_data_layer_0/type = 2
+custom_data_layer_1/name = "data_1"
+custom_data_layer_1/type = 4
+custom_data_layer_2/name = "data_2"
+custom_data_layer_2/type = 3
+custom_data_layer_3/name = "data_3"
+custom_data_layer_3/type = 20
+custom_data_layer_4/name = "data_4"
+custom_data_layer_4/type = 1
+custom_data_layer_5/name = "data_5"
+custom_data_layer_5/type = 5
+custom_data_layer_6/name = "data_6"
+custom_data_layer_6/type = 2
+custom_data_layer_7/name = "data_7"
+custom_data_layer_7/type = 4
+custom_data_layer_8/name = "data_8"
+custom_data_layer_8/type = 3
+custom_data_layer_9/name = "data_9"
+custom_data_layer_9/type = 20
+custom_data_layer_10/name = "data_10"
+custom_data_layer_10/type = 1
+custom_data_layer_11/name = "data_11"
+custom_data_layer_11/type = 5
+sources/0 = SubResource("TileSetAtlasSource_gic2u")
+sources/1 = SubResource("TileSetAtlasSource_0gabt")
+sources/2 = SubResource("TileSetScenesCollectionSource_17md0")
+sources/3 = SubResource("TileSetAtlasSource_7d8bs")
+sources/4 = SubResource("TileSetAtlasSource_0q5cx")
+sources/5 = SubResource("TileSetScenesCollectionSource_lnxp8")
+sources/6 = SubResource("TileSetAtlasSource_ieiby")
+sources/7 = SubResource("TileSetAtlasSource_v6kfx")
+sources/8 = SubResource("TileSetScenesCollectionSource_f2emo")
+sources/9 = SubResource("TileSetAtlasSource_g0v38")
+sources/10 = SubResource("TileSetAtlasSource_0cp47")
+sources/11 = SubResource("TileSetScenesCollectionSource_f8hrk")
+tile_proxies/source_level = [5, 1, 11, 0]
+tile_proxies/coords_level = [[1, Vector2i(0, 0)], [10, Vector2i(1, 0)], [3, Vector2i(1, 0)], [4, Vector2i(0, 0)]]
+tile_proxies/alternative_level = [[6, Vector2i(0, 0), 1], [7, Vector2i(0, 0), 10], [9, Vector2i(0, 0), 10], [0, Vector2i(0, 0), 1]]

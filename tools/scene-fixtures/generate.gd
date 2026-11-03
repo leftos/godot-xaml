@@ -75,6 +75,7 @@ func _run() -> String:
 		_skeleton_modification_chains,
 		_skeleton_modification_singles,
 		FamilyCases.physics_bones.bind(self),
+		FamilyCases.tile_set_layers.bind(self),
 	]
 	for step in steps:
 		var error: String = step.call()

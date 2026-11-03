@@ -25,6 +25,7 @@ public sealed class ResourceForwardTests
             "replication_properties",
             "script_class",
             "skeleton_modification_singles",
+            "tile_set_layers",
             "tile_set_patterns",
             "visual_shader_nodes",
             "visual_shader_types"

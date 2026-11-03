@@ -255,6 +255,15 @@ internal static class DynamicPropertyFamilies
         "angular_equilibrium_point",
     ];
 
+    // scene/resources/2d/tile_set.cpp, TileSet::_get_property_list: one terrain set's keys, its mode and then each terrain's
+    // name and color in numeric order. A row has one nested level only under a count property, which a terrain set lacks, so
+    // the terrains are spelled out: 64 of them, past which a terrain's keys keep source order.
+    private static readonly string[] TerrainSetKeys =
+    [
+        "mode",
+        .. Enumerable.Range(0, 64).SelectMany(terrain => new[] { $"terrain_{terrain}/name", $"terrain_{terrain}/color" }),
+    ];
+
     // scene/3d/physics/soft_body_3d.cpp, SoftBody3D::_get_property_list: one attachment's keys.
     private static readonly string[] SoftBodyAttachmentKeys = ["point_index", "spatial_attachment_path", "offset"];
 
@@ -471,19 +480,33 @@ internal static class DynamicPropertyFamilies
         // scene/resources/theme.cpp, Theme::_get_property_list (one list, sorted by name)
         Row.AnyOrder("Theme", @"^[^/]+/(?:base_type$|(?:icons|styles|fonts|font_sizes|colors|constants)/)"),
         // scene/resources/2d/tile_set.cpp, TileSet::_get_property_list
-        Row.AnyOrder("TileSet", @"^occlusion_layer_\d+/"),
-        Row.AnyOrder("TileSet", @"^physics_layer_\d+/"),
-        Row.AnyOrder("TileSet", @"^terrain_set_\d+/"),
-        Row.AnyOrder("TileSet", @"^navigation_layer_\d+/"),
-        Row.AnyOrder("TileSet", @"^custom_data_layer_\d+/"),
+        // Each layer kind's layers in numeric order, each layer's keys in a fixed order; TileSet::_set adds layers up to the
+        // index on any key, so any order loads.
+        Row.OnKey("TileSet", @"^occlusion_layer_(?<index>\d+)/(?<key>.*)", ["light_mask", "sdf_collision"]),
+        Row.OnKey(
+            "TileSet",
+            @"^physics_layer_(?<index>\d+)/(?<key>.*)",
+            ["collision_layer", "collision_mask", "collision_priority", "physics_material"]
+        ),
+        Row.OnKey("TileSet", @"^terrain_set_(?<index>\d+)/(?<key>.*)", TerrainSetKeys),
+        Row.OnKey("TileSet", @"^navigation_layer_(?<index>\d+)/(?<key>.*)", ["layers"]),
+        Row.OnKey("TileSet", @"^custom_data_layer_(?<index>\d+)/(?<key>.*)", ["name", "type"]),
         Row.AnyOrder("TileSet", @"^sources/\d+$"),
-        Row.AnyOrder("TileSet", @"^tile_proxies/"),
+        // The proxies after the sources, source level, coords level, then alternative level.
+        Row.AnyOrder("TileSet", @"^tile_proxies/source_level$"),
+        Row.AnyOrder("TileSet", @"^tile_proxies/coords_level$"),
+        Row.AnyOrder("TileSet", @"^tile_proxies/alternative_level$"),
         // TileSet::_set appends at most one pattern per name (its loop calls add_pattern, which refuses a pattern it holds).
         Row.OnKey("TileSet", @"^pattern_(?<index>\d+)$", []),
         // scene/resources/2d/tile_set.cpp, TileSetAtlasSource::_get_property_list
-        Row.AnyOrder("TileSetAtlasSource", @"^\d+:\d+/"),
+        // TileData::set_terrain and set_terrain_peering_bit fail while terrain_set is unset, and _set creates a tile and an
+        // alternative on any of its keys, so every terrain key follows every other tile key.
+        Row.AnyOrder("TileSetAtlasSource", @"^\d+:\d+/(?!\d+/(?:terrain$|terrains_peering_bit/))"),
+        Row.AnyOrder("TileSetAtlasSource", @"^\d+:\d+/\d+/terrain$"),
+        Row.AnyOrder("TileSetAtlasSource", @"^\d+:\d+/\d+/terrains_peering_bit/"),
         // scene/resources/2d/tile_set.cpp, TileSetScenesCollectionSource::_get_property_list
-        Row.AnyOrder("TileSetScenesCollectionSource", @"^scenes/\d+/"),
+        // Scene tiles by id (create_scene_tile sorts scenes_ids), each tile's scene first; _set creates a tile on either key.
+        Row.OnKey("TileSetScenesCollectionSource", @"^scenes/(?<index>\d+)/(?<key>[^/]*)", ["scene", "display_placeholder"]),
         // scene/resources/2d/tile_set.cpp, TileMapPattern::_get_property_list
         Row.AnyOrder("TileMapPattern", @"^tile_data$"),
         // scene/resources/2d/tile_set.cpp, TileData::_get_property_list

@@ -440,6 +440,125 @@ public sealed class PropertyOrderTests
         Assert.Equal(["pattern_0", "pattern_1", "pattern_2", "pattern_10"], Names(resource.ResourceProperties));
     }
 
+    // TileSet::_get_property_list lists each layer kind's layers in numeric order, each layer's keys in a fixed order, and each
+    // terrain set's mode before its terrains, each terrain's name before its color.
+    [Fact]
+    public void TileSetLayersRunInNumericOrderEachInItsKeyOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSet {{X}}>
+              <x:Prop Name="custom_data_layer_10/name" Value='"b"' />
+              <x:Prop Name="custom_data_layer_2/name" Value='"a"' />
+              <x:Prop Name="custom_data_layer_2/type" Value="2" />
+              <x:Prop Name="navigation_layer_10/layers" Value="4" />
+              <x:Prop Name="navigation_layer_2/layers" Value="2" />
+              <x:Prop Name="occlusion_layer_10/light_mask" Value="4" />
+              <x:Prop Name="occlusion_layer_2/light_mask" Value="2" />
+              <x:Prop Name="occlusion_layer_2/sdf_collision" Value="true" />
+              <x:Prop Name="physics_layer_10/collision_layer" Value="4" />
+              <x:Prop Name="physics_layer_2/collision_layer" Value="2" />
+              <x:Prop Name="physics_layer_2/collision_priority" Value="3.0" />
+              <x:Prop Name="terrain_set_10/mode" Value="1" />
+              <x:Prop Name="terrain_set_2/mode" Value="2" />
+              <x:Prop Name="terrain_set_2/terrain_0/color" Value="Color(1, 0, 0, 1)" />
+              <x:Prop Name="terrain_set_2/terrain_0/name" Value='"t"' />
+            </TileSet>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "occlusion_layer_2/light_mask",
+                "occlusion_layer_2/sdf_collision",
+                "occlusion_layer_10/light_mask",
+                "physics_layer_2/collision_layer",
+                "physics_layer_2/collision_priority",
+                "physics_layer_10/collision_layer",
+                "terrain_set_2/mode",
+                "terrain_set_2/terrain_0/name",
+                "terrain_set_2/terrain_0/color",
+                "terrain_set_10/mode",
+                "navigation_layer_2/layers",
+                "navigation_layer_10/layers",
+                "custom_data_layer_2/name",
+                "custom_data_layer_2/type",
+                "custom_data_layer_10/name",
+            ],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // TileSet::_get_property_list lists the tile proxies source level, coords level, then alternative level, after the sources.
+    [Fact]
+    public void TileSetProxiesRunSourceCoordsAlternativeAfterTheSources()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSet {{X}}>
+              <x:Prop Name="tile_proxies/alternative_level" Value="[]" />
+              <x:Prop Name="tile_proxies/coords_level" Value="[]" />
+              <x:Prop Name="tile_proxies/source_level" Value="[]" />
+              <x:Prop Name="sources/0" Value='Resource("res://s.tres")' />
+            </TileSet>
+            """
+        );
+
+        Assert.Equal(
+            ["sources/0", "tile_proxies/source_level", "tile_proxies/coords_level", "tile_proxies/alternative_level"],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // TileSetScenesCollectionSource::_get_property_list lists its scene tiles by id (create_scene_tile sorts scenes_ids), each
+    // tile's scene, then display_placeholder.
+    [Fact]
+    public void ScenesCollectionTilesRunInIdOrderSceneFirst()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetScenesCollectionSource {{X}}>
+              <x:Prop Name="scenes/1/scene" Value='Resource("res://a.tscn")' />
+              <x:Prop Name="scenes/10/display_placeholder" Value="true" />
+              <x:Prop Name="scenes/10/scene" Value='Resource("res://a.tscn")' />
+              <x:Prop Name="scenes/2/display_placeholder" Value="true" />
+              <x:Prop Name="scenes/2/scene" Value='Resource("res://a.tscn")' />
+            </TileSetScenesCollectionSource>
+            """
+        );
+
+        Assert.Equal(
+            ["scenes/1/scene", "scenes/2/scene", "scenes/2/display_placeholder", "scenes/10/scene", "scenes/10/display_placeholder"],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // TileData::set_terrain and set_terrain_peering_bit fail while the alternative's terrain_set is unset (tile_set.cpp), and
+    // TileSetAtlasSource::_set creates a tile and an alternative on any of its keys, so every terrain key comes after every
+    // other tile key.
+    [Fact]
+    public void AnAtlasTileSetsItsTerrainSetBeforeItsTerrainAndPeeringBits()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0" Value="0" />
+              <x:Prop Name="0:0/0/terrain" Value="0" />
+              <x:Prop Name="0:0/0/terrain_set" Value="0" />
+              <x:Prop Name="0:0/0/terrains_peering_bit/right_side" Value="1" />
+              <x:Prop Name="1:0/0" Value="0" />
+              <x:Prop Name="1:0/0/terrain" Value="1" />
+              <x:Prop Name="1:0/0/terrain_set" Value="0" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            ["0:0/0", "0:0/0/terrain_set", "1:0/0", "1:0/0/terrain_set", "0:0/0/terrain", "1:0/0/terrain", "0:0/0/terrains_peering_bit/right_side"],
+            Names(resource.ResourceProperties)
+        );
+    }
+
     // With no skeleton, SpringBoneSimulator3D::set_root_bone frees a setting's joints, and the collision setters return early
     // while enable_all_child_collisions is true; joints and collisions run in numeric order, each joint's keys in Godot's order.
     [Fact]

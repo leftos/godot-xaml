@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- A TileSet whose tiles have terrains keeps them: converting back no longer writes a tile's terrain before its terrain set, which made Godot drop it.
+- Converting back writes TileSet layers, tile proxies and scene tiles in Godot's order.
 - Converting back writes PhysicalBone3D joint constraints and SoftBody3D attachments in Godot's order.
 - Converting back writes slash-named properties such as Environment's `glow_levels/1` and joint `params/` at their place in Godot's order.
 

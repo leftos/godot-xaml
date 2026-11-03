@@ -35,7 +35,8 @@ public sealed partial class ResourceConversionTests
             "tile_set_patterns.tres",
             "visual_shader_types.tres",
             "animation_nodes.tres",
-            "skeleton_modification_singles.tres"
+            "skeleton_modification_singles.tres",
+            "tile_set_layers.tres"
         );
 
     // With the forward pass's ids kept, the way back writes the bytes Godot wrote.
@@ -50,7 +51,8 @@ public sealed partial class ResourceConversionTests
         ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, Metadata, Options with { KeepIds = forward.Ids });
 
         Assert.Empty(back.Issues);
-        Assert.Equal(text, TscnWriter.Write(back.Document));
+        string fixture = Path.GetFileNameWithoutExtension(file);
+        Assert.Equal(UnorderedNames.Text(fixture, text), TscnWriter.Write(UnorderedNames.Sort(fixture, back.Document)));
     }
 
     // With ids minted again, the way back differs from Godot's file only in the ids.
@@ -65,7 +67,8 @@ public sealed partial class ResourceConversionTests
         ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, Metadata, Options);
 
         Assert.Empty(back.Issues);
-        Assert.Equal(Renumber(text), Renumber(TscnWriter.Write(back.Document)));
+        string fixture = Path.GetFileNameWithoutExtension(file);
+        Assert.Equal(Renumber(UnorderedNames.Text(fixture, text)), Renumber(TscnWriter.Write(UnorderedNames.Sort(fixture, back.Document))));
     }
 
     [Fact]

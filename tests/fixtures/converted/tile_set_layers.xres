@@ -1,0 +1,496 @@
+<TileSet
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    TileProxies.alternative_level="[[6, Vector2i(0, 0), 1], [7, Vector2i(0, 0), 10], [9, Vector2i(0, 0), 10], [0, Vector2i(0, 0), 1]]"
+    TileProxies.coords_level="[[1, Vector2i(0, 0)], [10, Vector2i(1, 0)], [3, Vector2i(1, 0)], [4, Vector2i(0, 0)]]"
+    TileProxies.source_level="[5, 1, 11, 0]">
+  <x:Resources>
+    <PhysicsMaterial x:Key="PhysicsMaterial1" Friction="0.25" />
+    <NavigationPolygon
+        x:Key="NavigationPolygon1"
+        Polygons="Array[PackedInt32Array]([PackedInt32Array(0, 1, 2)])"
+        Vertices="PackedVector2Array(-8, -8, 8, -8, 8, 8)" />
+    <OccluderPolygon2D
+        x:Key="OccluderPolygon2D1"
+        Polygon="PackedVector2Array(-4, -4, 4, -4, 0, 4)" />
+    <GradientTexture2D x:Key="GradientTexture2D1" />
+    <PackedScene
+        x:Key="PackedScene1"
+        _Bundled='{&#10;"conn_count": 0,&#10;"conns": PackedInt32Array(),&#10;"editable_instances": [],&#10;"id_paths": [],&#10;"names": PackedStringArray("SceneTile", "Node2D"),&#10;"node_count": 1,&#10;"node_ids": PackedInt32Array(880027561),&#10;"node_paths": [],&#10;"nodes": PackedInt32Array(-1, -1, 1, 0, -1, 0, 0),&#10;"variants": [],&#10;"version": 3&#10;}' />
+  </x:Resources>
+  <x:Prop Name="custom_data_layer_0/name" Value='"data_0"' />
+  <x:Prop Name="custom_data_layer_0/type" Value="2" />
+  <x:Prop Name="custom_data_layer_1/name" Value='"data_1"' />
+  <x:Prop Name="custom_data_layer_1/type" Value="4" />
+  <x:Prop Name="custom_data_layer_10/name" Value='"data_10"' />
+  <x:Prop Name="custom_data_layer_10/type" Value="1" />
+  <x:Prop Name="custom_data_layer_11/name" Value='"data_11"' />
+  <x:Prop Name="custom_data_layer_11/type" Value="5" />
+  <x:Prop Name="custom_data_layer_2/name" Value='"data_2"' />
+  <x:Prop Name="custom_data_layer_2/type" Value="3" />
+  <x:Prop Name="custom_data_layer_3/name" Value='"data_3"' />
+  <x:Prop Name="custom_data_layer_3/type" Value="20" />
+  <x:Prop Name="custom_data_layer_4/name" Value='"data_4"' />
+  <x:Prop Name="custom_data_layer_4/type" Value="1" />
+  <x:Prop Name="custom_data_layer_5/name" Value='"data_5"' />
+  <x:Prop Name="custom_data_layer_5/type" Value="5" />
+  <x:Prop Name="custom_data_layer_6/name" Value='"data_6"' />
+  <x:Prop Name="custom_data_layer_6/type" Value="2" />
+  <x:Prop Name="custom_data_layer_7/name" Value='"data_7"' />
+  <x:Prop Name="custom_data_layer_7/type" Value="4" />
+  <x:Prop Name="custom_data_layer_8/name" Value='"data_8"' />
+  <x:Prop Name="custom_data_layer_8/type" Value="3" />
+  <x:Prop Name="custom_data_layer_9/name" Value='"data_9"' />
+  <x:Prop Name="custom_data_layer_9/type" Value="20" />
+  <x:Prop Name="navigation_layer_0/layers" Value="2" />
+  <x:Prop Name="navigation_layer_1/layers" Value="4" />
+  <x:Prop Name="navigation_layer_10/layers" Value="2048" />
+  <x:Prop Name="navigation_layer_11/layers" Value="4096" />
+  <x:Prop Name="navigation_layer_2/layers" Value="8" />
+  <x:Prop Name="navigation_layer_3/layers" Value="16" />
+  <x:Prop Name="navigation_layer_4/layers" Value="32" />
+  <x:Prop Name="navigation_layer_5/layers" Value="64" />
+  <x:Prop Name="navigation_layer_6/layers" Value="128" />
+  <x:Prop Name="navigation_layer_7/layers" Value="256" />
+  <x:Prop Name="navigation_layer_8/layers" Value="512" />
+  <x:Prop Name="navigation_layer_9/layers" Value="1024" />
+  <x:Prop Name="occlusion_layer_0/light_mask" Value="2" />
+  <x:Prop Name="occlusion_layer_1/light_mask" Value="4" />
+  <x:Prop Name="occlusion_layer_1/sdf_collision" Value="true" />
+  <x:Prop Name="occlusion_layer_10/light_mask" Value="2048" />
+  <x:Prop Name="occlusion_layer_11/light_mask" Value="4096" />
+  <x:Prop Name="occlusion_layer_11/sdf_collision" Value="true" />
+  <x:Prop Name="occlusion_layer_2/light_mask" Value="8" />
+  <x:Prop Name="occlusion_layer_3/light_mask" Value="16" />
+  <x:Prop Name="occlusion_layer_3/sdf_collision" Value="true" />
+  <x:Prop Name="occlusion_layer_4/light_mask" Value="32" />
+  <x:Prop Name="occlusion_layer_5/light_mask" Value="64" />
+  <x:Prop Name="occlusion_layer_5/sdf_collision" Value="true" />
+  <x:Prop Name="occlusion_layer_6/light_mask" Value="128" />
+  <x:Prop Name="occlusion_layer_7/light_mask" Value="256" />
+  <x:Prop Name="occlusion_layer_7/sdf_collision" Value="true" />
+  <x:Prop Name="occlusion_layer_8/light_mask" Value="512" />
+  <x:Prop Name="occlusion_layer_9/light_mask" Value="1024" />
+  <x:Prop Name="occlusion_layer_9/sdf_collision" Value="true" />
+  <x:Prop Name="physics_layer_0/collision_layer" Value="2" />
+  <x:Prop Name="physics_layer_0/collision_mask" Value="5" />
+  <x:Prop Name="physics_layer_0/collision_priority" Value="2.0" />
+  <x:Prop Name="physics_layer_0/physics_material" Value="{PhysicsMaterial1}" />
+  <x:Prop Name="physics_layer_1/collision_layer" Value="4" />
+  <x:Prop Name="physics_layer_1/collision_mask" Value="6" />
+  <x:Prop Name="physics_layer_1/collision_priority" Value="3.0" />
+  <x:Prop Name="physics_layer_10/collision_layer" Value="2048" />
+  <x:Prop Name="physics_layer_10/collision_mask" Value="1028" />
+  <x:Prop Name="physics_layer_10/collision_priority" Value="12.0" />
+  <x:Prop Name="physics_layer_10/physics_material" Value="{PhysicsMaterial1}" />
+  <x:Prop Name="physics_layer_11/collision_layer" Value="4096" />
+  <x:Prop Name="physics_layer_11/collision_mask" Value="2052" />
+  <x:Prop Name="physics_layer_11/collision_priority" Value="13.0" />
+  <x:Prop Name="physics_layer_2/collision_layer" Value="8" />
+  <x:Prop Name="physics_layer_2/collision_mask" Value="4" />
+  <x:Prop Name="physics_layer_2/collision_priority" Value="4.0" />
+  <x:Prop Name="physics_layer_2/physics_material" Value="{PhysicsMaterial1}" />
+  <x:Prop Name="physics_layer_3/collision_layer" Value="16" />
+  <x:Prop Name="physics_layer_3/collision_mask" Value="12" />
+  <x:Prop Name="physics_layer_3/collision_priority" Value="5.0" />
+  <x:Prop Name="physics_layer_4/collision_layer" Value="32" />
+  <x:Prop Name="physics_layer_4/collision_mask" Value="20" />
+  <x:Prop Name="physics_layer_4/collision_priority" Value="6.0" />
+  <x:Prop Name="physics_layer_4/physics_material" Value="{PhysicsMaterial1}" />
+  <x:Prop Name="physics_layer_5/collision_layer" Value="64" />
+  <x:Prop Name="physics_layer_5/collision_mask" Value="36" />
+  <x:Prop Name="physics_layer_5/collision_priority" Value="7.0" />
+  <x:Prop Name="physics_layer_6/collision_layer" Value="128" />
+  <x:Prop Name="physics_layer_6/collision_mask" Value="68" />
+  <x:Prop Name="physics_layer_6/collision_priority" Value="8.0" />
+  <x:Prop Name="physics_layer_6/physics_material" Value="{PhysicsMaterial1}" />
+  <x:Prop Name="physics_layer_7/collision_layer" Value="256" />
+  <x:Prop Name="physics_layer_7/collision_mask" Value="132" />
+  <x:Prop Name="physics_layer_7/collision_priority" Value="9.0" />
+  <x:Prop Name="physics_layer_8/collision_layer" Value="512" />
+  <x:Prop Name="physics_layer_8/collision_mask" Value="260" />
+  <x:Prop Name="physics_layer_8/collision_priority" Value="10.0" />
+  <x:Prop Name="physics_layer_8/physics_material" Value="{PhysicsMaterial1}" />
+  <x:Prop Name="physics_layer_9/collision_layer" Value="1024" />
+  <x:Prop Name="physics_layer_9/collision_mask" Value="516" />
+  <x:Prop Name="physics_layer_9/collision_priority" Value="11.0" />
+  <TileSet.Sources.0>
+    <TileSetAtlasSource Texture="{GradientTexture2D1}">
+      <x:Prop Name="0:0/0" Value="0" />
+      <x:Prop Name="0:0/0/custom_data_0" Value="1" />
+      <x:Prop Name="0:0/0/custom_data_6" Value="7" />
+      <x:Prop Name="0:0/0/navigation_layer_0/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/navigation_layer_6/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_0/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_6/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/physics_layer_0/linear_velocity" Value="Vector2(1, 0)" />
+      <x:Prop Name="0:0/0/physics_layer_0/polygon_0/one_way" Value="true" />
+      <x:Prop
+          Name="0:0/0/physics_layer_0/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/physics_layer_6/linear_velocity" Value="Vector2(7, 0)" />
+      <x:Prop Name="0:0/0/physics_layer_6/polygon_0/one_way" Value="true" />
+      <x:Prop
+          Name="0:0/0/physics_layer_6/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/terrain" Value="0" />
+      <x:Prop Name="0:0/0/terrain_set" Value="0" />
+      <x:Prop Name="0:0/0/terrains_peering_bit/right_side" Value="1" />
+      <x:Prop Name="0:0/1" Value="1" />
+      <x:Prop Name="0:0/1/flip_h" Value="true" />
+      <x:Prop Name="0:0/10" Value="10" />
+      <x:Prop Name="0:0/10/modulate" Value="Color(0.5, 0.5, 1, 1)" />
+      <x:Prop Name="0:0/next_alternative_id" Value="2" />
+      <x:Prop Name="0:2/0" Value="0" />
+      <x:Prop Name="0:2/size_in_atlas" Value="Vector2i(2, 1)" />
+      <x:Prop Name="1:0/0" Value="0" />
+      <x:Prop Name="1:0/animation_frame_0/duration" Value="1.0" />
+      <x:Prop Name="1:0/animation_frame_1/duration" Value="0.5" />
+      <x:Prop Name="1:0/animation_speed" Value="2.0" />
+    </TileSetAtlasSource>
+  </TileSet.Sources.0>
+  <TileSet.Sources.1>
+    <TileSetAtlasSource Texture="{GradientTexture2D1}">
+      <x:Prop Name="0:0/0" Value="0" />
+      <x:Prop Name="0:0/0/custom_data_1" Value='"value_1"' />
+      <x:Prop Name="0:0/0/custom_data_7" Value='"value_7"' />
+      <x:Prop Name="0:0/0/navigation_layer_1/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/navigation_layer_7/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_1/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_7/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/physics_layer_1/linear_velocity" Value="Vector2(2, 0)" />
+      <x:Prop
+          Name="0:0/0/physics_layer_1/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/physics_layer_7/linear_velocity" Value="Vector2(8, 0)" />
+      <x:Prop
+          Name="0:0/0/physics_layer_7/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/terrain" Value="0" />
+      <x:Prop Name="0:0/0/terrain_set" Value="1" />
+      <x:Prop Name="0:0/0/terrains_peering_bit/bottom_right_corner" Value="1" />
+      <x:Prop Name="0:0/1" Value="1" />
+      <x:Prop Name="0:0/1/flip_h" Value="true" />
+      <x:Prop Name="0:0/10" Value="10" />
+      <x:Prop Name="0:0/10/modulate" Value="Color(0.5, 0.5, 1, 1)" />
+      <x:Prop Name="0:0/next_alternative_id" Value="2" />
+      <x:Prop Name="0:2/0" Value="0" />
+      <x:Prop Name="0:2/size_in_atlas" Value="Vector2i(2, 1)" />
+      <x:Prop Name="1:0/0" Value="0" />
+      <x:Prop Name="1:0/animation_frame_0/duration" Value="1.0" />
+      <x:Prop Name="1:0/animation_frame_1/duration" Value="0.5" />
+      <x:Prop Name="1:0/animation_speed" Value="2.0" />
+    </TileSetAtlasSource>
+  </TileSet.Sources.1>
+  <TileSet.Sources.10>
+    <TileSetAtlasSource Texture="{GradientTexture2D1}">
+      <x:Prop Name="0:0/0" Value="0" />
+      <x:Prop Name="0:0/0/custom_data_10" Value="true" />
+      <x:Prop Name="0:0/0/custom_data_4" Value="true" />
+      <x:Prop Name="0:0/0/navigation_layer_10/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/navigation_layer_4/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_10/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_4/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/physics_layer_10/linear_velocity" Value="Vector2(11, 0)" />
+      <x:Prop Name="0:0/0/physics_layer_10/polygon_0/one_way" Value="true" />
+      <x:Prop
+          Name="0:0/0/physics_layer_10/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/physics_layer_4/linear_velocity" Value="Vector2(5, 0)" />
+      <x:Prop Name="0:0/0/physics_layer_4/polygon_0/one_way" Value="true" />
+      <x:Prop
+          Name="0:0/0/physics_layer_4/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/terrain" Value="0" />
+      <x:Prop Name="0:0/0/terrain_set" Value="10" />
+      <x:Prop Name="0:0/0/terrains_peering_bit/bottom_right_corner" Value="1" />
+      <x:Prop Name="0:0/1" Value="1" />
+      <x:Prop Name="0:0/1/flip_h" Value="true" />
+      <x:Prop Name="0:0/10" Value="10" />
+      <x:Prop Name="0:0/10/modulate" Value="Color(0.5, 0.5, 1, 1)" />
+      <x:Prop Name="0:0/next_alternative_id" Value="2" />
+      <x:Prop Name="0:2/0" Value="0" />
+      <x:Prop Name="0:2/size_in_atlas" Value="Vector2i(2, 1)" />
+      <x:Prop Name="1:0/0" Value="0" />
+      <x:Prop Name="1:0/animation_frame_0/duration" Value="1.0" />
+      <x:Prop Name="1:0/animation_frame_1/duration" Value="0.5" />
+      <x:Prop Name="1:0/animation_speed" Value="2.0" />
+    </TileSetAtlasSource>
+  </TileSet.Sources.10>
+  <TileSet.Sources.11>
+    <TileSetScenesCollectionSource>
+      <x:Prop Name="scenes/1/scene" Value="{PackedScene1}" />
+      <x:Prop Name="scenes/10/display_placeholder" Value="true" />
+      <x:Prop Name="scenes/10/scene" Value="{PackedScene1}" />
+      <x:Prop Name="scenes/12/display_placeholder" Value="true" />
+      <x:Prop Name="scenes/12/scene" Value="{PackedScene1}" />
+    </TileSetScenesCollectionSource>
+  </TileSet.Sources.11>
+  <TileSet.Sources.2>
+    <TileSetScenesCollectionSource>
+      <x:Prop Name="scenes/1/scene" Value="{PackedScene1}" />
+      <x:Prop Name="scenes/10/display_placeholder" Value="true" />
+      <x:Prop Name="scenes/10/scene" Value="{PackedScene1}" />
+      <x:Prop Name="scenes/12/display_placeholder" Value="true" />
+      <x:Prop Name="scenes/12/scene" Value="{PackedScene1}" />
+    </TileSetScenesCollectionSource>
+  </TileSet.Sources.2>
+  <TileSet.Sources.3>
+    <TileSetAtlasSource Texture="{GradientTexture2D1}">
+      <x:Prop Name="0:0/0" Value="0" />
+      <x:Prop Name="0:0/0/custom_data_3" Value="Color(0.25, 0.5, 0.75, 1)" />
+      <x:Prop Name="0:0/0/custom_data_9" Value="Color(0.25, 0.5, 0.75, 1)" />
+      <x:Prop Name="0:0/0/navigation_layer_3/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/navigation_layer_9/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_3/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_9/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/physics_layer_3/linear_velocity" Value="Vector2(4, 0)" />
+      <x:Prop
+          Name="0:0/0/physics_layer_3/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/physics_layer_9/linear_velocity" Value="Vector2(10, 0)" />
+      <x:Prop
+          Name="0:0/0/physics_layer_9/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/terrain" Value="0" />
+      <x:Prop Name="0:0/0/terrain_set" Value="3" />
+      <x:Prop Name="0:0/0/terrains_peering_bit/right_side" Value="1" />
+      <x:Prop Name="0:0/1" Value="1" />
+      <x:Prop Name="0:0/1/flip_h" Value="true" />
+      <x:Prop Name="0:0/10" Value="10" />
+      <x:Prop Name="0:0/10/modulate" Value="Color(0.5, 0.5, 1, 1)" />
+      <x:Prop Name="0:0/next_alternative_id" Value="2" />
+      <x:Prop Name="0:2/0" Value="0" />
+      <x:Prop Name="0:2/size_in_atlas" Value="Vector2i(2, 1)" />
+      <x:Prop Name="1:0/0" Value="0" />
+      <x:Prop Name="1:0/animation_frame_0/duration" Value="1.0" />
+      <x:Prop Name="1:0/animation_frame_1/duration" Value="0.5" />
+      <x:Prop Name="1:0/animation_speed" Value="2.0" />
+    </TileSetAtlasSource>
+  </TileSet.Sources.3>
+  <TileSet.Sources.4>
+    <TileSetAtlasSource Texture="{GradientTexture2D1}">
+      <x:Prop Name="0:0/0" Value="0" />
+      <x:Prop Name="0:0/0/custom_data_10" Value="true" />
+      <x:Prop Name="0:0/0/custom_data_4" Value="true" />
+      <x:Prop Name="0:0/0/navigation_layer_10/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/navigation_layer_4/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_10/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_4/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/physics_layer_10/linear_velocity" Value="Vector2(11, 0)" />
+      <x:Prop Name="0:0/0/physics_layer_10/polygon_0/one_way" Value="true" />
+      <x:Prop
+          Name="0:0/0/physics_layer_10/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/physics_layer_4/linear_velocity" Value="Vector2(5, 0)" />
+      <x:Prop Name="0:0/0/physics_layer_4/polygon_0/one_way" Value="true" />
+      <x:Prop
+          Name="0:0/0/physics_layer_4/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/terrain" Value="0" />
+      <x:Prop Name="0:0/0/terrain_set" Value="4" />
+      <x:Prop Name="0:0/0/terrains_peering_bit/bottom_right_corner" Value="1" />
+      <x:Prop Name="0:0/1" Value="1" />
+      <x:Prop Name="0:0/1/flip_h" Value="true" />
+      <x:Prop Name="0:0/10" Value="10" />
+      <x:Prop Name="0:0/10/modulate" Value="Color(0.5, 0.5, 1, 1)" />
+      <x:Prop Name="0:0/next_alternative_id" Value="2" />
+      <x:Prop Name="0:2/0" Value="0" />
+      <x:Prop Name="0:2/size_in_atlas" Value="Vector2i(2, 1)" />
+      <x:Prop Name="1:0/0" Value="0" />
+      <x:Prop Name="1:0/animation_frame_0/duration" Value="1.0" />
+      <x:Prop Name="1:0/animation_frame_1/duration" Value="0.5" />
+      <x:Prop Name="1:0/animation_speed" Value="2.0" />
+    </TileSetAtlasSource>
+  </TileSet.Sources.4>
+  <TileSet.Sources.5>
+    <TileSetScenesCollectionSource>
+      <x:Prop Name="scenes/1/scene" Value="{PackedScene1}" />
+      <x:Prop Name="scenes/10/display_placeholder" Value="true" />
+      <x:Prop Name="scenes/10/scene" Value="{PackedScene1}" />
+      <x:Prop Name="scenes/12/display_placeholder" Value="true" />
+      <x:Prop Name="scenes/12/scene" Value="{PackedScene1}" />
+    </TileSetScenesCollectionSource>
+  </TileSet.Sources.5>
+  <TileSet.Sources.6>
+    <TileSetAtlasSource Texture="{GradientTexture2D1}">
+      <x:Prop Name="0:0/0" Value="0" />
+      <x:Prop Name="0:0/0/custom_data_0" Value="1" />
+      <x:Prop Name="0:0/0/custom_data_6" Value="7" />
+      <x:Prop Name="0:0/0/navigation_layer_0/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/navigation_layer_6/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_0/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_6/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/physics_layer_0/linear_velocity" Value="Vector2(1, 0)" />
+      <x:Prop Name="0:0/0/physics_layer_0/polygon_0/one_way" Value="true" />
+      <x:Prop
+          Name="0:0/0/physics_layer_0/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/physics_layer_6/linear_velocity" Value="Vector2(7, 0)" />
+      <x:Prop Name="0:0/0/physics_layer_6/polygon_0/one_way" Value="true" />
+      <x:Prop
+          Name="0:0/0/physics_layer_6/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/terrain" Value="0" />
+      <x:Prop Name="0:0/0/terrain_set" Value="6" />
+      <x:Prop Name="0:0/0/terrains_peering_bit/right_side" Value="1" />
+      <x:Prop Name="0:0/1" Value="1" />
+      <x:Prop Name="0:0/1/flip_h" Value="true" />
+      <x:Prop Name="0:0/10" Value="10" />
+      <x:Prop Name="0:0/10/modulate" Value="Color(0.5, 0.5, 1, 1)" />
+      <x:Prop Name="0:0/next_alternative_id" Value="2" />
+      <x:Prop Name="0:2/0" Value="0" />
+      <x:Prop Name="0:2/size_in_atlas" Value="Vector2i(2, 1)" />
+      <x:Prop Name="1:0/0" Value="0" />
+      <x:Prop Name="1:0/animation_frame_0/duration" Value="1.0" />
+      <x:Prop Name="1:0/animation_frame_1/duration" Value="0.5" />
+      <x:Prop Name="1:0/animation_speed" Value="2.0" />
+    </TileSetAtlasSource>
+  </TileSet.Sources.6>
+  <TileSet.Sources.7>
+    <TileSetAtlasSource Texture="{GradientTexture2D1}">
+      <x:Prop Name="0:0/0" Value="0" />
+      <x:Prop Name="0:0/0/custom_data_1" Value='"value_1"' />
+      <x:Prop Name="0:0/0/custom_data_7" Value='"value_7"' />
+      <x:Prop Name="0:0/0/navigation_layer_1/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/navigation_layer_7/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_1/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_7/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/physics_layer_1/linear_velocity" Value="Vector2(2, 0)" />
+      <x:Prop
+          Name="0:0/0/physics_layer_1/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/physics_layer_7/linear_velocity" Value="Vector2(8, 0)" />
+      <x:Prop
+          Name="0:0/0/physics_layer_7/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/terrain" Value="0" />
+      <x:Prop Name="0:0/0/terrain_set" Value="7" />
+      <x:Prop Name="0:0/0/terrains_peering_bit/bottom_right_corner" Value="1" />
+      <x:Prop Name="0:0/1" Value="1" />
+      <x:Prop Name="0:0/1/flip_h" Value="true" />
+      <x:Prop Name="0:0/10" Value="10" />
+      <x:Prop Name="0:0/10/modulate" Value="Color(0.5, 0.5, 1, 1)" />
+      <x:Prop Name="0:0/next_alternative_id" Value="2" />
+      <x:Prop Name="0:2/0" Value="0" />
+      <x:Prop Name="0:2/size_in_atlas" Value="Vector2i(2, 1)" />
+      <x:Prop Name="1:0/0" Value="0" />
+      <x:Prop Name="1:0/animation_frame_0/duration" Value="1.0" />
+      <x:Prop Name="1:0/animation_frame_1/duration" Value="0.5" />
+      <x:Prop Name="1:0/animation_speed" Value="2.0" />
+    </TileSetAtlasSource>
+  </TileSet.Sources.7>
+  <TileSet.Sources.8>
+    <TileSetScenesCollectionSource>
+      <x:Prop Name="scenes/1/scene" Value="{PackedScene1}" />
+      <x:Prop Name="scenes/10/display_placeholder" Value="true" />
+      <x:Prop Name="scenes/10/scene" Value="{PackedScene1}" />
+      <x:Prop Name="scenes/12/display_placeholder" Value="true" />
+      <x:Prop Name="scenes/12/scene" Value="{PackedScene1}" />
+    </TileSetScenesCollectionSource>
+  </TileSet.Sources.8>
+  <TileSet.Sources.9>
+    <TileSetAtlasSource Texture="{GradientTexture2D1}">
+      <x:Prop Name="0:0/0" Value="0" />
+      <x:Prop Name="0:0/0/custom_data_3" Value="Color(0.25, 0.5, 0.75, 1)" />
+      <x:Prop Name="0:0/0/custom_data_9" Value="Color(0.25, 0.5, 0.75, 1)" />
+      <x:Prop Name="0:0/0/navigation_layer_3/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/navigation_layer_9/polygon" Value="{NavigationPolygon1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_3/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/occlusion_layer_9/polygon_0/polygon" Value="{OccluderPolygon2D1}" />
+      <x:Prop Name="0:0/0/physics_layer_3/linear_velocity" Value="Vector2(4, 0)" />
+      <x:Prop
+          Name="0:0/0/physics_layer_3/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/physics_layer_9/linear_velocity" Value="Vector2(10, 0)" />
+      <x:Prop
+          Name="0:0/0/physics_layer_9/polygon_0/points"
+          Value="PackedVector2Array(-8, -8, 8, -8, 0, 8)" />
+      <x:Prop Name="0:0/0/terrain" Value="0" />
+      <x:Prop Name="0:0/0/terrain_set" Value="9" />
+      <x:Prop Name="0:0/0/terrains_peering_bit/right_side" Value="1" />
+      <x:Prop Name="0:0/1" Value="1" />
+      <x:Prop Name="0:0/1/flip_h" Value="true" />
+      <x:Prop Name="0:0/10" Value="10" />
+      <x:Prop Name="0:0/10/modulate" Value="Color(0.5, 0.5, 1, 1)" />
+      <x:Prop Name="0:0/next_alternative_id" Value="2" />
+      <x:Prop Name="0:2/0" Value="0" />
+      <x:Prop Name="0:2/size_in_atlas" Value="Vector2i(2, 1)" />
+      <x:Prop Name="1:0/0" Value="0" />
+      <x:Prop Name="1:0/animation_frame_0/duration" Value="1.0" />
+      <x:Prop Name="1:0/animation_frame_1/duration" Value="0.5" />
+      <x:Prop Name="1:0/animation_speed" Value="2.0" />
+    </TileSetAtlasSource>
+  </TileSet.Sources.9>
+  <x:Prop Name="terrain_set_0/mode" Value="0" />
+  <x:Prop Name="terrain_set_0/terrain_0/color" Value="Color(0, 0, 0.5, 1)" />
+  <x:Prop Name="terrain_set_0/terrain_0/name" Value='"terrain_0_0"' />
+  <x:Prop Name="terrain_set_0/terrain_1/color" Value="Color(0.1, 0, 0.5, 1)" />
+  <x:Prop Name="terrain_set_0/terrain_1/name" Value='"terrain_0_1"' />
+  <x:Prop Name="terrain_set_1/mode" Value="1" />
+  <x:Prop Name="terrain_set_1/terrain_0/color" Value="Color(0, 0.05, 0.5, 1)" />
+  <x:Prop Name="terrain_set_1/terrain_0/name" Value='"terrain_1_0"' />
+  <x:Prop Name="terrain_set_1/terrain_1/color" Value="Color(0.1, 0.05, 0.5, 1)" />
+  <x:Prop Name="terrain_set_1/terrain_1/name" Value='"terrain_1_1"' />
+  <x:Prop Name="terrain_set_1/terrain_2/color" Value="Color(0.2, 0.05, 0.5, 1)" />
+  <x:Prop Name="terrain_set_1/terrain_2/name" Value='"terrain_1_2"' />
+  <x:Prop Name="terrain_set_10/mode" Value="1" />
+  <x:Prop Name="terrain_set_10/terrain_0/color" Value="Color(0, 0.5, 0.5, 1)" />
+  <x:Prop Name="terrain_set_10/terrain_0/name" Value='"terrain_10_0"' />
+  <x:Prop Name="terrain_set_10/terrain_1/color" Value="Color(0.1, 0.5, 0.5, 1)" />
+  <x:Prop Name="terrain_set_10/terrain_1/name" Value='"terrain_10_1"' />
+  <x:Prop Name="terrain_set_11/mode" Value="2" />
+  <x:Prop Name="terrain_set_11/terrain_0/color" Value="Color(0, 0.55, 0.5, 1)" />
+  <x:Prop Name="terrain_set_11/terrain_0/name" Value='"terrain_11_0"' />
+  <x:Prop Name="terrain_set_11/terrain_1/color" Value="Color(0.1, 0.55, 0.5, 1)" />
+  <x:Prop Name="terrain_set_11/terrain_1/name" Value='"terrain_11_1"' />
+  <x:Prop Name="terrain_set_11/terrain_2/color" Value="Color(0.2, 0.55, 0.5, 1)" />
+  <x:Prop Name="terrain_set_11/terrain_2/name" Value='"terrain_11_2"' />
+  <x:Prop Name="terrain_set_2/mode" Value="2" />
+  <x:Prop Name="terrain_set_2/terrain_0/color" Value="Color(0, 0.1, 0.5, 1)" />
+  <x:Prop Name="terrain_set_2/terrain_0/name" Value='"terrain_2_0"' />
+  <x:Prop Name="terrain_set_2/terrain_1/color" Value="Color(0.1, 0.1, 0.5, 1)" />
+  <x:Prop Name="terrain_set_2/terrain_1/name" Value='"terrain_2_1"' />
+  <x:Prop Name="terrain_set_3/mode" Value="0" />
+  <x:Prop Name="terrain_set_3/terrain_0/color" Value="Color(0, 0.15, 0.5, 1)" />
+  <x:Prop Name="terrain_set_3/terrain_0/name" Value='"terrain_3_0"' />
+  <x:Prop Name="terrain_set_3/terrain_1/color" Value="Color(0.1, 0.15, 0.5, 1)" />
+  <x:Prop Name="terrain_set_3/terrain_1/name" Value='"terrain_3_1"' />
+  <x:Prop Name="terrain_set_3/terrain_2/color" Value="Color(0.2, 0.15, 0.5, 1)" />
+  <x:Prop Name="terrain_set_3/terrain_2/name" Value='"terrain_3_2"' />
+  <x:Prop Name="terrain_set_4/mode" Value="1" />
+  <x:Prop Name="terrain_set_4/terrain_0/color" Value="Color(0, 0.2, 0.5, 1)" />
+  <x:Prop Name="terrain_set_4/terrain_0/name" Value='"terrain_4_0"' />
+  <x:Prop Name="terrain_set_4/terrain_1/color" Value="Color(0.1, 0.2, 0.5, 1)" />
+  <x:Prop Name="terrain_set_4/terrain_1/name" Value='"terrain_4_1"' />
+  <x:Prop Name="terrain_set_5/mode" Value="2" />
+  <x:Prop Name="terrain_set_5/terrain_0/color" Value="Color(0, 0.25, 0.5, 1)" />
+  <x:Prop Name="terrain_set_5/terrain_0/name" Value='"terrain_5_0"' />
+  <x:Prop Name="terrain_set_5/terrain_1/color" Value="Color(0.1, 0.25, 0.5, 1)" />
+  <x:Prop Name="terrain_set_5/terrain_1/name" Value='"terrain_5_1"' />
+  <x:Prop Name="terrain_set_5/terrain_2/color" Value="Color(0.2, 0.25, 0.5, 1)" />
+  <x:Prop Name="terrain_set_5/terrain_2/name" Value='"terrain_5_2"' />
+  <x:Prop Name="terrain_set_6/mode" Value="0" />
+  <x:Prop Name="terrain_set_6/terrain_0/color" Value="Color(0, 0.3, 0.5, 1)" />
+  <x:Prop Name="terrain_set_6/terrain_0/name" Value='"terrain_6_0"' />
+  <x:Prop Name="terrain_set_6/terrain_1/color" Value="Color(0.1, 0.3, 0.5, 1)" />
+  <x:Prop Name="terrain_set_6/terrain_1/name" Value='"terrain_6_1"' />
+  <x:Prop Name="terrain_set_7/mode" Value="1" />
+  <x:Prop Name="terrain_set_7/terrain_0/color" Value="Color(0, 0.35, 0.5, 1)" />
+  <x:Prop Name="terrain_set_7/terrain_0/name" Value='"terrain_7_0"' />
+  <x:Prop Name="terrain_set_7/terrain_1/color" Value="Color(0.1, 0.35, 0.5, 1)" />
+  <x:Prop Name="terrain_set_7/terrain_1/name" Value='"terrain_7_1"' />
+  <x:Prop Name="terrain_set_7/terrain_2/color" Value="Color(0.2, 0.35, 0.5, 1)" />
+  <x:Prop Name="terrain_set_7/terrain_2/name" Value='"terrain_7_2"' />
+  <x:Prop Name="terrain_set_8/mode" Value="2" />
+  <x:Prop Name="terrain_set_8/terrain_0/color" Value="Color(0, 0.4, 0.5, 1)" />
+  <x:Prop Name="terrain_set_8/terrain_0/name" Value='"terrain_8_0"' />
+  <x:Prop Name="terrain_set_8/terrain_1/color" Value="Color(0.1, 0.4, 0.5, 1)" />
+  <x:Prop Name="terrain_set_8/terrain_1/name" Value='"terrain_8_1"' />
+  <x:Prop Name="terrain_set_9/mode" Value="0" />
+  <x:Prop Name="terrain_set_9/terrain_0/color" Value="Color(0, 0.45, 0.5, 1)" />
+  <x:Prop Name="terrain_set_9/terrain_0/name" Value='"terrain_9_0"' />
+  <x:Prop Name="terrain_set_9/terrain_1/color" Value="Color(0.1, 0.45, 0.5, 1)" />
+  <x:Prop Name="terrain_set_9/terrain_1/name" Value='"terrain_9_1"' />
+  <x:Prop Name="terrain_set_9/terrain_2/color" Value="Color(0.2, 0.45, 0.5, 1)" />
+  <x:Prop Name="terrain_set_9/terrain_2/name" Value='"terrain_9_2"' />
+</TileSet>
