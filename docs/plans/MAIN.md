@@ -4,21 +4,21 @@
 
 ## Core format
 
-- [ ] GXAML-23 GodotNames: match Godot's case tables and UTF-32 indexing, and check names against GodotSharp.dll · release vNext+1
-- [ ] GXAML-39 Core names: check the editor-class enum names against GodotSharpEditor · release vNext+1
+- [ ] GXAML-23 GodotNames: match Godot's case tables and UTF-32 indexing, and check names against GodotSharp.dll · release vNext
+- [ ] GXAML-39 Core names: check the editor-class enum names against GodotSharpEditor · release vNext
 - [ ] GXAML-47 Core xscn parser: second format prefix, signal attributes on instances, empty property element
 - [ ] GXAML-48 Core xscn parser: pin XmlText decoding and comment-slot equality, reject an empty x:Key
 - [ ] GXAML-49 Metadata: round-trip the default-override texts, and point GodotPropertyInfo.Default at FindDefault
 - [ ] GXAML-54 Core conversion back: number a node's files in Godot's property-list order
 - [ ] GXAML-55 Core conversion: a property key holding a control character loses it
-- [ ] GXAML-75 Scene comparison: cover resources · release vNext+1
+- [ ] GXAML-75 Scene comparison: cover resources · release vNext
 - [ ] GXAML-78 Metadata dump: slash-named ClassDB properties
 - [ ] GXAML-79 Conversion back: more extensions with strict loaders
 - [ ] GXAML-82 Conversion back: place dynamic names by their declaring class
 
 ## Godot addon
 
-- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+2
+- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+1
 - [ ] GXAML-60 Addon: refresh the editor's cached dependencies of .xscn/.xres after an upgrade
 - [ ] GXAML-64 Addon: trace the PackedScene left cached, the unsaved mark after a move, and raw XML in an export
 - [ ] GXAML-68 Addon tests: pin each sub-resource's id after the comment carry, and catch an undisposed container in the walk
@@ -36,10 +36,10 @@
 
 ## Editor support
 
-- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext+1
-- [ ] GXAML-15 VS Code extension over the language server · release vNext+1
-- [ ] GXAML-16 Visual Studio extension over the language server · release vNext+2
-- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+2
+- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext
+- [ ] GXAML-15 VS Code extension over the language server · release vNext
+- [ ] GXAML-16 Visual Studio extension over the language server · release vNext+1
+- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+1
 
 ## Later
 
