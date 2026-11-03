@@ -227,11 +227,12 @@ Later versions: editing the selected node in Visual Studio's Properties window, 
 
 ## Releases
 
-Version 1 ships in three releases, tracked as Linear's `vNext`, `vNext+1` and `vNext+2`:
+Version 1 ships in four releases; the ones still to come are tracked as Linear's `vNext`, `vNext+1` and `vNext+2`:
 
-1. **First release**, the one the owner's repos start trying: the core (model, parser, canonical writer), the `.tscn` conversion run on the owner's projects, the addon's loader, saver and export support, an install a project can follow, the CLI, and godot-mcp support for `.xscn`. A project can convert its scenes, edit them in Godot, ship a build, and let its agents preview and edit them.
-2. **Second**: the language server and the VS Code extension, with the name checks against GodotSharp.
-3. **Third**: the Visual Studio extension and its preview pane, with the addon's preview server.
+1. **First release** (0.1.0), the one the owner's repos start trying: the core (model, parser, canonical writer), the `.tscn` conversion run on the owner's projects, the addon's loader, saver and export support, an install a project can follow, the CLI, and godot-mcp support for `.xscn`. A project can convert its scenes, edit them in Godot, ship a build, and let its agents preview and edit them.
+2. **Second**: fixes and polish of what the first release ships, before any new feature: the conversion and the parser, the CLI's `convert` and `check`, the addon, the metadata dump and the docs, with the name checks against GodotSharp and the Godot comparison of resources.
+3. **Third**: the language server and the VS Code extension.
+4. **Fourth**: the Visual Studio extension and its preview pane, with the addon's preview server.
 
 The later versions above sit in no release. Everything godot-xaml needs from godot-mcp is owner-approved at High priority there.
 
