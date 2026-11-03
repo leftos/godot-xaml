@@ -54,7 +54,7 @@ Write `.tmp/release-gates.sh`, a bash script with `set -e` that runs one gate at
 1. `pwsh -NoProfile -File run.ps1 test`
 2. `pwsh -NoProfile -File run.ps1 godot-build`
 3. `pwsh -NoProfile -File run.ps1 format-check`
-4. `godot/checks.ps1`, `godot/compare.ps1` and `godot/export.ps1`, each with its gate line from "Test locations" in `docs/ARCHITECTURE.md`
+4. `godot/checks.ps1`, `godot/compare.ps1`, `godot/editor-checks.ps1` and `godot/export.ps1`, each with its gate line from "Test locations" in `docs/ARCHITECTURE.md`; the editor checks open the real editor, so they are the only gate that runs the addon's editor plugin
 
 To stop the script, use `pwsh -NoProfile -File tools/gate.ps1 stop-tree <its bash pid>`.
 
