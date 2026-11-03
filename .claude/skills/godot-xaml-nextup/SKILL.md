@@ -19,7 +19,7 @@ linear: godot-xaml
 
 ## Gates
 
-`./run.ps1 <verb>` runs each command through `tools/gate.ps1`, with a log in `.tmp/`:
+`./run.ps1 <verb>` runs each command through `tools/gate.ps1`, with a log in `.tmp/`, so it is always called bare: wrapped in another gate call, an outer slot holds the machine for the whole run while the inner gates do the work.
 
 - `build`: `dotnet build GodotXaml.slnx -c Release -warnaserror`.
 - `godot-build`: `dotnet build godot/GodotXaml.Addon.csproj -c Debug -warnaserror`, the Godot addon project the solution leaves out (its build needs the Godot SDK, whose configurations are Debug, ExportDebug and ExportRelease).
