@@ -110,38 +110,6 @@ internal static class GodotValueTables
     /// <returns>Its spec, whose arity is the components per element.</returns>
     public static ConstructorSpec Packed(GodotPackedKind kind) => PackedSpecs[kind];
 
-    /// <summary>A value's Variant type name, as the metadata file spells a property's type (<c>int</c>, <c>Vector3i</c>).</summary>
-    /// <param name="value">The value.</param>
-    /// <returns>The name; null for a null value, which has no type; <c>Array</c> and <c>Dictionary</c> for typed ones too.</returns>
-    /// <exception cref="ArgumentException">The value is of a record this method does not know.</exception>
-    public static string? TypeName(GodotValue value) =>
-        value switch
-        {
-            GodotNull => null,
-            GodotBool => "bool",
-            GodotInt => "int",
-            GodotFloat => "float",
-            GodotString => "String",
-            GodotStringName => "StringName",
-            GodotNodePath => "NodePath",
-            GodotReal real => Real(real.Kind).Name,
-            GodotInts ints => Int(ints.Kind).Name,
-            GodotRid => "RID",
-            GodotSignal => "Signal",
-            GodotCallable => "Callable",
-            GodotArray => "Array",
-            GodotDictionary => "Dictionary",
-            GodotPackedBytes => PackedBytes.Name,
-            GodotPackedInts => PackedInts.Name,
-            GodotPackedLongs => PackedLongs.Name,
-            GodotPackedFloats => PackedFloats.Name,
-            GodotPackedDoubles => PackedDoubles.Name,
-            GodotPackedStrings => PackedStrings.Name,
-            GodotPackedReals packed => Packed(packed.Kind).Name,
-            GodotResourceRef or GodotPathRef or GodotObject => "Object",
-            _ => throw new ArgumentException($"A {value.GetType().Name} has no Variant type name.", nameof(value)),
-        };
-
     /// <summary>An array given to a record, which must not be the default (uninitialised) one.</summary>
     /// <typeparam name="T">The element type.</typeparam>
     /// <param name="items">The array.</param>

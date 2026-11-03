@@ -4,11 +4,13 @@ extends SceneTree
 ## Run: godot --headless --path tools/metadata-dump --script res://dump.gd --
 ##     --api <absolute path to extension_api.json> --out-dir <absolute folder>
 ## ClassDB gives the classes, their own properties, defaults and enums; the extension API dump
-## gives each property's enum or bitfield type and the global enums.
+## gives each property's enum or bitfield type, its getter's return type, and the global enums.
 
 const SKIPPED_USAGE := PROPERTY_USAGE_CATEGORY | PROPERTY_USAGE_GROUP | PROPERTY_USAGE_SUBGROUP
 const ENUM_PREFIX := "enum::"
 const BITFIELD_PREFIX := "bitfield::"
+const TYPED_ARRAY_PREFIX := "typedarray::"
+const TYPED_DICTIONARY_PREFIX := "typeddictionary::"
 const THEME_OVERRIDE_PREFIX := "theme_override_"
 
 var _instantiate_failures := PackedStringArray()
@@ -83,10 +85,12 @@ func _write_metadata(path: String, data: Dictionary) -> String:
 	return ""
 
 
-## Maps class name to property name to the extension API's type string for that property.
+## Maps class name to property name to `{"type": <API type>, "getter": <getter's API type>}`.
 ##
-## A property's own type reads `int` for an enum registered by hint alone, so the type of its
-## getter's return value, which carries `enum::` or `bitfield::`, is preferred.
+## `type` is the extension API's type string for the property. A property's own type reads `int`
+## for an enum registered by hint alone, so the type of its getter's return value, which carries
+## `enum::` or `bitfield::`, is preferred. `getter` is the API type the getter returns, or "" when
+## the extension API has no such getter.
 func _api_property_types(api: Dictionary) -> Dictionary:
 	var parents := {}
 	var getter_types := {}
@@ -103,7 +107,10 @@ func _api_property_types(api: Dictionary) -> Dictionary:
 		for prop: Dictionary in api_class.get("properties", []):
 			var getter: String = prop.get("getter", "")
 			var getter_type := _method_return_type(api_class.name, getter, parents, getter_types)
-			props[prop.name] = getter_type if _is_enum_type(getter_type) else prop.type
+			props[prop.name] = {
+				"type": getter_type if _is_enum_type(getter_type) else prop.type,
+				"getter": getter_type,
+			}
 		types[api_class.name] = props
 	return types
 
@@ -121,8 +128,44 @@ func _method_return_type(
 	return ""
 
 
+## The Variant type name, as `type_string` gives it, that the getter of `property` returns, read
+## from ClassDB for a getter the extension API leaves out (`Curve._get_data`): the `return` entry
+## of the method on `class_title` or its nearest ancestor that declares it. "" for no getter or a
+## getter returning Nil or Variant.
+func _classdb_getter_type(class_title: String, property: String) -> String:
+	var getter := String(ClassDB.class_get_property_getter(class_title, property))
+	var current := class_title
+	while not current.is_empty() and not getter.is_empty():
+		for method: Dictionary in ClassDB.class_get_method_list(current, true):
+			if String(method.name) != getter:
+				continue
+			var returned: Dictionary = method.get("return", {})
+			var variant_type: int = returned.get("type", TYPE_NIL)
+			return "" if variant_type == TYPE_NIL else type_string(variant_type)
+		current = String(ClassDB.get_parent_class(current))
+	return ""
+
+
 func _is_enum_type(api_type: String) -> bool:
 	return api_type.begins_with(ENUM_PREFIX) or api_type.begins_with(BITFIELD_PREFIX)
+
+
+## The Variant type name, as `type_string` gives it, of a value of the extension API type
+## `api_type`; "" for one that names none: no getter, an enum or bitfield (typed by `enumType`),
+## or `Variant`. A typed array or dictionary is an Array or Dictionary, a class an Object.
+func _getter_variant_type(api_type: String) -> String:
+	if api_type.is_empty() or _is_enum_type(api_type):
+		return ""
+	if api_type.begins_with(TYPED_ARRAY_PREFIX):
+		return type_string(TYPE_ARRAY)
+	if api_type.begins_with(TYPED_DICTIONARY_PREFIX):
+		return type_string(TYPE_DICTIONARY)
+	if ClassDB.class_exists(api_type):
+		return type_string(TYPE_OBJECT)
+	for variant_type in range(1, TYPE_MAX):
+		if type_string(variant_type) == api_type:
+			return api_type
+	return ""
 
 
 func _global_enums(api: Dictionary) -> Dictionary:
@@ -221,7 +264,8 @@ func _theme_override_entries(class_title: String) -> Array:
 
 
 func _property_entry(class_title: String, entry: Dictionary, api_props: Dictionary) -> Dictionary:
-	var api_type: String = api_props.get(String(entry.name), "")
+	var api_prop: Dictionary = api_props.get(String(entry.name), {})
+	var api_type: String = api_prop.get("type", "")
 	var enum_type: Variant = null
 	var bitfield := false
 	if api_type.begins_with(ENUM_PREFIX):
@@ -239,6 +283,15 @@ func _property_entry(class_title: String, entry: Dictionary, api_props: Dictiona
 		"usage": entry.usage,
 		"className": String(entry.class_name),
 	}
+	# Godot saves the getter's value, so a getter type the registration misstates is recorded.
+	var api_getter: String = api_prop.get("getter", "")
+	var getter_type := (
+		_getter_variant_type(api_getter)
+		if not api_getter.is_empty()
+		else _classdb_getter_type(class_title, String(entry.name))
+	)
+	if not getter_type.is_empty() and getter_type != prop.type:
+		prop["getterType"] = getter_type
 	var text: Variant = _class_own_defaults(class_title).get(String(entry.name))
 	if text != null:
 		prop["default"] = text

@@ -215,29 +215,6 @@ public sealed class GodotMetadata
         return null;
     }
 
-    /// <summary>
-    /// The Variant type of a property's value on a class: the kind of the class's default for it when it has one that is not
-    /// null, else the declared type. Godot registers some properties with a type their getter does not return
-    /// (<c>AudioEffectPitchShift.oversampling</c> is declared float and holds an int), and it saves the getter's value.
-    /// </summary>
-    /// <param name="cls">The class.</param>
-    /// <param name="godotName">The property's Godot name (<c>oversampling</c>).</param>
-    /// <returns>
-    /// The type name (<c>int</c>); <c>Nil</c> for a property declared Variant, which holds any kind whatever its default;
-    /// null when the class has no such property and no default for it.
-    /// </returns>
-    /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
-    public string? ValueType(GodotClassInfo cls, string godotName)
-    {
-        string? declared = FindProperty(cls, godotName)?.Type;
-        if (declared == "Nil")
-        {
-            return declared;
-        }
-
-        return (FindDefault(cls, godotName)?.Value is { } value ? GodotValueTables.TypeName(value) : null) ?? declared;
-    }
-
     /// <summary>A signal of a class or of one of its ancestors, by its C# name.</summary>
     /// <param name="cls">The class to start from.</param>
     /// <param name="csName">The signal's C# name (<c>Pressed</c>).</param>
@@ -374,7 +351,8 @@ internal static class GodotMetadataReader
             JsonFields.Int(entry, "usage", where),
             JsonFields.String(entry, "className", where),
             defaultText,
-            defaultText is null ? null : ReadDefault(defaultText, where)
+            defaultText is null ? null : ReadDefault(defaultText, where),
+            entry.TryGetProperty("getterType", out _) ? JsonFields.String(entry, "getterType", where) : null
         );
     }
 

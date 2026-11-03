@@ -14,7 +14,7 @@ public sealed record XscnValueType(string? VariantType, XscnEnumNames? Names)
     public static XscnValueType Unknown { get; } = new(null, null);
 
     /// <summary>
-    /// The property's declared type when the value's type is its default's kind and differs from it, else null. Text that
+    /// The property's declared type when the value's type is its getter's and differs from it, else null. Text that
     /// does not read as <see cref="VariantType"/> is read as this type, since Godot's loader takes a value of the declared
     /// type too; a value is still written as <see cref="VariantType"/>.
     /// </summary>
@@ -59,44 +59,28 @@ public static class XscnValueText
         ["Object"] = new(ReadObject, WriteObject),
     }.ToFrozenDictionary(StringComparer.Ordinal);
 
-    /// <summary>The type a property's attribute is read and written by when the element's class is not known.</summary>
+    /// <summary>The type a property's attribute is read and written by, whether the element's class is known or not.</summary>
     /// <param name="metadata">The metadata the property comes from.</param>
     /// <param name="property">The property.</param>
     /// <returns>
-    /// The kind of the property's own default when it has one that is not null, else its declared type; unknown for a
-    /// Variant (<c>Nil</c>) property.
+    /// <see cref="GodotPropertyInfo.ValueType"/>: the type its getter returns where the metadata records one, else its
+    /// declared type; unknown for a Variant (<c>Nil</c>) property.
     /// </returns>
+    /// <remarks>
+    /// Godot saves a property's getter value, whose kind some registrations misstate; the enum names belong to the declared
+    /// type, which a getter-typed value keeps as <see cref="XscnValueType.Declared"/>.
+    /// </remarks>
     public static XscnValueType TypeOf(GodotMetadata metadata, GodotPropertyInfo property)
     {
         ArgumentNullException.ThrowIfNull(property);
-        return TypeOf(metadata, property, property.Default is { } value ? GodotValueTables.TypeName(value) : null);
-    }
-
-    /// <summary>The type a property's attribute is read and written by on an element of a known class.</summary>
-    /// <param name="metadata">The metadata the property and class come from.</param>
-    /// <param name="cls">The element's class.</param>
-    /// <param name="property">The property, as <see cref="GodotMetadata.FindProperty"/> finds it on the class.</param>
-    /// <returns>
-    /// <see cref="GodotMetadata.ValueType"/>: the kind of the class's default, its own or a subclass override, when it has
-    /// one that is not null, else the declared type; unknown for a Variant (<c>Nil</c>) property.
-    /// </returns>
-    public static XscnValueType TypeOf(GodotMetadata metadata, GodotClassInfo cls, GodotPropertyInfo property)
-    {
-        ArgumentNullException.ThrowIfNull(metadata);
-        ArgumentNullException.ThrowIfNull(property);
-        return TypeOf(metadata, property, metadata.ValueType(cls, property.Name));
-    }
-
-    // Godot saves a property's getter value, whose kind some registrations misstate; the enum names belong to the declared type.
-    private static XscnValueType TypeOf(GodotMetadata metadata, GodotPropertyInfo property, string? valueType)
-    {
         if (property.Type == "Nil")
         {
             return XscnValueType.Unknown;
         }
 
         var declared = new XscnValueType(property.Type, XscnEnumText.For(metadata, property));
-        return valueType is null || valueType == property.Type ? declared : new XscnValueType(valueType, null) { Declared = declared };
+        string valueType = property.ValueType;
+        return valueType == property.Type ? declared : new XscnValueType(valueType, null) { Declared = declared };
     }
 
     /// <summary>The type of a theme override item's attribute.</summary>

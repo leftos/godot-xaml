@@ -61,6 +61,17 @@ public sealed class GodotMetadataTests
         Assert.Equal("Control.MouseFilter", mouseFilter.EnumType);
         Assert.Equal("MouseFilter", mouseFilter.CSharpName);
         Assert.True(mouseFilter.IsStored);
+        Assert.Null(mouseFilter.GetterType);
+    }
+
+    // Registered float; get_oversampling returns int.
+    [Fact]
+    public void ReadsTheGetterTypeOfAMisdeclaredProperty()
+    {
+        GodotPropertyInfo oversampling = Real.FindProperty(Class("AudioEffectPitchShift"), "oversampling")!;
+
+        Assert.Equal("float", oversampling.Type);
+        Assert.Equal("int", oversampling.GetterType);
     }
 
     [Fact]

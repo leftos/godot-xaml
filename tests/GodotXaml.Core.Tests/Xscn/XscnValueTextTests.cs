@@ -144,6 +144,30 @@ public sealed class XscnValueTextTests
         Assert.Equal("int", XscnValueText.TypeOf(Real, property).VariantType);
     }
 
+    // Declared StringName; get_bone_name returns String. SpringBoneCollision3D keeps no defaults, so only the getter type
+    // the metadata records types it.
+    [Fact]
+    public void AMisdeclaredPropertyOfAClassWithNoDefaultsIsTypedByItsGetter()
+    {
+        XscnValueType type = TypeOf("SpringBoneCollision3D", "BoneName");
+
+        Assert.Equal("String", type.VariantType);
+        Assert.Equal(new XscnScalar(new GodotString("Hips")), XscnValueText.Read("Hips", type));
+        Assert.Equal("Hips", Text(new XscnScalar(new GodotString("Hips")), type));
+    }
+
+    // Declared StringName with no default of its own (VisualShaderNodeVarying cannot be instantiated); get_varying_name
+    // returns String. With no class known, an instance's or override's attribute is typed by that getter too.
+    [Fact]
+    public void AMisdeclaredPropertyOfNoKnownClassIsTypedByItsGetter()
+    {
+        XscnValueType type = Names.Resolve(null, "VaryingName").Type;
+
+        Assert.Equal("String", type.VariantType);
+        Assert.Equal(new XscnScalar(new GodotString("v")), XscnValueText.Read("v", type));
+        Assert.Equal("v", Text(new XscnScalar(new GodotString("v")), type));
+    }
+
     // Declared String; the getter returns a Vector3.
     [Fact]
     public void AStringPropertyWhoseDefaultIsAVectorReadsAVector()

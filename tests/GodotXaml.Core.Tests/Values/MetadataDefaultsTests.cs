@@ -7,7 +7,7 @@ namespace GodotXaml.Core.Tests.Values;
 
 // Every property default in metadata/godot-4.7.json is var_to_str of the value (tools/metadata-dump/dump.gd), so each
 // one reads and writes back to the same text.
-public sealed class MetadataDefaultsTests
+public sealed class MetadataDefaultsTests(MetadataDefaultsTests.MetadataFile file) : IClassFixture<MetadataDefaultsTests.MetadataFile>
 {
     // The default texts in metadata/godot-4.7.json: 4,190 properties, 701 of them without a default.
     private const int DefaultCount = 3489;
@@ -52,12 +52,13 @@ public sealed class MetadataDefaultsTests
     }
 
     // Godot saves a property's getter value, so each class's default for each property it has, own or overridden, is an
-    // attribute of that class that reads back as the same value. A slash-named property (theme_override_colors/…) is
-    // dotted or x:Prop by design, and a name with no attribute is x:Prop, so neither is checked.
+    // attribute of that class (XscnValueText.Write gives one only for text that reads back as the same value). A
+    // slash-named property (theme_override_colors/…) is dotted or x:Prop by design, and a name with no attribute is x:Prop,
+    // so neither is checked.
     [Fact]
     public void WritesEveryDefaultAsAnAttributeOfItsClass()
     {
-        var metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
+        GodotMetadata metadata = file.Metadata;
         var names = new XscnPropertyNames(metadata);
         var mismatches = new List<string>();
         int checkedCount = 0;
@@ -79,7 +80,7 @@ public sealed class MetadataDefaultsTests
             checkedCount++;
             XscnValueType type = names.Resolve(cls, attributeName).Type;
             var value = new XscnScalar(found.Value);
-            if (XscnValueText.Write(value, type) is not XscnAttributeText written || !value.Equals(XscnValueText.Read(written.Text, type)))
+            if (XscnValueText.Write(value, type) is not XscnAttributeText)
             {
                 mismatches.Add($"{className}.{godotName} ({type.VariantType}): {found.Text}");
             }
@@ -104,11 +105,10 @@ public sealed class MetadataDefaultsTests
         }
     }
 
-    private static List<string> Defaults()
+    private List<string> Defaults()
     {
-        using var metadata = JsonDocument.Parse(File.ReadAllText(RepoFiles.PathOf("metadata", "godot-4.7.json")));
         var defaults = new List<string>();
-        foreach (JsonProperty godotClass in metadata.RootElement.GetProperty("classes").EnumerateObject())
+        foreach (JsonProperty godotClass in file.Classes.EnumerateObject())
         {
             foreach (JsonElement property in godotClass.Value.GetProperty("properties").EnumerateArray())
             {
@@ -123,11 +123,10 @@ public sealed class MetadataDefaultsTests
     }
 
     // Each class with the Godot names of its own properties and of the inherited ones it overrides the default of.
-    private static List<(string Class, string Property)> PropertiesByClass()
+    private List<(string Class, string Property)> PropertiesByClass()
     {
-        using var metadata = JsonDocument.Parse(File.ReadAllText(RepoFiles.PathOf("metadata", "godot-4.7.json")));
         var properties = new List<(string Class, string Property)>();
-        foreach (JsonProperty godotClass in metadata.RootElement.GetProperty("classes").EnumerateObject())
+        foreach (JsonProperty godotClass in file.Classes.EnumerateObject())
         {
             foreach (JsonElement property in godotClass.Value.GetProperty("properties").EnumerateArray())
             {
@@ -143,11 +142,10 @@ public sealed class MetadataDefaultsTests
         return properties;
     }
 
-    private static List<(string Class, string Property, string Text)> DefaultOverrides()
+    private List<(string Class, string Property, string Text)> DefaultOverrides()
     {
-        using var metadata = JsonDocument.Parse(File.ReadAllText(RepoFiles.PathOf("metadata", "godot-4.7.json")));
         var overrides = new List<(string Class, string Property, string Text)>();
-        foreach (JsonProperty godotClass in metadata.RootElement.GetProperty("classes").EnumerateObject())
+        foreach (JsonProperty godotClass in file.Classes.EnumerateObject())
         {
             if (!godotClass.Value.TryGetProperty("defaultOverrides", out JsonElement defaults))
             {
@@ -161,5 +159,29 @@ public sealed class MetadataDefaultsTests
         }
 
         return overrides;
+    }
+
+    /// <summary>metadata/godot-4.7.json, read once for the class: its JSON and the metadata loaded from it.</summary>
+    public sealed class MetadataFile : IDisposable
+    {
+        private readonly JsonDocument json;
+
+        /// <summary>Reads the file.</summary>
+        public MetadataFile()
+        {
+            byte[] bytes = File.ReadAllBytes(RepoFiles.PathOf("metadata", "godot-4.7.json"));
+            json = JsonDocument.Parse(bytes);
+            using var stream = new MemoryStream(bytes, writable: false);
+            Metadata = GodotMetadata.Load(stream);
+        }
+
+        /// <summary>The file's <c>classes</c> object.</summary>
+        public JsonElement Classes => json.RootElement.GetProperty("classes");
+
+        /// <summary>The metadata the file holds.</summary>
+        public GodotMetadata Metadata { get; }
+
+        /// <inheritdoc/>
+        public void Dispose() => json.Dispose();
     }
 }

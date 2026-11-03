@@ -23,7 +23,6 @@ public sealed class XscnPropertyNames
     private readonly FrozenDictionary<string, string?> csNameByGodotName;
     private readonly FrozenDictionary<string, XscnValueType> familyTypes;
     private readonly ConcurrentDictionary<object, XscnValueType> types = new(ReferenceEqualityComparer.Instance);
-    private readonly ConcurrentDictionary<(string Class, string Property), XscnValueType> typesOnClass = new();
 
     /// <summary>Indexes every class's properties and theme override families.</summary>
     /// <param name="metadata">The metadata.</param>
@@ -92,12 +91,9 @@ public sealed class XscnPropertyNames
         return godotName ?? attributeName;
     }
 
-    // Typing a property builds its enum names, so each property's and theme override item's type is made once. A property of
-    // an unknown class is typed by its own default, one on a class by that class's default, which a subclass may override.
+    // Typing a property builds its enum names, so each property's and theme override item's type is made once; a property's
+    // type is its own, whichever class's element it is on.
     private XscnValueType TypeOf(GodotPropertyInfo property) => types.GetOrAdd(property, _ => XscnValueText.TypeOf(metadata, property));
-
-    private XscnValueType TypeOf(GodotClassInfo cls, GodotPropertyInfo property) =>
-        typesOnClass.GetOrAdd((cls.Name, property.Name), _ => XscnValueText.TypeOf(metadata, cls, property));
 
     private XscnValueType TypeOf(GodotThemeOverrideInfo item) => types.GetOrAdd(item, _ => XscnValueText.TypeOf(item));
 
@@ -117,7 +113,7 @@ public sealed class XscnPropertyNames
     private XscnResolvedProperty ResolveOnClass(GodotClassInfo cls, string attributeName)
     {
         GodotPropertyInfo? property = metadata.FindPropertyByCSharpName(cls, attributeName);
-        return property is null ? Script(attributeName) : new XscnResolvedProperty(property.Name, TypeOf(cls, property));
+        return property is null ? Script(attributeName) : new XscnResolvedProperty(property.Name, TypeOf(property));
     }
 
     private XscnResolvedProperty ResolveUnknownClass(string attributeName) => byCSharpName.GetValueOrDefault(attributeName) ?? Script(attributeName);
@@ -129,7 +125,7 @@ public sealed class XscnPropertyNames
         GodotPropertyInfo? property = cls is null ? null : metadata.FindProperty(cls, godotName);
         GodotThemeOverrideInfo? item = cls is null ? null : metadata.FindThemeOverride(cls, godotName);
         XscnValueType type =
-            property is not null ? TypeOf(cls!, property)
+            property is not null ? TypeOf(property)
             : item is not null ? TypeOf(item)
             : familyTypes.GetValueOrDefault(godotName[..godotName.IndexOf('/', StringComparison.Ordinal)], XscnValueType.Unknown);
         return new XscnResolvedProperty(godotName, type);

@@ -201,11 +201,11 @@ Choices the format rulings above leave to the core, made by the orchestrator whi
 - **Scene namespaces.** The project root folder is `xmlns:res="res://"`. A tag's file extension comes from the matching `<x:Uids>` path, else `.xscn`. A file name that is not an XML name uses `<x:Instance Scene="res://…">`. Namespace declarations sit only on the root.
 - **Diagnostics** live in `GodotXaml.Core.Diagnostics`: stable `GX` codes, UTF-16 offsets, a line map giving 0-based positions for the language server and 1-based ones for the loader. Any error fails a Godot load.
 - **Unknown elements.** An unknown class tag (a GDExtension class) is kept as a node of unknown type with a warning. An unknown `x:` element or attribute is an error and is not kept.
-- **A default's kind wins.**
+- **A getter's type wins.**
 
   Godot registers some properties with a type their getter does not return (`oversampling` is registered as float with `ADD_PROPERTY` in `AudioEffectPitchShift::_bind_methods` while `AudioEffectPitchShift::get_oversampling` returns int; `theme_type_variation` is declared String with a StringName default), and it saves the getter's value (`SceneState::_parse_node` in scene/resources/packed_scene.cpp); ClassDB's default is the raw getter value too (`ClassDB::class_get_default_property_value`).
 
-  An attribute is typed by the kind of the property's default for the node's class, its own or a subclass override, and by the declared type only when there is no default, so such a value is an attribute and converts back as Godot writes it, and a value written in the declared type still reads.
+  The metadata dump records each property's getter return type where it differs from the registered one (`getterType`), and an attribute is typed by that getter type wherever the metadata has one, on a known class (with or without defaults) and on an element of unknown class alike, and by the declared type otherwise, so such a value is an attribute and converts back as Godot writes it, and a value written in the declared type still reads.
 - **Flags** are written as .NET's `[Flags]` text joined with `", "`; leftover bits mean the integer. FLAGS-hint integers without an enum take bit `1 << i` unless the hint gives `:value`. A hint display name becomes PascalCase by splitting on anything not a letter or digit. An empty hint means the integer.
 - **References.** An explicit null is `{x:Null}`. A file inside Godot value text is `Resource("res://…")`; `ExtResource(…)` is rejected in `.xscn`.
 - **Rect2, Plane, AABB** are Godot value text.

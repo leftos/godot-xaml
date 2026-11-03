@@ -137,8 +137,52 @@ public sealed record GodotPropertyInfo(
     // core/object/object.h, PropertyUsageFlags: PROPERTY_USAGE_STORAGE = 1 << 1.
     private const int UsageStorage = 2;
 
+    /// <summary>A property whose getter returns a type other than the one it is registered with.</summary>
+    /// <param name="Name">The Godot name.</param>
+    /// <param name="CSharpName">The C# name.</param>
+    /// <param name="Type">The registered Variant type name.</param>
+    /// <param name="EnumType">The enum or bitfield type, or null.</param>
+    /// <param name="Bitfield">Whether <paramref name="EnumType"/> is a bitfield.</param>
+    /// <param name="Hint">The property hint.</param>
+    /// <param name="HintString">The hint string.</param>
+    /// <param name="Usage">The property usage flags.</param>
+    /// <param name="ClassName">The class name of an Object property, or empty.</param>
+    /// <param name="DefaultText">The declaring class's default as Godot value text, or null.</param>
+    /// <param name="Default">The declaring class's default, or null.</param>
+    /// <param name="getterType">The <see cref="GetterType"/>, or null.</param>
+    public GodotPropertyInfo(
+        string Name,
+        string CSharpName,
+        string Type,
+        string? EnumType,
+        bool Bitfield,
+        int Hint,
+        string HintString,
+        int Usage,
+        string ClassName,
+        string? DefaultText,
+        GodotValue? Default,
+        string? getterType
+    )
+        : this(Name, CSharpName, Type, EnumType, Bitfield, Hint, HintString, Usage, ClassName, DefaultText, Default)
+    {
+        GetterType = getterType;
+    }
+
+    /// <summary>
+    /// The Variant type name the property's getter returns where it differs from <see cref="Type"/> (Godot registers
+    /// <c>AudioEffectPitchShift.oversampling</c> as float and its getter returns int), else null. Godot saves the getter's value.
+    /// </summary>
+    public string? GetterType { get; }
+
     /// <summary>Whether the property is saved to a scene file (its usage has <c>PROPERTY_USAGE_STORAGE</c>).</summary>
     public bool IsStored => (Usage & UsageStorage) != 0;
+
+    /// <summary>
+    /// The Variant type of the property's value as Godot saves it: <see cref="GetterType"/> when the metadata records one,
+    /// else <see cref="Type"/>; <c>Nil</c> for a property declared Variant, which holds any kind.
+    /// </summary>
+    public string ValueType => Type == "Nil" ? Type : GetterType ?? Type;
 }
 
 /// <summary>A property's default for a class: its Godot value text (<c>Vector2(0, 0)</c>) and the value read from it.</summary>
