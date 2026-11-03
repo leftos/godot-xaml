@@ -1,5 +1,7 @@
 using System.Text.Json;
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Values;
+using GodotXaml.Core.Xscn;
 
 namespace GodotXaml.Core.Tests.Values;
 
@@ -49,6 +51,47 @@ public sealed class MetadataDefaultsTests
         Assert.Equal("2", overrides.FirstOrDefault(o => o.Class == "Button" && o.Property == "focus_mode").Text);
     }
 
+    // Godot saves a property's getter value, so each class's default for each property it has, own or overridden, is an
+    // attribute of that class that reads back as the same value. A slash-named property (theme_override_colors/…) is
+    // dotted or x:Prop by design, and a name with no attribute is x:Prop, so neither is checked.
+    [Fact]
+    public void WritesEveryDefaultAsAnAttributeOfItsClass()
+    {
+        var metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
+        var names = new XscnPropertyNames(metadata);
+        var mismatches = new List<string>();
+        int checkedCount = 0;
+        int skipped = 0;
+        foreach ((string className, string godotName) in PropertiesByClass())
+        {
+            GodotClassInfo cls = metadata.FindClass(className)!;
+            if (metadata.FindDefault(cls, godotName) is not { Value: not GodotNull } found)
+            {
+                continue;
+            }
+
+            if (godotName.Contains('/', StringComparison.Ordinal) || names.AttributeName(cls, godotName) is not { } attributeName)
+            {
+                skipped++;
+                continue;
+            }
+
+            checkedCount++;
+            XscnValueType type = names.Resolve(cls, attributeName).Type;
+            var value = new XscnScalar(found.Value);
+            if (XscnValueText.Write(value, type) is not XscnAttributeText written || !value.Equals(XscnValueText.Read(written.Text, type)))
+            {
+                mismatches.Add($"{className}.{godotName} ({type.VariantType}): {found.Text}");
+            }
+        }
+
+        Assert.True(
+            mismatches.Count == 0,
+            $"{mismatches.Count} of {checkedCount} defaults ({skipped} skipped) are not attributes:\n{string.Join('\n', mismatches.Take(20))}"
+        );
+        Assert.NotEqual(0, checkedCount);
+    }
+
     private static string WriteBack(string text)
     {
         try
@@ -77,6 +120,27 @@ public sealed class MetadataDefaultsTests
         }
 
         return defaults;
+    }
+
+    // Each class with the Godot names of its own properties and of the inherited ones it overrides the default of.
+    private static List<(string Class, string Property)> PropertiesByClass()
+    {
+        using var metadata = JsonDocument.Parse(File.ReadAllText(RepoFiles.PathOf("metadata", "godot-4.7.json")));
+        var properties = new List<(string Class, string Property)>();
+        foreach (JsonProperty godotClass in metadata.RootElement.GetProperty("classes").EnumerateObject())
+        {
+            foreach (JsonElement property in godotClass.Value.GetProperty("properties").EnumerateArray())
+            {
+                properties.Add((godotClass.Name, property.GetProperty("name").GetString()!));
+            }
+
+            if (godotClass.Value.TryGetProperty("defaultOverrides", out JsonElement defaults))
+            {
+                properties.AddRange(defaults.EnumerateObject().Select(d => (godotClass.Name, d.Name)));
+            }
+        }
+
+        return properties;
     }
 
     private static List<(string Class, string Property, string Text)> DefaultOverrides()

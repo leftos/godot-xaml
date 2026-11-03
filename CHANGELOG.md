@@ -8,6 +8,7 @@
 - Converting back places names a class adds itself (`libraries/`, `shader_parameter/`, `current`) in that class's place, so an AnimationPlayer's libraries load before its current animation.
 - `godot-xaml check` and every host report a second format prefix, an empty property element, an empty `x:Key` and a placeholder at the scene's root.
 - A signal-named attribute on an instance that fails as a property now suggests `<x:Connect>`.
+- A property Godot registers with a type its getter does not return (`Oversampling` on `AudioEffectPitchShift`) is written as an attribute of its default's kind instead of `x:Prop`.
 - A `.tscn` property name holding a control character is reported as error GXC0119 instead of crashing the conversion.
 - Converting back warns (GXC0120) when `x:Uids` gives one path two different uids, as `convert` can make by rewriting one file's path onto another's.
 - The core's `.tscn` reader rejects and reads a bare resource header, cross-typed name and path fields, and a first-node placeholder as Godot does.

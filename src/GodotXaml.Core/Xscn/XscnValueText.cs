@@ -12,6 +12,13 @@ public sealed record XscnValueType(string? VariantType, XscnEnumNames? Names)
 {
     /// <summary>A value of unknown type, read and written as Godot value text.</summary>
     public static XscnValueType Unknown { get; } = new(null, null);
+
+    /// <summary>
+    /// The property's declared type when the value's type is its default's kind and differs from it, else null. Text that
+    /// does not read as <see cref="VariantType"/> is read as this type, since Godot's loader takes a value of the declared
+    /// type too; a value is still written as <see cref="VariantType"/>.
+    /// </summary>
+    public XscnValueType? Declared { get; init; }
 }
 
 /// <summary>
@@ -52,22 +59,44 @@ public static class XscnValueText
         ["Object"] = new(ReadObject, WriteObject),
     }.ToFrozenDictionary(StringComparer.Ordinal);
 
-    /// <summary>The type a property's attribute is read and written by.</summary>
+    /// <summary>The type a property's attribute is read and written by when the element's class is not known.</summary>
     /// <param name="metadata">The metadata the property comes from.</param>
     /// <param name="property">The property.</param>
     /// <returns>
-    /// The property's type, the default's kind winning when String and StringName disagree; unknown for a Variant (<c>Nil</c>) property.
+    /// The kind of the property's own default when it has one that is not null, else its declared type; unknown for a
+    /// Variant (<c>Nil</c>) property.
     /// </returns>
     public static XscnValueType TypeOf(GodotMetadata metadata, GodotPropertyInfo property)
     {
         ArgumentNullException.ThrowIfNull(property);
-        string type = (property.Type, property.Default) switch
+        return TypeOf(metadata, property, property.Default is { } value ? GodotValueTables.TypeName(value) : null);
+    }
+
+    /// <summary>The type a property's attribute is read and written by on an element of a known class.</summary>
+    /// <param name="metadata">The metadata the property and class come from.</param>
+    /// <param name="cls">The element's class.</param>
+    /// <param name="property">The property, as <see cref="GodotMetadata.FindProperty"/> finds it on the class.</param>
+    /// <returns>
+    /// <see cref="GodotMetadata.ValueType"/>: the kind of the class's default, its own or a subclass override, when it has
+    /// one that is not null, else the declared type; unknown for a Variant (<c>Nil</c>) property.
+    /// </returns>
+    public static XscnValueType TypeOf(GodotMetadata metadata, GodotClassInfo cls, GodotPropertyInfo property)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentNullException.ThrowIfNull(property);
+        return TypeOf(metadata, property, metadata.ValueType(cls, property.Name));
+    }
+
+    // Godot saves a property's getter value, whose kind some registrations misstate; the enum names belong to the declared type.
+    private static XscnValueType TypeOf(GodotMetadata metadata, GodotPropertyInfo property, string? valueType)
+    {
+        if (property.Type == "Nil")
         {
-            ("String", GodotStringName) => "StringName",
-            ("StringName", GodotString) => "String",
-            _ => property.Type,
-        };
-        return type == "Nil" ? XscnValueType.Unknown : new XscnValueType(type, XscnEnumText.For(metadata, property));
+            return XscnValueType.Unknown;
+        }
+
+        var declared = new XscnValueType(property.Type, XscnEnumText.For(metadata, property));
+        return valueType is null || valueType == property.Type ? declared : new XscnValueType(valueType, null) { Declared = declared };
     }
 
     /// <summary>The type of a theme override item's attribute.</summary>
@@ -82,11 +111,20 @@ public static class XscnValueText
     /// <summary>The value an attribute's text gives.</summary>
     /// <param name="text">The attribute's text, its XML references already decoded.</param>
     /// <param name="type">The attribute's type.</param>
-    /// <returns>The value, or an <see cref="XscnInvalid"/> holding the text and what was expected.</returns>
+    /// <returns>
+    /// The value, read as the type's declared type when it does not read as the type itself, or an
+    /// <see cref="XscnInvalid"/> holding the text and what was expected.
+    /// </returns>
     public static XscnValue Read(string text, XscnValueType type)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(type);
+        XscnValue value = ReadAs(text, type);
+        return value is XscnInvalid && type.Declared is { } declared && ReadAs(text, declared) is not XscnInvalid and var fallback ? fallback : value;
+    }
+
+    private static XscnValue ReadAs(string text, XscnValueType type)
+    {
         if (CodecOf(type) is { } codec)
         {
             return codec.Read(text, type);

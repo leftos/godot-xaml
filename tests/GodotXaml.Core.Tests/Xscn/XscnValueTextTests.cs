@@ -102,6 +102,58 @@ public sealed class XscnValueTextTests
         Assert.Equal("DialogShell", Text(new XscnScalar(new GodotStringName("DialogShell")), type));
     }
 
+    // Declared StringName; the getters return String, which Godot writes.
+    [Theory]
+    [InlineData("VisualShaderNodeFloatParameter", "ParameterName")]
+    [InlineData("SpringBoneCollisionSphere3D", "BoneName")]
+    public void AStringNamePropertyWhoseClassDefaultIsAStringReadsAString(string className, string attributeName)
+    {
+        XscnValueType type = TypeOf(className, attributeName);
+
+        Assert.Equal(new XscnScalar(new GodotString("Hips")), XscnValueText.Read("Hips", type));
+        Assert.Equal("Hips", Text(new XscnScalar(new GodotString("Hips")), type));
+    }
+
+    // Declared float; get_oversampling returns int.
+    [Fact]
+    public void AFloatPropertyWhoseDefaultIsAnIntReadsAnInt()
+    {
+        XscnValueType type = TypeOf("AudioEffectPitchShift", "Oversampling");
+
+        Assert.Equal(new XscnScalar(new GodotInt(8)), XscnValueText.Read("8", type));
+        Assert.Equal("8", Text(new XscnScalar(new GodotInt(8)), type));
+    }
+
+    // Godot's loader takes a float for oversampling and set_oversampling converts it, so the declared type still reads.
+    [Fact]
+    public void AValueOfTheDeclaredTypeStillReads()
+    {
+        XscnValueType type = TypeOf("AudioEffectPitchShift", "Oversampling");
+
+        Assert.Equal(new XscnScalar(new GodotFloat(8.5)), XscnValueText.Read("8.5", type));
+        Assert.Equal("8.5", Text(new XscnScalar(new GodotFloat(8.5)), type));
+    }
+
+    // With no class known, a property is typed by its own default: oversampling's is an int. The C# name Oversampling is
+    // shared by classes whose types disagree, so this is the typing XscnPropertyNames gives the property itself.
+    [Fact]
+    public void APropertyOfNoKnownClassIsTypedByItsOwnDefault()
+    {
+        GodotPropertyInfo property = Real.FindProperty(Real.FindClass("AudioEffectPitchShift")!, "oversampling")!;
+
+        Assert.Equal("int", XscnValueText.TypeOf(Real, property).VariantType);
+    }
+
+    // Declared String; the getter returns a Vector3.
+    [Fact]
+    public void AStringPropertyWhoseDefaultIsAVectorReadsAVector()
+    {
+        XscnValueType type = TypeOf("XRPose", "LinearVelocity");
+
+        Assert.Equal(new XscnScalar(new GodotReal(GodotRealKind.Vector3, [1, 2, 3])), XscnValueText.Read("1, 2, 3", type));
+        Assert.Equal("1, 2, 3", Text(new XscnScalar(new GodotReal(GodotRealKind.Vector3, [1, 2, 3])), type));
+    }
+
     [Fact]
     public void ANodePathIsTheBarePath()
     {
