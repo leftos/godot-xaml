@@ -199,6 +199,9 @@ public partial class Checks : Node
             ("C64", FailedParsePushesWarningsAsWarnings),
             ("C65", FailedLoadPrunesOldKeptFiles),
             ("C66", KnownEngineClassIsNotWarned),
+            ("C67", XresReportsItsScriptClass),
+            ("C68", XresScriptClassOffTheMainThread),
+            ("C69", HandlesGlobalResourceClasses),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -696,6 +699,92 @@ public partial class Checks : Node
     {
         string[] lacking = [.. ResourceTypesToHandle.Where(type => !ResourceLoader.GetRecognizedExtensionsForType(type).Contains("xres"))];
         return lacking.Length == 0 ? "" : $"the loaders' extensions for {string.Join(", ", lacking)} lack xres";
+    }
+
+    // The editor's scan and Quick Open ask a loader for a file's script class, which a .xres carries only as its root's
+    // Script attribute.
+    private static string XresReportsItsScriptClass()
+    {
+        using var loader = new XresFormatLoader();
+        (string Path, string Expected)[] expected =
+        [
+            (ScriptedCsPath, "CheckedResource"),
+            (CasesPath + "named_gd.xres", "NamedCheckedResource"),
+            (ScriptedGdPath, ""),
+            (BoxPath, ""),
+        ];
+        return string.Join(
+            "; ",
+            expected
+                .Select(e => (e.Path, e.Expected, Reported: loader._GetResourceScriptClass(e.Path)))
+                .Where(e => e.Reported != e.Expected)
+                .Select(e => $"the loader reports script class \"{e.Reported}\" for {e.Path}, not \"{e.Expected}\"")
+        );
+    }
+
+    // The editor asks it from its scan thread, so the answer comes from the snapshot rather than the main thread's live
+    // global class list.
+    private static string XresScriptClassOffTheMainThread()
+    {
+        using var loader = new XresFormatLoader();
+        string reported = Task.Run(() => loader._GetResourceScriptClass(ScriptedCsPath)).GetAwaiter().GetResult();
+        return reported == "CheckedResource"
+            ? ""
+            : $"off the main thread the loader reports script class \"{reported}\" for {ScriptedCsPath}, not \"CheckedResource\"";
+    }
+
+    // A global class whose native base is a Resource is a type an .xres can hold, as the text loader accepts any type for a
+    // .tres. The engine asks this when a caller passes the class as a type hint.
+    private static string HandlesGlobalResourceClasses()
+    {
+        using var loader = new XresFormatLoader();
+        (string Type, bool Expected)[] expected =
+        [
+            ("CheckedResource", true),
+            ("DerivedCheckedResource", true),
+            ("NamedCheckedResource", true),
+            ("XresFormatLoader", false),
+            ("PackedScene", false),
+            ("NoSuchGodotClass", false),
+            ("StyleBoxFlat", true),
+        ];
+        var failures = new List<string>(
+            expected
+                .Select(e => (e.Type, e.Expected, Handled: loader._HandlesType(e.Type)))
+                .Where(e => e.Handled != e.Expected)
+                .Select(e => $"_HandlesType(\"{e.Type}\") is {e.Handled}, not {e.Expected}")
+        );
+        string[] extensions = ResourceLoader.GetRecognizedExtensionsForType("CheckedResource");
+        if (!extensions.Contains("xres"))
+        {
+            failures.Add($"the loaders' extensions for CheckedResource [{string.Join(", ", extensions)}] lack xres");
+        }
+
+        if (!ResourceLoader.Exists(ScriptedCsPath, "CheckedResource"))
+        {
+            failures.Add($"ResourceLoader.Exists({ScriptedCsPath}, \"CheckedResource\") is false");
+        }
+
+        if (ResourceLoader.Load(ScriptedCsPath, "CheckedResource", ResourceLoader.CacheMode.Ignore) is not CheckedResource resource)
+        {
+            failures.Add($"loading {ScriptedCsPath} as \"CheckedResource\" did not return a CheckedResource");
+        }
+        else if (resource.Count != 7)
+        {
+            failures.Add($"the loaded CheckedResource's Count is {resource.Count}, not 7");
+        }
+
+        const string namedPath = CasesPath + "named_gd.xres";
+        if (ResourceLoader.Load(namedPath, "NamedCheckedResource", ResourceLoader.CacheMode.Ignore) is not Resource named)
+        {
+            failures.Add($"loading {namedPath} as \"NamedCheckedResource\" did not return a resource");
+        }
+        else if (named.Get("count").AsInt64() != 3)
+        {
+            failures.Add($"the loaded {namedPath} has count {named.Get("count")}, not 3");
+        }
+
+        return string.Join("; ", failures);
     }
 
     private static string ConversionErrorFailsTheLoad()

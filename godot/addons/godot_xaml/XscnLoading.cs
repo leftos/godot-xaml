@@ -155,6 +155,25 @@ internal static class XscnLoading
         }
     }
 
+    /// <summary>The script an <c>.xres</c> file's root tag names, read without parsing the rest, as a <c>res://</c> path.</summary>
+    /// <param name="path">The <c>.xres</c>.</param>
+    /// <returns>The script's <c>res://</c> path, or null when the root names none.</returns>
+    internal static string? XresRootScript(string path)
+    {
+        var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, IgnoreComments = true };
+        try
+        {
+            using FileStream stream = File.OpenRead(ProjectSettings.GlobalizePath(path));
+            using var reader = XmlReader.Create(stream, settings);
+            string? script = reader.MoveToContent() == XmlNodeType.Element ? reader.GetAttribute("Script") : null;
+            return script is null || script.Length == 0 ? null : Localized(path, script);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Converts a parsed document to the text loader's form, minting its sub-resource ids as every load does.</summary>
     /// <param name="document">The parsed <c>.xscn</c> or <c>.xres</c>.</param>
     /// <returns>The converted document and the conversion's issues.</returns>

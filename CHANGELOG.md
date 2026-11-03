@@ -10,6 +10,7 @@
 
 - A file that loads with parse warnings shows them in Godot's Output as warnings, and a failed load reports its warnings as warnings, not errors.
 - A failed load removes converted temp files that earlier failed loads kept more than a day ago.
+- An `.xres` whose script declares a global class appears in Quick Load and typed drops for that class, and loads by its class name.
 
 ## 0.2.0 - 2026-11-03
 

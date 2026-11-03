@@ -308,6 +308,14 @@ Whether a left file hits an export is unmeasured.
 
 `convert` stays serial: a conversion is a one-time step, so its speed does not justify the ordering and buffering parallel work would add to its output. A slow run is fixed by removing repeated work.
 
+## A script-class `.xres` is found through a snapshot of the global classes
+
+An `.xres` whose root `Script=` declares a global class (a GDScript `class_name` or a C# `[GlobalClass]`) answers `get_resource_script_class` with that class, and loads by the class name (`ResourceLoader.Load(path, "MyRes")`, `Exists`, `GetRecognizedExtensionsForType`), so the inspector's typed picker, typed Array and Dictionary drops and the FileSystem dock's script-class icon find it. The format does not change: `.xres` stores no `script_class`, and its resource type is still the native root class.
+
+The loader answers from `GlobalClassSnapshot`, an immutable copy of the global class list built on the main thread and read from any thread, because the editor asks loaders for script classes from its scan thread and the live list is replaced on the main thread with no lock. It is rebuilt when the editor plugin enters the tree and on each `EditorFileSystem.script_classes_updated`, and by `XresFormatLoader`'s constructor on the main thread.
+
+The constructor rebuild alone is not enough, from the Godot 4.7.2 source: at startup the loaders are built from the previous session's class cache (`main/main.cpp`, `Main::start`) and are not re-created after the first scan stores the fresh list (`editor/file_system/editor_file_system.cpp`: the first scan, the plugin load, then the threaded scan that asks a loader for a new `.xres`'s script class). A script deleted in the FileSystem dock emits `script_classes_updated` without re-creating the loaders (`editor/docks/filesystem_dock.cpp`).
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.
