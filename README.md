@@ -29,10 +29,10 @@ Names are those of Godot's C# API, and values are enum names, never integers.
 
 ## Install
 
-You need a Godot 4.7+ .NET project. `GodotXaml.Core` reaches NuGet with the first release; until then, run `dotnet pack src/GodotXaml.Core/GodotXaml.Core.csproj -c Release -o <folder>` here and add that folder as a NuGet source in your project's `nuget.config`.
+You need a Godot 4.7 .NET project (tested on 4.7.2). The full walk-through is in [Getting started](docs/guide/getting-started.md).
 
-1. Give the project a solution file if it has none, named after `dotnet/project/assembly_name`, or an export fails on the C# step: `dotnet new sln -n <AssemblyName>`, then `dotnet sln <AssemblyName>.slnx add <AssemblyName>.csproj`.
-2. Copy `godot/addons/godot_xaml/` from this repository to `addons/godot_xaml/` in your project, dotfiles included.
+1. Give the project a solution file (`.sln` or `.slnx`) that contains its `.csproj`, if it has none, or an export fails on the C# step: `dotnet new sln -n <AssemblyName>`, then `dotnet sln add <AssemblyName>.csproj`.
+2. Download `godot-xaml-addon-0.1.0.zip` from [the latest release](https://github.com/leftos/godot-xaml/releases/latest) and unzip it at the project root, which puts it at `addons/godot_xaml/`, dotfiles included.
 3. Add the package to your `.csproj`: `<PackageReference Include="GodotXaml.Core" Version="0.1.0" />`.
 
    The project's own `.csproj` must compile `addons/godot_xaml/`: a `<Compile Remove="addons\**" />` makes every file fail with `No loader found`. It also needs `<EnableDynamicLoading>true</EnableDynamicLoading>`. `godot/GodotXaml.Addon.csproj` is a working example.
@@ -47,7 +47,9 @@ You need a Godot 4.7+ .NET project. `GodotXaml.Core` reaches NuGet with the firs
 
 An export needs nothing more: with the plugin on, scenes ship as Godot binary.
 
-To update, raise the package version and copy the folder again.
+To update, raise the package version and replace `addons/godot_xaml/` with the new release's folder.
+
+The command-line tool installs with `dotnet tool install -g GodotXaml.Cli`.
 
 ## Converting a project
 
@@ -61,13 +63,14 @@ To update, raise the package version and copy the folder again.
 
 ## Status
 
-Not released yet. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md). Version 1 targets Godot 4.7+ with .NET:
+0.1.0 is the first release, for Godot 4.7 with .NET; what changed is in [`CHANGELOG.md`](CHANGELOG.md). It ships:
 
 - `.xscn` and `.xres` open, edit and save in the Godot editor through a C# addon, with no `.tscn` beside them.
-- Exported games load `.xscn` and `.xres` as Godot binary, with no addon code and no raw XML shipped, once the `godot-xaml` editor plugin is enabled.
+- Exported games load `.xscn` and `.xres` as Godot binary, with no addon code run on a load and no raw XML shipped, once the `godot-xaml` editor plugin is enabled.
 - A converter for existing `.tscn` and `.tres` files, which rewrites the `res://` references between the files it converts.
-- A language server for Visual Studio and VS Code, and a live preview pane in Visual Studio.
 - A CLI to convert, check and format.
+
+Still to come in version 1: a language server for Visual Studio and VS Code, and a live preview pane in Visual Studio. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## License
 
