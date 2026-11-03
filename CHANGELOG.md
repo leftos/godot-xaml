@@ -6,7 +6,7 @@
 
 - `.xscn` scenes and `.xres` resources: Godot scenes as nested XAML, named after Godot's C# API, with enum values by name.
 - A Godot editor addon that opens, edits and saves `.xscn` and `.xres` files, keeping comments, resource keys and uids across saves.
-- Exported games load `.xscn` and `.xres` as Godot binary, with no addon code or XML shipped.
+- Exported games load `.xscn` and `.xres` as Godot binary: no addon code runs on a load, and no XML ships.
 - The `godot-xaml` command-line tool checks, formats and converts files, printing problems in the form editors and CI read.
 - `godot-xaml convert` turns `.tscn` and `.tres` into `.xscn` and `.xres` and back, rewriting references between the files it converts.
 - `convert --project` converts a whole project all or nothing, backs up the originals, edits scripts' paths, and leaves files Godot loads before addons as text.
