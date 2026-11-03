@@ -26,4 +26,13 @@ internal static class CliCodes
 
     /// <summary>A script or <c>project.godot</c> of a <c>--project</c> run that is not UTF-8 text, so it is neither scanned nor edited.</summary>
     internal const string NotUtf8 = "GXP0008";
+
+    /// <summary>A <c>.tscn</c> or <c>.tres</c> the reader cannot read; the file is not converted.</summary>
+    internal const string ReadFailed = "GXT0001";
+
+    /// <summary>A document the conversion or the writer refuses; the file is not written.</summary>
+    internal const string CoreRefusal = "GXT0002";
+
+    /// <summary>A <c>.tres</c> holding a scene or a <c>.tscn</c> holding a resource; the file is not converted.</summary>
+    internal const string KindMismatch = "GXT0003";
 }

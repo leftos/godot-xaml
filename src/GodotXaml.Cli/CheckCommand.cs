@@ -88,7 +88,7 @@ internal static class CheckCommand
     /// <param name="path">The path the output prints.</param>
     /// <param name="exception">The refusal.</param>
     /// <returns>The line.</returns>
-    internal static string CoreRefusal(string path, Exception exception) => $"{path}: error GXT0002: {exception.Message}";
+    internal static string CoreRefusal(string path, Exception exception) => $"{path}: error {CliCodes.CoreRefusal}: {exception.Message}";
 
     // Exit 2 is everything that stops the check before a file is judged: a path that does not exist, a folder or file
     // that cannot be read, a file that is not UTF-8 text, or an unreadable metadata file.

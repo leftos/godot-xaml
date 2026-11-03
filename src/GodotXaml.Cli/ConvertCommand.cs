@@ -1155,14 +1155,14 @@ internal static class ConvertCommand
         }
         catch (TscnParseException exception)
         {
-            output.WriteLine($"{source.File.Path}({exception.Line},{exception.Column}): error GXT0001: {exception.Reason}");
+            output.WriteLine($"{source.File.Path}({exception.Line},{exception.Column}): error {CliCodes.ReadFailed}: {exception.Reason}");
             tally.Errors++;
             return (null, null);
         }
         XscnDocumentKind held = document.Kind == TscnKind.Scene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource;
         if (held != source.File.Kind.Kind)
         {
-            output.WriteLine($"{source.File.Path}: error GXT0003: {KindMismatch(held)}");
+            output.WriteLine($"{source.File.Path}: error {CliCodes.KindMismatch}: {KindMismatch(held)}");
             tally.Errors++;
             return (null, null);
         }
