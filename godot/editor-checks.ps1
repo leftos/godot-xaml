@@ -4,8 +4,9 @@
 Runs the addon's editor checks in a windowed Godot 4.7 editor.
 
 .DESCRIPTION
-Recreates <repo>/.tmp/editor-checks, copies godot/, src/ and metadata/ into its run/ folder, overlays the editor_checks plugin
-and the fixtures of tools/editor-checks, and enables the plugin in the copy, so the tracked files stay untouched and nothing
+Recreates <repo>/.tmp/editor-checks, copies godot/ (without the headless checks in checks/ and compare.ps1's copies), src/
+and metadata/ into its run/ folder, overlays the editor_checks plugin and the fixtures of tools/editor-checks, and enables
+the plugin in the copy, so the tracked files stay untouched and nothing
 needs restoring. It then builds the copy as a full rebuild (--no-incremental), imports it headless twice, and starts the
 editor twice with the plugin's user arguments: once with --xscn-editor-checks=run, and once with
 --xscn-editor-checks=reopen, for the check that needs a fresh editor.
@@ -57,16 +58,17 @@ function Copy-Tree {
     param(
         [Parameter(Mandatory)][string] $Source,
         [Parameter(Mandatory)][string] $Destination,
-        [Parameter(Mandatory)][AllowEmptyCollection()][string[]] $Skip
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]] $Skip,
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]] $TopSkip
     )
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
     foreach ($item in Get-ChildItem -LiteralPath $Source -Force) {
-        if ($Skip -contains $item.Name) {
+        if ($Skip -contains $item.Name -or $TopSkip -contains $item.Name) {
             continue
         }
         $target = Join-Path $Destination $item.Name
         if ($item.PSIsContainer) {
-            Copy-Tree $item.FullName $target $Skip
+            Copy-Tree $item.FullName $target $Skip @()
         }
         else {
             Copy-Item -LiteralPath $item.FullName -Destination $target
@@ -116,12 +118,14 @@ if (Test-Path -LiteralPath $root) {
 }
 New-Item -ItemType Directory -Force -Path $run, $results | Out-Null
 
-$godotSkip = @('.godot', 'bin', 'obj', 'cases', 'holder.gd', 'holder.gd.uid', 'quoted.gd', 'quoted.gd.uid', 'tagged.gd', 'tagged.gd.uid')
-Copy-Tree $project $runProject $godotSkip
-Copy-Tree (Join-Path $repo 'src') (Join-Path $run 'src') @('bin', 'obj')
-Copy-Tree (Join-Path $repo 'metadata') (Join-Path $run 'metadata') @()
-Copy-Tree (Join-Path $sources 'addons/editor_checks') (Join-Path $runProject 'addons/editor_checks') @()
-Copy-Tree (Join-Path $sources 'fixtures') (Join-Path $runProject 'fixtures') @()
+# Left out at the project's top only: compare.ps1's gitignored copies (cases/ and the helper scripts), and the headless
+# checks in checks/, which the editor never runs; a name skipped at every depth would also drop deeper folders so named.
+$godotTopSkip = @('cases', 'checks', 'holder.gd', 'holder.gd.uid', 'quoted.gd', 'quoted.gd.uid', 'tagged.gd', 'tagged.gd.uid')
+Copy-Tree $project $runProject @('.godot', 'bin', 'obj') $godotTopSkip
+Copy-Tree (Join-Path $repo 'src') (Join-Path $run 'src') @('bin', 'obj') @()
+Copy-Tree (Join-Path $repo 'metadata') (Join-Path $run 'metadata') @() @()
+Copy-Tree (Join-Path $sources 'addons/editor_checks') (Join-Path $runProject 'addons/editor_checks') @() @()
+Copy-Tree (Join-Path $sources 'fixtures') (Join-Path $runProject 'fixtures') @() @()
 Set-RunProjectSettings (Join-Path $runProject 'project.godot')
 
 # The first scan of a fresh project runs before the C# global classes register, so .xscn and .xres files get no uid
