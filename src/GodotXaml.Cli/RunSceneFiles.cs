@@ -1,4 +1,5 @@
 using GodotXaml.Core.Conversion;
+using GodotXaml.Core.Projects;
 
 namespace GodotXaml.Cli;
 
@@ -70,7 +71,7 @@ internal sealed class RunSceneFiles : ISceneFiles
     {
         if (reference.StartsWith(ResScheme, StringComparison.Ordinal))
         {
-            string? root = ProjectRoot.Find(referrer);
+            string? root = GodotProject.Find(referrer);
             string relative = reference[ResScheme.Length..].Replace('/', Path.DirectorySeparatorChar);
             return root is null ? null : Path.GetFullPath(Path.Combine(root, relative));
         }

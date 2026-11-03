@@ -1,3 +1,4 @@
+using GodotXaml.Core.Projects;
 using GodotXaml.Core.Tscn;
 
 namespace GodotXaml.Cli.Tests;
@@ -531,11 +532,11 @@ public sealed partial class CliProgramTests
     [Fact]
     public void ResPathPrefersTheExactlyCasedEntry()
     {
-        Assert.Equal("UI", ProjectRoot.OnDiskName("UI", ["ui", "UI"]));
-        Assert.Equal("ui", ProjectRoot.OnDiskName("ui", ["ui", "UI"]));
-        Assert.Equal("ui", ProjectRoot.OnDiskName("Ui", ["ui", "OTHER"]));
-        Assert.Equal("Button.tscn", ProjectRoot.OnDiskName("Button.tscn", []));
-        Assert.Equal("Button.tscn", ProjectRoot.OnDiskName("Button.tscn", ["other.tscn"]));
+        Assert.Equal("UI", GodotProject.OnDiskName("UI", ["ui", "UI"]));
+        Assert.Equal("ui", GodotProject.OnDiskName("ui", ["ui", "UI"]));
+        Assert.Equal("ui", GodotProject.OnDiskName("Ui", ["ui", "OTHER"]));
+        Assert.Equal("Button.tscn", GodotProject.OnDiskName("Button.tscn", []));
+        Assert.Equal("Button.tscn", GodotProject.OnDiskName("Button.tscn", ["other.tscn"]));
     }
 
     [Fact]

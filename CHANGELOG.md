@@ -5,6 +5,7 @@
 ### Added
 
 - `LineMap` turns a 0-based line and column back into an offset, exactly or clamped as the language server protocol reads positions.
+- `GodotXaml.Core.Projects` finds a file's Godot project, maps `res://` paths to disk and back, and reads the project's Godot version; `GodotMetadata.LoadBundledForProject` picks matching metadata.
 
 ### Fixed
 

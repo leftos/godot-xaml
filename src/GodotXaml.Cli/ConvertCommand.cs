@@ -6,6 +6,7 @@ using System.Text;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Metadata;
+using GodotXaml.Core.Projects;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Xscn;
 
@@ -211,10 +212,10 @@ internal static class ConvertCommand
     // above it has no res:// path, so its output's full path stands in.
     private static string SeedKeyOf(string sourcePath, string outputPath)
     {
-        string? root = ProjectRoot.Find(sourcePath);
+        string? root = GodotProject.Find(sourcePath);
         return root is null
             ? Path.GetFullPath(outputPath)
-            : Path.ChangeExtension(ProjectRoot.ResPath(root, sourcePath), Path.GetExtension(outputPath));
+            : Path.ChangeExtension(GodotProject.ResPath(root, sourcePath), Path.GetExtension(outputPath));
     }
 
     // Every source and every .uid sidecar is read before any file is converted. The run then plans before it writes:
@@ -666,7 +667,7 @@ internal static class ConvertCommand
         var listings = new Dictionary<string, string[]>(StringComparer.Ordinal);
         foreach (Planned item in planned)
         {
-            string? root = ProjectRoot.Find(item.Source.File.Path);
+            string? root = GodotProject.Find(item.Source.File.Path);
             item.Root = root;
             if (root is null)
             {
@@ -678,7 +679,7 @@ internal static class ConvertCommand
                 map = new Dictionary<string, string>(StringComparer.Ordinal);
                 roots.Add(root, map);
             }
-            map[ProjectRoot.ResPath(root, item.Source.File.Path, listings)] = ProjectRoot.ResPath(root, item.Output, listings);
+            map[GodotProject.ResPath(root, item.Source.File.Path, listings)] = GodotProject.ResPath(root, item.Output, listings);
         }
         return roots;
     }
@@ -861,12 +862,12 @@ internal static class ConvertCommand
             }
             foreach (Planned failed in planned.Where(item => item.WriteFailed && InputFiles.PathComparer.Equals(item.Root, root)))
             {
-                string failedPath = ProjectRoot.ResPath(root, failed.Output);
+                string failedPath = GodotProject.ResPath(root, failed.Output);
                 if (!RefersTo(written.Document, failedPath, metadata))
                 {
                     continue;
                 }
-                string oldPath = ProjectRoot.ResPath(root, failed.Source.File.Path);
+                string oldPath = GodotProject.ResPath(root, failed.Source.File.Path);
                 string message = $"refers to {failedPath}, which this run failed to write; {oldPath} still exists";
                 (int Line, int Column)? at = FirstOccurrence(written.WrittenText, ReferenceScan.GrammarOf(written.Output), failedPath);
                 string path = at is { } location ? Location(written.Output, location.Line, location.Column) : written.Output;
@@ -920,7 +921,7 @@ internal static class ConvertCommand
                 map = new Dictionary<string, string>(StringComparer.Ordinal);
                 roots.Add(root, map);
             }
-            map[ProjectRoot.ResPath(root, item.Source.File.Path, listings)] = ProjectRoot.ResPath(root, item.Output, listings);
+            map[GodotProject.ResPath(root, item.Source.File.Path, listings)] = GodotProject.ResPath(root, item.Output, listings);
         }
         foreach ((string root, Dictionary<string, string> map) in roots)
         {

@@ -113,6 +113,33 @@ public sealed class GodotMetadata
         return Load(stream);
     }
 
+    /// <summary>
+    /// Loads the bundled metadata for a project's Godot version, or the newest bundled version when the assembly does
+    /// not carry the project's or the project names none.
+    /// </summary>
+    /// <param name="projectVersion">The project's Godot minor version (<c>4.7</c>), or null when it names none.</param>
+    /// <param name="version">The version whose metadata was loaded.</param>
+    /// <param name="warning">Why the newest version stands in for the project's, or null when the project's was loaded.</param>
+    /// <returns>The loaded version's classes and enums.</returns>
+    /// <exception cref="InvalidOperationException">The assembly carries no metadata at all.</exception>
+    public static GodotMetadata LoadBundledForProject(string? projectVersion, out string version, out string? warning)
+    {
+        if (projectVersion is not null && BundledVersions.Contains(projectVersion, StringComparer.Ordinal))
+        {
+            version = projectVersion;
+            warning = null;
+            return LoadBundled(version);
+        }
+
+        version =
+            BundledVersions.Where(v => Version.TryParse(v, out _)).MaxBy(v => Version.Parse(v))
+            ?? throw new InvalidOperationException("This assembly carries no metadata.");
+        warning = projectVersion is null
+            ? $"the project names no Godot version; using {version}"
+            : $"Godot {projectVersion} has no bundled metadata; using {version}";
+        return LoadBundled(version);
+    }
+
     /// <summary>Every class in the file, in no set order.</summary>
     public IEnumerable<GodotClassInfo> Classes => classes.Values;
 

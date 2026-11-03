@@ -1,4 +1,5 @@
 using System.Text;
+using GodotXaml.Core.Projects;
 using GodotXaml.Core.Tscn;
 
 namespace GodotXaml.Cli;
@@ -97,7 +98,7 @@ internal static class StartupFiles
             string reached = Referenced(root, file, resource, walk.Uids);
             if (IsStartupResource(reached))
             {
-                walk.Queue.Enqueue((reached, $"through {ProjectRoot.ResPath(root, file)}"));
+                walk.Queue.Enqueue((reached, $"through {GodotProject.ResPath(root, file)}"));
             }
             else if (ScriptOf(reached) is ScriptKind kind)
             {
@@ -121,7 +122,7 @@ internal static class StartupFiles
             walk.Left.Add(new LeftFile(script, "", unread, Listed: false));
             return;
         }
-        string reason = $"through {ProjectRoot.ResPath(root, script)}";
+        string reason = $"through {GodotProject.ResPath(root, script)}";
         foreach (ScriptLiteral literal in ScriptPaths.Literals(text, kind))
         {
             string? named = NamedFile(root, literal.Text, walk.Uids);
