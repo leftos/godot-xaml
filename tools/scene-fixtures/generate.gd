@@ -61,6 +61,8 @@ func _run() -> String:
 		_order_inner,
 		_instanced_order,
 		_placeholder_order,
+		_animation_tracks,
+		_skeleton_bones,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -287,6 +289,79 @@ func _placeholder_order() -> String:
 	later.grow_vertical = Control.GROW_DIRECTION_BOTH
 	later.set_scene_instance_load_placeholder(true)
 	return _save_scene("placeholder_order", root)
+
+
+## An Animation of 12 tracks of mixed types, one disabled, each with a path and two keys:
+## Animation::_set creates a track only on tracks/<count>/type (animation.cpp), so each track's
+## type must be set first and the tracks in numeric order, 10 and 11 after 2.
+func _animation_tracks() -> String:
+	var animation := Animation.new()
+	animation.length = 2.0
+	var kinds: Array[int] = [
+		Animation.TYPE_VALUE,
+		Animation.TYPE_METHOD,
+		Animation.TYPE_BEZIER,
+		Animation.TYPE_ROTATION_3D,
+		Animation.TYPE_BLEND_SHAPE,
+	]
+	for index in 12:
+		var kind: int = kinds[index % kinds.size()]
+		var track := animation.add_track(kind)
+		var target := "Target%d" % index
+		var property := _track_property(kind)
+		animation.track_set_path(
+			track, NodePath(target if property.is_empty() else target + ":" + property)
+		)
+		for key in 2:
+			_insert_key(animation, track, kind, key * 1.0, index + key)
+	animation.track_set_enabled(7, false)
+	animation.track_set_interpolation_type(0, Animation.INTERPOLATION_CUBIC)
+	return _save("animation_tracks.tres", animation)
+
+
+## A Skeleton3D of 12 bones with names, a parent chain and rests, bone 7 disabled and bone 3
+## with bone_meta: Skeleton3D::_set adds a bone only on bones/<count>/name and rejects any
+## other key of a bone not yet added (skeleton_3d.cpp).
+func _skeleton_bones() -> String:
+	var skeleton: Skeleton3D = _root("Skeleton3D")
+	for index in 12:
+		skeleton.add_bone("bone_%d" % index)
+		skeleton.set_bone_parent(index, index - 1 if index != 6 else 0)
+		skeleton.set_bone_rest(index, Transform3D(Basis(), Vector3(0, 0.5 * index, 0)))
+	skeleton.set_bone_enabled(7, false)
+	skeleton.set_bone_meta(3, "tag", "spine")
+	return _save_scene("skeleton_bones", skeleton)
+
+
+## The property a track of this kind animates on its target.
+func _track_property(kind: int) -> String:
+	match kind:
+		Animation.TYPE_VALUE:
+			return "position:x"
+		Animation.TYPE_BEZIER:
+			return "position:y"
+		Animation.TYPE_ROTATION_3D:
+			return "bone_1"
+		Animation.TYPE_BLEND_SHAPE:
+			return "smile"
+	return ""
+
+
+## Inserts a key of the track's kind at the time, its value drawn from the number.
+func _insert_key(animation: Animation, track: int, kind: int, time: float, number: int) -> void:
+	match kind:
+		Animation.TYPE_VALUE:
+			animation.track_insert_key(track, time, number * 0.5)
+		Animation.TYPE_METHOD:
+			animation.track_insert_key(
+				track, time, {"method": "set_meta", "args": ["step", number]}
+			)
+		Animation.TYPE_BEZIER:
+			animation.bezier_track_insert_key(track, time, number * 0.25)
+		Animation.TYPE_ROTATION_3D:
+			animation.rotation_track_insert_key(track, time, Quaternion(Vector3.UP, number * 0.1))
+		Animation.TYPE_BLEND_SHAPE:
+			animation.blend_shape_track_insert_key(track, time, number * 0.1)
 
 
 ## A gradient with non-default colours, its sub-resource id pinned.

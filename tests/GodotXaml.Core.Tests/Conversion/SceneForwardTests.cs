@@ -32,6 +32,7 @@ public sealed partial class SceneForwardTests
             "placeholder_order",
             "property_order",
             "script_node",
+            "skeleton_bones",
             "sub_resources",
             "unique_name"
         );

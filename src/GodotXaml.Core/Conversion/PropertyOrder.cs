@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
@@ -13,7 +14,9 @@ namespace GodotXaml.Core.Conversion;
 /// declaring class's place. Any other slash-named name no list holds is a script's own (or a family the table lacks); it
 /// goes after script, since a script's would be lost on a node with no script yet (packed_scene.cpp,
 /// SceneState::instantiate), and a section with no script loses nothing by it. The .xscn's alphabetical order cannot say
-/// the order among script exports or inside a dynamic family, so those keep source order.
+/// the order among script exports or inside a dynamic family, so those keep source order, except a family whose entries
+/// Godot creates on one key (Animation tracks, Skeleton3D bones, blend points): it goes entry by entry in numeric order,
+/// each entry's keys in the declaring class's order, creating key first.
 /// </summary>
 internal sealed class PropertyOrder(GodotMetadata metadata)
 {
@@ -68,11 +71,12 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
             return rank;
         }
 
-        foreach ((Regex pattern, Rank slot) in order.Families)
+        foreach ((DynamicPropertyFamilies.DynamicFamily family, Rank slot) in order.Families)
         {
-            if (pattern.IsMatch(name))
+            Match match = family.Pattern.Match(name);
+            if (match.Success)
             {
-                return slot;
+                return slot with { Entry = EntryOf(match), Key = KeyOf(family.KeyOrder, match) };
             }
         }
 
@@ -87,6 +91,28 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         }
 
         return new Rank(name == ScriptProperty ? Tier.Script : Tier.Exports);
+    }
+
+    // The entry's number from the family's index group; 0 for a family without one, so its names keep source order. A
+    // number past int's range goes last.
+    private static int EntryOf(Match match)
+    {
+        Group index = match.Groups["index"];
+        if (!index.Success)
+        {
+            return 0;
+        }
+
+        return int.TryParse(index.ValueSpan, NumberStyles.None, CultureInfo.InvariantCulture, out int entry) ? entry : int.MaxValue;
+    }
+
+    // The key's place in the family's key order; a key the order lacks, or a family with no order, takes the order's length,
+    // so it goes after the listed keys of its entry, in source order.
+    private static int KeyOf(ImmutableArray<string> keyOrder, Match match)
+    {
+        Group key = match.Groups["key"];
+        int place = key.Success ? keyOrder.IndexOf(key.Value) : -1;
+        return place >= 0 ? place : keyOrder.Length;
     }
 
     // The depth of Control or Window in the chain, or -1 for a class with neither.
@@ -104,12 +130,15 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
     }
 
     // Each chain class's dynamic families, base first, in the order the class adds them.
-    private static ImmutableArray<(Regex Pattern, Rank Slot)> FamiliesOf(ImmutableArray<GodotClassInfo> chain)
+    private static ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot)> FamiliesOf(ImmutableArray<GodotClassInfo> chain)
     {
-        ImmutableArray<(Regex Pattern, Rank Slot)>.Builder families = ImmutableArray.CreateBuilder<(Regex Pattern, Rank Slot)>();
+        ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot)>.Builder families = ImmutableArray.CreateBuilder<(
+            DynamicPropertyFamilies.DynamicFamily Family,
+            Rank Slot
+        )>();
         for (int depth = 0; depth < chain.Length; depth++)
         {
-            ImmutableArray<Regex> declared = DynamicPropertyFamilies.Of(chain[depth].Name);
+            ImmutableArray<DynamicPropertyFamilies.DynamicFamily> declared = DynamicPropertyFamilies.Of(chain[depth].Name);
             for (int index = 0; index < declared.Length; index++)
             {
                 families.Add((declared[index], new Rank(Tier.ClassList, depth, Family.Dynamic, index)));
@@ -146,10 +175,16 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
     }
 
     // A class's exact names and its chain's dynamic families.
-    private sealed record ClassOrder(Dictionary<string, Rank> Listed, ImmutableArray<(Regex Pattern, Rank Slot)> Families);
+    private sealed record ClassOrder(
+        Dictionary<string, Rank> Listed,
+        ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot)> Families
+    );
 
-    private readonly record struct Rank(Tier Tier, int Depth = 0, Family Family = Family.OwnList, int Index = 0) : IComparable<Rank>
+    // Entry and Key order a dynamic family's names: entry by entry in numeric order, each entry's keys in the class's order.
+    private readonly record struct Rank(Tier Tier, int Depth = 0, Family Family = Family.OwnList, int Index = 0, int Entry = 0, int Key = 0)
+        : IComparable<Rank>
     {
-        public int CompareTo(Rank other) => (Tier, Depth, Family, Index).CompareTo((other.Tier, other.Depth, other.Family, other.Index));
+        public int CompareTo(Rank other) =>
+            (Tier, Depth, Family, Index, Entry, Key).CompareTo((other.Tier, other.Depth, other.Family, other.Index, other.Entry, other.Key));
     }
 }

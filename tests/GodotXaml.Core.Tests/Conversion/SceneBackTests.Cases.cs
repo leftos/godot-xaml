@@ -104,6 +104,95 @@ public sealed partial class SceneBackTests
               <Node Name="Target" x:UniqueId="1544414068" />
             </Node>
             """,
+        ["skeleton_bones"] = $$"""
+            <Skeleton3D {{X}} Name="Root" x:UniqueId="1637017537">
+              <x:Prop Name="bones/0/enabled" Value="true" />
+              <x:Prop Name="bones/0/name" Value='"bone_0"' />
+              <x:Prop Name="bones/0/parent" Value="-1" />
+              <x:Prop Name="bones/0/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/0/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)" />
+              <x:Prop Name="bones/0/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/0/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/1/enabled" Value="true" />
+              <x:Prop Name="bones/1/name" Value='"bone_1"' />
+              <x:Prop Name="bones/1/parent" Value="0" />
+              <x:Prop Name="bones/1/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/1/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)" />
+              <x:Prop Name="bones/1/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/1/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/10/enabled" Value="true" />
+              <x:Prop Name="bones/10/name" Value='"bone_10"' />
+              <x:Prop Name="bones/10/parent" Value="9" />
+              <x:Prop Name="bones/10/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/10/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)" />
+              <x:Prop Name="bones/10/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/10/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/11/enabled" Value="true" />
+              <x:Prop Name="bones/11/name" Value='"bone_11"' />
+              <x:Prop Name="bones/11/parent" Value="10" />
+              <x:Prop Name="bones/11/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/11/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.5, 0)" />
+              <x:Prop Name="bones/11/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/11/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/2/enabled" Value="true" />
+              <x:Prop Name="bones/2/name" Value='"bone_2"' />
+              <x:Prop Name="bones/2/parent" Value="1" />
+              <x:Prop Name="bones/2/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/2/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)" />
+              <x:Prop Name="bones/2/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/2/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/3/bone_meta/tag" Value='"spine"' />
+              <x:Prop Name="bones/3/enabled" Value="true" />
+              <x:Prop Name="bones/3/name" Value='"bone_3"' />
+              <x:Prop Name="bones/3/parent" Value="2" />
+              <x:Prop Name="bones/3/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/3/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)" />
+              <x:Prop Name="bones/3/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/3/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/4/enabled" Value="true" />
+              <x:Prop Name="bones/4/name" Value='"bone_4"' />
+              <x:Prop Name="bones/4/parent" Value="3" />
+              <x:Prop Name="bones/4/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/4/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)" />
+              <x:Prop Name="bones/4/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/4/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/5/enabled" Value="true" />
+              <x:Prop Name="bones/5/name" Value='"bone_5"' />
+              <x:Prop Name="bones/5/parent" Value="4" />
+              <x:Prop Name="bones/5/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/5/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)" />
+              <x:Prop Name="bones/5/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/5/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/6/enabled" Value="true" />
+              <x:Prop Name="bones/6/name" Value='"bone_6"' />
+              <x:Prop Name="bones/6/parent" Value="0" />
+              <x:Prop Name="bones/6/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/6/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)" />
+              <x:Prop Name="bones/6/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/6/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/7/enabled" Value="false" />
+              <x:Prop Name="bones/7/name" Value='"bone_7"' />
+              <x:Prop Name="bones/7/parent" Value="6" />
+              <x:Prop Name="bones/7/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/7/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, 0)" />
+              <x:Prop Name="bones/7/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/7/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/8/enabled" Value="true" />
+              <x:Prop Name="bones/8/name" Value='"bone_8"' />
+              <x:Prop Name="bones/8/parent" Value="7" />
+              <x:Prop Name="bones/8/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/8/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, 0)" />
+              <x:Prop Name="bones/8/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/8/scale" Value="Vector3(1, 1, 1)" />
+              <x:Prop Name="bones/9/enabled" Value="true" />
+              <x:Prop Name="bones/9/name" Value='"bone_9"' />
+              <x:Prop Name="bones/9/parent" Value="8" />
+              <x:Prop Name="bones/9/position" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="bones/9/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)" />
+              <x:Prop Name="bones/9/rotation" Value="Quaternion(0, 0, 0, 1)" />
+              <x:Prop Name="bones/9/scale" Value="Vector3(1, 1, 1)" />
+            </Skeleton3D>
+            """,
         ["sub_resources"] = $$"""
             <Node2D {{X}} Name="Root" x:UniqueId="944498477">
               <x:Resources>

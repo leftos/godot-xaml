@@ -137,7 +137,94 @@ public sealed class PropertyOrderTests
         Assert.Equal(["current", "script", "alpha", "metadata/m"], Names(scene.Nodes[0].Properties));
     }
 
+    // Animation::_set creates a track only on tracks/<count>/type, so each track's type comes first, tracks in numeric order.
+    [Fact]
+    public void AnAnimationTrackStartsWithItsTypeAndTracksRunInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <Animation {{X}}>
+              <x:Prop Name="tracks/0/interp" Value="2" />
+              <x:Prop Name="tracks/0/path" Value='NodePath("A:x")' />
+              <x:Prop Name="tracks/0/type" Value='"value"' />
+              <x:Prop Name="tracks/10/type" Value='"method"' />
+              <x:Prop Name="tracks/2/type" Value='"bezier"' />
+            </Animation>
+            """
+        );
+
+        Assert.Equal(["tracks/0/type", "tracks/0/path", "tracks/0/interp", "tracks/2/type", "tracks/10/type"], Names(resource.ResourceProperties));
+    }
+
+    // Skeleton3D::_set adds a bone only on bones/<count>/name and rejects any other key of a bone that does not exist yet.
+    [Fact]
+    public void ASkeletonBoneStartsWithItsNameAndBonesRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Skeleton3D {{X}} Name="Root">
+              <x:Prop Name="bones/0/enabled" Value="false" />
+              <x:Prop Name="bones/0/name" Value='"a"' />
+              <x:Prop Name="bones/0/parent" Value="-1" />
+              <x:Prop Name="bones/10/name" Value='"k"' />
+              <x:Prop Name="bones/2/name" Value='"c"' />
+            </Skeleton3D>
+            """
+        );
+
+        Assert.Equal(["bones/0/name", "bones/0/parent", "bones/0/enabled", "bones/2/name", "bones/10/name"], Names(scene.Nodes[0].Properties));
+    }
+
+    // AnimationNodeBlendSpace2D::_set adds a point only on blend_point_<count>/node.
+    [Fact]
+    public void ABlendPointStartsWithItsNode()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <AnimationNodeBlendSpace2D {{X}}>
+              <x:Prop Name="blend_point_0/name" Value='&amp;"walk"' />
+              <x:Prop Name="blend_point_0/node" Value='Resource("res://a.tres")' />
+              <x:Prop Name="blend_point_0/pos" Value="Vector2(1, 0)" />
+              <x:Prop Name="blend_point_10/node" Value='Resource("res://a.tres")' />
+              <x:Prop Name="blend_point_2/node" Value='Resource("res://a.tres")' />
+            </AnimationNodeBlendSpace2D>
+            """
+        );
+
+        Assert.Equal(
+            ["blend_point_0/node", "blend_point_0/pos", "blend_point_0/name", "blend_point_2/node", "blend_point_10/node"],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // Skeleton3D::_get_property_list lists a bone's bone_meta/ names after its own keys.
+    [Fact]
+    public void ABoneMetaKeyComesLastInItsBone()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Skeleton3D {{X}} Name="Root">
+              <x:Prop Name="bones/0/bone_meta/tag" Value='"x"' />
+              <x:Prop Name="bones/0/name" Value='"a"' />
+              <x:Prop Name="bones/0/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)" />
+            </Skeleton3D>
+            """
+        );
+
+        Assert.Equal(["bones/0/name", "bones/0/rest", "bones/0/bone_meta/tag"], Names(scene.Nodes[0].Properties));
+    }
+
     private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
+
+    // Parses a resource document and converts it with no issue.
+    private static TscnDocument BackResource(string text)
+    {
+        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Resource, Metadata);
+        Assert.Empty(parsed.Diagnostics);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, Metadata, Options);
+        Assert.Empty(back.Issues);
+        return back.Document;
+    }
 
     // Parses and converts with no issue.
     private static TscnDocument Back(string text)

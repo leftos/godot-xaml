@@ -193,7 +193,7 @@ Each component gets an entry here in the commit that adds its project.
 
   A new fixture also goes in the fixture lists (`SceneForwardTests.Scenes`, `SceneBackTests.Fixtures`, `SceneRoundTripTests.Fixtures`), `SceneBackTests.Inputs`, `ExpectedPairs` in `godot/compare/Compare.cs` and `$expectedFixtures` in `godot/compare.ps1`.
 
-  A new `.tres` fixture joins `ResourceConversionTests.Fixtures` and `ResourceForwardTests.Resources`, gets a hand-written `.xres` golden in `tests/fixtures/converted/`, and joins `ExpectedPairs` and `$expectedFixtures` too.
+  A new `.tres` fixture joins `ResourceConversionTests.Fixtures` and `ResourceForwardTests.Resources`, gets an `.xres` golden in `tests/fixtures/converted/` (written by the CLI's `convert` and checked by `ResourceForwardTests`), and joins `ExpectedPairs` and `$expectedFixtures` too.
 
   No fixture has `uid=`, since a script run has no editor file system to supply uids; the writer's unit test covers it.
 - `godot/cases/` and the helper scripts `holder.gd`, `quoted.gd` and `tagged.gd` in `godot/` are copied from the fixtures by `godot/compare.ps1` on every run and are gitignored; never edit or commit them. The script fails on a fixture without its pair.

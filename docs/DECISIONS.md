@@ -118,7 +118,9 @@ A dynamic name, one a class adds in `_get_property_list` and so absent from the 
 
 An instanced node, an inherited root and an `x:Override` take their class from the instanced scene, read through the host's scene lookup (`ConversionOptions.SceneFiles`), and then sort as any node of that class, so a script export stays after `script`. With no lookup, or a scene the lookup cannot read, the section keeps source order, and a scene it cannot read is warning GXC0118, naming the file and why.
 
-A class is never guessed from a section's names: a guess put a script export named like a class property ahead of `script`, where Godot drops it (`SceneState::instantiate` ignores a failed `set`). A placeholder and an unknown type keep source order. Order among script exports and inside a dynamic family (Theme, TileSet) cannot be restored from the alphabetical `.xscn`. The writer's alphabetical order stays.
+A class is never guessed from a section's names: a guess put a script export named like a class property ahead of `script`, where Godot drops it (`SceneState::instantiate` ignores a failed `set`). A placeholder and an unknown type keep source order. Order among script exports and inside a dynamic family (Theme, TileSet) cannot be restored from the alphabetical `.xscn`.
+
+The families whose entries Godot creates on one key (Animation tracks on `type`, Skeleton3D bones on `name`, blend points on `node`) are the exception: they come back entry by entry in numeric order, each entry's creating key first and its other keys in the declaring class's own `_get_property_list` order; other families keep source order. The writer's alphabetical order stays.
 
 ## One error-tolerant XML parser
 

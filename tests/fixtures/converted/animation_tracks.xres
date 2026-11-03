@@ -1,0 +1,106 @@
+<Animation xmlns:x="https://github.com/leftos/godot-xaml/format/1" Length="2">
+  <x:Prop Name="tracks/0/enabled" Value="true" />
+  <x:Prop Name="tracks/0/imported" Value="false" />
+  <x:Prop Name="tracks/0/interp" Value="2" />
+  <x:Prop
+      Name="tracks/0/keys"
+      Value='{&#10;"times": PackedFloat32Array(0, 1),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [0.0, 0.5]&#10;}' />
+  <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/0/path" Value='NodePath("Target0:position:x")' />
+  <x:Prop Name="tracks/0/type" Value='"value"' />
+  <x:Prop Name="tracks/1/enabled" Value="true" />
+  <x:Prop Name="tracks/1/imported" Value="false" />
+  <x:Prop Name="tracks/1/interp" Value="1" />
+  <x:Prop
+      Name="tracks/1/keys"
+      Value='{&#10;"times": PackedFloat32Array(0, 1),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"values": [{&#10;"args": ["step", 1],&#10;"method": &amp;"set_meta"&#10;}, {&#10;"args": ["step", 2],&#10;"method": &amp;"set_meta"&#10;}]&#10;}' />
+  <x:Prop Name="tracks/1/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/1/path" Value='NodePath("Target1")' />
+  <x:Prop Name="tracks/1/type" Value='"method"' />
+  <x:Prop Name="tracks/10/enabled" Value="true" />
+  <x:Prop Name="tracks/10/imported" Value="false" />
+  <x:Prop Name="tracks/10/interp" Value="1" />
+  <x:Prop
+      Name="tracks/10/keys"
+      Value='{&#10;"times": PackedFloat32Array(0, 1),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [5.0, 5.5]&#10;}' />
+  <x:Prop Name="tracks/10/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/10/path" Value='NodePath("Target10:position:x")' />
+  <x:Prop Name="tracks/10/type" Value='"value"' />
+  <x:Prop Name="tracks/11/enabled" Value="true" />
+  <x:Prop Name="tracks/11/imported" Value="false" />
+  <x:Prop Name="tracks/11/interp" Value="1" />
+  <x:Prop
+      Name="tracks/11/keys"
+      Value='{&#10;"times": PackedFloat32Array(0, 1),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"values": [{&#10;"args": ["step", 11],&#10;"method": &amp;"set_meta"&#10;}, {&#10;"args": ["step", 12],&#10;"method": &amp;"set_meta"&#10;}]&#10;}' />
+  <x:Prop Name="tracks/11/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/11/path" Value='NodePath("Target11")' />
+  <x:Prop Name="tracks/11/type" Value='"method"' />
+  <x:Prop Name="tracks/2/enabled" Value="true" />
+  <x:Prop Name="tracks/2/imported" Value="false" />
+  <x:Prop Name="tracks/2/interp" Value="1" />
+  <x:Prop
+      Name="tracks/2/keys"
+      Value='{&#10;"handle_modes": PackedInt32Array(0, 0),&#10;"points": PackedFloat32Array(0.5, 0, 0, 0, 0, 0.75, 0, 0, 0, 0),&#10;"times": PackedFloat32Array(0, 1)&#10;}' />
+  <x:Prop Name="tracks/2/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/2/path" Value='NodePath("Target2:position:y")' />
+  <x:Prop Name="tracks/2/type" Value='"bezier"' />
+  <x:Prop Name="tracks/3/enabled" Value="true" />
+  <x:Prop Name="tracks/3/imported" Value="false" />
+  <x:Prop Name="tracks/3/interp" Value="1" />
+  <x:Prop
+      Name="tracks/3/keys"
+      Value="PackedFloat32Array(0, 1, 0, 0.14943814, 0, 0.9887711, 1, 1, 0, 0.19866933, 0, 0.9800666)" />
+  <x:Prop Name="tracks/3/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/3/path" Value='NodePath("Target3:bone_1")' />
+  <x:Prop Name="tracks/3/type" Value='"rotation_3d"' />
+  <x:Prop Name="tracks/4/enabled" Value="true" />
+  <x:Prop Name="tracks/4/imported" Value="false" />
+  <x:Prop Name="tracks/4/interp" Value="1" />
+  <x:Prop Name="tracks/4/keys" Value="PackedFloat32Array(0, 1, 0.4, 1, 1, 0.5)" />
+  <x:Prop Name="tracks/4/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/4/path" Value='NodePath("Target4:smile")' />
+  <x:Prop Name="tracks/4/type" Value='"blend_shape"' />
+  <x:Prop Name="tracks/5/enabled" Value="true" />
+  <x:Prop Name="tracks/5/imported" Value="false" />
+  <x:Prop Name="tracks/5/interp" Value="1" />
+  <x:Prop
+      Name="tracks/5/keys"
+      Value='{&#10;"times": PackedFloat32Array(0, 1),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [2.5, 3.0]&#10;}' />
+  <x:Prop Name="tracks/5/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/5/path" Value='NodePath("Target5:position:x")' />
+  <x:Prop Name="tracks/5/type" Value='"value"' />
+  <x:Prop Name="tracks/6/enabled" Value="true" />
+  <x:Prop Name="tracks/6/imported" Value="false" />
+  <x:Prop Name="tracks/6/interp" Value="1" />
+  <x:Prop
+      Name="tracks/6/keys"
+      Value='{&#10;"times": PackedFloat32Array(0, 1),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"values": [{&#10;"args": ["step", 6],&#10;"method": &amp;"set_meta"&#10;}, {&#10;"args": ["step", 7],&#10;"method": &amp;"set_meta"&#10;}]&#10;}' />
+  <x:Prop Name="tracks/6/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/6/path" Value='NodePath("Target6")' />
+  <x:Prop Name="tracks/6/type" Value='"method"' />
+  <x:Prop Name="tracks/7/enabled" Value="false" />
+  <x:Prop Name="tracks/7/imported" Value="false" />
+  <x:Prop Name="tracks/7/interp" Value="1" />
+  <x:Prop
+      Name="tracks/7/keys"
+      Value='{&#10;"handle_modes": PackedInt32Array(0, 0),&#10;"points": PackedFloat32Array(1.75, 0, 0, 0, 0, 2, 0, 0, 0, 0),&#10;"times": PackedFloat32Array(0, 1)&#10;}' />
+  <x:Prop Name="tracks/7/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/7/path" Value='NodePath("Target7:position:y")' />
+  <x:Prop Name="tracks/7/type" Value='"bezier"' />
+  <x:Prop Name="tracks/8/enabled" Value="true" />
+  <x:Prop Name="tracks/8/imported" Value="false" />
+  <x:Prop Name="tracks/8/interp" Value="1" />
+  <x:Prop
+      Name="tracks/8/keys"
+      Value="PackedFloat32Array(0, 1, 0, 0.38941833, 0, 0.921061, 1, 1, 0, 0.43496552, 0, 0.90044713)" />
+  <x:Prop Name="tracks/8/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/8/path" Value='NodePath("Target8:bone_1")' />
+  <x:Prop Name="tracks/8/type" Value='"rotation_3d"' />
+  <x:Prop Name="tracks/9/enabled" Value="true" />
+  <x:Prop Name="tracks/9/imported" Value="false" />
+  <x:Prop Name="tracks/9/interp" Value="1" />
+  <x:Prop Name="tracks/9/keys" Value="PackedFloat32Array(0, 1, 0.9, 1, 1, 1)" />
+  <x:Prop Name="tracks/9/loop_wrap" Value="true" />
+  <x:Prop Name="tracks/9/path" Value='NodePath("Target9:smile")' />
+  <x:Prop Name="tracks/9/type" Value='"blend_shape"' />
+</Animation>

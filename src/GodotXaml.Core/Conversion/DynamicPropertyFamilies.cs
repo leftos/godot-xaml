@@ -10,11 +10,35 @@ namespace GodotXaml.Core.Conversion;
 /// class's families are in the order its function adds them, so the way back can place such a name in its declaring
 /// class's slot of Godot's list. Read from the Godot 4.7.2 source; editor-only classes, the Missing* and script classes,
 /// <c>InstancePlaceholder</c> and the theme overrides of Control and Window are left out, and so is
-/// <c>OpenXRCompositionLayer</c>, which adds any slash name a GDExtension supplies (the engine ships none).
+/// <c>OpenXRCompositionLayer</c>, which adds any slash name a GDExtension supplies (the engine ships none). A family whose
+/// entries Godot creates on one key names each entry's number in an <c>index</c> group and the key after it in a <c>key</c>
+/// group, and carries the declaring class's key order, creating key first.
 /// </summary>
 internal static class DynamicPropertyFamilies
 {
-    private static readonly (string Class, string Pattern)[] Entries =
+    // scene/resources/animation.cpp, Animation::_get_property_list; Animation::_set creates a track only on its type.
+    private static readonly string[] TrackKeys =
+    [
+        "type",
+        "imported",
+        "enabled",
+        "path",
+        "compressed_track",
+        "interp",
+        "loop_wrap",
+        "keys",
+        "use_blend",
+    ];
+
+    // scene/3d/skeleton_3d.cpp, Skeleton3D::_get_property_list (bone_meta/<name> after these); Skeleton3D::_set adds a bone
+    // only on its name.
+    private static readonly string[] BoneKeys = ["name", "parent", "rest", "enabled", "position", "rotation", "scale", "bone_meta"];
+
+    // scene/animation/animation_blend_space_1d.cpp and animation_blend_space_2d.cpp, _get_property_list; each _set adds a
+    // point only on its node.
+    private static readonly string[] BlendPointKeys = ["node", "pos", "name"];
+
+    private static readonly Row[] Entries =
     [
         // scene/animation/animation_mixer.cpp, AnimationMixer::_get_property_list
         ("AnimationMixer", @"^libraries/"),
@@ -69,7 +93,7 @@ internal static class DynamicPropertyFamilies
         ("TileMap", @"^format$"),
         ("TileMap", @"^layer_\d+/"),
         // scene/3d/skeleton_3d.cpp, Skeleton3D::_get_property_list
-        ("Skeleton3D", @"^bones/\d+/"),
+        ("Skeleton3D", @"^bones/(?<index>\d+)/(?<key>[^/]*)", BoneKeys),
         // scene/3d/physics/physical_bone_3d.cpp, PhysicalBone3D::_get_property_list (and its JointData kinds)
         ("PhysicalBone3D", @"^bone_name$"),
         ("PhysicalBone3D", @"^joint_constraints/"),
@@ -164,9 +188,9 @@ internal static class DynamicPropertyFamilies
         ("AnimationNodeStateMachine", @"^transitions$"),
         ("AnimationNodeStateMachine", @"^graph_offset$"),
         // scene/animation/animation_blend_space_1d.cpp, AnimationNodeBlendSpace1D::_get_property_list
-        ("AnimationNodeBlendSpace1D", @"^blend_point_\d+/"),
+        ("AnimationNodeBlendSpace1D", @"^blend_point_(?<index>\d+)/(?<key>[^/]*)", BlendPointKeys),
         // scene/animation/animation_blend_space_2d.cpp, AnimationNodeBlendSpace2D::_get_property_list
-        ("AnimationNodeBlendSpace2D", @"^blend_point_\d+/"),
+        ("AnimationNodeBlendSpace2D", @"^blend_point_(?<index>\d+)/(?<key>[^/]*)", BlendPointKeys),
         // scene/animation/animation_blend_tree.cpp, AnimationNodeTransition::_get_property_list
         ("AnimationNodeTransition", @"^input_\d+/"),
         // scene/resources/2d/skeleton/skeleton_modification_2d_ccdik.cpp, SkeletonModification2DCCDIK::_get_property_list
@@ -206,7 +230,7 @@ internal static class DynamicPropertyFamilies
         // scene/resources/animation.cpp, Animation::_get_property_list
         ("Animation", @"^_compression$"),
         ("Animation", @"^markers$"),
-        ("Animation", @"^tracks/\d+/"),
+        ("Animation", @"^tracks/(?<index>\d+)/(?<key>[^/]*)", TrackKeys),
         // scene/resources/curve.h, Curve::_get_property_list (PropertyListHelper; editor-only: never stored)
         ("Curve", @"^point_\d+/"),
         // scene/resources/curve.h, Curve2D::_get_property_list (PropertyListHelper; editor-only: never stored)
@@ -220,16 +244,33 @@ internal static class DynamicPropertyFamilies
         ("AudioStreamRandomizer", @"^stream_\d+/"),
     ];
 
-    private static readonly FrozenDictionary<string, ImmutableArray<Regex>> ByClass = Entries
+    private static readonly FrozenDictionary<string, ImmutableArray<DynamicFamily>> ByClass = Entries
         .GroupBy(entry => entry.Class, StringComparer.Ordinal)
         .ToFrozenDictionary(
             group => group.Key,
-            group => group.Select(entry => new Regex(entry.Pattern, RegexOptions.CultureInvariant)).ToImmutableArray(),
+            group =>
+                group
+                    .Select(entry => new DynamicFamily(new Regex(entry.Pattern, RegexOptions.CultureInvariant), [.. entry.KeyOrder]))
+                    .ToImmutableArray(),
             StringComparer.Ordinal
         );
 
     /// <summary>The name families a class adds itself, in the order its <c>_get_property_list</c> adds them.</summary>
     /// <param name="className">The Godot class name.</param>
-    /// <returns>The families, each an anchored pattern over a property name; empty for a class that adds none.</returns>
-    public static ImmutableArray<Regex> Of(string className) => ByClass.TryGetValue(className, out ImmutableArray<Regex> families) ? families : [];
+    /// <returns>The families, each an anchored pattern over a property name with its key order; empty for a class that adds none.</returns>
+    public static ImmutableArray<DynamicFamily> Of(string className) =>
+        ByClass.TryGetValue(className, out ImmutableArray<DynamicFamily> families) ? families : [];
+
+    // A table row: a class, its family's pattern and, for a family with index and key groups, the key order.
+    private readonly record struct Row(string Class, string Pattern, string[] KeyOrder)
+    {
+        public static implicit operator Row((string Class, string Pattern) row) => new(row.Class, row.Pattern, []);
+
+        public static implicit operator Row((string Class, string Pattern, string[] KeyOrder) row) => new(row.Class, row.Pattern, row.KeyOrder);
+    }
+
+    /// <summary>A dynamic name family: its anchored pattern and the declaring class's key order inside one entry.</summary>
+    /// <param name="Pattern">The pattern over a property name; a family with entries names an <c>index</c> and a <c>key</c> group.</param>
+    /// <param name="KeyOrder">The keys of one entry in the declaring class's order, creating key first; empty for a family in source order.</param>
+    internal readonly record struct DynamicFamily(Regex Pattern, ImmutableArray<string> KeyOrder);
 }

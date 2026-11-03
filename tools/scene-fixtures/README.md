@@ -14,7 +14,7 @@ pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/scene-fixtures.log --timeout
 
 Ext-resource and sub-resource ids are pinned (`Resource.set_id_for_path`, `resource_scene_unique_id`), so they are the same on every run. Node `unique_id` values are not: the packer draws them at random (`packed_scene.cpp`, `SceneState::_parse_node`) and `Node.set_unique_scene_id` is not exposed to scripts. Every run therefore rewrites the `unique_id=` numbers of every scene, and nothing else.
 
-Regenerate only when a case is added or changed. A changed case commits the whole folder after the run; a new case is copied alone from an `-OutDir` run, so the other fixtures keep their `unique_id`s. A new fixture also goes in the fixture lists (`SceneForwardTests.Scenes`, `SceneBackTests.Fixtures`, `SceneRoundTripTests.Fixtures`), `SceneBackTests.Inputs`, `ExpectedPairs` in `godot/compare/Compare.cs` and `$expectedFixtures` in `godot/compare.ps1`.
+Regenerate only when a case is added or changed. A changed case commits the whole folder after the run; a new case is copied alone from an `-OutDir` run, so the other fixtures keep their `unique_id`s. A new fixture also goes in the fixture lists (`SceneForwardTests.Scenes`, `SceneBackTests.Fixtures`, `SceneRoundTripTests.Fixtures`), `SceneBackTests.Inputs`, `ExpectedPairs` in `godot/compare/Compare.cs` and `$expectedFixtures` in `godot/compare.ps1`; a `.tres` fixture joins `ResourceConversionTests.Fixtures` and `ResourceForwardTests.Resources` instead of the scene lists.
 
 ## Files
 
@@ -46,5 +46,7 @@ Regenerate only when a case is added or changed. A changed case commits the whol
 - `order_inner.tscn`: the scene `instanced_order` instances: a `Control` root and a `Panel` child at `layout_mode = 1`, so an override that sets 0 is saved.
 - `instanced_order.tscn`: `layout_mode = 0` and `grow_vertical = 2` on an instance root and, through an override, on its child; in alphabetical order the grow direction is reset, so it proves the way back reads the instanced scene's classes.
 - `placeholder_order.tscn`: a `Control` root with a placeholder of `order_inner` that sets `layout_mode` and `grow_vertical`, so the way back reads the placeholder scene's root class.
+- `animation_tracks.tres`: an Animation with tracks of several types (value, method, bezier, rotation, blend shape), one disabled and one cubic, each with a path and keys, past ten tracks, so the way back must set each track's `type` first and run the tracks in numeric order.
+- `skeleton_bones.tscn`: a Skeleton3D with bones past ten, a branching parent chain, one bone disabled and one with `bone_meta`, so the way back must set each bone's `name` first.
 
 `uid=` attributes are absent from every fixture: the saver asks the editor's file system for uids, which a `--script` run does not start.
