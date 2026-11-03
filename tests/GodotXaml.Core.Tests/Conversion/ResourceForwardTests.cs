@@ -15,7 +15,17 @@ public sealed class ResourceForwardTests
     private static readonly ConversionOptions Options = new() { ScriptClassOf = path => path == "res://tagged.gd" ? "TaggedResource" : null };
 
     public static TheoryData<string> Resources =>
-        new("animation_tracks", "gradient_texture", "material", "packed_bytes", "quoted_name", "script_class");
+        new(
+            "animation_tracks",
+            "gradient_texture",
+            "material",
+            "packed_bytes",
+            "quoted_name",
+            "replication_properties",
+            "script_class",
+            "tile_set_patterns",
+            "visual_shader_nodes"
+        );
 
     [Theory]
     [MemberData(nameof(Resources))]

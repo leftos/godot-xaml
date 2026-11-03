@@ -1,0 +1,60 @@
+<VisualShader xmlns:x="https://github.com/leftos/godot-xaml/format/1">
+  <x:Resources>
+    <VisualShaderNodeExpression
+        x:Key="VisualShaderNodeExpression1"
+        Expression="result = vec3(input_a);" />
+    <VisualShaderNodeGlobalExpression
+        x:Key="VisualShaderNodeGlobalExpression1"
+        Expression="float twice(float x) { return 2.0 * x; }" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant1" Constant="6" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant2" Constant="1" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant3" Constant="1.5" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant4" Constant="2" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant5" Constant="2.5" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant6" Constant="3" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant7" Constant="3.5" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant8" Constant="4" />
+    <VisualShaderNodeFloatConstant x:Key="VisualShaderNodeFloatConstant9" Constant="4.5" />
+    <VisualShaderNodeExpression
+        x:Key="VisualShaderNodeExpression2"
+        Expression="result = vec3(input_a * 2.0);" />
+  </x:Resources>
+  <x:Prop Name="nodes/fragment/0/position" Value="Vector2(700, 60)" />
+  <x:Prop Name="nodes/fragment/10/expression" Value='"result = vec3(input_a);"' />
+  <x:Prop Name="nodes/fragment/10/input_ports" Value='"0,0,input_a;"' />
+  <x:Prop Name="nodes/fragment/10/node" Value="{VisualShaderNodeExpression1}" />
+  <x:Prop Name="nodes/fragment/10/output_ports" Value='"0,4,result;"' />
+  <x:Prop Name="nodes/fragment/10/position" Value="Vector2(400, 40)" />
+  <x:Prop Name="nodes/fragment/10/size" Value="Vector2(0, 0)" />
+  <x:Prop Name="nodes/fragment/11/expression" Value='"float twice(float x) { return 2.0 * x; }"' />
+  <x:Prop Name="nodes/fragment/11/input_ports" Value='""' />
+  <x:Prop Name="nodes/fragment/11/node" Value="{VisualShaderNodeGlobalExpression1}" />
+  <x:Prop Name="nodes/fragment/11/output_ports" Value='""' />
+  <x:Prop Name="nodes/fragment/11/position" Value="Vector2(400, 300)" />
+  <x:Prop Name="nodes/fragment/11/size" Value="Vector2(0, 0)" />
+  <x:Prop Name="nodes/fragment/12/node" Value="{VisualShaderNodeFloatConstant1}" />
+  <x:Prop Name="nodes/fragment/12/position" Value="Vector2(240, 0)" />
+  <x:Prop Name="nodes/fragment/2/node" Value="{VisualShaderNodeFloatConstant2}" />
+  <x:Prop Name="nodes/fragment/2/position" Value="Vector2(40, 0)" />
+  <x:Prop Name="nodes/fragment/3/node" Value="{VisualShaderNodeFloatConstant3}" />
+  <x:Prop Name="nodes/fragment/3/position" Value="Vector2(60, 0)" />
+  <x:Prop Name="nodes/fragment/4/node" Value="{VisualShaderNodeFloatConstant4}" />
+  <x:Prop Name="nodes/fragment/4/position" Value="Vector2(80, 0)" />
+  <x:Prop Name="nodes/fragment/5/node" Value="{VisualShaderNodeFloatConstant5}" />
+  <x:Prop Name="nodes/fragment/5/position" Value="Vector2(100, 0)" />
+  <x:Prop Name="nodes/fragment/6/node" Value="{VisualShaderNodeFloatConstant6}" />
+  <x:Prop Name="nodes/fragment/6/position" Value="Vector2(120, 0)" />
+  <x:Prop Name="nodes/fragment/7/node" Value="{VisualShaderNodeFloatConstant7}" />
+  <x:Prop Name="nodes/fragment/7/position" Value="Vector2(140, 0)" />
+  <x:Prop Name="nodes/fragment/8/node" Value="{VisualShaderNodeFloatConstant8}" />
+  <x:Prop Name="nodes/fragment/8/position" Value="Vector2(160, 0)" />
+  <x:Prop Name="nodes/fragment/9/node" Value="{VisualShaderNodeFloatConstant9}" />
+  <x:Prop Name="nodes/fragment/9/position" Value="Vector2(180, 0)" />
+  <x:Prop Name="nodes/fragment/connections" Value="PackedInt32Array(2, 0, 10, 0)" />
+  <x:Prop Name="nodes/vertex/10/expression" Value='"result = vec3(input_a * 2.0);"' />
+  <x:Prop Name="nodes/vertex/10/input_ports" Value='"0,0,input_a;"' />
+  <x:Prop Name="nodes/vertex/10/node" Value="{VisualShaderNodeExpression2}" />
+  <x:Prop Name="nodes/vertex/10/output_ports" Value='"0,4,result;"' />
+  <x:Prop Name="nodes/vertex/10/position" Value="Vector2(-200, 80)" />
+  <x:Prop Name="nodes/vertex/10/size" Value="Vector2(0, 0)" />
+</VisualShader>

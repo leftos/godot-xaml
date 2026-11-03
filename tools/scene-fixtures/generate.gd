@@ -63,6 +63,9 @@ func _run() -> String:
 		_placeholder_order,
 		_animation_tracks,
 		_skeleton_bones,
+		_visual_shader_nodes,
+		_replication_properties,
+		_tile_set_patterns,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -331,6 +334,67 @@ func _skeleton_bones() -> String:
 	skeleton.set_bone_enabled(7, false)
 	skeleton.set_bone_meta(3, "tag", "spine")
 	return _save_scene("skeleton_bones", skeleton)
+
+
+## A VisualShader with an Expression node (ports and code) at id 10 in the fragment and vertex
+## graphs, a GlobalExpression at 11, constants at 2 to 9 and 12, a connection into the Expression
+## and the fragment output moved: VisualShader::_set (visual_shader.cpp) creates a node only on
+## nodes/<type>/<id>/node and casts it unchecked for expression and input_ports, and its
+## connections need the nodes and their ports.
+func _visual_shader_nodes() -> String:
+	var shader := VisualShader.new()
+	var fragment := VisualShader.TYPE_FRAGMENT
+	for id in [2, 3, 4, 5, 6, 7, 8, 9, 12]:
+		var constant := VisualShaderNodeFloatConstant.new()
+		constant.constant = id * 0.5
+		shader.add_node(fragment, constant, Vector2(id * 20, 0), id)
+	shader.add_node(fragment, _expression("result = vec3(input_a);"), Vector2(400, 40), 10)
+	var global := VisualShaderNodeGlobalExpression.new()
+	global.expression = "float twice(float x) { return 2.0 * x; }"
+	shader.add_node(fragment, global, Vector2(400, 300), 11)
+	shader.connect_nodes(fragment, 2, 0, 10, 0)
+	shader.set_node_position(fragment, 0, Vector2(700, 60))
+	var vertex := VisualShader.TYPE_VERTEX
+	shader.add_node(vertex, _expression("result = vec3(input_a * 2.0);"), Vector2(-200, 80), 10)
+	return _save("visual_shader_nodes.tres", shader)
+
+
+## An Expression node with one scalar input, one vec3 output and the code.
+func _expression(code: String) -> VisualShaderNodeExpression:
+	var expression := VisualShaderNodeExpression.new()
+	expression.add_input_port(0, VisualShaderNode.PORT_TYPE_SCALAR, "input_a")
+	expression.add_output_port(0, VisualShaderNode.PORT_TYPE_VECTOR_3D, "result")
+	expression.expression = code
+	return expression
+
+
+## A SceneReplicationConfig of 12 properties, each with its own mix of spawn and replication
+## mode: SceneReplicationConfig::_set (scene_replication_config.cpp) creates an entry only on
+## properties/<count>/path, so the entries must come in numeric order, 10 and 11 after 2.
+func _replication_properties() -> String:
+	var config := SceneReplicationConfig.new()
+	var modes: Array[int] = [
+		SceneReplicationConfig.REPLICATION_MODE_NEVER,
+		SceneReplicationConfig.REPLICATION_MODE_ALWAYS,
+		SceneReplicationConfig.REPLICATION_MODE_ON_CHANGE,
+	]
+	for index in 12:
+		var path := NodePath(".:p%d" % index)
+		config.add_property(path)
+		config.property_set_spawn(path, index % 4 < 2)
+		config.property_set_replication_mode(path, modes[index % 3])
+	return _save("replication_properties.tres", config)
+
+
+## A TileSet of 12 patterns, pattern i with one cell at (i, 0): TileSet::_set (tile_set.cpp)
+## appends at most one pattern per pattern_<N>, so the patterns must come in numeric order.
+func _tile_set_patterns() -> String:
+	var tile_set := TileSet.new()
+	for index in 12:
+		var pattern := TileMapPattern.new()
+		pattern.set_cell(Vector2i(index, 0), 0, Vector2i(0, 0))
+		tile_set.add_pattern(pattern)
+	return _save("tile_set_patterns.tres", tile_set)
 
 
 ## The property a track of this kind animates on its target.

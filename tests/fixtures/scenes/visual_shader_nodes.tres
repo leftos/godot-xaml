@@ -1,0 +1,77 @@
+[gd_resource type="VisualShader" format=3]
+
+[sub_resource type="VisualShaderNodeExpression" id="VisualShaderNodeExpression_xwwh4"]
+expression = "result = vec3(input_a);"
+
+[sub_resource type="VisualShaderNodeGlobalExpression" id="VisualShaderNodeGlobalExpression_t0kc0"]
+expression = "float twice(float x) { return 2.0 * x; }"
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_24cdr"]
+constant = 6.0
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_q6167"]
+constant = 1.0
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_24gt0"]
+constant = 1.5
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_ckhn3"]
+constant = 2.0
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_dsw0d"]
+constant = 2.5
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_jlmp1"]
+constant = 3.0
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_wbw2h"]
+constant = 3.5
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_us5ht"]
+constant = 4.0
+
+[sub_resource type="VisualShaderNodeFloatConstant" id="VisualShaderNodeFloatConstant_8veo0"]
+constant = 4.5
+
+[sub_resource type="VisualShaderNodeExpression" id="VisualShaderNodeExpression_x60br"]
+expression = "result = vec3(input_a * 2.0);"
+
+[resource]
+nodes/vertex/10/node = SubResource("VisualShaderNodeExpression_x60br")
+nodes/vertex/10/position = Vector2(-200, 80)
+nodes/vertex/10/size = Vector2(0, 0)
+nodes/vertex/10/input_ports = "0,0,input_a;"
+nodes/vertex/10/output_ports = "0,4,result;"
+nodes/vertex/10/expression = "result = vec3(input_a * 2.0);"
+nodes/fragment/0/position = Vector2(700, 60)
+nodes/fragment/2/node = SubResource("VisualShaderNodeFloatConstant_q6167")
+nodes/fragment/2/position = Vector2(40, 0)
+nodes/fragment/3/node = SubResource("VisualShaderNodeFloatConstant_24gt0")
+nodes/fragment/3/position = Vector2(60, 0)
+nodes/fragment/4/node = SubResource("VisualShaderNodeFloatConstant_ckhn3")
+nodes/fragment/4/position = Vector2(80, 0)
+nodes/fragment/5/node = SubResource("VisualShaderNodeFloatConstant_dsw0d")
+nodes/fragment/5/position = Vector2(100, 0)
+nodes/fragment/6/node = SubResource("VisualShaderNodeFloatConstant_jlmp1")
+nodes/fragment/6/position = Vector2(120, 0)
+nodes/fragment/7/node = SubResource("VisualShaderNodeFloatConstant_wbw2h")
+nodes/fragment/7/position = Vector2(140, 0)
+nodes/fragment/8/node = SubResource("VisualShaderNodeFloatConstant_us5ht")
+nodes/fragment/8/position = Vector2(160, 0)
+nodes/fragment/9/node = SubResource("VisualShaderNodeFloatConstant_8veo0")
+nodes/fragment/9/position = Vector2(180, 0)
+nodes/fragment/10/node = SubResource("VisualShaderNodeExpression_xwwh4")
+nodes/fragment/10/position = Vector2(400, 40)
+nodes/fragment/10/size = Vector2(0, 0)
+nodes/fragment/10/input_ports = "0,0,input_a;"
+nodes/fragment/10/output_ports = "0,4,result;"
+nodes/fragment/10/expression = "result = vec3(input_a);"
+nodes/fragment/11/node = SubResource("VisualShaderNodeGlobalExpression_t0kc0")
+nodes/fragment/11/position = Vector2(400, 300)
+nodes/fragment/11/size = Vector2(0, 0)
+nodes/fragment/11/input_ports = ""
+nodes/fragment/11/output_ports = ""
+nodes/fragment/11/expression = "float twice(float x) { return 2.0 * x; }"
+nodes/fragment/12/node = SubResource("VisualShaderNodeFloatConstant_24cdr")
+nodes/fragment/12/position = Vector2(240, 0)
+nodes/fragment/connections = PackedInt32Array(2, 0, 10, 0)

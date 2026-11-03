@@ -214,6 +214,123 @@ public sealed class PropertyOrderTests
         Assert.Equal(["bones/0/name", "bones/0/rest", "bones/0/bone_meta/tag"], Names(scene.Nodes[0].Properties));
     }
 
+    // VisualShader::_set creates a node only on nodes/<type>/<id>/node and casts the node unchecked for expression and
+    // input_ports; nodes/<type>/connections needs the nodes and their ports. The output node (id 0) has no node key. The
+    // types come in Godot's save order (vertex before fragment), so the round trip is byte-identical.
+    [Fact]
+    public void AVisualShaderNodeStartsWithItsNodeAndConnectionsFollowTheNodes()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <VisualShader {{X}}>
+              <x:Prop Name="nodes/fragment/10/expression" Value='"x"' />
+              <x:Prop Name="nodes/fragment/10/input_ports" Value='"0,0,a;"' />
+              <x:Prop Name="nodes/fragment/10/node" Value='Resource("res://e.tres")' />
+              <x:Prop Name="nodes/fragment/10/position" Value="Vector2(1, 0)" />
+              <x:Prop Name="nodes/fragment/2/node" Value='Resource("res://c.tres")' />
+              <x:Prop Name="nodes/fragment/connections" Value="PackedInt32Array(2, 0, 10, 0)" />
+              <x:Prop Name="nodes/vertex/0/position" Value="Vector2(2, 0)" />
+              <x:Prop Name="nodes/vertex/10/node" Value='Resource("res://e.tres")' />
+              <x:Prop Name="nodes/vertex/10/position" Value="Vector2(3, 0)" />
+              <x:Prop Name="nodes/vertex/connections" Value="PackedInt32Array()" />
+            </VisualShader>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "nodes/vertex/0/position",
+                "nodes/vertex/10/node",
+                "nodes/vertex/10/position",
+                "nodes/vertex/connections",
+                "nodes/fragment/2/node",
+                "nodes/fragment/10/node",
+                "nodes/fragment/10/position",
+                "nodes/fragment/10/input_ports",
+                "nodes/fragment/10/expression",
+                "nodes/fragment/connections",
+            ],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // VisualShader::_set reads a graph type it does not know as vertex, so its node must still come first.
+    [Fact]
+    public void AVisualShaderNodeOfAnUnlistedTypeStillStartsWithItsNode()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <VisualShader {{X}}>
+              <x:Prop Name="nodes/other/3/expression" Value='"x"' />
+              <x:Prop Name="nodes/other/3/node" Value='Resource("res://e.tres")' />
+              <x:Prop Name="nodes/other/3/position" Value="Vector2(1, 0)" />
+            </VisualShader>
+            """
+        );
+
+        Assert.Equal(["nodes/other/3/node", "nodes/other/3/position", "nodes/other/3/expression"], Names(resource.ResourceProperties));
+    }
+
+    // SceneReplicationConfig::_set creates an entry only on properties/<count>/path.
+    [Fact]
+    public void ReplicationPropertiesRunInNumericOrderWithThePathFirst()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <SceneReplicationConfig {{X}}>
+              <x:Prop Name="properties/0/path" Value='NodePath(".:p0")' />
+              <x:Prop Name="properties/0/replication_mode" Value="1" />
+              <x:Prop Name="properties/0/spawn" Value="true" />
+              <x:Prop Name="properties/1/path" Value='NodePath(".:p1")' />
+              <x:Prop Name="properties/1/replication_mode" Value="2" />
+              <x:Prop Name="properties/1/spawn" Value="false" />
+              <x:Prop Name="properties/10/path" Value='NodePath(".:p10")' />
+              <x:Prop Name="properties/10/replication_mode" Value="0" />
+              <x:Prop Name="properties/10/spawn" Value="true" />
+              <x:Prop Name="properties/2/path" Value='NodePath(".:p2")' />
+              <x:Prop Name="properties/2/replication_mode" Value="1" />
+              <x:Prop Name="properties/2/spawn" Value="false" />
+            </SceneReplicationConfig>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "properties/0/path",
+                "properties/0/spawn",
+                "properties/0/replication_mode",
+                "properties/1/path",
+                "properties/1/spawn",
+                "properties/1/replication_mode",
+                "properties/2/path",
+                "properties/2/spawn",
+                "properties/2/replication_mode",
+                "properties/10/path",
+                "properties/10/spawn",
+                "properties/10/replication_mode",
+            ],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // TileSet::_set appends at most one pattern per pattern_<N>, so the patterns must come in numeric order.
+    [Fact]
+    public void TileSetPatternsRunInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSet {{X}}>
+              <x:Prop Name="pattern_0" Value='Resource("res://p0.tres")' />
+              <x:Prop Name="pattern_1" Value='Resource("res://p1.tres")' />
+              <x:Prop Name="pattern_10" Value='Resource("res://p10.tres")' />
+              <x:Prop Name="pattern_2" Value='Resource("res://p2.tres")' />
+            </TileSet>
+            """
+        );
+
+        Assert.Equal(["pattern_0", "pattern_1", "pattern_2", "pattern_10"], Names(resource.ResourceProperties));
+    }
+
     private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
 
     // Parses a resource document and converts it with no issue.

@@ -14,9 +14,10 @@ namespace GodotXaml.Core.Conversion;
 /// declaring class's place. Any other slash-named name no list holds is a script's own (or a family the table lacks); it
 /// goes after script, since a script's would be lost on a node with no script yet (packed_scene.cpp,
 /// SceneState::instantiate), and a section with no script loses nothing by it. The .xscn's alphabetical order cannot say
-/// the order among script exports or inside a dynamic family, so those keep source order, except a family whose entries
-/// Godot creates on one key (Animation tracks, Skeleton3D bones, blend points): it goes entry by entry in numeric order,
-/// each entry's keys in the declaring class's order, creating key first.
+/// the order among script exports or inside a dynamic family, so those keep source order: a family whose names Godot sets
+/// in any order, or whose entries a count property ranked before it sizes first, loads that way. A family whose entries
+/// Godot creates on one key goes entry by entry in numeric order, each entry's keys in the declaring class's order,
+/// creating key first.
 /// </summary>
 internal sealed class PropertyOrder(GodotMetadata metadata)
 {

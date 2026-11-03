@@ -17,7 +17,8 @@ Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when ever
 every expected fixture passed and the scene printed DONE with all of them.
 
 .EXAMPLE
-pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-compare.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/compare.ps1
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-compare.log --slot light --timeout 1500 `
+    -- pwsh -NoProfile -File godot/compare.ps1
 #>
 [CmdletBinding()]
 param()
@@ -34,7 +35,7 @@ $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env
 $project = $PSScriptRoot
 $repo = Split-Path $project -Parent
 $cases = Join-Path $project 'cases'
-$expectedFixtures = 23
+$expectedFixtures = 26
 # The scripts the fixtures name by res:// path, copied from the generator's project; .gitignore lists each copy.
 $fixtureScripts = @('holder.gd', 'quoted.gd', 'tagged.gd')
 

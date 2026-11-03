@@ -22,7 +22,17 @@ public sealed partial class ResourceConversionTests
     };
 
     public static TheoryData<string> Fixtures =>
-        new("material.tres", "gradient_texture.tres", "quoted_name.tres", "script_class.tres", "packed_bytes.tres", "animation_tracks.tres");
+        new(
+            "material.tres",
+            "gradient_texture.tres",
+            "quoted_name.tres",
+            "script_class.tres",
+            "packed_bytes.tres",
+            "animation_tracks.tres",
+            "visual_shader_nodes.tres",
+            "replication_properties.tres",
+            "tile_set_patterns.tres"
+        );
 
     // With the forward pass's ids kept, the way back writes the bytes Godot wrote.
     [Theory]

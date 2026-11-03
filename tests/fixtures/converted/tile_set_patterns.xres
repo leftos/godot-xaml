@@ -1,0 +1,38 @@
+<TileSet xmlns:x="https://github.com/leftos/godot-xaml/format/1">
+  <TileSet.pattern_0>
+    <TileMapPattern tile_data="PackedInt32Array(0, 0, -65536)" />
+  </TileSet.pattern_0>
+  <TileSet.pattern_1>
+    <TileMapPattern tile_data="PackedInt32Array(1, 0, -65536)" />
+  </TileSet.pattern_1>
+  <TileSet.pattern_10>
+    <TileMapPattern tile_data="PackedInt32Array(10, 0, -65536)" />
+  </TileSet.pattern_10>
+  <TileSet.pattern_11>
+    <TileMapPattern tile_data="PackedInt32Array(11, 0, -65536)" />
+  </TileSet.pattern_11>
+  <TileSet.pattern_2>
+    <TileMapPattern tile_data="PackedInt32Array(2, 0, -65536)" />
+  </TileSet.pattern_2>
+  <TileSet.pattern_3>
+    <TileMapPattern tile_data="PackedInt32Array(3, 0, -65536)" />
+  </TileSet.pattern_3>
+  <TileSet.pattern_4>
+    <TileMapPattern tile_data="PackedInt32Array(4, 0, -65536)" />
+  </TileSet.pattern_4>
+  <TileSet.pattern_5>
+    <TileMapPattern tile_data="PackedInt32Array(5, 0, -65536)" />
+  </TileSet.pattern_5>
+  <TileSet.pattern_6>
+    <TileMapPattern tile_data="PackedInt32Array(6, 0, -65536)" />
+  </TileSet.pattern_6>
+  <TileSet.pattern_7>
+    <TileMapPattern tile_data="PackedInt32Array(7, 0, -65536)" />
+  </TileSet.pattern_7>
+  <TileSet.pattern_8>
+    <TileMapPattern tile_data="PackedInt32Array(8, 0, -65536)" />
+  </TileSet.pattern_8>
+  <TileSet.pattern_9>
+    <TileMapPattern tile_data="PackedInt32Array(9, 0, -65536)" />
+  </TileSet.pattern_9>
+</TileSet>

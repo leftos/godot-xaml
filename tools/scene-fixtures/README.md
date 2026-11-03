@@ -48,5 +48,8 @@ Regenerate only when a case is added or changed. A changed case commits the whol
 - `placeholder_order.tscn`: a `Control` root with a placeholder of `order_inner` that sets `layout_mode` and `grow_vertical`, so the way back reads the placeholder scene's root class.
 - `animation_tracks.tres`: an Animation with tracks of several types (value, method, bezier, rotation, blend shape), one disabled and one cubic, each with a path and keys, past ten tracks, so the way back must set each track's `type` first and run the tracks in numeric order.
 - `skeleton_bones.tscn`: a Skeleton3D with bones past ten, a branching parent chain, one bone disabled and one with `bone_meta`, so the way back must set each bone's `name` first.
+- `visual_shader_nodes.tres`: a VisualShader with Expression nodes (ports and code) at id 10 in two graphs, a GlobalExpression, constants on both sides of id 10, a connection into an Expression and a moved output node, so the way back must set each node's `node` first, the nodes in numeric order and each graph's `connections` after its nodes.
+- `replication_properties.tres`: a SceneReplicationConfig with properties past ten, each with its own spawn and replication mode, so the way back must set each property's `path` first and run the properties in numeric order.
+- `tile_set_patterns.tres`: a TileSet with patterns past ten, each with one cell in its own place, so the way back must run the patterns in numeric order.
 
 `uid=` attributes are absent from every fixture: the saver asks the editor's file system for uids, which a `--script` run does not start.
