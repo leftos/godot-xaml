@@ -12,6 +12,14 @@ The editor found no built assembly when it opened, and disabled the plugin. Run 
 
 This happens on the first open after installing the addon, or after deleting `.godot/`. Godot scanned the project before the addon registered. Close the project and open it again ([Working in the editor](editor.md#the-first-open)).
 
+## Every scene fails with "Failed loading scene"
+
+Godot's global class cache (`.godot/global_script_class_cache.cfg`) was written before the addon arrived, so no loader is registered. Import the project again, by opening it in the editor or with `godot --headless --path <project> --import`. The same fix applies after updating the addon by unzipping.
+
+## Running a `.xscn` from the command line plays the main scene
+
+Godot takes a bare path as a scene only when it ends in `.scn`, `.tscn`, `.escn`, `.res` or `.tres`. Pass the scene with `--scene`: `godot --path <project> --scene res://ui/main_menu.xscn`.
+
 ## A scene does not load
 
 The Output panel names the file, the line and column, and each problem with a `GX` code, such as `res://ui/main_menu.xscn:4:6: GX0104: <Button> has no Name; every node needs one.` Look the code up in [the diagnostics reference](../format/diagnostics.md), fix the text, and reload. `godot-xaml check <file>` prints the parse problems (`GX` codes) from the command line; problems found while converting for a load (`GXC` codes) show only in the Output panel.

@@ -30,7 +30,7 @@ Godot gives every scene and resource a uid, so a reference survives a move. A `.
 
 ## The first open
 
-Godot scans the project's files before any addon's classes register. On the first open after installing, or after deleting `.godot/`, `.xscn` and `.xres` files are not yet listed in the FileSystem dock, and no `.uid` sidecars exist. Close the project and open it again: the second open lists them and writes the sidecars.
+Godot scans the project's files before any addon's classes register. On the first open after installing, or after deleting `.godot/`, `.xscn` and `.xres` files are not yet listed in the FileSystem dock, and no `.uid` sidecars exist. Close the project and open it again: the second open lists them and writes the sidecars. A headless `godot --headless --path <project> --import` does the same rescan, and a scripted run needs it ([Getting started](getting-started.md#install-the-addon)).
 
 ## Errors in a file
 

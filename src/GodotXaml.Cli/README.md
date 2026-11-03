@@ -8,6 +8,8 @@ The `godot-xaml` command-line tool checks, converts and formats Godot scenes and
 dotnet tool install -g GodotXaml.Cli
 ```
 
+As a local tool (`dotnet tool install GodotXaml.Cli`), dotnet writes `.config/dotnet-tools.json` with CRLF line endings and no final newline. A repository that enforces LF will see its hooks change that file; commit it as the hooks leave it.
+
 ## Check
 
 ```sh

@@ -44,7 +44,11 @@ The format itself is in the [format reference](../format/README.md).
    The plugin makes exports convert each `.xscn` and `.xres` to binary. The loader and saver work without it, but an export without it ships the raw XML instead, a setup that is neither supported nor tested.
 6. **Open the project, close it, and open it again.** Godot scans the project's files before the addon's classes register, so `.xscn` files show in the FileSystem dock only from the second open. That open also writes their `.uid` sidecars. Commit those.
 
-To update, raise the package version and replace `addons/godot_xaml/` with the new release's folder.
+   The addon's loaders register from Godot's global class cache (`.godot/global_script_class_cache.cfg`), which only an editor scan or `godot --headless --import` rewrites. A checkout that Godot imported before the addon arrived fails every `.xscn` with "Failed loading scene" until it is imported again, headless and scripted runs included. Run `godot --headless --path <project> --import` once after installing.
+
+To update, raise the package version and replace `addons/godot_xaml/` with the new release's folder. Unzipping over the old folder leaves files with the zip's older timestamps, so import the project again (open it in the editor, or run `godot --headless --path <project> --import`).
+
+To open a `.xscn` from a script or a headless run, pass it with `--scene`: `godot --path <project> --scene res://ui/main_menu.xscn`. A bare `res://ui/main_menu.xscn` on the command line is not taken as a scene, because Godot does that only for `.scn`, `.tscn`, `.escn`, `.res` and `.tres`, and the main scene runs instead.
 
 ## Install the command-line tool
 
@@ -53,6 +57,8 @@ The `godot-xaml` tool checks, formats and converts files outside the editor, for
 ```sh
 dotnet tool install -g GodotXaml.Cli
 ```
+
+As a local tool (`dotnet tool install GodotXaml.Cli`), dotnet writes `.config/dotnet-tools.json` with CRLF line endings and no final newline. A repository that enforces LF will see its hooks change that file; commit it as the hooks leave it.
 
 Its commands are in [the CLI reference](../../src/GodotXaml.Cli/README.md).
 

@@ -43,11 +43,13 @@ You need a Godot 4.7 .NET project (tested on 4.7.2). The full walk-through is in
    [editor_plugins]
    enabled=PackedStringArray("res://addons/godot_xaml/plugin.cfg")
    ```
-6. Open the project, then close it and open it again. Godot's first scan runs before the addon's classes register, so `.xscn` files show in the FileSystem dock only from the second open, which also writes their `.uid` sidecars. Commit those.
+6. Open the project, then close it and open it again. Godot's first scan runs before the addon's classes register, so `.xscn` files show in the FileSystem dock only from the second open, which also writes their `.uid` sidecars. Commit those. A checkout Godot imported before the addon arrived fails every `.xscn` with "Failed loading scene" until it is imported again, by the editor or by `godot --headless --path <project> --import`; this holds for headless and scripted runs too.
 
 An export needs nothing more: with the plugin on, scenes ship as Godot binary.
 
-To update, raise the package version and replace `addons/godot_xaml/` with the new release's folder.
+To update, raise the package version and replace `addons/godot_xaml/` with the new release's folder, then import the project again (an unzip leaves the zip's older timestamps, so Godot does not notice the change alone).
+
+To run a `.xscn` from the command line, use `godot --path <project> --scene res://X.xscn`: a bare `.xscn` path plays the main scene instead.
 
 The command-line tool installs with `dotnet tool install -g GodotXaml.Cli`.
 
