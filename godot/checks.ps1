@@ -8,11 +8,16 @@ Builds the godot/ project as a full rebuild (--no-incremental), imports it headl
 classes), then imports it again, then runs res://checks/Checks.tscn headless. The scene prints CHECK <id> PASS or CHECK
 <id> FAIL <detail> per check and DONE <passed>/<total>.
 
+The scene's lines are printed as Godot writes them, so the gate's stall watchdog sees the checks progress. The
+documented command passes --stall 600 because a run starved by outside load can go two minutes without enough CPU to
+count as progress.
+
 Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no check failed,
 every expected check passed and the scene printed DONE with all of them.
 
 .EXAMPLE
-pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-checks.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/checks.ps1
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-checks.log --slot light --timeout 1500 --
+  pwsh -NoProfile -File godot/checks.ps1
 #>
 [CmdletBinding()]
 param()
@@ -56,9 +61,13 @@ if (-not $reimported) {
 }
 
 [Console]::Out.WriteLine('STEP checks')
-$lines = @(& $godot --headless --path $project --scene 'res://checks/Checks.tscn' --quit-after 600 2>&1 | ForEach-Object { "$_" })
+# Each line is printed as it arrives, so the gate's stall watchdog sees the checks progress.
+$lines = @(& $godot --headless --path $project --scene 'res://checks/Checks.tscn' --quit-after 600 2>&1 | ForEach-Object {
+        $line = "$_"
+        [Console]::Out.WriteLine($line)
+        $line
+    })
 $checksExit = $LASTEXITCODE
-$lines | ForEach-Object { [Console]::Out.WriteLine($_) }
 [Console]::Out.WriteLine("STEP checks exit $checksExit")
 
 $passes = @($lines | Where-Object { $_ -match '^CHECK \S+ PASS$' }).Count
