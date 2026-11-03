@@ -212,6 +212,23 @@ It is bigger than one commit and it blocks two other items, so sub-steps should 
 
 ## 8. OPEN DECISIONS
 
+### Settled
+
+- Decision 1, the cursor (owner): option D, a public core API `XscnParser.ContextAt(text, offset, metadata)`, tested in the core test project.
+- Decision 3, the library (owner): StreamJsonRpc plus hand-written types for the LSP messages the server uses, with System.Text.Json source generation.
+- Decision 4, shipping (owner): option C, self-contained or NativeAOT server executables bundled per platform in each extension, so the user needs no .NET install; this brings a CI build matrix and a packaging script.
+- Decision 5, metadata version (owner): option B, the project's Godot version read from `project.godot`'s `config/features`, its bundled metadata loaded, the newest bundled one with a warning when it is not bundled, and the version in use shown to the user.
+- Decision 7, shared helpers (owner): moved into the core (it stays Godot-free); the CLI's tests follow the move.
+- Decision 8, scope (owner): diagnostics, formatting, hover and completions; GXAML-15 (VS Code) starts once diagnostics work, beside hover and completions. Document symbols, go to definition, code actions and rename are backlog items.
+- Decision 9, hover (owner): option C, full descriptions, from a docs file generated per Godot version from Godot's `doc/classes/*.xml` (BBCode converted) and shipped beside the metadata, with the attribution Godot's docs licence asks for (checked before it ships). Its own issue.
+- Branch (owner): the core additions (proposed steps 1-4) land on `main` as they pass; the server, its packaging and CI (steps 5-9) go on `feat/language-server` with a draft PR, merged once it works end to end.
+- Decision 2, sync (orchestrator): full-text sync, a parse on each change with a debounce, a stale parse cancelled.
+- Decision 6, project discovery (orchestrator): per document, a walk up for `project.godot` cached per folder, the workspace folders as a fallback; a document outside any project gets `res://` checks off and a hint; path completions list the folder on demand.
+- Decisions 10 and 11 (orchestrator): Error and Warning map to LSP's, `code` is the `GX` code with a `codeDescription.href` to its heading in `docs/format/diagnostics.md`, and a metadata load failure is a `window/showMessage`; formatting is whole-document only, and a document with errors gets no edit.
+- Decisions 12 and 13 (orchestrator): open buffers overlay the disk for `ISceneFiles`; logs go to `window/logMessage` and stderr, never stdout.
+
+### Options
+
 Each option with what the code makes realistic and its cost.
 
 1. How the server sees the cursor (parse model).
