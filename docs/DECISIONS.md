@@ -96,6 +96,8 @@ The canonical writer puts `Name` first and `Script` second, then every other pro
 
 The way back (`.xscn` to `.tscn`) restores Godot's property order instead, because a `.tscn` sets properties in file order and some depend on it (`control.cpp` anchors and grow direction, `base_button.cpp` `toggle_mode` before `button_pressed`).
 
+An instance and an `InstancePlaceholder` take their class order from their scene's root; a node of an unknown type, or either of those with no scene lookup, keeps its source order. A node's ext_resources are numbered in this order too.
+
 `PropertyOrder` sorts a section's properties stably: each class base first, with its own list; `theme_override_*` by the metadata's `ThemeOverrides` index, after Control's or Window's own list; then `script`; then other slash-named names, so a script's own come after it; then script exports, then `metadata/*`.
 
 An instanced node, an inherited root and an `x:Override` take their class from the instanced scene, read through the host's scene lookup (`ConversionOptions.SceneFiles`), and then sort as any node of that class, so a script export stays after `script`. With no lookup, or a scene the lookup cannot read, the section keeps source order, and a scene it cannot read is warning GXC0118, naming the file and why. A class is never guessed from a section's names: a guess put a script export named like a class property ahead of `script`, where Godot drops it (`SceneState::instantiate` ignores a failed `set`). A placeholder and an unknown type keep source order. Order among script exports and inside a dynamic family (Theme, TileSet) cannot be restored from the alphabetical `.xscn`. The writer's alphabetical order stays.

@@ -25,7 +25,7 @@ namespace GodotXaml.Addon.Compare;
 public partial class Compare : Node
 {
     private const string CasesPath = "res://cases/";
-    private const int ExpectedPairs = 20;
+    private const int ExpectedPairs = 21;
 
     // Each pair kind's source and golden extension, paired as the two sides of one dump.
     private static readonly (PairKind Kind, string Source, string Converted)[] Kinds =

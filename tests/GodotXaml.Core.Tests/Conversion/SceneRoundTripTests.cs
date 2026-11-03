@@ -30,6 +30,7 @@ public sealed class SceneRoundTripTests
             "nested",
             "order_inner",
             "placeholder",
+            "placeholder_order",
             "property_order",
             "script_node",
             "sub_resources",

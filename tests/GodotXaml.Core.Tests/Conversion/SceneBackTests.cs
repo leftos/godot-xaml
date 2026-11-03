@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Metadata;
@@ -29,6 +30,7 @@ public sealed partial class SceneBackTests
             "nested",
             "order_inner",
             "placeholder",
+            "placeholder_order",
             "property_order",
             "script_node",
             "sub_resources",
@@ -170,6 +172,105 @@ public sealed partial class SceneBackTests
 
         Assert.Equal(["res://inner.tscn", "res://inst.gd", "res://sprite.png", "res://bind.png"], scene.ExtResources.Select(ext => ext.Path));
         Assert.Equal(["1_", "2_", "3_", "4_"], scene.ExtResources.Select(ext => ext.Id[..2]));
+    }
+
+    // A node's files are numbered in the order its section writes its properties (packed_scene.cpp:860-866): Sprite2D's
+    // own texture before script, though script sorts first.
+    [Fact]
+    public void ANodesFilesAreNumberedInItsPropertyListOrder()
+    {
+        TscnDocument scene = Back($$"""<Sprite2D {{X}} Name="S" Script="res://s.gd" Texture="res://t.png" />""");
+
+        AssertExtOrder(scene, "res://t.png", "res://s.gd");
+        Assert.Equal(["texture", "script"], Names(scene.Nodes[0].Properties));
+    }
+
+    // Control's theme overrides sit at Control's depth, before Button's own icon.
+    [Fact]
+    public void AThemeOverridesFileIsNumberedBeforeTheLeafClassesOwn()
+    {
+        TscnDocument scene = Back($$"""<Button {{X}} Name="B" Icon="res://i.png" ThemeOverrideFonts.font="res://f.ttf" />""");
+
+        AssertExtOrder(scene, "res://f.ttf", "res://i.png");
+        Assert.Equal(["theme_override_fonts/font", "icon"], Names(scene.Nodes[0].Properties));
+    }
+
+    // The class list, then script, then metadata (object.cpp:518-537).
+    [Fact]
+    public void AMetadataFileIsNumberedAfterTheScript()
+    {
+        TscnDocument scene = Back($$"""<Sprite2D {{X}} Name="S" Script="res://s.gd" Metadata.m='Resource("res://m.png")' Texture="res://t.png" />""");
+
+        AssertExtOrder(scene, "res://t.png", "res://s.gd", "res://m.png");
+        Assert.Equal(["texture", "script", "metadata/m"], Names(scene.Nodes[0].Properties));
+    }
+
+    // The instanced root is a Sprite2D: its own texture comes before script in Godot's list, though script sorts first.
+    [Fact]
+    public void AnInstancesFilesAreNumberedInItsRootClassesOrder()
+    {
+        var files = new MemoryScenes(("res://c.tscn", "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Sprite2D\"]\n"));
+
+        ConversionResult<TscnDocument> back = BackWith(
+            $$"""<Node {{X}} Name="Root"><x:Instance Name="I" Scene="res://c.tscn" Script="res://s.gd" Texture="res://t.png" /></Node>""",
+            files
+        );
+
+        Assert.Empty(back.Issues);
+        AssertExtOrder(back.Document, "res://c.tscn", "res://t.png", "res://s.gd");
+        Assert.Equal(["texture", "script"], Names(back.Document.Nodes[1].Properties));
+    }
+
+    // A resource's references are found in sorted name order (resource_format_text.cpp:1680-1683), though it is written in
+    // list order: BaseMaterial3D lists roughness_texture before emission_texture, which sorts first.
+    [Fact]
+    public void AnInlineResourcesFilesKeepSortedNameOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="M">
+              <MeshInstance3D.MaterialOverride>
+                <StandardMaterial3D RoughnessTexture="res://r.png" EmissionTexture="res://e.png" />
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """
+        );
+
+        AssertExtOrder(scene, "res://e.png", "res://r.png");
+        Assert.Equal(["roughness_texture", "emission_texture"], Names(Assert.Single(scene.SubResources).Properties));
+    }
+
+    // With no class to order by (an unknown type, an instance with no lookup), the files follow the written order, as the
+    // section's properties do.
+    [Fact]
+    public void ANodeWithNoKnownClassNumbersItsFilesInWrittenOrder()
+    {
+        XscnNode root = new()
+        {
+            Type = new XscnClassType(Metadata.FindClass("Node")!),
+            Name = "Root",
+            Children =
+            [
+                new XscnNode
+                {
+                    Type = new XscnUnknownType("MyThing"),
+                    Name = "Unknown",
+                    Properties = [new XscnProperty("script", new XscnFile("res://u.gd")), new XscnProperty("texture", new XscnFile("res://u.png"))],
+                },
+                new XscnNode
+                {
+                    Type = new XscnSceneType("res://c.tscn"),
+                    Name = "Inst",
+                    Properties = [new XscnProperty("texture", new XscnFile("res://i.png")), new XscnProperty("script", new XscnFile("res://i.gd"))],
+                },
+            ],
+        };
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), Metadata, Options);
+
+        AssertExtOrder(back.Document, "res://u.gd", "res://u.png", "res://c.tscn", "res://i.png", "res://i.gd");
+        Assert.Equal(["script", "texture"], Names(back.Document.Nodes[1].Properties));
+        Assert.Equal(["texture", "script"], Names(back.Document.Nodes[2].Properties));
     }
 
     // A script export has no declared type, so only the extension says what the file holds.
@@ -533,7 +634,8 @@ public sealed partial class SceneBackTests
         Assert.All(back.Document.Nodes.Skip(1), node => Assert.Equal(["button_pressed", "toggle_mode"], Names(node.Properties)));
     }
 
-    // Both names are Node's, process_mode first, so sorting by the tag's class would move them.
+    // With no lookup the placeholder's scene cannot be read, so its stored values keep source order: Node lists
+    // process_mode first, and the tag's class does not order them.
     [Fact]
     public void APlaceholderKeepsSourceOrder()
     {
@@ -546,6 +648,65 @@ public sealed partial class SceneBackTests
         );
 
         Assert.Equal(["editor_description", "process_mode"], Names(scene.Nodes[1].Properties));
+    }
+
+    // A placeholder replays its values in file order on the instanced root (instance_placeholder.cpp:37-43, 100-102), so
+    // the root's class orders them: Control lists layout_mode before grow_vertical.
+    [Fact]
+    public void APlaceholderTakesTheRootClassOfItsScene()
+    {
+        var files = new MemoryScenes(("res://c.tscn", "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n"));
+
+        ConversionResult<TscnDocument> back = BackWith(Placeholder("grow_vertical=\"0\" layout_mode=\"1\""), files);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(["layout_mode", "grow_vertical"], Names(back.Document.Nodes[1].Properties));
+    }
+
+    [Fact]
+    public void APlaceholderWithNoLookupKeepsSourceOrderSilently()
+    {
+        TscnDocument scene = Back(Placeholder("grow_vertical=\"0\" layout_mode=\"1\""));
+
+        Assert.Equal(["grow_vertical", "layout_mode"], Names(scene.Nodes[1].Properties));
+    }
+
+    [Fact]
+    public void APlaceholderWhoseSceneCannotBeReadKeepsSourceOrderAndWarns()
+    {
+        var files = new MemoryScenes();
+
+        ConversionResult<TscnDocument> back = BackWith(Placeholder("grow_vertical=\"0\" layout_mode=\"1\""), files);
+
+        ConversionIssue issue = Assert.Single(back.Issues);
+        Assert.Equal(
+            (ConversionCodes.InstancedClassUnreadable, ConversionSeverity.Warning, "node \"P\""),
+            (issue.Code, issue.Severity, issue.Location)
+        );
+        Assert.Equal(["grow_vertical", "layout_mode"], Names(back.Document.Nodes[1].Properties));
+    }
+
+    // Node lists process_mode before editor_description.
+    [Fact]
+    public void APlaceholderOfANodeSceneTakesNodesOrder()
+    {
+        var files = new MemoryScenes(("res://c.tscn", "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Node\"]\n"));
+
+        ConversionResult<TscnDocument> back = BackWith(Placeholder("EditorDescription=\"note\" ProcessMode=\"Always\""), files);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(["process_mode", "editor_description"], Names(back.Document.Nodes[1].Properties));
+    }
+
+    [Fact]
+    public void APlaceholderWithOnePropertyDoesNotRead()
+    {
+        var files = new MemoryScenes(("res://c.tscn", "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n"));
+
+        ConversionResult<TscnDocument> back = BackWith(Placeholder("layout_mode=\"1\""), files);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(0, files.Reads);
     }
 
     [Fact]
@@ -595,6 +756,21 @@ public sealed partial class SceneBackTests
         return back.Document;
     }
 
+    // Parses and converts with a scene lookup, keeping the issues for the caller.
+    private static ConversionResult<TscnDocument> BackWith(string text, ISceneFiles files) =>
+        XscnToTscn.Convert(Parse(text), Metadata, Options with { SceneFiles = files, SourceKey = "res://main.xscn" });
+
+    private static string Placeholder(string properties) =>
+        $$"""<Node {{X}} Name="Root"><InstancePlaceholder Name="P" x:InstancePlaceholder="res://c.tscn" {{properties}} /></Node>""";
+
+    // The files in discovery order: numbered 1_, 2_, ... in that order.
+    private static void AssertExtOrder(TscnDocument scene, params string[] paths)
+    {
+        TscnExtResource[] byNumber = [.. scene.ExtResources.OrderBy(ext => int.Parse(ext.Id[..ext.Id.IndexOf('_')], CultureInfo.InvariantCulture))];
+        Assert.Equal(paths, byNumber.Select(ext => ext.Path));
+        Assert.Equal(Enumerable.Range(1, paths.Length).Select(n => $"{n}_"), byNumber.Select(ext => ext.Id[..(ext.Id.IndexOf('_') + 1)]));
+    }
+
     private static string ExtId(TscnDocument scene, string path) => Assert.Single(scene.ExtResources, ext => ext.Path == path).Id;
 
     private static void AssertIssue(ImmutableArray<ConversionIssue> issues, string code, ConversionSeverity severity) =>
@@ -621,5 +797,17 @@ public sealed partial class SceneBackTests
             && File.Exists(RepoFiles.PathOf("tests", "fixtures", "scenes", reference[Cases.Length..]))
                 ? new SceneFile(reference, ReadFixture(reference[Cases.Length..]))
                 : null;
+    }
+
+    // Scenes held in memory by their res:// path; counts the reads.
+    private sealed class MemoryScenes(params (string Path, string Text)[] scenes) : ISceneFiles
+    {
+        public int Reads { get; private set; }
+
+        public SceneFile? Read(string referrer, string reference, string? uid)
+        {
+            Reads++;
+            return scenes.Where(scene => scene.Path == reference).Select(scene => new SceneFile(scene.Path, scene.Text)).FirstOrDefault();
+        }
     }
 }

@@ -86,6 +86,12 @@ public sealed partial class SceneBackTests
               <InstancePlaceholder Name="Later" x:InstancePlaceholder="res://cases/lone_root.tscn" x:UniqueId="841232467" />
             </Node>
             """,
+        ["placeholder_order"] = $$"""
+            <Control {{X}} Name="Root" AnchorsPreset="TopLeft" LayoutMode="Uncontrolled" x:UniqueId="1347851746">
+              <InstancePlaceholder Name="Later" grow_vertical="2" layout_mode="0" x:InstancePlaceholder="res://cases/order_inner.tscn"
+                  x:UniqueId="1408917781" />
+            </Control>
+            """,
         ["property_order"] = $$"""
             <Control {{X}} Name="Root" AnchorsPreset="TopLeft" LayoutMode="Uncontrolled" x:UniqueId="198994451">
               <Panel Name="Box" GrowHorizontal="Begin" GrowVertical="Begin" LayoutMode="Position" x:UniqueId="1109250759" />

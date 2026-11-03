@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[node name="Root" type="Control" unique_id=1347851746]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="Later" parent="." unique_id=1408917781 instance_placeholder="res://cases/order_inner.tscn"]
+layout_mode = 0
+grow_vertical = 2

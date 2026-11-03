@@ -29,6 +29,7 @@ public sealed partial class SceneForwardTests
             "nested",
             "order_inner",
             "placeholder",
+            "placeholder_order",
             "property_order",
             "script_node",
             "sub_resources",

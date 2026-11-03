@@ -11,7 +11,8 @@ namespace GodotXaml.Core.Conversion;
 /// Converts an .xscn or .xres model to a .tscn or .tres model, making the sections and ids again as Godot 4.7.2's text
 /// saver orders them (resource_format_text.cpp:1652-1748): ext_resources numbered in first-use order and written in
 /// natural id order, sub_resources after the resources they use, a resource's references followed in the sorted order of
-/// its property names. A scene's nodes are flattened in tree order, each node's instanced scene found before its
+/// its property names (resource_format_text.cpp:1680-1683) and a node's in the list order its section writes them in
+/// (packed_scene.cpp:860-866). A scene's nodes are flattened in tree order, each node's instanced scene found before its
 /// properties' files and the connections' binds after every node's (packed_scene.cpp:844-853, 1000, 1325), then come the
 /// connections and the editable instances in the same order. What the .tscn cannot hold is reported as an issue, never
 /// thrown.
@@ -150,9 +151,13 @@ public static partial class XscnToTscn
         private void Discover(XscnResource resource, string location, string site) =>
             DiscoverProperties(resource.Type, resource.Properties, location, site);
 
-        private void DiscoverProperties(XscnType? owner, ImmutableArray<XscnProperty> properties, string location, string site)
+        private void DiscoverProperties(XscnType? owner, ImmutableArray<XscnProperty> properties, string location, string site) =>
+            DiscoverInOrder(owner, properties.OrderBy(property => property.GodotName, StringComparer.Ordinal), location, site);
+
+        // The properties' references followed in the order given: a resource's sorted, a node's as its section writes them.
+        private void DiscoverInOrder(XscnType? owner, IEnumerable<XscnProperty> properties, string location, string site)
         {
-            foreach (XscnProperty property in properties.OrderBy(property => property.GodotName, StringComparer.Ordinal))
+            foreach (XscnProperty property in properties)
             {
                 string name = property.GodotName;
                 DiscoverValue(property.Value, DeclaredType(owner, name), location + "." + name, site + "|" + name);

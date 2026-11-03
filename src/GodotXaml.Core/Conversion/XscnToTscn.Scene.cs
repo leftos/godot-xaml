@@ -98,7 +98,10 @@ public static partial class XscnToTscn
                 DiscoverFile(scene, "PackedScene", null, location);
             }
 
-            DiscoverProperties((placed.Element as XscnNode)?.Type, placed.Element.Properties, location, placed.Path);
+            // The node's files in the order its section writes its properties (packed_scene.cpp:860-866): the same class and
+            // sort NodeProperties uses, so the two agree.
+            ImmutableArray<XscnProperty> sorted = SortedProperties(placed.Element);
+            DiscoverInOrder((placed.Element as XscnNode)?.Type, order.Sort(NodeClass(placed, sorted, location), sorted), location, placed.Path);
         }
 
         private void DiscoverBinds(PlacedElement placed)
@@ -160,9 +163,10 @@ public static partial class XscnToTscn
         private ImmutableArray<TscnProperty> NodeProperties(PlacedElement placed, string location)
         {
             XscnNodeElement element = placed.Element;
+            ImmutableArray<XscnProperty> sorted = SortedProperties(element);
             if (element is not XscnNode { Unique: true } node)
             {
-                return Properties(NodeClass(placed, element.Properties, location), element.Properties, location);
+                return Properties(NodeClass(placed, sorted, location), sorted, location);
             }
 
             ImmutableArray<XscnProperty> explicitOnes = [.. node.Properties.Where(property => property.GodotName == UniqueNameProperty)];
@@ -172,17 +176,24 @@ public static partial class XscnToTscn
                 Report(ConversionCodes.UniqueNameConflict, ConversionSeverity.Warning, message, location);
             }
 
-            ImmutableArray<XscnProperty> rest = [.. node.Properties.Where(property => property.GodotName != UniqueNameProperty)];
-            return Properties(NodeClass(placed, rest, location), rest, location).Insert(0, new TscnProperty(UniqueNameProperty, new GodotBool(true)));
+            return Properties(NodeClass(placed, sorted, location), sorted, location)
+                .Insert(0, new TscnProperty(UniqueNameProperty, new GodotBool(true)));
         }
+
+        // The properties a node's section sorts: for Name="%X", all but an explicit unique_name_in_owner, which goes first.
+        private static ImmutableArray<XscnProperty> SortedProperties(XscnNodeElement element) =>
+            element is XscnNode { Unique: true }
+                ? [.. element.Properties.Where(property => property.GodotName != UniqueNameProperty)]
+                : element.Properties;
 
         // The class that sets a node's property order: its tag's, or for an instance, an inherited root or an override the
         // class of its node in the instanced scene, which only the host can read; one property needs no order. A
-        // placeholder and a tag the metadata does not know keep source order.
+        // placeholder replays its values in file order on its scene's root (instance_placeholder.cpp:37-43, 100-102), so
+        // the root's class orders them as an instance's. A tag the metadata does not know keeps source order.
         private GodotClassInfo? NodeClass(PlacedElement placed, ImmutableArray<XscnProperty> properties, string location) =>
             placed.Element switch
             {
-                XscnNode { InstancePlaceholder: not null } => null,
+                XscnNode { InstancePlaceholder: { } placeholder } => ClassInScene(placeholder, TscnNodePaths.Root, properties.Length, location),
                 XscnNode { Type: XscnClassType tagged } => tagged.Class,
                 XscnNode { Type: XscnSceneType scene } => ClassInScene(scene.Path, TscnNodePaths.Root, properties.Length, location),
                 XscnOverride over when placed.InstancedBy is { } scene => ClassInScene(scene, over.Path, properties.Length, location),

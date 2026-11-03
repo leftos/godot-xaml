@@ -60,6 +60,7 @@ func _run() -> String:
 		_property_order,
 		_order_inner,
 		_instanced_order,
+		_placeholder_order,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -269,6 +270,23 @@ func _instanced_order() -> String:
 	box.grow_vertical = Control.GROW_DIRECTION_BOTH
 	root.set_editable_instance(instance, true)
 	return _save_scene("instanced_order", root)
+
+
+## A placeholder of order_inner with layout_mode Position and grow_vertical Both stored on it:
+## the placeholder replays its stored values on the instanced Control in file order
+## (instance_placeholder.cpp, InstancePlaceholder::create_instance), and Position set after
+## grow_vertical resets it (control.cpp, Control::_set_layout_mode).
+func _placeholder_order() -> String:
+	var root := _root("Control")
+	var inner: PackedScene = load(CASES_DIR.path_join("order_inner.tscn"))
+	var later: Control = inner.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)
+	later.name = "Later"
+	root.add_child(later)
+	later.owner = root
+	later.set("layout_mode", 0)
+	later.grow_vertical = Control.GROW_DIRECTION_BOTH
+	later.set_scene_instance_load_placeholder(true)
+	return _save_scene("placeholder_order", root)
 
 
 ## A gradient with non-default colours, its sub-resource id pinned.
