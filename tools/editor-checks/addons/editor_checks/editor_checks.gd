@@ -22,11 +22,23 @@ const READY_PATH := "user://main_ready.txt"
 const REBUILD_MARKER := "// editor-checks: rebuild marker\n"
 const EDITED_TEXT := "Edited in editor"
 const RELOADED_TEXT := "After reload"
+const E12_SCRIPT_PATH := "res://fixtures/E12Named.gd"
+const E12_XRES_PATH := "res://fixtures/E12Named.xres"
+const E12_CLASS := "E12NamedResource"
+const E12_SCRIPT_TEXT := (
+	"class_name E12NamedResource\nextends Resource\n\n" + "@export var count: int = 0\n"
+)
+const E12_XRES_TEXT := (
+	'<Resource xmlns:x="https://github.com/leftos/godot-xaml/format/1"'
+	+ ' Script="res://fixtures/E12Named.gd" count="3" />\n'
+)
 
 var _mode := ""
 var _out := ""
 var _passed := 0
 var _total := 0
+var _e12_emitted := false
+var _e12_still_found := false
 
 
 func _enter_tree() -> void:
@@ -70,6 +82,7 @@ func _run_all() -> void:
 	await _report("E9", await _check_paste())
 	await _report("E10", await _check_save_as())
 	await _report("E11", await _check_rename_open())
+	await _report("E12", await _check_class_removed())
 
 
 func _check_dialogs() -> String:
@@ -265,24 +278,10 @@ func _host_instance_failure() -> String:
 
 
 func _rename_in_dock(path: String, new_name: String) -> String:
-	var dock := EditorInterface.get_file_system_dock()
-	EditorInterface.select_file(path)
-	await get_tree().process_frame
-	var trees := dock.find_children("*", "Tree", true, false)
-	if trees.is_empty():
-		return "the FileSystem dock has no Tree"
-	var tree: Tree = trees[0]
-	var item := _find_tree_item(tree.get_root(), path)
-	if item == null:
-		return "the dock has no item for %s" % path
-	item.select(0)
-	tree.grab_focus()
-	var f2 := InputEventKey.new()
-	f2.keycode = KEY_F2
-	f2.physical_keycode = KEY_F2
-	f2.pressed = true
-	get_viewport().push_input(f2)
-	await get_tree().process_frame
+	var failure := await _press_in_dock(path, KEY_F2)
+	if not failure.is_empty():
+		return failure
+	var tree := _dock_tree()
 	var edits := tree.find_children("*", "LineEdit", true, false)
 	if edits.is_empty():
 		return "the dock's tree has no LineEdit after F2 on %s" % path
@@ -290,6 +289,59 @@ func _rename_in_dock(path: String, new_name: String) -> String:
 	edit.text = new_name
 	edit.text_submitted.emit(new_name)
 	return ""
+
+
+# Selects the file's item in the dock's tree and presses a key on it, which the dock's shortcuts
+# read.
+func _press_in_dock(path: String, keycode: Key) -> String:
+	EditorInterface.select_file(path)
+	await get_tree().process_frame
+	var tree := _dock_tree()
+	if tree == null:
+		return "the FileSystem dock has no Tree"
+	var item := _find_tree_item(tree.get_root(), path)
+	if item == null:
+		return "the dock has no item for %s" % path
+	item.select(0)
+	tree.grab_focus()
+	var key := InputEventKey.new()
+	key.keycode = keycode
+	key.physical_keycode = keycode
+	key.pressed = true
+	get_viewport().push_input(key)
+	await get_tree().process_frame
+	return ""
+
+
+func _dock_lists(path: String) -> bool:
+	var tree := _dock_tree()
+	return tree != null and _find_tree_item(tree.get_root(), path) != null
+
+
+func _describe_dock(path: String) -> String:
+	var tree := _dock_tree()
+	if tree == null:
+		return "the dock has no Tree"
+	var folder := _find_tree_item(tree.get_root(), path.get_base_dir() + "/")
+	var names: Array[String] = []
+	if folder != null:
+		for child in folder.get_children():
+			names.append(str(child.get_metadata(0)))
+	return (
+		"the tree is %s, its %s item holds %s; the file's type is '%s', it %s on disk"
+		% [
+			"visible" if tree.is_visible_in_tree() else "hidden",
+			path.get_base_dir(),
+			names if folder != null else "nothing (no item)",
+			EditorInterface.get_resource_filesystem().get_file_type(path),
+			"is" if FileAccess.file_exists(path) else "is not",
+		]
+	)
+
+
+func _dock_tree() -> Tree:
+	var trees := EditorInterface.get_file_system_dock().find_children("*", "Tree", true, false)
+	return null if trees.is_empty() else trees[0]
 
 
 func _find_tree_item(item: TreeItem, path: String) -> TreeItem:
@@ -489,6 +541,149 @@ func _scene_moved(material: Material) -> bool:
 	return (
 		_edited_is(E11_RENAMED_PATH) and material.resource_path.begins_with(E11_RENAMED_PATH + "::")
 	)
+
+
+func _check_class_removed() -> String:
+	var failure := await _add_class_and_xres()
+	if not failure.is_empty():
+		return failure
+	# Held so the script is in ResourceCache: the Remove dialog emits resource_removed, and the
+	# dock's script_classes_updated with it, only for a cached file
+	# (editor/file_system/dependency_editor.cpp:785-787).
+	var script = load(E12_SCRIPT_PATH)
+	if not script is Script:
+		return "load(%s) returned %s, not a Script" % [E12_SCRIPT_PATH, script]
+	var listed := "the FileSystem dock to list %s" % E12_SCRIPT_PATH
+	var known_and_listed := func():
+		return _known_to_filesystem(E12_SCRIPT_PATH) and _dock_lists(E12_SCRIPT_PATH)
+	failure = await _wait_for(known_and_listed, listed)
+	if not failure.is_empty():
+		return "%s (%s)" % [failure, _describe_dock(E12_SCRIPT_PATH)]
+	failure = await _press_in_dock(E12_SCRIPT_PATH, KEY_DELETE)
+	if failure.is_empty():
+		var shown := "the dock's Remove dialog for %s" % E12_SCRIPT_PATH
+		failure = await _wait_for(func(): return _remove_dialog() != null, shown)
+	if not failure.is_empty():
+		return failure
+	failure = _remove_through_dialog()
+	if not failure.is_empty():
+		return failure
+	script = null
+	var what := (
+		"%s to be gone and %s no longer found as its class" % [E12_SCRIPT_PATH, E12_XRES_PATH]
+	)
+	return await _wait_for(_class_removed_landed, what)
+
+
+func _add_class_and_xres() -> String:
+	var failure := _write_project_file(E12_SCRIPT_PATH, E12_SCRIPT_TEXT)
+	if not failure.is_empty():
+		return failure
+	var what := "%s to register the global class %s" % [E12_SCRIPT_PATH, E12_CLASS]
+	failure = await _wait_for(_known_to_filesystem.bind(E12_SCRIPT_PATH), what)
+	if failure.is_empty():
+		failure = await _wait_for(_class_registered, what)
+	if not failure.is_empty():
+		return failure
+	failure = _write_project_file(E12_XRES_PATH, E12_XRES_TEXT)
+	if not failure.is_empty():
+		return failure
+	what = "%s to be found as a %s" % [E12_XRES_PATH, E12_CLASS]
+	failure = await _wait_for(_known_to_filesystem.bind(E12_XRES_PATH), what)
+	if not failure.is_empty():
+		return failure
+	return await _wait_for(func(): return _scan_done() and _xres_found_as_class(), what)
+
+
+# update_file does nothing while a scan runs (editor/file_system/editor_file_system.cpp:1889,
+# 2409-2412), so it is asked again until the filesystem knows the file.
+func _known_to_filesystem(path: String) -> bool:
+	var fs := EditorInterface.get_resource_filesystem()
+	if not _scan_done():
+		return false
+	if fs.get_file_type(path).is_empty():
+		fs.update_file(path)
+	return not fs.get_file_type(path).is_empty()
+
+
+# Records whether the .xres is found as the class on the first script_classes_updated of the
+# removal, the dock's own (editor/docks/filesystem_dock.cpp:1806-1811). It comes before the
+# removal's update_file (editor/file_system/dependency_editor.cpp:785-787, 816-818), whose
+# _update_script_classes re-creates the loaders
+# (editor/file_system/editor_file_system.cpp:2197-2203), so at that emit only the plugin's hook
+# has rebuilt the class snapshot.
+func _remove_through_dialog() -> String:
+	_e12_emitted = false
+	_e12_still_found = false
+	var fs := EditorInterface.get_resource_filesystem()
+	# Connected after the plugin's hook, which the plugin made when it entered the tree, so it runs
+	# after it: connect appends the slot to the signal's slot map (core/object/object.cpp:1581), a
+	# HashMap kept in insertion order (core/templates/hash_map.h:48, 563, 229-232), and emit_signalp
+	# calls the slots in that map's order (core/object/object.cpp:1214-1218, 1251).
+	fs.script_classes_updated.connect(_on_e12_classes_updated)
+	_remove_dialog().get_ok_button().pressed.emit()
+	_disconnect_e12()
+	if not _e12_emitted:
+		return "removing %s through the dock emitted no script_classes_updated" % E12_SCRIPT_PATH
+	if _e12_still_found:
+		return (
+			"on the dock's script_classes_updated for the removed %s, %s is still found as the class %s"
+			% [E12_SCRIPT_PATH, E12_XRES_PATH, E12_CLASS]
+		)
+	return ""
+
+
+func _on_e12_classes_updated() -> void:
+	if _e12_emitted:
+		return
+	_e12_emitted = true
+	_e12_still_found = _xres_found_as_class()
+	_disconnect_e12()
+
+
+func _disconnect_e12() -> void:
+	var fs := EditorInterface.get_resource_filesystem()
+	if fs.script_classes_updated.is_connected(_on_e12_classes_updated):
+		fs.script_classes_updated.disconnect(_on_e12_classes_updated)
+
+
+func _remove_dialog() -> ConfirmationDialog:
+	for child in EditorInterface.get_file_system_dock().get_children():
+		if child is ConfirmationDialog and child.visible and child.get_ok_button().text == "Remove":
+			return child
+	return null
+
+
+func _class_registered() -> bool:
+	if not _scan_done():
+		return false
+	for entry in ProjectSettings.get_global_class_list():
+		if entry["path"] == E12_SCRIPT_PATH and entry["class"] == E12_CLASS:
+			return true
+	return false
+
+
+# With the class as the type hint, ResourceLoader.exists asks the .xres loader's _HandlesType
+# (core/io/resource_loader.cpp:1257-1262, 72, 135-138), which answers from the plugin's class
+# snapshot; get_resource_script_class has no script binding (core/core_bind.cpp). The .xres is
+# never loaded here, so no cache entry answers first (core/io/resource_loader.cpp:1250).
+func _xres_found_as_class() -> bool:
+	return ResourceLoader.exists(E12_XRES_PATH, E12_CLASS)
+
+
+func _class_removed_landed() -> bool:
+	return (
+		not FileAccess.file_exists(E12_SCRIPT_PATH) and _scan_done() and not _xres_found_as_class()
+	)
+
+
+func _write_project_file(path: String, text: String) -> String:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return "cannot write %s: %s" % [path, error_string(FileAccess.get_open_error())]
+	file.store_string(text)
+	file.close()
+	return ""
 
 
 func _open_copy(path: String) -> String:

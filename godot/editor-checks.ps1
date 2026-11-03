@@ -42,7 +42,7 @@ $resultsFile = Join-Path $results 'results.txt'
 $runProject = Join-Path $run 'godot'
 $outArg = '--out=' + $results.Replace('\', '/') + '/'
 $sources = Join-Path $repo 'tools/editor-checks'
-$expectedChecks = 11
+$expectedChecks = 12
 $editorCeilingSeconds = @{ run = 600; reopen = 180 }
 
 function Invoke-Step {
