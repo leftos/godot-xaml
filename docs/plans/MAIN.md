@@ -4,13 +4,9 @@
 
 ## Core format
 
-- [ ] GXAML-78 Metadata dump: slash-named ClassDB properties · release vNext
 - [ ] GXAML-103 Dynamic-family table: tests, shared helpers, ordinal matching and the Godot version tie · release vNext
-- [ ] GXAML-105 Metadata: type misdeclared properties by their getter, for classes with no defaults too · release vNext
 - [ ] GXAML-109 Dynamic families: Skeleton3D's 3.x bone keys, ASCII entry indexes, and the untested ranking paths · release vNext
 - [/] GXAML-114 Dynamic families: a compare fixture for every stored family, enforced by a coverage test · release vNext
-  - [ ] GXAML-121 Fixture physics_bones.tscn: PhysicalBone3D joints and SoftBody3D attachments · release vNext
-  - [ ] GXAML-122 Fixture tile_set_layers.tres: TileSet layers, sources and proxies · release vNext
   - [ ] GXAML-123 Fixture tile_map_grid_map.tscn: TileMap layers, GridMap and MeshLibrary · release vNext
   - [ ] GXAML-124 Fixture gui_item_arrays.tscn: TabBar, PopupMenu, ItemList, OptionButton, MenuButton, FileDialog · release vNext
   - [ ] GXAML-125 Fixture gui_tabs_graph.tscn: TabContainer, GraphNode, audio listeners and players · release vNext
@@ -18,16 +14,13 @@
   - [ ] GXAML-128 Coverage test: every dynamic-family row matched by a fixture or a reviewed exception · release vNext
   - [ ] GXAML-129 Fixture shader_parameters.tscn: instance shader parameters, ShaderMaterial and ShaderGlobalsOverride · release vNext
 - [ ] GXAML-131 Conversion back: VisualShader flags/ order follows the shader's mode · release vNext
+- [ ] GXAML-144 Conversion back: TileSetAtlasSource tiles in Godot's per-tile order · release vNext
 
 ## Godot addon
 
 - [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+1
 - [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit · release vNext
-- [ ] GXAML-104 Addon saver: after B's save takes over A's built-in, a later save of A may lose its key · release vNext
-- [ ] GXAML-106 Addon saver: the owned-ids walk's cost, and one path form for the map and the takeover · release vNext
 - [ ] GXAML-107 Editor: every changed .xscn is loaded in full for its scene groups · release vNext
-- [ ] GXAML-110 Addon checks: a scripted .xres root keeps its C# wrapper after the load · release vNext
-- [ ] GXAML-113 Compare: a restored source with an older timestamp runs a stale addon build · release vNext
 
 ## Agent tooling
 
@@ -36,6 +29,12 @@
 ## Editor support
 
 - [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext
+  - [ ] GXAML-134 Language server: project, transport, document store and diagnostics · release vNext
+  - [ ] GXAML-135 Language server: whole-document formatting · release vNext
+  - [ ] GXAML-136 Language server: hover · release vNext
+  - [ ] GXAML-137 Hover descriptions: a docs file per Godot version from its class reference · release vNext
+  - [ ] GXAML-138 Language server: completions by context · release vNext
+  - [ ] GXAML-139 Language server: per-platform executables, CI matrix and release packaging · release vNext
 - [ ] GXAML-15 VS Code extension over the language server · release vNext
 - [ ] GXAML-16 Visual Studio extension over the language server · release vNext+1
 - [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+1
@@ -48,16 +47,13 @@
 ## Backlog
 
 - [ ] GXAML-84 Find the cause of two rare Godot crashes during first import · release vNext
-- [ ] GXAML-99 Release: check nuget.org before the release commit, and allow for the index lag · release vNext
 - [ ] GXAML-100 ARCHITECTURE.md: the sub-resource check range and two missing Task Index rows · release vNext
-- [ ] GXAML-101 A -Local addon zip's plugin.cfg still names the release version · release vNext
-- [ ] GXAML-132 Release: pack-release checks the addon zip name in README's install step · release vNext
 - [ ] GXAML-133 Docs: re-read DEVELOPMENT.md against the compare and harness changes since it was written
 
 ## Design files
 
 - [dynamic-family-coverage-probe.md](dynamic-family-coverage-probe.md) — GXAML-129
-- [dynamic-family-coverage.md](dynamic-family-coverage.md) — GXAML-114, GXAML-121, GXAML-122, GXAML-123, GXAML-124, GXAML-125, GXAML-126, GXAML-128
+- [dynamic-family-coverage.md](dynamic-family-coverage.md) — GXAML-114, GXAML-123, GXAML-124, GXAML-125, GXAML-126, GXAML-128
 - [language-server-libraries.md](language-server-libraries.md) — GXAML-14
-- [language-server.md](language-server.md) — GXAML-14
+- [language-server.md](language-server.md) — GXAML-14, GXAML-134, GXAML-135, GXAML-136, GXAML-137, GXAML-138, GXAML-139
 - [v1-design.md](v1-design.md) — GXAML-11, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, Agent tooling, Core format, Editor support, Godot addon
