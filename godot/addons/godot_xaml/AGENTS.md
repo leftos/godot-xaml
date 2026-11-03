@@ -1,8 +1,8 @@
 # godot-xaml: notes for agents
 
-This folder is the godot-xaml addon, version 0.1.1. It lets this Godot project keep scenes as `.xscn` and resources as `.xres`: XML whose elements are nodes and whose attributes are properties, named after Godot's C# API.
+This folder is the godot-xaml addon, version 0.2.0. It lets this Godot project keep scenes as `.xscn` and resources as `.xres`: XML whose elements are nodes and whose attributes are properties, named after Godot's C# API.
 
-The format reference is at https://github.com/leftos/godot-xaml/blob/v0.1.1/docs/format/README.md, and the values at https://github.com/leftos/godot-xaml/blob/v0.1.1/docs/format/values.md.
+The format reference is at https://github.com/leftos/godot-xaml/blob/v0.2.0/docs/format/README.md, and the values at https://github.com/leftos/godot-xaml/blob/v0.2.0/docs/format/values.md.
 
 ## Rules
 
@@ -21,7 +21,7 @@ The format reference is at https://github.com/leftos/godot-xaml/blob/v0.1.1/docs
 - **Files are `res://` paths.** In value text a file is `Resource("res://…")`; never use `ExtResource(…)`.
 - **Every node has a `Name`.** The root declares `xmlns:x="https://github.com/leftos/godot-xaml/format/1"`.
 - **Nodes inside an instanced scene** are changed with `<x:Override Path="…">`, a direct child of the instance element.
-- **Check and format after every edit.** Run `godot-xaml check <paths>` and `godot-xaml format <paths>`, and fix every reported code. `check` reports parse problems; a few problems (`GXC` codes) show only when Godot loads the file. Install the tool with `dotnet tool install -g GodotXaml.Cli`. The codes are listed at https://github.com/leftos/godot-xaml/blob/v0.1.1/docs/format/diagnostics.md.
+- **Check and format after every edit.** Run `godot-xaml check <paths>` and `godot-xaml format <paths>`, and fix every reported code. `check` reports parse problems; a few problems (`GXC` codes) show only when Godot loads the file. Install the tool with `dotnet tool install -g GodotXaml.Cli`. The codes are listed at https://github.com/leftos/godot-xaml/blob/v0.2.0/docs/format/diagnostics.md.
 - **Commit `.uid` sidecars** (`main.xscn.uid`). Never delete one, and never invent a uid. Leave the `<x:Uids>` table to the editor.
 - **Move and rename files in the Godot editor,** so references are rewritten.
 
