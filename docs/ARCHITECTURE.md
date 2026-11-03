@@ -194,7 +194,7 @@ Each component gets an entry here in the commit that adds its project.
 
   A new fixture also goes in the fixture lists (`SceneForwardTests.Scenes`, `SceneBackTests.Fixtures`, `SceneRoundTripTests.Fixtures`) and `SceneBackTests.Inputs`; `godot/compare.ps1` counts the fixture files itself and passes the count to the compare scene.
 
-  A new `.tres` fixture joins `ResourceConversionTests.Fixtures` and `ResourceForwardTests.Resources`, gets an `.xres` golden in `tests/fixtures/converted/` (written by the CLI's `convert`, as `godot-xaml convert <fixture>.tres` and the `.xres` moved there, and checked by `ResourceForwardTests`).
+  A new `.tres` fixture joins `ResourceConversionTests.Fixtures` and `ResourceForwardTests.Resources`, gets an `.xres` golden in `tests/fixtures/converted/` (written by the CLI's `convert`, as `godot-xaml convert <fixture>.tres` and the `.xres` moved there, and checked by `ResourceForwardTests`). `ResourceBackTests` converts each golden's text back and compares it with the `.tres` Godot saved, as `SceneBackTests` does for scenes; `ResourceConversionTests` round-trips in memory, which keeps Godot's order and so cannot show an order bug on the way back.
 
   No fixture has `uid=`, since a script run has no editor file system to supply uids; the writer's unit test covers it.
 - `godot/cases/` and the helper scripts `holder.gd`, `quoted.gd` and `tagged.gd` in `godot/` are copied from the fixtures by `godot/compare.ps1` on every run and are gitignored; never edit or commit them. The script fails on a fixture without its pair.

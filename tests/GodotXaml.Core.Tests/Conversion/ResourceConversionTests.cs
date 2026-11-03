@@ -13,9 +13,10 @@ namespace GodotXaml.Core.Tests.Conversion;
 // .tres to XscnDocument and back to TscnDocument, written with TscnWriter and compared with what Godot 4.7.2 wrote.
 public sealed partial class ResourceConversionTests
 {
-    private static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
+    internal static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
 
-    private static readonly ConversionOptions Options = new()
+    // The options the resource tests convert with, both ways.
+    internal static readonly ConversionOptions Options = new()
     {
         Seed = 7,
         ScriptClassOf = path => path == "res://tagged.gd" ? "TaggedResource" : null,

@@ -56,7 +56,7 @@ public sealed partial class SceneBackTests
         ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse(Inputs[fixture]), Metadata, options);
 
         Assert.Empty(back.Issues);
-        Assert.Equal(Comparable(expected), Comparable(back.Document));
+        Assert.Equal(TscnTestNormalizer.Comparable(expected), TscnTestNormalizer.Comparable(back.Document));
     }
 
     [Fact]
@@ -765,8 +765,6 @@ public sealed partial class SceneBackTests
             back.Document.Nodes[0].Properties
         );
     }
-
-    private static string Comparable(TscnDocument document) => TscnWriter.Write(TscnTestNormalizer.Normalize(document));
 
     private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
 

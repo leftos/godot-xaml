@@ -12,6 +12,11 @@ namespace GodotXaml.Core.Tests.Conversion;
 /// </summary>
 internal static class TscnTestNormalizer
 {
+    /// <summary>The document as <see cref="TscnWriter"/> writes it once <see cref="Normalize"/> has renumbered its ids.</summary>
+    /// <param name="document">The document.</param>
+    /// <returns>The text two documents that differ only in their ids share.</returns>
+    public static string Comparable(TscnDocument document) => TscnWriter.Write(Normalize(document));
+
     /// <summary>
     /// Renumbers the ext_resource ids <c>1</c>, <c>2</c>, … and the sub_resource ids <c>&lt;Type&gt;_&lt;n&gt;</c>, both
     /// in section order (n counts every sub_resource from 1), and rewrites every <c>ExtResource</c> and

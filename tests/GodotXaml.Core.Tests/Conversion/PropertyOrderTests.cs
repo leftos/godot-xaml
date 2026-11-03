@@ -254,6 +254,65 @@ public sealed class PropertyOrderTests
         );
     }
 
+    // VisualShader::_get_property_list lists modes/ in the order ShaderTypes registers the shader mode's render modes
+    // (shader_types.cpp:238-247), not in name order.
+    [Fact]
+    public void VisualShaderModesComeInTheShaderTypesOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <VisualShader {{X}}>
+              <x:Prop Name="modes/blend" Value="1" />
+              <x:Prop Name="modes/cull" Value="2" />
+              <x:Prop Name="modes/depth_draw" Value="1" />
+              <x:Prop Name="modes/depth_test" Value="2" />
+              <x:Prop Name="modes/diffuse" Value="2" />
+              <x:Prop Name="modes/specular" Value="1" />
+            </VisualShader>
+            """
+        );
+
+        Assert.Equal(
+            ["modes/blend", "modes/depth_draw", "modes/depth_test", "modes/cull", "modes/diffuse", "modes/specular"],
+            Names(resource.ResourceProperties)
+        );
+    }
+
+    // VisualShader::_get_property_list lists flags/ in the order ShaderTypes registers the Spatial render modes
+    // (shader_types.cpp:240-260), depth_test_disabled at depth_test's place.
+    [Fact]
+    public void VisualShaderFlagsComeInTheShaderTypesOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <VisualShader {{X}}>
+              <x:Prop Name="flags/depth_prepass_alpha" Value="true" />
+              <x:Prop Name="flags/depth_test_disabled" Value="true" />
+              <x:Prop Name="flags/fog_disabled" Value="true" />
+              <x:Prop Name="flags/shadows_disabled" Value="true" />
+              <x:Prop Name="flags/skip_vertex_transform" Value="true" />
+              <x:Prop Name="flags/specular_occlusion_disabled" Value="true" />
+              <x:Prop Name="flags/unshaded" Value="true" />
+              <x:Prop Name="flags/wireframe" Value="true" />
+            </VisualShader>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "flags/depth_prepass_alpha",
+                "flags/depth_test_disabled",
+                "flags/unshaded",
+                "flags/wireframe",
+                "flags/skip_vertex_transform",
+                "flags/shadows_disabled",
+                "flags/fog_disabled",
+                "flags/specular_occlusion_disabled",
+            ],
+            Names(resource.ResourceProperties)
+        );
+    }
+
     // VisualShader::_set reads a graph type it does not know as vertex, so its node must still come first.
     [Fact]
     public void AVisualShaderNodeOfAnUnlistedTypeStillStartsWithItsNode()

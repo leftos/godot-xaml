@@ -48,6 +48,35 @@ internal static class DynamicPropertyFamilies
     // node, and casts the node unchecked for size, input_ports, output_ports and expression.
     private static readonly string[] VisualShaderNodeKeys = ["node", "position", "size", "input_ports", "output_ports", "expression"];
 
+    // modules/visual_shader/visual_shader.cpp, VisualShader::_get_property_list lists modes/ in the order
+    // servers/rendering/shader_types.cpp, ShaderTypes::ShaderTypes registers the render modes with options; no shader mode
+    // registers two of these in another order.
+    private static readonly string[] VisualShaderModes = ["blend", "depth_draw", "depth_test", "cull", "diffuse", "specular"];
+
+    // The same list's flags/: the Spatial render modes without options in ShaderTypes::ShaderTypes order, with
+    // depth_test_disabled at depth_test's place.
+    private static readonly string[] VisualShaderFlags =
+    [
+        "depth_prepass_alpha",
+        "depth_test_disabled",
+        "sss_mode_skin",
+        "unshaded",
+        "wireframe",
+        "skip_vertex_transform",
+        "world_vertex_coords",
+        "ensure_correct_normals",
+        "shadows_disabled",
+        "ambient_light_disabled",
+        "shadow_to_opacity",
+        "vertex_lighting",
+        "particle_trails",
+        "alpha_to_coverage",
+        "alpha_to_coverage_and_one",
+        "debug_shadow_splits",
+        "fog_disabled",
+        "specular_occlusion_disabled",
+    ];
+
     // modules/visual_shader/visual_shader.cpp, type_string: VisualShader::_get_property_list lists the graphs in this order,
     // each graph's nodes by id, then its connections, which is the order Godot saves them in.
     private static readonly string[] VisualShaderTypes =
@@ -392,7 +421,9 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("AudioEffectEQ", @"^band_db/\d+_hz$"),
         // modules/visual_shader/visual_shader.cpp, VisualShader::_get_property_list
         Row.AnyOrder("VisualShader", @"^mode$"),
+        .. VisualShaderModes.Select(mode => Row.AnyOrder("VisualShader", $"^modes/{mode}$")),
         Row.AnyOrder("VisualShader", @"^modes/"),
+        .. VisualShaderFlags.Select(flag => Row.AnyOrder("VisualShader", $"^flags/{flag}$")),
         Row.AnyOrder("VisualShader", @"^flags/"),
         Row.AnyOrder("VisualShader", @"^stencil/(?:enabled|reference)$"),
         Row.AnyOrder("VisualShader", @"^stencil_modes/"),

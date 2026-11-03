@@ -52,6 +52,6 @@ public sealed class ResourceForwardTests
         Assert.Equal(golden, XscnWriter.Write(parsed.Document, Metadata));
     }
 
-    private static string ReadFixture(string folder, string file) =>
+    internal static string ReadFixture(string folder, string file) =>
         new UTF8Encoding(false, true).GetString(File.ReadAllBytes(RepoFiles.PathOf("tests", "fixtures", folder, file)));
 }
