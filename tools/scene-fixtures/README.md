@@ -19,6 +19,7 @@ Regenerate only when a case is added or changed. A changed case commits the whol
 ## Files
 
 - `generate.gd`: the generator (extends `SceneTree`, works in `_initialize`). Each case builds its scene or resource in code, saves it under `res://cases/` (ignored by git; cases reference each other there by `res://` path) and copies the saved bytes unchanged to the output folder.
+- `family_cases.gd`: the dynamic-family cases, which generate.gd calls.
 - `holder.gd`: a node script with an exported `Node` property, which gives `node_paths=`.
 - `tagged.gd`: a resource script with `class_name`, which gives `script_class=`.
 - `quoted.gd`: a resource script whose property names `property_name_encode` must quote.
@@ -58,5 +59,6 @@ Regenerate only when a case is added or changed. A changed case commits the whol
 - `animation_player_library.tscn`: an AnimationPlayer with the default library and one named `extra`, 12 animations each (a distinct length, a value track with two keys and three markers; one with a position track, compressed), the next animation of 12 animations past ten and four blend times, beside an AnimationTree whose AnimationNodeBlendSpace1D root holds 3 points at a set blend position, so the way back must keep `libraries/`, `next/`, `blend_times`, `parameters/`, `markers` and `_compression` in Godot's save order.
 - `skeleton_modification_chains.tscn`: a Skeleton2D of a 12-bone Bone2D chain (each with a set length and angle and its gizmo hidden) whose SkeletonModificationStack2D holds 12 modifications: a SkeletonModification2DCCDIK (constraints on some joints), a FABRIK (magnet positions), a Jiggle (colliders, a collision mask and per-joint stiffness) and a PhysicalBones (node paths), each with 12 joints, then LookAt and TwoBoneIK ones, so the way back must keep `modifications/`, `joint_data/` and `joint_N_nodepath` in numeric order past ten.
 - `skeleton_modification_singles.tres`: a SkeletonModification2DLookAt with its constraint keys and additional rotation off their defaults, whose `metadata/extra` holds a SkeletonModification2DStackHolder (a held stack of one modification) and a SkeletonModification2DTwoBoneIK with its four joint keys, so the way back must keep each class's fixed keys in its `_get_property_list` order.
+- `physics_bones.tscn`: a Skeleton3D of a 12-bone chain whose PhysicalBoneSimulator3D holds a PhysicalBone3D per bone (a `bone_name`, a joint type from pin to 6DOF and `joint_constraints/` keys off their defaults), and a SoftBody3D with 12 pinned points, some attached to a node or offset, so the way back must set `joint_type` before `joint_constraints/` and `pinned_points` before `attachments/`, past ten in numeric order.
 
 `uid=` attributes are absent from every fixture: the saver asks the editor's file system for uids, which a `--script` run does not start.

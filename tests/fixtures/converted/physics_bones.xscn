@@ -1,0 +1,381 @@
+<Node3D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="819234613">
+  <Skeleton3D Name="Skeleton3D" x:UniqueId="238123946">
+    <x:Prop Name="bones/0/enabled" Value="true" />
+    <x:Prop Name="bones/0/name" Value='"bone_0"' />
+    <x:Prop Name="bones/0/parent" Value="-1" />
+    <x:Prop Name="bones/0/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/0/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)" />
+    <x:Prop Name="bones/0/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/0/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/1/enabled" Value="true" />
+    <x:Prop Name="bones/1/name" Value='"bone_1"' />
+    <x:Prop Name="bones/1/parent" Value="0" />
+    <x:Prop Name="bones/1/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/1/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)" />
+    <x:Prop Name="bones/1/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/1/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/10/enabled" Value="true" />
+    <x:Prop Name="bones/10/name" Value='"bone_10"' />
+    <x:Prop Name="bones/10/parent" Value="9" />
+    <x:Prop Name="bones/10/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/10/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.75, 0)" />
+    <x:Prop Name="bones/10/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/10/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/11/enabled" Value="true" />
+    <x:Prop Name="bones/11/name" Value='"bone_11"' />
+    <x:Prop Name="bones/11/parent" Value="10" />
+    <x:Prop Name="bones/11/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/11/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)" />
+    <x:Prop Name="bones/11/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/11/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/2/enabled" Value="true" />
+    <x:Prop Name="bones/2/name" Value='"bone_2"' />
+    <x:Prop Name="bones/2/parent" Value="1" />
+    <x:Prop Name="bones/2/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/2/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)" />
+    <x:Prop Name="bones/2/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/2/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/3/enabled" Value="true" />
+    <x:Prop Name="bones/3/name" Value='"bone_3"' />
+    <x:Prop Name="bones/3/parent" Value="2" />
+    <x:Prop Name="bones/3/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/3/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)" />
+    <x:Prop Name="bones/3/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/3/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/4/enabled" Value="true" />
+    <x:Prop Name="bones/4/name" Value='"bone_4"' />
+    <x:Prop Name="bones/4/parent" Value="3" />
+    <x:Prop Name="bones/4/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/4/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)" />
+    <x:Prop Name="bones/4/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/4/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/5/enabled" Value="true" />
+    <x:Prop Name="bones/5/name" Value='"bone_5"' />
+    <x:Prop Name="bones/5/parent" Value="4" />
+    <x:Prop Name="bones/5/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/5/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)" />
+    <x:Prop Name="bones/5/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/5/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/6/enabled" Value="true" />
+    <x:Prop Name="bones/6/name" Value='"bone_6"' />
+    <x:Prop Name="bones/6/parent" Value="5" />
+    <x:Prop Name="bones/6/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/6/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)" />
+    <x:Prop Name="bones/6/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/6/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/7/enabled" Value="true" />
+    <x:Prop Name="bones/7/name" Value='"bone_7"' />
+    <x:Prop Name="bones/7/parent" Value="6" />
+    <x:Prop Name="bones/7/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/7/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)" />
+    <x:Prop Name="bones/7/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/7/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/8/enabled" Value="true" />
+    <x:Prop Name="bones/8/name" Value='"bone_8"' />
+    <x:Prop Name="bones/8/parent" Value="7" />
+    <x:Prop Name="bones/8/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/8/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 0)" />
+    <x:Prop Name="bones/8/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/8/scale" Value="Vector3(1, 1, 1)" />
+    <x:Prop Name="bones/9/enabled" Value="true" />
+    <x:Prop Name="bones/9/name" Value='"bone_9"' />
+    <x:Prop Name="bones/9/parent" Value="8" />
+    <x:Prop Name="bones/9/position" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="bones/9/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)" />
+    <x:Prop Name="bones/9/rotation" Value="Quaternion(0, 0, 0, 1)" />
+    <x:Prop Name="bones/9/scale" Value="Vector3(1, 1, 1)" />
+    <PhysicalBoneSimulator3D Name="PhysicalBoneSimulator3D" x:UniqueId="1930195000">
+      <PhysicalBone3D
+          Name="Physical0"
+          JointConstraints.bias="0.1"
+          JointConstraints.damping="2.0"
+          JointConstraints.impulse_clamp="4.0"
+          JointType="Pin"
+          bone_name='"bone_0"'
+          x:UniqueId="1600964884" />
+      <PhysicalBone3D
+          Name="Physical1"
+          JointConstraints.bias="0.3"
+          JointConstraints.relaxation="1.0"
+          JointConstraints.softness="0.2"
+          JointConstraints.swing_span="30.0"
+          JointConstraints.twist_span="90.0"
+          JointType="Cone"
+          bone_name='"bone_1"'
+          x:UniqueId="309914749" />
+      <PhysicalBone3D
+          Name="Physical2"
+          JointConstraints.angular_limit_bias="0.3"
+          JointConstraints.angular_limit_enabled="true"
+          JointConstraints.angular_limit_lower="-45.0"
+          JointConstraints.angular_limit_relaxation="2.0"
+          JointConstraints.angular_limit_softness="0.9"
+          JointConstraints.angular_limit_upper="45.0"
+          JointType="Hinge"
+          bone_name='"bone_2"'
+          x:UniqueId="545370885" />
+      <PhysicalBone3D
+          Name="Physical3"
+          JointConstraints.angular_limit_damping="0.4"
+          JointConstraints.angular_limit_lower="0.0"
+          JointConstraints.angular_limit_restitution="0.7"
+          JointConstraints.angular_limit_softness="1.0"
+          JointConstraints.angular_limit_upper="0.0"
+          JointConstraints.linear_limit_damping="1.0"
+          JointConstraints.linear_limit_lower="-2.0"
+          JointConstraints.linear_limit_restitution="0.7"
+          JointConstraints.linear_limit_softness="1.0"
+          JointConstraints.linear_limit_upper="2.0"
+          JointType="Slider"
+          bone_name='"bone_3"'
+          x:UniqueId="1672606037" />
+      <PhysicalBone3D
+          Name="Physical4"
+          JointType="Type6Dof"
+          bone_name='"bone_4"'
+          x:UniqueId="359454604">
+        <x:Prop Name="joint_constraints/x/angular_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/x/angular_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/x/angular_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_limit_softness" Value="0.5" />
+        <x:Prop Name="joint_constraints/x/angular_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_restitution" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/x/angular_spring_stiffness" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/erp" Value="0.5" />
+        <x:Prop Name="joint_constraints/x/linear_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/x/linear_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/linear_limit_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/x/linear_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/linear_limit_softness" Value="0.7" />
+        <x:Prop Name="joint_constraints/x/linear_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/linear_restitution" Value="0.5" />
+        <x:Prop Name="joint_constraints/x/linear_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/linear_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/x/linear_spring_stiffness" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/y/angular_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/y/angular_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_limit_softness" Value="0.5" />
+        <x:Prop Name="joint_constraints/y/angular_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_restitution" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/y/angular_spring_stiffness" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/erp" Value="0.5" />
+        <x:Prop Name="joint_constraints/y/linear_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/y/linear_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/linear_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/y/linear_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/linear_limit_softness" Value="0.7" />
+        <x:Prop Name="joint_constraints/y/linear_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/linear_restitution" Value="0.5" />
+        <x:Prop Name="joint_constraints/y/linear_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/linear_spring_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/y/linear_spring_stiffness" Value="5.0" />
+        <x:Prop Name="joint_constraints/z/angular_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/z/angular_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/angular_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/z/angular_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/angular_limit_softness" Value="0.5" />
+        <x:Prop Name="joint_constraints/z/angular_limit_upper" Value="30.0" />
+        <x:Prop Name="joint_constraints/z/angular_restitution" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/angular_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/angular_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/z/angular_spring_stiffness" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/erp" Value="0.5" />
+        <x:Prop Name="joint_constraints/z/linear_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/z/linear_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/linear_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/z/linear_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/linear_limit_softness" Value="0.7" />
+        <x:Prop Name="joint_constraints/z/linear_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/linear_restitution" Value="0.5" />
+        <x:Prop Name="joint_constraints/z/linear_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/linear_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/z/linear_spring_stiffness" Value="0.0" />
+      </PhysicalBone3D>
+      <PhysicalBone3D
+          Name="Physical5"
+          JointConstraints.bias="0.6"
+          JointConstraints.damping="2.0"
+          JointConstraints.impulse_clamp="4.0"
+          JointType="Pin"
+          bone_name='"bone_5"'
+          x:UniqueId="990036887" />
+      <PhysicalBone3D
+          Name="Physical6"
+          JointConstraints.bias="0.3"
+          JointConstraints.relaxation="1.0"
+          JointConstraints.softness="0.7"
+          JointConstraints.swing_span="30.0"
+          JointConstraints.twist_span="90.0"
+          JointType="Cone"
+          bone_name='"bone_6"'
+          x:UniqueId="1575177272" />
+      <PhysicalBone3D
+          Name="Physical7"
+          JointConstraints.angular_limit_bias="0.3"
+          JointConstraints.angular_limit_enabled="true"
+          JointConstraints.angular_limit_lower="-45.0"
+          JointConstraints.angular_limit_relaxation="2.0"
+          JointConstraints.angular_limit_softness="0.9"
+          JointConstraints.angular_limit_upper="45.0"
+          JointType="Hinge"
+          bone_name='"bone_7"'
+          x:UniqueId="413868046" />
+      <PhysicalBone3D
+          Name="Physical8"
+          JointConstraints.angular_limit_damping="0.9"
+          JointConstraints.angular_limit_lower="0.0"
+          JointConstraints.angular_limit_restitution="0.7"
+          JointConstraints.angular_limit_softness="1.0"
+          JointConstraints.angular_limit_upper="0.0"
+          JointConstraints.linear_limit_damping="1.0"
+          JointConstraints.linear_limit_lower="-2.0"
+          JointConstraints.linear_limit_restitution="0.7"
+          JointConstraints.linear_limit_softness="1.0"
+          JointConstraints.linear_limit_upper="2.0"
+          JointType="Slider"
+          bone_name='"bone_8"'
+          x:UniqueId="361862417" />
+      <PhysicalBone3D
+          Name="Physical9"
+          JointType="Type6Dof"
+          bone_name='"bone_9"'
+          x:UniqueId="2072202654">
+        <x:Prop Name="joint_constraints/x/angular_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/x/angular_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/x/angular_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_limit_softness" Value="0.5" />
+        <x:Prop Name="joint_constraints/x/angular_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_restitution" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/angular_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/x/angular_spring_stiffness" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/erp" Value="0.5" />
+        <x:Prop Name="joint_constraints/x/linear_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/x/linear_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/linear_limit_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/x/linear_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/linear_limit_softness" Value="0.7" />
+        <x:Prop Name="joint_constraints/x/linear_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/linear_restitution" Value="0.5" />
+        <x:Prop Name="joint_constraints/x/linear_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/x/linear_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/x/linear_spring_stiffness" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/y/angular_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/y/angular_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_limit_softness" Value="0.5" />
+        <x:Prop Name="joint_constraints/y/angular_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_restitution" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/angular_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/y/angular_spring_stiffness" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/erp" Value="0.5" />
+        <x:Prop Name="joint_constraints/y/linear_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/y/linear_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/linear_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/y/linear_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/linear_limit_softness" Value="0.7" />
+        <x:Prop Name="joint_constraints/y/linear_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/linear_restitution" Value="0.5" />
+        <x:Prop Name="joint_constraints/y/linear_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/y/linear_spring_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/y/linear_spring_stiffness" Value="5.0" />
+        <x:Prop Name="joint_constraints/z/angular_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/z/angular_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/angular_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/z/angular_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/angular_limit_softness" Value="0.5" />
+        <x:Prop Name="joint_constraints/z/angular_limit_upper" Value="30.0" />
+        <x:Prop Name="joint_constraints/z/angular_restitution" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/angular_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/angular_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/z/angular_spring_stiffness" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/erp" Value="1.0" />
+        <x:Prop Name="joint_constraints/z/linear_damping" Value="1.0" />
+        <x:Prop Name="joint_constraints/z/linear_equilibrium_point" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/linear_limit_enabled" Value="true" />
+        <x:Prop Name="joint_constraints/z/linear_limit_lower" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/linear_limit_softness" Value="0.7" />
+        <x:Prop Name="joint_constraints/z/linear_limit_upper" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/linear_restitution" Value="0.5" />
+        <x:Prop Name="joint_constraints/z/linear_spring_damping" Value="0.0" />
+        <x:Prop Name="joint_constraints/z/linear_spring_enabled" Value="false" />
+        <x:Prop Name="joint_constraints/z/linear_spring_stiffness" Value="0.0" />
+      </PhysicalBone3D>
+      <PhysicalBone3D
+          Name="Physical10"
+          JointConstraints.bias="1.1"
+          JointConstraints.damping="2.0"
+          JointConstraints.impulse_clamp="4.0"
+          JointType="Pin"
+          bone_name='"bone_10"'
+          x:UniqueId="42004478" />
+      <PhysicalBone3D
+          Name="Physical11"
+          JointConstraints.bias="0.3"
+          JointConstraints.relaxation="1.0"
+          JointConstraints.softness="1.2"
+          JointConstraints.swing_span="30.0"
+          JointConstraints.twist_span="90.0"
+          JointType="Cone"
+          bone_name='"bone_11"'
+          x:UniqueId="1394766616" />
+    </PhysicalBoneSimulator3D>
+  </Skeleton3D>
+  <SoftBody3D
+      Name="SoftBody3D"
+      pinned_points="[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]"
+      x:UniqueId="1822369555">
+    <x:Prop Name="attachments/0/offset" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="attachments/0/point_index" Value="1" />
+    <x:Prop Name="attachments/0/spatial_attachment_path" Value='NodePath("../Anchor0")' />
+    <x:Prop Name="attachments/1/offset" Value="Vector3(0.5, 1, -0.5)" />
+    <x:Prop Name="attachments/1/point_index" Value="3" />
+    <x:Prop Name="attachments/1/spatial_attachment_path" Value='NodePath("")' />
+    <x:Prop Name="attachments/10/offset" Value="Vector3(0.5, 10, -0.5)" />
+    <x:Prop Name="attachments/10/point_index" Value="21" />
+    <x:Prop Name="attachments/10/spatial_attachment_path" Value='NodePath("")' />
+    <x:Prop Name="attachments/11/offset" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="attachments/11/point_index" Value="23" />
+    <x:Prop Name="attachments/11/spatial_attachment_path" Value='NodePath("")' />
+    <x:Prop Name="attachments/2/offset" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="attachments/2/point_index" Value="5" />
+    <x:Prop Name="attachments/2/spatial_attachment_path" Value='NodePath("")' />
+    <x:Prop Name="attachments/3/offset" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="attachments/3/point_index" Value="7" />
+    <x:Prop Name="attachments/3/spatial_attachment_path" Value='NodePath("")' />
+    <x:Prop Name="attachments/4/offset" Value="Vector3(0.5, 4, -0.5)" />
+    <x:Prop Name="attachments/4/point_index" Value="9" />
+    <x:Prop Name="attachments/4/spatial_attachment_path" Value='NodePath("../Anchor1")' />
+    <x:Prop Name="attachments/5/offset" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="attachments/5/point_index" Value="11" />
+    <x:Prop Name="attachments/5/spatial_attachment_path" Value='NodePath("")' />
+    <x:Prop Name="attachments/6/offset" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="attachments/6/point_index" Value="13" />
+    <x:Prop Name="attachments/6/spatial_attachment_path" Value='NodePath("")' />
+    <x:Prop Name="attachments/7/offset" Value="Vector3(0.5, 7, -0.5)" />
+    <x:Prop Name="attachments/7/point_index" Value="15" />
+    <x:Prop Name="attachments/7/spatial_attachment_path" Value='NodePath("")' />
+    <x:Prop Name="attachments/8/offset" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="attachments/8/point_index" Value="17" />
+    <x:Prop Name="attachments/8/spatial_attachment_path" Value='NodePath("../Anchor2")' />
+    <x:Prop Name="attachments/9/offset" Value="Vector3(0, 0, 0)" />
+    <x:Prop Name="attachments/9/point_index" Value="19" />
+    <x:Prop Name="attachments/9/spatial_attachment_path" Value='NodePath("")' />
+    <SoftBody3D.Mesh>
+      <BoxMesh SubdivideDepth="2" SubdivideHeight="2" SubdivideWidth="2" />
+    </SoftBody3D.Mesh>
+  </SoftBody3D>
+  <Node3D Name="Anchor0" x:UniqueId="1855538506" />
+  <Node3D Name="Anchor1" x:UniqueId="231611532" />
+  <Node3D Name="Anchor2" x:UniqueId="2082849481" />
+</Node3D>

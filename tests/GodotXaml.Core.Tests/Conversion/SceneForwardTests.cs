@@ -30,6 +30,7 @@ public sealed partial class SceneForwardTests
             "multiline",
             "nested",
             "order_inner",
+            "physics_bones",
             "placeholder",
             "placeholder_order",
             "property_order",

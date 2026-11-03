@@ -201,6 +201,63 @@ internal static class DynamicPropertyFamilies
     // scene/3d/limit_angular_velocity_modifier_3d.cpp, LimitAngularVelocityModifier3D::_get_property_list: one chain's keys.
     private static readonly string[] LimitChainKeys = ["root_bone_name", "root_bone", "end_bone_name", "end_bone"];
 
+    // scene/3d/physics/physical_bone_3d.cpp, the Pin, Cone, Hinge and Slider JointData::_get_property_list: one bone holds
+    // one joint type's keys, and this merged order keeps each type's own order (no two types order shared keys differently).
+    private static readonly string[] JointConstraintKeys =
+    [
+        "swing_span",
+        "twist_span",
+        "bias",
+        "damping",
+        "impulse_clamp",
+        "softness",
+        "relaxation",
+        "linear_limit_upper",
+        "linear_limit_lower",
+        "linear_limit_softness",
+        "linear_limit_restitution",
+        "linear_limit_damping",
+        "angular_limit_enabled",
+        "angular_limit_upper",
+        "angular_limit_lower",
+        "angular_limit_bias",
+        "angular_limit_softness",
+        "angular_limit_relaxation",
+        "angular_limit_restitution",
+        "angular_limit_damping",
+    ];
+
+    // scene/3d/physics/physical_bone_3d.cpp, SixDOFJointData::_get_property_list: the axes, then one axis's keys.
+    private static readonly string[] SixDofAxes = ["x", "y", "z"];
+
+    private static readonly string[] SixDofAxisKeys =
+    [
+        "linear_limit_enabled",
+        "linear_limit_upper",
+        "linear_limit_lower",
+        "linear_limit_softness",
+        "linear_spring_enabled",
+        "linear_spring_stiffness",
+        "linear_spring_damping",
+        "linear_equilibrium_point",
+        "linear_restitution",
+        "linear_damping",
+        "angular_limit_enabled",
+        "angular_limit_upper",
+        "angular_limit_lower",
+        "angular_limit_softness",
+        "angular_restitution",
+        "angular_damping",
+        "erp",
+        "angular_spring_enabled",
+        "angular_spring_stiffness",
+        "angular_spring_damping",
+        "angular_equilibrium_point",
+    ];
+
+    // scene/3d/physics/soft_body_3d.cpp, SoftBody3D::_get_property_list: one attachment's keys.
+    private static readonly string[] SoftBodyAttachmentKeys = ["point_index", "spatial_attachment_path", "offset"];
+
     // scene/resources/2d/skeleton/skeleton_modification_2d_ccdik.cpp, SkeletonModification2DCCDIK::_get_property_list: one
     // joint's keys (editor_draw_gizmo only under an editor hint).
     private static readonly string[] CcdikJointKeys =
@@ -351,10 +408,10 @@ internal static class DynamicPropertyFamilies
         Row.OnKey("Skeleton3D", @"^bones/(?<index>\d+)/(?<key>[^/]*)", BoneKeys),
         // scene/3d/physics/physical_bone_3d.cpp, PhysicalBone3D::_get_property_list (and its JointData kinds)
         Row.AnyOrder("PhysicalBone3D", @"^bone_name$"),
-        Row.AnyOrder("PhysicalBone3D", @"^joint_constraints/"),
-        // scene/3d/physics/soft_body_3d.cpp, SoftBody3D::_get_property_list
+        .. JointConstraintRows(),
+        // scene/3d/physics/soft_body_3d.cpp, SoftBody3D::_get_property_list: the attachments in numeric order.
         Row.AnyOrder("SoftBody3D", @"^pinned_points$"),
-        Row.SizedFirst("SoftBody3D", @"^attachments/\d+/", "pinned_points"),
+        Row.SizedFirst("SoftBody3D", @"^attachments/(?<index>\d+)/(?<key>.*)", "pinned_points", SoftBodyAttachmentKeys, []),
         // scene/3d/bone_twist_disperser_3d.cpp, BoneTwistDisperser3D::_get_property_list: setting by setting, each joint in
         // numeric order.
         Row.SizedFirst(
@@ -573,6 +630,14 @@ internal static class DynamicPropertyFamilies
         [
             Row.SizedFirst(cls, ConstraintPattern, "setting_count", ConstraintKeys, []),
             Row.SizedFirst(cls, @"^settings/(?<index>\d+)/(?<key>.*)", "setting_count", ownKeys, []),
+        ];
+
+    // One PhysicalBone3D row per joint_constraints/ key, in each JointData's order: the Pin, Cone, Hinge and Slider keys, then
+    // the 6DOF keys axis by axis. An any-order row carries no key order, so each key is its own row.
+    private static IEnumerable<Row> JointConstraintRows() =>
+        [
+            .. JointConstraintKeys.Select(key => Row.AnyOrder("PhysicalBone3D", $"^joint_constraints/{key}$")),
+            .. SixDofAxes.SelectMany(axis => SixDofAxisKeys.Select(key => Row.AnyOrder("PhysicalBone3D", $"^joint_constraints/{axis}/{key}$"))),
         ];
 
     // Two VisualShader rows per graph type, in type_string order: the type's nodes, then its connections.

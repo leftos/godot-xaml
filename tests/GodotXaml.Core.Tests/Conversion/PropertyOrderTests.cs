@@ -1059,6 +1059,121 @@ public sealed class PropertyOrderTests
         Assert.Equal(["modification_count", "modifications/0", "modifications/2", "modifications/10"], Names(resource.ResourceProperties));
     }
 
+    // PhysicalBone3D::_get_property_list lists its JointData's keys after bone_name, each joint type's keys in a fixed order
+    // (ConeJointData, SliderJointData::_get_property_list).
+    [Fact]
+    public void APhysicalBoneJointListsItsConstraintsInItsJointTypesOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Node3D {{X}} Name="Root">
+              <PhysicalBone3D Name="Cone" JointType="Cone" bone_name='"a"'>
+                <x:Prop Name="joint_constraints/bias" Value="0.3" />
+                <x:Prop Name="joint_constraints/relaxation" Value="1.0" />
+                <x:Prop Name="joint_constraints/softness" Value="0.2" />
+                <x:Prop Name="joint_constraints/swing_span" Value="30.0" />
+                <x:Prop Name="joint_constraints/twist_span" Value="90.0" />
+              </PhysicalBone3D>
+              <PhysicalBone3D Name="Slider" JointType="Slider" bone_name='"b"'>
+                <x:Prop Name="joint_constraints/angular_limit_damping" Value="0.4" />
+                <x:Prop Name="joint_constraints/angular_limit_lower" Value="0.0" />
+                <x:Prop Name="joint_constraints/angular_limit_upper" Value="0.0" />
+                <x:Prop Name="joint_constraints/linear_limit_lower" Value="-2.0" />
+                <x:Prop Name="joint_constraints/linear_limit_upper" Value="2.0" />
+              </PhysicalBone3D>
+            </Node3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "joint_type",
+                "bone_name",
+                "joint_constraints/swing_span",
+                "joint_constraints/twist_span",
+                "joint_constraints/bias",
+                "joint_constraints/softness",
+                "joint_constraints/relaxation",
+            ],
+            Names(scene.Nodes[1].Properties)
+        );
+        Assert.Equal(
+            [
+                "joint_type",
+                "bone_name",
+                "joint_constraints/linear_limit_upper",
+                "joint_constraints/linear_limit_lower",
+                "joint_constraints/angular_limit_upper",
+                "joint_constraints/angular_limit_lower",
+                "joint_constraints/angular_limit_damping",
+            ],
+            Names(scene.Nodes[2].Properties)
+        );
+    }
+
+    // SixDOFJointData::_get_property_list lists the axes x, y, z, each axis's keys in a fixed order.
+    [Fact]
+    public void ASixDofJointListsItsAxesInOrderEachWithItsKeysInOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <PhysicalBone3D {{X}} Name="Root" JointType="Type6Dof">
+              <x:Prop Name="joint_constraints/x/angular_damping" Value="1.0" />
+              <x:Prop Name="joint_constraints/x/linear_limit_enabled" Value="false" />
+              <x:Prop Name="joint_constraints/y/erp" Value="0.5" />
+              <x:Prop Name="joint_constraints/y/linear_spring_stiffness" Value="5.0" />
+              <x:Prop Name="joint_constraints/z/angular_equilibrium_point" Value="0.0" />
+              <x:Prop Name="joint_constraints/z/linear_limit_upper" Value="0.0" />
+            </PhysicalBone3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "joint_type",
+                "joint_constraints/x/linear_limit_enabled",
+                "joint_constraints/x/angular_damping",
+                "joint_constraints/y/linear_spring_stiffness",
+                "joint_constraints/y/erp",
+                "joint_constraints/z/linear_limit_upper",
+                "joint_constraints/z/angular_equilibrium_point",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // SoftBody3D::_get_property_list lists pinned_points, then the attachments in numeric order, each attachment's keys in a
+    // fixed order.
+    [Fact]
+    public void ASoftBodyAttachmentListsItsPointFirstAndAttachmentsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <SoftBody3D {{X}} Name="Root" pinned_points="[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21]">
+              <x:Prop Name="attachments/0/offset" Value="Vector3(0, 0, 0)" />
+              <x:Prop Name="attachments/0/point_index" Value="1" />
+              <x:Prop Name="attachments/0/spatial_attachment_path" Value='NodePath("../Anchor")' />
+              <x:Prop Name="attachments/10/offset" Value="Vector3(0.5, 10, -0.5)" />
+              <x:Prop Name="attachments/10/point_index" Value="21" />
+              <x:Prop Name="attachments/2/point_index" Value="5" />
+            </SoftBody3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "pinned_points",
+                "attachments/0/point_index",
+                "attachments/0/spatial_attachment_path",
+                "attachments/0/offset",
+                "attachments/2/point_index",
+                "attachments/10/point_index",
+                "attachments/10/offset",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
     private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
 
     // Parses a resource document and converts it with no issue.

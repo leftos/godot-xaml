@@ -31,6 +31,7 @@ public sealed class SceneRoundTripTests
             "multiline",
             "nested",
             "order_inner",
+            "physics_bones",
             "placeholder",
             "placeholder_order",
             "property_order",

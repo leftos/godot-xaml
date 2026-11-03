@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Converting back writes PhysicalBone3D joint constraints and SoftBody3D attachments in Godot's order.
+
 ## 0.1.1 - 2026-11-03
 
 ### Fixed

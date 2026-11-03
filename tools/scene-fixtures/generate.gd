@@ -8,6 +8,7 @@ extends SceneTree
 ## <out-dir>/<case>.tscn or .tres. Ext and sub-resource ids are pinned; node unique_id values
 ## are random on every run (Node.set_unique_scene_id is not exposed to scripts).
 
+const FamilyCases := preload("res://family_cases.gd")
 const CASES_DIR := "res://cases"
 ## Scene inheritance cannot be set up from a script (Node.set_scene_inherited_state is not
 ## exposed), so the inherited case loads this one-node scene that inherits nested.tscn, edits
@@ -73,6 +74,7 @@ func _run() -> String:
 		_animation_player_library,
 		_skeleton_modification_chains,
 		_skeleton_modification_singles,
+		FamilyCases.physics_bones.bind(self),
 	]
 	for step in steps:
 		var error: String = step.call()
