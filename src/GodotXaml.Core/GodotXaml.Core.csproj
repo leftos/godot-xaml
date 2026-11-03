@@ -3,6 +3,7 @@
     <!-- net8.0: the Godot addon loads this assembly, and Godot 4.7's minimum is net8.0 (GodotTools.ProjectEditor/ProjectGenerator.cs:15). -->
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>GodotXaml.Core</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <!-- The NuGet package the addon's install brings in. The version comes from Directory.Build.props. -->

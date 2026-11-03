@@ -8,6 +8,7 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
     <!-- Godot fixes the folders (addons/godot_xaml/, checks/), so the namespaces cannot follow them. -->
     <NoWarn>$(NoWarn);IDE0130</NoWarn>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
