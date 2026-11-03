@@ -4,27 +4,27 @@
 
 ## Core format
 
-- [ ] GXAML-103 Dynamic-family table: tests, shared helpers, ordinal matching and the Godot version tie
-- [ ] GXAML-109 Dynamic families: Skeleton3D's 3.x bone keys, ASCII entry indexes, and the untested ranking paths
-- [/] GXAML-114 Dynamic families: a compare fixture for every stored family, enforced by a coverage test
-  - [ ] GXAML-123 Fixture tile_map_grid_map.tscn: TileMap layers, GridMap and MeshLibrary
-  - [ ] GXAML-124 Fixture gui_item_arrays.tscn: TabBar, PopupMenu, ItemList, OptionButton, MenuButton, FileDialog
-  - [ ] GXAML-125 Fixture gui_tabs_graph.tscn: TabContainer, GraphNode, audio listeners and players
-  - [ ] GXAML-126 Fixtures theme_font_resources.tres and audio_resources.tres
-  - [ ] GXAML-128 Coverage test: every dynamic-family row matched by a fixture or a reviewed exception
-  - [ ] GXAML-129 Fixture shader_parameters.tscn: instance shader parameters, ShaderMaterial and ShaderGlobalsOverride
-- [ ] GXAML-131 Conversion back: VisualShader flags/ order follows the shader's mode
-- [ ] GXAML-144 Conversion back: TileSetAtlasSource tiles in Godot's per-tile order
+- [ ] GXAML-103 Dynamic-family table: tests, shared helpers, ordinal matching and the Godot version tie · release vNext+1
+- [ ] GXAML-109 Dynamic families: Skeleton3D's 3.x bone keys, ASCII entry indexes, and the untested ranking paths · release vNext+1
+- [/] GXAML-114 Dynamic families: a compare fixture for every stored family, enforced by a coverage test · release vNext+1
+  - [ ] GXAML-123 Fixture tile_map_grid_map.tscn: TileMap layers, GridMap and MeshLibrary · release vNext+1
+  - [ ] GXAML-124 Fixture gui_item_arrays.tscn: TabBar, PopupMenu, ItemList, OptionButton, MenuButton, FileDialog · release vNext+1
+  - [ ] GXAML-125 Fixture gui_tabs_graph.tscn: TabContainer, GraphNode, audio listeners and players · release vNext+1
+  - [ ] GXAML-126 Fixtures theme_font_resources.tres and audio_resources.tres · release vNext+1
+  - [ ] GXAML-128 Coverage test: every dynamic-family row matched by a fixture or a reviewed exception · release vNext+1
+  - [ ] GXAML-129 Fixture shader_parameters.tscn: instance shader parameters, ShaderMaterial and ShaderGlobalsOverride · release vNext+1
+- [ ] GXAML-131 Conversion back: VisualShader flags/ order follows the shader's mode · release vNext+1
+- [ ] GXAML-144 Conversion back: TileSetAtlasSource tiles in Godot's per-tile order · release vNext+1
 
 ## Godot addon
 
-- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane
-- [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit
-- [ ] GXAML-107 Editor: every changed .xscn is loaded in full for its scene groups
-- [ ] GXAML-149 Addon: a per-user temp folder on systems whose temp folder is shared
-- [ ] GXAML-150 Addon: global classes from a mounted .pck reach the .xres loader
-- [ ] GXAML-154 Compare and export runs stream Godot's output, so a starved run is not taken for a stall
-- [ ] GXAML-155 Editor checks: fail the run on any engine ERROR line
+- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+1
+- [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit · release vNext
+- [ ] GXAML-107 Editor: every changed .xscn is loaded in full for its scene groups · release vNext
+- [ ] GXAML-149 Addon: a per-user temp folder on systems whose temp folder is shared · release vNext
+- [ ] GXAML-150 Addon: global classes from a mounted .pck reach the .xres loader · release vNext
+- [ ] GXAML-154 Compare and export runs stream Godot's output, so a starved run is not taken for a stall · release vNext
+- [ ] GXAML-155 Editor checks: fail the run on any engine ERROR line · release vNext
 
 ## Agent tooling
 
@@ -32,13 +32,13 @@
 
 ## Editor support
 
-- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting
-  - [ ] GXAML-134 Language server: project, transport, document store and diagnostics
-  - [ ] GXAML-135 Language server: whole-document formatting
-  - [ ] GXAML-136 Language server: hover
-  - [ ] GXAML-137 Hover descriptions: a docs file per Godot version from its class reference
-  - [ ] GXAML-138 Language server: completions by context
-  - [ ] GXAML-139 Language server: per-platform executables, CI matrix and release packaging
+- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext+1
+  - [ ] GXAML-134 Language server: project, transport, document store and diagnostics · release vNext+1
+  - [ ] GXAML-135 Language server: whole-document formatting · release vNext+1
+  - [ ] GXAML-136 Language server: hover · release vNext+1
+  - [ ] GXAML-137 Hover descriptions: a docs file per Godot version from its class reference · release vNext+1
+  - [ ] GXAML-138 Language server: completions by context · release vNext+1
+  - [ ] GXAML-139 Language server: per-platform executables, CI matrix and release packaging · release vNext+1
 - [ ] GXAML-15 VS Code extension over the language server
 - [ ] GXAML-16 Visual Studio extension over the language server
 - [ ] GXAML-17 Visual Studio preview pane with click-to-select
