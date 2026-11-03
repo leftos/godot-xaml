@@ -57,6 +57,7 @@ func _run_checks(data: Dictionary, bytes: PackedByteArray) -> void:
 	_check("K21", _k21(data))
 	_check("K22", _k22(data))
 	_check("K23", _k23(data))
+	_check("K24", _k24(data))
 
 
 func _k1(data: Dictionary) -> String:
@@ -267,6 +268,25 @@ func _k23(data: Dictionary) -> String:
 	if _class(data, "Button").has("hasDefaults"):
 		return "Button has a hasDefaults key"
 	return ""
+
+
+func _k24(data: Dictionary) -> String:
+	var tracker := _property(data, "OpenXRRenderModelManager", "tracker")
+	if tracker.is_empty():
+		return "OpenXRRenderModelManager has no property tracker"
+	var pose := _property(data, "OpenXRRenderModelManager", "make_local_to_pose")
+	if pose.is_empty():
+		return "OpenXRRenderModelManager has no property make_local_to_pose"
+	if _class(data, "OpenXRRenderModelManager").has("hasDefaults"):
+		return "OpenXRRenderModelManager has a hasDefaults key"
+	return _first(
+		[
+			_mismatch("OpenXRRenderModelManager.tracker.default", tracker.get("default"), "0"),
+			_mismatch(
+				"OpenXRRenderModelManager.make_local_to_pose.default", pose.get("default"), '""'
+			),
+		]
+	)
 
 
 func _check(id: String, detail: String) -> void:

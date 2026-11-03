@@ -5,6 +5,7 @@ Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent
 ## What it reads
 
 - **ClassDB**, from a headless Godot run of `dump.gd`: the classes, parents, `can_instantiate`, each class's own properties (`class_get_property_list(class, true)`), own signals (`class_get_signal_list(class, true)`), defaults (`class_get_property_default_value`) and enums.
+- The run fails when Godot logs any error while it reads ClassDB, so a new error cannot hide; the one harmless error `OpenXRRenderModelManager` logs when ClassDB builds it to read its defaults is muted for that class alone.
 - **`extension_api.json`**, from `godot --headless --dump-extension-api`: the global enums (`Side`, `HorizontalAlignment`, …) and each property's enum or bitfield type. That type is read from the property's getter return value (`enum::Control.MouseFilter`, `bitfield::Control.SizeFlags`), since the property entry itself reads `int` for an enum registered by hint alone; the getter is looked up on the class and then its ancestors.
 
 ## Format
@@ -49,7 +50,7 @@ godot --headless --path tools/metadata-dump --script res://check.gd -- --file <a
 `check.gd` prints `CHECK <id> PASS` or `CHECK <id> FAIL <detail>` for each known fact, and exits 1 when any failed. The facts:
 
 - classes and properties: Control's parent, `Node2D.position` and `Label.text` defaults, no defaults on `CanvasItem`, `layout_mode` stored, no `/` name in `Control.properties`;
-- default overrides: `Button` overrides `focus_mode` with `"2"`, `Label` overrides `mouse_filter` with `"2"`, `Control` has no `focus_mode` override, `BaseButton.disabled` has no `default` key, and `BaseButton` has `hasDefaults` false while `Button` has no such key;
+- default overrides: `Button` overrides `focus_mode` with `"2"`, `Label` overrides `mouse_filter` with `"2"`, `Control` has no `focus_mode` override, `BaseButton.disabled` has no `default` key, and `BaseButton` has `hasDefaults` false while `Button` has no such key, and `OpenXRRenderModelManager` keeps its `tracker` and `make_local_to_pose` defaults with no `hasDefaults` key;
 - enums: the `mouse_filter` and `size_flags_horizontal` enum links, the `Side` global enum;
 - theme overrides: `Label`'s `font_color` is a `Color`, `Button`'s `styles/normal` is an `Object` of `StyleBox`, `Window` has overrides, `Node2D` has no `themeOverrides`;
 - signals: `BaseButton` declares `pressed` and `Button` does not, `Node` declares `ready`, `Area2D`'s `body_entered` takes a `Node2D` `body`;

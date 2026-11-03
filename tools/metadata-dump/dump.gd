@@ -37,6 +37,15 @@ func _run() -> String:
 	var api: Variant = JSON.parse_string(api_text)
 	if not api is Dictionary:
 		return "%s is not a JSON object" % api_path
+	var error_log := DumpErrorLog.new()
+	OS.add_logger(error_log)
+	var error := _dump(api, out_dir, error_log)
+	OS.remove_logger(error_log)
+	return error
+
+
+## Reads ClassDB into the dump and writes it under `out_dir`, failing when Godot logs any error.
+func _dump(api: Dictionary, out_dir: String, error_log: DumpErrorLog) -> String:
 	var version := Engine.get_version_info()
 	var data := {
 		"godot": version.string,
@@ -45,6 +54,9 @@ func _run() -> String:
 	}
 	if not _instantiate_failures.is_empty():
 		return _instantiate_error()
+	var logged := error_log.failure()
+	if not logged.is_empty():
+		return logged
 	var out_path := out_dir.path_join("godot-%d.%d.json" % [version.major, version.minor])
 	var write_error := _write_metadata(out_path, data)
 	if not write_error.is_empty():
@@ -302,7 +314,17 @@ func _effective_default(class_title: String, name: String) -> Variant:
 ## Godot answers with no value as null, which only an Object or Nil property can hold for real; a
 ## non-null Object default is left out too.
 func _default_text(class_title: String, entry: Dictionary) -> Variant:
+	# OpenXRRenderModelManager logs "render_model_extension is null" on each notification it gets
+	# outside a tree (openxr_render_model_manager.cpp, _notification), and ClassDB builds and frees
+	# one to read its defaults. The notifications it acts on never reach that code, so the error is
+	# harmless and is muted for this class alone.
+	var muted := class_title == "OpenXRRenderModelManager"
+	var print_error_messages := Engine.print_error_messages
+	if muted:
+		Engine.print_error_messages = false
 	var value: Variant = ClassDB.class_get_property_default_value(class_title, entry.name)
+	if muted:
+		Engine.print_error_messages = print_error_messages
 	if value is Object or (value == null and entry.type != TYPE_OBJECT and entry.type != TYPE_NIL):
 		return null
 	return var_to_str(value)
@@ -348,3 +370,41 @@ func _arg_value(name: String) -> String:
 	if index == -1 or index + 1 >= args.size():
 		return ""
 	return args[index + 1]
+
+
+## Records the errors Godot logs while the dump reads ClassDB, so a run fails on any of them.
+##
+## A logger is called from other threads, possibly at once, so the entries are kept under a mutex.
+class DumpErrorLog:
+	extends Logger
+	const SHOWN := 5
+
+	var _mutex := Mutex.new()
+	var _entries := PackedStringArray()
+
+	func _log_error(
+		_function: String,
+		file: String,
+		line: int,
+		code: String,
+		rationale: String,
+		_editor_notify: bool,
+		_error_type: int,
+		_script_backtraces: Array[ScriptBacktrace]
+	) -> void:
+		var detail := rationale if not rationale.is_empty() else code
+		_mutex.lock()
+		_entries.append("%s:%d: %s" % [file, line, detail])
+		_mutex.unlock()
+
+	## The failure message for what Godot logged, or "" when it logged nothing.
+	func failure() -> String:
+		_mutex.lock()
+		var entries := _entries.duplicate()
+		_mutex.unlock()
+		if entries.is_empty():
+			return ""
+		return (
+			"Godot logged %d error(s) during the dump: %s"
+			% [entries.size(), "; ".join(entries.slice(0, SHOWN))]
+		)
