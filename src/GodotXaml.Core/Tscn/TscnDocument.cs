@@ -217,15 +217,16 @@ public sealed record TscnDocument
 
     /// <summary>
     /// A new sub-resource id, <c>&lt;Type&gt;_&lt;5 characters&gt;</c> from the same 34-character set as
-    /// <see cref="NewExtResourceId"/> (resource_format_text.cpp:1927); unique among the sub-resource ids and the same
-    /// for the same document, type and seed.
+    /// <see cref="NewExtResourceId"/> (resource_format_text.cpp:1927); unique among the ids taken and the same for the
+    /// same type, seed and taken set.
     /// </summary>
     /// <param name="type">The sub-resource's class.</param>
     /// <param name="seed">The seed the five characters are drawn from.</param>
+    /// <param name="taken">The ids already in use, compared ordinal.</param>
     /// <returns>The id.</returns>
-    public string NewSubResourceId(string type, ulong seed)
+    public static string NewSubResourceId(string type, ulong seed, HashSet<string> taken)
     {
         ArgumentException.ThrowIfNullOrEmpty(type);
-        return TscnIdMinter.Mint(type, seed, SubResources.Select(sub => sub.Id));
+        return TscnIdMinter.Mint(type, seed, taken);
     }
 }

@@ -23,15 +23,9 @@ public static partial class TscnReader
     public static TscnDocument Read(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        if (text.Length > 0 && text[0] == (char)0xFEFF)
-        {
-            // resource_format_text.cpp:1127-1136: the loader skips a leading UTF-8 BOM.
-            text = text[1..];
-        }
-
         try
         {
-            var scanner = new TscnScanner(text);
+            var scanner = new TscnScanner(WithoutBom(text));
             var builder = new DocumentBuilder(ReadHeader(scanner));
             for (TscnItem? item = scanner.Next(); item is not null; item = scanner.Next())
             {
@@ -45,6 +39,26 @@ public static partial class TscnReader
             throw new TscnParseException(error.Reason, error.Line, error.Column, error);
         }
     }
+
+    /// <summary>Reads only a file's header, for a caller that wants its uid and not the document.</summary>
+    /// <param name="text">The text.</param>
+    /// <returns>The header's uid, or null when it has none.</returns>
+    /// <exception cref="TscnParseException">The header is not one Godot's loader reads.</exception>
+    public static string? ReadUid(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        try
+        {
+            return ReadHeader(new TscnScanner(WithoutBom(text))).Header.Uid;
+        }
+        catch (GodotValueParseException error)
+        {
+            throw new TscnParseException(error.Reason, error.Line, error.Column, error);
+        }
+    }
+
+    // resource_format_text.cpp:1127-1136: the loader skips a leading UTF-8 BOM.
+    private static string WithoutBom(string text) => text.Length > 0 && text[0] == (char)0xFEFF ? text[1..] : text;
 
     private static (TscnKind Kind, TscnHeader Header) ReadHeader(TscnScanner scanner)
     {

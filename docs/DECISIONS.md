@@ -257,6 +257,10 @@ A `uid://` value is resolved from the sources' headers, and a feature-tagged key
 
 Why, from the Godot 4.7.2 source: Godot loads these files before `ResourceLoader::add_custom_loaders()` (`main/main.cpp:3880-3881` and `:3691`, before `:4494`), so the addon's loaders do not exist yet; and a left theme whose ext_resource was converted fails whole at startup (`scene/resources/resource_format_text.cpp:147-160`). Whether a left file hits an export is unmeasured.
 
+## A project conversion runs on one thread
+
+`convert` stays serial: a conversion is a one-time step, so its speed does not justify the ordering and buffering parallel work would add to its output. A slow run is fixed by removing repeated work.
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.

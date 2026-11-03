@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Diagnostics.CodeAnalysis;
@@ -611,7 +612,8 @@ internal static class ConvertCommand
         return planned;
     }
 
-    // Converts one source to its document, with no text yet; null when the core refused it or reported an error.
+    // Converts one source to its document and the text it writes, which the run keeps; null when the core refused it or
+    // reported an error.
     private static Planned? Prepare(Source source, string outputPath, GodotMetadata metadata, Tally tally, TextWriter output)
     {
         var options = new ConversionOptions { Seed = SeedOf(outputPath), Uid = source.Uid };
@@ -632,14 +634,17 @@ internal static class ConvertCommand
         }
         var item = new Planned(source, outputPath, prepared.Document, prepared.Uid);
         // The text is produced once with the unrewritten document, so a document the writer refuses or a conversion
-        // that reports an error drops the source before the rename map is built from it.
-        return Text(item, metadata, tally, output, check: true) is null ? null : item;
+        // that reports an error drops the source before the rename map is built from it. It is kept: a document the
+        // rewrite leaves as it was is not produced again.
+        item.Checked = Text(item, metadata, tally, output, check: true);
+        return item.Checked is null ? null : item;
     }
 
     // The rename map of each project root, from every source the run converts under it to its output.
     private static Dictionary<string, Dictionary<string, string>> Renames(List<Planned> planned, Tally tally, TextWriter output)
     {
         var roots = new Dictionary<string, Dictionary<string, string>>(InputFiles.PathComparer);
+        var listings = new Dictionary<string, string[]>(StringComparer.Ordinal);
         foreach (Planned item in planned)
         {
             string? root = ProjectRoot.Find(item.Source.File.Path);
@@ -654,7 +659,7 @@ internal static class ConvertCommand
                 map = new Dictionary<string, string>(StringComparer.Ordinal);
                 roots.Add(root, map);
             }
-            map[ProjectRoot.ResPath(root, item.Source.File.Path)] = ProjectRoot.ResPath(root, item.Output);
+            map[ProjectRoot.ResPath(root, item.Source.File.Path, listings)] = ProjectRoot.ResPath(root, item.Output, listings);
         }
         return roots;
     }
@@ -671,6 +676,7 @@ internal static class ConvertCommand
             }
             XscnPathRewriteResult result = XscnPathRewriter.Rewrite(item.Document, renames[root]);
             item.Document = result.Document;
+            item.Checked = result.Changed ? null : item.Checked;
             foreach (string warning in result.Warnings)
             {
                 Warn(output, tally, item.Source.File.Path, CliCodes.UnrewrittenPath, warning);
@@ -722,7 +728,7 @@ internal static class ConvertCommand
     // counts as converted only once it is moved into place.
     private static void Place(Planned item, GodotMetadata metadata, Tally tally, InvocationConfiguration invocation)
     {
-        Converted? converted = Text(item, metadata, tally, invocation.Output, check: false);
+        Converted? converted = Produce(item, metadata, tally, invocation);
         if (converted is null)
         {
             return;
@@ -735,12 +741,12 @@ internal static class ConvertCommand
         }
         string? sidecar = item.Source.File.Kind.FromTscn ? target + ".uid" : null;
         byte[]? sidecarBefore = null;
-        if (sidecar is not null && !TryPlaceSidecar(sidecar, converted.SidecarUid, invocation.Error, out sidecarBefore))
+        if (sidecar is not null && !TryPlaceSidecar(item, sidecar, converted.SidecarUid, invocation.Error, out sidecarBefore))
         {
             WriteFailed(item, tally);
             return;
         }
-        if (!InputFiles.TryWrite(target, converted.Text, invocation.Error))
+        if (!TryWriteOutput(item, target, converted.Text, invocation.Error))
         {
             // The sidecar belongs to the output that was not written, so it goes back to what it was.
             RestoreSidecar(sidecar, sidecarBefore, invocation.Error);
@@ -756,6 +762,20 @@ internal static class ConvertCommand
         item.WrittenText = converted.Text;
     }
 
+    // The text to write for a source: the plan's kept text, whose issues the run reports now, or a fresh conversion.
+    private static Converted? Produce(Planned item, GodotMetadata metadata, Tally tally, InvocationConfiguration invocation)
+    {
+        if (item.Checked is { } kept)
+        {
+            Report(item.Source.File.Path, kept.Issues, tally, invocation.Output, errorsOnly: false);
+            return kept;
+        }
+        return Text(item, metadata, tally, invocation.Output, check: false);
+    }
+
+    private static bool TryWriteOutput(Planned item, string target, string text, TextWriter error) =>
+        item.Staged is null ? InputFiles.TryWrite(target, text, error) : InputFiles.TryWriteStaged(target, text, error);
+
     private static void WriteFailed(Planned item, Tally tally)
     {
         tally.Errors++;
@@ -764,19 +784,19 @@ internal static class ConvertCommand
     }
 
     // The text to write; null when the core refused the document or a conversion issue is an error, so nothing is
-    // written. A check reports only errors, since the run produces the text again and reports every issue then.
+    // written. A check reports only errors, since the run reports every issue when it writes the file.
     private static Converted? Text(Planned item, GodotMetadata metadata, Tally tally, TextWriter output, bool check)
     {
         try
         {
             if (item.Source.File.Kind.FromTscn)
             {
-                return new Converted(XscnWriter.Write(item.Document, metadata), item.Uid);
+                return new Converted(XscnWriter.Write(item.Document, metadata), item.Uid, []);
             }
             var options = new ConversionOptions { Seed = SeedOf(item.Output), Uid = item.Uid };
             ConversionResult<TscnDocument> result = XscnToTscn.Convert(item.Document, metadata, options);
             return Report(item.Source.File.Path, result.Issues, tally, output, errorsOnly: check)
-                ? new Converted(TscnWriter.Write(result.Document), SidecarUid: null)
+                ? new Converted(TscnWriter.Write(result.Document), SidecarUid: null, result.Issues)
                 : null;
         }
         catch (Exception exception) when (CheckCommand.IsCoreRefusal(exception))
@@ -859,6 +879,8 @@ internal static class ConvertCommand
     {
         var skip = new HashSet<string>(alsoSkip.Select(Path.GetFullPath), InputFiles.PathComparer);
         var roots = new Dictionary<string, Dictionary<string, string>>(InputFiles.PathComparer);
+        // The disk has changed since the plan's listings, so the scan lists again.
+        var listings = new Dictionary<string, string[]>(StringComparer.Ordinal);
         foreach (Planned item in planned)
         {
             string? root = item.Root;
@@ -873,7 +895,7 @@ internal static class ConvertCommand
                 map = new Dictionary<string, string>(StringComparer.Ordinal);
                 roots.Add(root, map);
             }
-            map[ProjectRoot.ResPath(root, item.Source.File.Path)] = ProjectRoot.ResPath(root, item.Output);
+            map[ProjectRoot.ResPath(root, item.Source.File.Path, listings)] = ProjectRoot.ResPath(root, item.Output, listings);
         }
         foreach ((string root, Dictionary<string, string> map) in roots)
         {
@@ -966,7 +988,7 @@ internal static class ConvertCommand
 
     // A conversion without a uid removes a sidecar left from an earlier one, which would give the output a uid it lacks.
     // The sidecar's bytes before the step are kept, null when there was none, so the step can be undone.
-    private static bool TryPlaceSidecar(string sidecar, string? uid, TextWriter error, out byte[]? before)
+    private static bool TryPlaceSidecar(Planned item, string sidecar, string? uid, TextWriter error, out byte[]? before)
     {
         before = null;
         if (File.Exists(sidecar) && !TryReadBytes(sidecar, error, out before))
@@ -975,7 +997,7 @@ internal static class ConvertCommand
         }
         if (uid is not null)
         {
-            return InputFiles.TryWrite(sidecar, uid + "\n", error);
+            return TryWriteOutput(item, sidecar, uid + "\n", error);
         }
         return before is null || InputFiles.TryDelete(sidecar, error);
     }
@@ -1190,6 +1212,9 @@ internal static class ConvertCommand
 
         public string? Root { get; set; }
 
+        // The text the plan's check produced, while the rewrite has not changed the document.
+        public Converted? Checked { get; set; }
+
         public bool Written { get; set; }
 
         public string WrittenText { get; set; } = "";
@@ -1236,8 +1261,9 @@ internal static class ConvertCommand
         public string? Backup { get; set; }
     }
 
-    // The text to write, and for a .xscn or .xres the uid its .uid sidecar holds (null for none).
-    private sealed record Converted(string Text, string? SidecarUid);
+    // The text to write, for a .xscn or .xres the uid its .uid sidecar holds (null for none), and the conversion issues the
+    // run reports when it writes the text.
+    private sealed record Converted(string Text, string? SidecarUid, ImmutableArray<ConversionIssue> Issues);
 
     // The run's overwrite setting and its counts.
     private sealed class Tally

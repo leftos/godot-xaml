@@ -277,5 +277,29 @@ public sealed class TscnReaderTests
     public void RejectsWhatGodotsLoaderRejects(string text, string reason) =>
         Assert.Equal(reason, Assert.Throws<TscnParseException>(() => TscnReader.Read(text)).Reason);
 
+    [Fact]
+    public void ReadUidReturnsTheHeadersUid() =>
+        Assert.Equal("uid://abc", TscnReader.ReadUid("[gd_scene format=3 uid=\"uid://abc\"]\n\n[node name=\"Root\" type=\"Node\"]\n"));
+
+    [Fact]
+    public void ReadUidIsNullWithoutAUid() => Assert.Null(TscnReader.ReadUid("[gd_scene format=3]\n\n[node name=\"Root\" type=\"Node\"]\n"));
+
+    // resource_format_text.cpp:1127-1136: the loader skips a leading UTF-8 BOM.
+    [Fact]
+    public void ReadUidSkipsALeadingByteOrderMark() =>
+        Assert.Equal("uid://abc", TscnReader.ReadUid((char)0xFEFF + "[gd_scene format=3 uid=\"uid://abc\"]\n"));
+
+    [Fact]
+    public void ReadUidThrowsOnABadHeader() => Assert.Throws<TscnParseException>(() => TscnReader.ReadUid("[node name=\"Root\" type=\"Node\"]\n"));
+
+    [Fact]
+    public void ReadUidIgnoresABrokenBody()
+    {
+        const string Text = "[gd_scene format=3 uid=\"uid://abc\"]\n\n[node name=\"Root\"\n";
+
+        Assert.Equal("uid://abc", TscnReader.ReadUid(Text));
+        Assert.Throws<TscnParseException>(() => TscnReader.Read(Text));
+    }
+
     private static TscnDocument Fixture(string file) => TscnReader.Read(File.ReadAllText(RepoFiles.PathOf("tests", "fixtures", "scenes", file)));
 }

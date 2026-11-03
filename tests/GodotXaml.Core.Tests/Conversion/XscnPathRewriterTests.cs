@@ -374,6 +374,44 @@ public sealed class XscnPathRewriterTests
         Assert.Equal(new XscnSceneType("res://ui/button.xscn"), Child(result.Document, 0).Type);
     }
 
+    [Fact]
+    public void ChangedIsFalseWhenNoPathMatches()
+    {
+        XscnDocument document = Parse($"""<TextureRect {X} Name="Root" Texture="res://art/t.png" />""");
+
+        XscnPathRewriteResult result = Rewrite(document, ("res://art/other.png", "res://art/other.xres"));
+
+        Assert.False(result.Changed);
+    }
+
+    [Fact]
+    public void ChangedIsTrueWhenAPathMatches()
+    {
+        XscnDocument document = Parse($"""<TextureRect {X} Name="Root" Texture="res://art/t.png" />""");
+
+        XscnPathRewriteResult result = Rewrite(document, ("res://art/t.png", "res://art/t.xres"));
+
+        Assert.True(result.Changed);
+    }
+
+    [Fact]
+    public void ChangedIsTrueWhenOnlyAUidPathMatches()
+    {
+        XscnDocument document = Parse(
+            $"""
+            <Control {X} Name="Root">
+              <x:Uids>
+                <x:Uid Path="res://art/frame.png" Value="uid://dframe" />
+              </x:Uids>
+            </Control>
+            """
+        );
+
+        XscnPathRewriteResult result = Rewrite(document, ("res://art/frame.png", "res://art/frame.xres"));
+
+        Assert.True(result.Changed);
+    }
+
     private static XscnPathRewriteResult Rewrite(XscnDocument document, params (string Old, string New)[] renames) =>
         XscnPathRewriter.Rewrite(document, renames.ToDictionary(rename => rename.Old, rename => rename.New, StringComparer.Ordinal));
 

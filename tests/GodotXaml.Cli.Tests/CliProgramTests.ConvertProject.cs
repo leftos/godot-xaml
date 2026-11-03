@@ -201,6 +201,43 @@ public sealed partial class CliProgramTests
         Assert.Contains($"{theme}: left as text: Godot loads it before any addon (gui/theme/custom)", run.Lines);
     }
 
+    // A source whose header claims a uid and whose body Godot cannot parse does not stand for the uid.
+    [Fact]
+    public void ABrokenFileClaimingAUidDoesNotHideTheFileThatParses()
+    {
+        Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"uid://dupe\"\n");
+        const string Header = "[gd_resource type=\"Theme\" format=3 uid=\"uid://dupe\"]\n\n[resource]\n";
+        string broken = Write("a.tres", Header + "\n[sub_resource type=\"Gradient\"\n");
+        string whole = Write("b.tres", Header + "default_font_size = 12\n");
+
+        RunResult run = RunProject();
+
+        string left = $"{whole}: left as text: Godot loads it before any addon (gui/theme/custom)";
+        string notLeft = $"{broken}: left as text: Godot loads it before any addon (gui/theme/custom)";
+        Assert.Contains(left, run.Lines);
+        Assert.DoesNotContain(run.Lines, line => line == notLeft);
+    }
+
+    // The plan's check reports only errors; the kept text's warnings are reported once, when the output is written.
+    [Fact]
+    public void ProjectRunReportsAWayBackWarningOnce()
+    {
+        Write("project.godot", Project);
+        string resource = Write(
+            "t.xres",
+            "<Theme xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\">\n"
+                + "  <x:Resources>\n    <Gradient x:Key=\"Spare\" />\n  </x:Resources>\n</Theme>\n"
+        );
+
+        RunResult run = RunProject("--back");
+
+        const string Message = "Nothing refers to this x:Resources entry; Godot would not save it, so it is dropped.";
+        string warning = $"{resource}: warning GXC0105: {Message} (x:Resources \"Spare\")";
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(1, run.Lines.Count(line => line == warning));
+        Assert.Contains("1 converted, 0 refused, 0 error(s), 1 warning(s)", run.Lines);
+    }
+
     [Fact]
     public void ProjectSaysNothingOfAUidNoFileHolds()
     {

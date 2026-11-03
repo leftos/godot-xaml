@@ -24,14 +24,22 @@ internal static class ProjectRoot
     /// <param name="root">The project root's full path.</param>
     /// <param name="fileFullPath">The file's full path.</param>
     /// <returns>The <c>res://</c> path, with '/' as the separator whatever the OS uses.</returns>
-    internal static string ResPath(string root, string fileFullPath)
+    internal static string ResPath(string root, string fileFullPath) =>
+        ResPath(root, fileFullPath, new Dictionary<string, string[]>(StringComparer.Ordinal));
+
+    /// <summary>A file's <c>res://</c> path under a root, each folder listed once across the calls that share the listings.</summary>
+    /// <param name="root">The project root's full path.</param>
+    /// <param name="fileFullPath">The file's full path.</param>
+    /// <param name="listings">Each folder's entries so far; shared only while the disk does not change.</param>
+    /// <returns>The <c>res://</c> path, with '/' as the separator whatever the OS uses.</returns>
+    internal static string ResPath(string root, string fileFullPath, Dictionary<string, string[]> listings)
     {
         string[] segments = Path.GetRelativePath(root, Path.GetFullPath(fileFullPath))
             .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
         string folder = root;
         for (int index = 0; index < segments.Length; index++)
         {
-            segments[index] = OnDiskName(folder, segments[index]);
+            segments[index] = OnDiskName(folder, segments[index], listings);
             folder = Path.Combine(folder, segments[index]);
         }
         return "res://" + string.Join('/', segments);
@@ -39,11 +47,16 @@ internal static class ProjectRoot
 
     // The name a folder's entry has on disk, so a path typed in another case still names the file Godot loads. A
     // folder that cannot be listed, and a name with no entry yet such as an output, keeps the name it was given.
-    private static string OnDiskName(string folder, string name)
+    private static string OnDiskName(string folder, string name, Dictionary<string, string[]> listings)
     {
         try
         {
-            return OnDiskName(name, Directory.EnumerateFileSystemEntries(folder));
+            if (!listings.TryGetValue(folder, out string[]? entries))
+            {
+                entries = [.. Directory.EnumerateFileSystemEntries(folder)];
+                listings.Add(folder, entries);
+            }
+            return OnDiskName(name, entries);
         }
         catch (UnauthorizedAccessException)
         {

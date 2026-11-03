@@ -16,9 +16,16 @@ internal static class TscnIdMinter
     /// <param name="seed">The seed.</param>
     /// <param name="taken">The ids already in use.</param>
     /// <returns>The id.</returns>
-    public static string Mint(string prefix, ulong seed, IEnumerable<string> taken)
+    public static string Mint(string prefix, ulong seed, IEnumerable<string> taken) =>
+        Mint(prefix, seed, new HashSet<string>(taken, StringComparer.Ordinal));
+
+    /// <summary>The first id the seed's sequence gives that is not taken, for a caller minting many from one set.</summary>
+    /// <param name="prefix">The text before the underscore.</param>
+    /// <param name="seed">The seed.</param>
+    /// <param name="used">The ids already in use, compared ordinal.</param>
+    /// <returns>The id.</returns>
+    public static string Mint(string prefix, ulong seed, HashSet<string> used)
     {
-        HashSet<string> used = new(taken, StringComparer.Ordinal);
         ulong state = seed == 0 ? ZeroSeedState : seed;
         while (true)
         {

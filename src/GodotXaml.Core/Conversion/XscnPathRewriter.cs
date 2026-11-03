@@ -7,7 +7,8 @@ namespace GodotXaml.Core.Conversion;
 /// <summary>What <see cref="XscnPathRewriter.Rewrite"/> gives: the document with its paths rewritten, and what it left as it was.</summary>
 /// <param name="Document">The rewritten document; the input document is not changed.</param>
 /// <param name="Warnings">A line for each path held in unparsed text, in document order.</param>
-public sealed record XscnPathRewriteResult(XscnDocument Document, ImmutableArray<string> Warnings);
+/// <param name="Changed">Whether a path was rewritten or the scene namespaces changed, so the text differs from the input's.</param>
+public sealed record XscnPathRewriteResult(XscnDocument Document, ImmutableArray<string> Warnings, bool Changed);
 
 /// <summary>
 /// Rewrites the <c>res://</c> paths a document refers to from a map of old path to new path, so a converted or moved file
@@ -31,6 +32,7 @@ public static class XscnPathRewriter
     private sealed class Session(XscnDocument document, Dictionary<string, string> renames)
     {
         private readonly List<string> warnings = [];
+        private bool changed;
 
         public XscnPathRewriteResult Run()
         {
@@ -43,15 +45,18 @@ public static class XscnPathRewriter
                 XscnResource resource => RewriteResource(resource, "root"),
                 _ => throw new ArgumentException($"The root is a {document.Root.GetType().Name}, not a node or a resource.", nameof(document)),
             };
+            ImmutableArray<XscnNamespace> namespaces = Namespaces(scenes);
+            changed |= !namespaces.SequenceEqual(document.Namespaces);
             return new XscnPathRewriteResult(
                 document with
                 {
-                    Namespaces = Namespaces(scenes),
+                    Namespaces = namespaces,
                     Uids = [.. document.Uids.Select(uid => uid with { Path = Mapped(uid.Path) ?? uid.Path })],
                     Resources = resources,
                     Root = root,
                 },
-                [.. warnings]
+                [.. warnings],
+                changed
             );
         }
 
@@ -205,7 +210,12 @@ public static class XscnPathRewriter
             return invalid;
         }
 
-        private string? Mapped(string path) => renames.TryGetValue(path, out string? mapped) ? mapped : null;
+        private string? Mapped(string path)
+        {
+            bool found = renames.TryGetValue(path, out string? mapped);
+            changed |= found;
+            return mapped;
+        }
 
         private static string NodeLocation(XscnNodeElement element) =>
             element switch

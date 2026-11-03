@@ -162,10 +162,10 @@ public sealed class TscnWriterTests
         };
 
         string ext = document.NewExtResourceId(42);
-        string sub = document.NewSubResourceId("Gradient", 42);
+        string sub = TscnDocument.NewSubResourceId("Gradient", 42, SubIds(document));
 
         Assert.Equal(ext, document.NewExtResourceId(42));
-        Assert.Equal(sub, document.NewSubResourceId("Gradient", 42));
+        Assert.Equal(sub, TscnDocument.NewSubResourceId("Gradient", 42, SubIds(document)));
         Assert.Matches(new Regex("^2_[a-z0-9]{5}$"), ext);
         Assert.Matches(new Regex("^Gradient_[a-z0-9]{5}$"), sub);
         Assert.NotEqual(ext, document.NewExtResourceId(43));
@@ -175,13 +175,13 @@ public sealed class TscnWriterTests
     public void MintsAnIdNotAlreadyTaken()
     {
         var empty = new TscnDocument { Kind = TscnKind.Scene };
-        string taken = empty.NewSubResourceId("X", 7);
+        string taken = TscnDocument.NewSubResourceId("X", 7, SubIds(empty));
         TscnDocument document = empty with { SubResources = [new TscnSubResource { Type = "X", Id = taken }] };
 
-        string minted = document.NewSubResourceId("X", 7);
+        string minted = TscnDocument.NewSubResourceId("X", 7, SubIds(document));
 
         Assert.NotEqual(taken, minted);
-        Assert.Equal(minted, document.NewSubResourceId("X", 7));
+        Assert.Equal(minted, TscnDocument.NewSubResourceId("X", 7, SubIds(document)));
     }
 
     // A document's kind holds only its own sections; the writer names the field it cannot write.
@@ -261,7 +261,7 @@ public sealed class TscnWriterTests
         var document = new TscnDocument { Kind = TscnKind.Scene };
         for (ulong seed = 0; seed < 200; seed++)
         {
-            string id = document.NewSubResourceId("Gradient", seed);
+            string id = TscnDocument.NewSubResourceId("Gradient", seed, SubIds(document));
             Assert.DoesNotContain('z', id);
             Assert.DoesNotContain('9', id);
         }
@@ -278,4 +278,6 @@ public sealed class TscnWriterTests
     [InlineData("naïve", "\"naïve\"")]
     [InlineData("tab\there", "\"tab\there\"")]
     public void QuotesThePropertyNamesGodotQuotes(string name, string encoded) => Assert.Equal(encoded, TscnWriter.EncodePropertyName(name));
+
+    private static HashSet<string> SubIds(TscnDocument document) => new(document.SubResources.Select(sub => sub.Id), StringComparer.Ordinal);
 }

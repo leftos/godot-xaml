@@ -285,14 +285,21 @@ public static partial class XscnToTscn
         private TscnDocument MintIds(TscnDocument shell)
         {
             TscnDocument result = MintExtIds(shell);
+            HashSet<string> taken = new(result.SubResources.Select(sub => sub.Id), StringComparer.Ordinal);
+            ImmutableArray<TscnSubResource>.Builder minted = ImmutableArray.CreateBuilder<TscnSubResource>(
+                result.SubResources.Length + subUses.Count
+            );
+            minted.AddRange(result.SubResources);
             foreach (SubUse use in subUses)
             {
                 string type = TypeName(use.Resource.Type, use.Location);
-                string id = options.KeepIds?.SubIdOf(use.Resource) ?? result.NewSubResourceId(type, options.Seed ^ siteHash(use.Site));
+                string id = options.KeepIds?.SubIdOf(use.Resource) ?? TscnDocument.NewSubResourceId(type, options.Seed ^ siteHash(use.Site), taken);
                 subIds[use.Resource] = id;
-                result = result with { SubResources = result.SubResources.Add(new TscnSubResource { Type = type, Id = id }) };
+                taken.Add(id);
+                minted.Add(new TscnSubResource { Type = type, Id = id });
             }
 
+            result = result with { SubResources = minted.ToImmutable() };
             return result with
             {
                 ExtResources = [.. result.ExtResources.OrderBy(ext => ext.Id, GodotNaturalOrder.NoCase)],

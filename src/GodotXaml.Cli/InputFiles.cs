@@ -141,6 +141,29 @@ internal static class InputFiles
         return moved;
     }
 
+    /// <summary>Writes a file in the staging folder, which already keeps a failed write off the target, with no temporary file of its own.</summary>
+    /// <param name="path">The path the output prints.</param>
+    /// <param name="text">The text, written as UTF-8 without a byte order mark.</param>
+    /// <param name="error">Where a failure is reported.</param>
+    /// <returns>Whether the file was written.</returns>
+    internal static bool TryWriteStaged(string path, string text, TextWriter error)
+    {
+        try
+        {
+            File.WriteAllBytes(path, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text));
+            return true;
+        }
+        catch (IOException)
+        {
+            error.WriteLine($"{path}: cannot be written.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            error.WriteLine($"{path}: access denied.");
+        }
+        return false;
+    }
+
     /// <summary>Deletes a file, reporting why it could not be deleted.</summary>
     /// <param name="path">The path the output prints.</param>
     /// <param name="error">Where a failure is reported.</param>

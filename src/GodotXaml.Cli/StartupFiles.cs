@@ -46,7 +46,7 @@ internal static class StartupFiles
         {
             sourcePaths.TryAdd(Path.GetFullPath(source), source);
         }
-        var uids = new Lazy<Dictionary<string, string>>(() => UidMap(sources));
+        var uids = new UidClaims(sources);
         var queue = new Queue<(string File, string Reason)>();
         foreach ((string setting, string value) in NamedValues(Path.Combine(root, SettingsFile)))
         {
@@ -66,7 +66,7 @@ internal static class StartupFiles
         string root,
         Queue<(string File, string Reason)> queue,
         Dictionary<string, string> sourcePaths,
-        Lazy<Dictionary<string, string>> uids
+        UidClaims uids
     )
     {
         var left = new List<LeftFile>();
@@ -89,13 +89,7 @@ internal static class StartupFiles
         return left;
     }
 
-    private static void EnqueueReached(
-        string root,
-        string file,
-        TscnDocument document,
-        Queue<(string File, string Reason)> queue,
-        Lazy<Dictionary<string, string>> uids
-    )
+    private static void EnqueueReached(string root, string file, TscnDocument document, Queue<(string File, string Reason)> queue, UidClaims uids)
     {
         foreach (TscnExtResource resource in document.ExtResources)
         {
@@ -110,9 +104,9 @@ internal static class StartupFiles
     // The file an ext_resource names: its uid when the map holds one, which Godot prefers
     // (resource_format_text.cpp:492-496), else its path, a res:// path under the root or one relative to the file's own
     // folder.
-    private static string Referenced(string root, string file, TscnExtResource resource, Lazy<Dictionary<string, string>> uids)
+    private static string Referenced(string root, string file, TscnExtResource resource, UidClaims uids)
     {
-        if (resource.Uid is string uid && uids.Value.GetValueOrDefault(uid) is string byUid)
+        if (resource.Uid is string uid && uids.Claimant(uid) is string byUid)
         {
             return byUid;
         }
@@ -122,13 +116,13 @@ internal static class StartupFiles
     }
 
     // The path a setting's value names, by its res:// path or by the uid map; null when it names nothing.
-    private static string? Resolve(string root, string value, Lazy<Dictionary<string, string>> uids)
+    private static string? Resolve(string root, string value, UidClaims uids)
     {
         if (value.StartsWith(ResPrefix, StringComparison.Ordinal))
         {
             return Path.GetFullPath(Path.Combine(root, value[ResPrefix.Length..]));
         }
-        return value.StartsWith(UidPrefix, StringComparison.Ordinal) ? uids.Value.GetValueOrDefault(value) : null;
+        return value.StartsWith(UidPrefix, StringComparison.Ordinal) ? uids.Claimant(value) : null;
     }
 
     // A file the run can leave as text: an existing scene or resource, the only kind with references to follow. A font,
@@ -252,19 +246,68 @@ internal static class StartupFiles
         }
     }
 
-    // The uid each forward source's header holds, so a uid:// value names the file that carries it. The first file with
-    // a uid keeps it; a source that does not parse gives none here and the run reports it as any source.
-    private static Dictionary<string, string> UidMap(IReadOnlyList<string> sources)
+    // The sources whose header holds each uid, in source order, and the file each uid names: the claim table is built on
+    // first use, and each uid's answer is cached, so a uid several sources claim costs one full parse.
+    private sealed class UidClaims(IReadOnlyList<string> sources)
     {
-        var uids = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (string source in sources)
+        private readonly Lazy<Dictionary<string, List<string>>> claims = new(() => ClaimsOf(sources));
+        private readonly Dictionary<string, string?> claimants = new(StringComparer.Ordinal);
+
+        // The file a uid:// value names: the first file with that uid that parses whole. A source that does not parse
+        // gives none here and the run reports it as any source.
+        public string? Claimant(string uid)
         {
-            string path = Path.GetFullPath(source);
-            if (Read(path, out _)?.Header.Uid is string uid)
+            if (claimants.TryGetValue(uid, out string? claimant))
             {
-                uids.TryAdd(uid, path);
+                return claimant;
             }
+            claimant = claims.Value.GetValueOrDefault(uid)?.FirstOrDefault(path => Read(path, out _) is not null);
+            claimants[uid] = claimant;
+            return claimant;
         }
-        return uids;
+
+        // The sources whose header holds each uid, in source order. Only the headers are read, since a project names few
+        // uids and its sources are parsed later anyway.
+        private static Dictionary<string, List<string>> ClaimsOf(IReadOnlyList<string> sources)
+        {
+            var claims = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            foreach (string source in sources)
+            {
+                string path = Path.GetFullPath(source);
+                if (HeaderUid(path) is not string uid)
+                {
+                    continue;
+                }
+                if (!claims.TryGetValue(uid, out List<string>? paths))
+                {
+                    paths = [];
+                    claims.Add(uid, paths);
+                }
+                paths.Add(path);
+            }
+            return claims;
+        }
+    }
+
+    // The uid a file's header holds: only the header is parsed, though the file is read whole. A file with an unreadable
+    // or broken header gives no claim, since the run reports it when it reads its sources.
+    private static string? HeaderUid(string path)
+    {
+        try
+        {
+            return TscnReader.ReadUid(File.ReadAllText(path));
+        }
+        catch (TscnParseException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 }
