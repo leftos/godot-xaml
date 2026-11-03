@@ -6,6 +6,7 @@
 
 - `LineMap` turns a 0-based line and column back into an offset, exactly or clamped as the language server protocol reads positions.
 - `GodotXaml.Core.Projects` finds a file's Godot project, maps `res://` paths to disk and back, and reads the project's Godot version; `GodotMetadata.LoadBundledForProject` picks matching metadata.
+- `GodotMetadata` lists a class's ancestors and every property and signal it has, inherited ones included.
 - `XscnParser.ContextAt` says what an offset of an `.xscn` or `.xres` is on, broken text included, and `XscnFormatVocabulary` lists the format's `x:` elements and attributes.
 
 ### Fixed

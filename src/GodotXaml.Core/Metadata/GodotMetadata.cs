@@ -166,6 +166,12 @@ public sealed class GodotMetadata
     /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
     internal IEnumerable<GodotClassInfo> ChainOf(GodotClassInfo cls) => Chain(Resolve(cls));
 
+    /// <summary>Every class from <paramref name="cls"/> up its parents to <c>Object</c>.</summary>
+    /// <param name="cls">The class to start from.</param>
+    /// <returns>The class itself, then each ancestor, nearest first.</returns>
+    /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
+    public IEnumerable<GodotClassInfo> AncestorsOf(GodotClassInfo cls) => ChainOf(cls);
+
     /// <summary>A property of a class or of one of its ancestors, by its Godot name.</summary>
     /// <param name="cls">The class to start from.</param>
     /// <param name="godotName">The property's Godot name (<c>custom_minimum_size</c>).</param>
@@ -181,6 +187,28 @@ public sealed class GodotMetadata
     /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
     public GodotPropertyInfo? FindPropertyByCSharpName(GodotClassInfo cls, string csName) =>
         Chain(Resolve(cls)).Select(c => c.OwnPropertyByCSharpName(csName)).FirstOrDefault(p => p is not null);
+
+    /// <summary>
+    /// Every property a class has, its own first in ClassDB order, then each ancestor's in that order, nearest first; a name
+    /// that a nearer class declares again hides the farther one.
+    /// </summary>
+    /// <param name="cls">The class.</param>
+    /// <returns>Each property once, as the nearest class that declares it.</returns>
+    /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
+    public IEnumerable<GodotPropertyInfo> PropertiesOf(GodotClassInfo cls)
+    {
+        HashSet<string> names = new(StringComparer.Ordinal);
+        foreach (GodotClassInfo current in Chain(Resolve(cls)))
+        {
+            foreach (GodotPropertyInfo property in current.Properties)
+            {
+                if (names.Add(property.Name))
+                {
+                    yield return property;
+                }
+            }
+        }
+    }
 
     /// <summary>
     /// A property's default for a class, as Godot reads it for that class (its own value, else the nearest override or
@@ -222,6 +250,28 @@ public sealed class GodotMetadata
     /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
     public GodotSignalInfo? FindSignalByCSharpName(GodotClassInfo cls, string csName) =>
         Chain(Resolve(cls)).SelectMany(c => c.Signals).FirstOrDefault(s => s.CSharpName == csName);
+
+    /// <summary>
+    /// Every signal a class has that C# can name, its own first in the file's order, then each ancestor's in that order,
+    /// nearest first; a name that a nearer class declares again hides the farther one.
+    /// </summary>
+    /// <param name="cls">The class.</param>
+    /// <returns>Each signal once, as the nearest class that declares it, leaving out a signal whose C# name is null.</returns>
+    /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
+    public IEnumerable<GodotSignalInfo> SignalsOf(GodotClassInfo cls)
+    {
+        HashSet<string> names = new(StringComparer.Ordinal);
+        foreach (GodotClassInfo current in Chain(Resolve(cls)))
+        {
+            foreach (GodotSignalInfo signal in current.Signals)
+            {
+                if (signal.CSharpName is not null && names.Add(signal.Name))
+                {
+                    yield return signal;
+                }
+            }
+        }
+    }
 
     /// <summary>An enum by the name a property's <c>enumType</c> gives.</summary>
     /// <param name="enumType">A class enum's <c>Class.Enum</c> name (the class's ancestors are searched too), or a global enum's name.</param>

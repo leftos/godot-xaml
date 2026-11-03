@@ -40,6 +40,14 @@ public sealed class GodotMetadataTests
     }
 
     [Fact]
+    public void ReturnsAClassAndItsAncestorsFromItselfToObject()
+    {
+        Assert.Equal(["Button", "BaseButton", "Control", "CanvasItem", "Node", "Object"], Real.AncestorsOf(Class("Button")).Select(c => c.Name));
+        Assert.Same(Class("Button"), Real.AncestorsOf(Class("Button")).First());
+        Assert.Equal(["Object"], Real.AncestorsOf(Class("Object")).Select(c => c.Name));
+    }
+
+    [Fact]
     public void FindsAnInheritedPropertyByItsCSharpName()
     {
         GodotPropertyInfo? found = Real.FindPropertyByCSharpName(Class("Label"), "CustomMinimumSize");
@@ -49,6 +57,39 @@ public sealed class GodotMetadataTests
         Assert.Same(found, Real.FindProperty(Class("Label"), "custom_minimum_size"));
         Assert.Null(Real.FindPropertyByCSharpName(Class("Label"), "custom_minimum_size"));
         Assert.Null(Real.FindProperty(Class("Control"), "text"));
+    }
+
+    [Fact]
+    public void ReturnsAClasssOwnPropertiesBeforeTheInheritedOnes()
+    {
+        List<GodotPropertyInfo> properties = [.. Real.PropertiesOf(Class("Button"))];
+        List<string> names = [.. properties.Select(p => p.Name)];
+
+        Assert.Contains("text", names);
+        Assert.Contains("mouse_filter", names);
+        Assert.Contains("modulate", names);
+        Assert.Contains("process_mode", names);
+        Assert.True(names.IndexOf("text") < names.IndexOf("mouse_filter"));
+        Assert.Equal(Class("Button").Properties.Select(p => p.Name), names.Take(Class("Button").Properties.Length));
+        Assert.Equal(names.Count, names.Distinct().Count());
+        Assert.All(properties, p => Assert.Same(Real.FindProperty(Class("Button"), p.Name), p));
+        Assert.DoesNotContain(Real.PropertiesOf(Class("Environment")), p => p.Name.Contains('/', StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void HidesAPropertyANearerClassDeclaresAgain()
+    {
+        GodotMetadata metadata = LoadJson(
+            ObjectClass,
+            Class("Base", "Object", Property("foo"), Property("bar")),
+            Class("Mid", "Base", Property("bar")),
+            Class("Leaf", "Mid", Property("foo"))
+        );
+        List<GodotPropertyInfo> properties = [.. metadata.PropertiesOf(metadata.FindClass("Leaf")!)];
+
+        Assert.Equal(["foo", "bar"], properties.Select(p => p.Name));
+        Assert.Same(metadata.FindClass("Leaf")!.Properties[0], properties[0]);
+        Assert.Same(metadata.FindClass("Mid")!.Properties[0], properties[1]);
     }
 
     [Fact]
@@ -239,6 +280,19 @@ public sealed class GodotMetadataTests
     }
 
     [Fact]
+    public void ReturnsTheSignalsOfAClassAndItsAncestorsThatCSharpCanName()
+    {
+        List<GodotSignalInfo> signals = [.. Real.SignalsOf(Class("Button"))];
+
+        Assert.Contains(signals, s => s.Name == "pressed");
+        Assert.Contains(signals, s => s.Name == "tree_entered");
+        Assert.All(signals, s => Assert.NotNull(s.CSharpName));
+        Assert.Equal(signals.Count, signals.Select(s => s.Name).Distinct().Count());
+        Assert.Null(Assert.Single(Class("Control").Signals, s => s.Name == "_layout_pending_finished").CSharpName);
+        Assert.DoesNotContain(Real.SignalsOf(Class("Label")), s => s.Name == "_layout_pending_finished");
+    }
+
+    [Fact]
     public void RejectsAClassFromMetadataThatDoesNotHaveIt()
     {
         GodotMetadata other = LoadJson(ObjectClass, Class("Foo", "Object"));
@@ -247,6 +301,9 @@ public sealed class GodotMetadataTests
         Assert.Throws<ArgumentException>(() => Real.FindPropertyByCSharpName(other.FindClass("Foo")!, "Text"));
         Assert.Throws<ArgumentException>(() => Real.Inherits(other.FindClass("Foo")!, "Object"));
         Assert.Throws<ArgumentException>(() => Real.FindThemeOverride(other.FindClass("Foo")!, "theme_override_colors/font_color"));
+        Assert.Throws<ArgumentException>(() => Real.AncestorsOf(other.FindClass("Foo")!).ToList());
+        Assert.Throws<ArgumentException>(() => Real.PropertiesOf(other.FindClass("Foo")!).ToList());
+        Assert.Throws<ArgumentException>(() => Real.SignalsOf(other.FindClass("Foo")!).ToList());
     }
 
     [Fact]
