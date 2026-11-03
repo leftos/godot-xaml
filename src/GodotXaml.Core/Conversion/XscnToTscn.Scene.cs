@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
@@ -78,14 +79,15 @@ public static partial class XscnToTscn
             }
 
             string path = parent.Path == TscnNodePaths.Root ? over.Path : parent.Path + "/" + over.Path;
-            if (InstancedScene(parent.Element) is null)
+            string? instanced = InstancedScene(parent.Element);
+            if (instanced is null)
             {
                 string message = $"x:Override Path=\"{over.Path}\" is not a direct child of an instance; its path is taken under its parent.";
                 Report(ConversionCodes.OverrideOutsideInstance, ConversionSeverity.Error, message, Location(path));
             }
 
             int slash = path.LastIndexOf('/');
-            return new PlacedElement(over, path[(slash + 1)..], path, TscnNodePaths.ParentOf(path));
+            return new PlacedElement(over, path[(slash + 1)..], path, TscnNodePaths.ParentOf(path)) { InstancedBy = instanced };
         }
 
         private void DiscoverElement(PlacedElement placed)
@@ -150,18 +152,17 @@ public static partial class XscnToTscn
                 Instance = InstancedScene(element) is { } scene ? new GodotResourceRef(GodotRefKind.External, extIds[scene]) : null,
                 ParentIdPath = element.ParentIdPath,
                 OwnerUidPath = element.OwnerUidPath,
-                Properties = NodeProperties(element, Location(placed.Path)),
+                Properties = NodeProperties(placed, Location(placed.Path)),
             };
         }
 
         // Name="%X" is unique_name_in_owner = true, written first; an explicit one says the same, or loses to it.
-        private ImmutableArray<TscnProperty> NodeProperties(XscnNodeElement element, string location)
+        private ImmutableArray<TscnProperty> NodeProperties(PlacedElement placed, string location)
         {
-            // A placeholder's or an override's properties are set on its scene's node, whose class the core does not know.
-            XscnType? owner = element is XscnNode { InstancePlaceholder: null } plain ? plain.Type : null;
+            XscnNodeElement element = placed.Element;
             if (element is not XscnNode { Unique: true } node)
             {
-                return Properties(owner, element.Properties, location);
+                return Properties(NodeClass(placed, element.Properties, location), element.Properties, location);
             }
 
             ImmutableArray<XscnProperty> explicitOnes = [.. node.Properties.Where(property => property.GodotName == UniqueNameProperty)];
@@ -172,7 +173,40 @@ public static partial class XscnToTscn
             }
 
             ImmutableArray<XscnProperty> rest = [.. node.Properties.Where(property => property.GodotName != UniqueNameProperty)];
-            return Properties(owner, rest, location).Insert(0, new TscnProperty(UniqueNameProperty, new GodotBool(true)));
+            return Properties(NodeClass(placed, rest, location), rest, location).Insert(0, new TscnProperty(UniqueNameProperty, new GodotBool(true)));
+        }
+
+        // The class that sets a node's property order: its tag's, or for an instance, an inherited root or an override the
+        // class of its node in the instanced scene, which only the host can read; one property needs no order. A
+        // placeholder and a tag the metadata does not know keep source order.
+        private GodotClassInfo? NodeClass(PlacedElement placed, ImmutableArray<XscnProperty> properties, string location) =>
+            placed.Element switch
+            {
+                XscnNode { InstancePlaceholder: not null } => null,
+                XscnNode { Type: XscnClassType tagged } => tagged.Class,
+                XscnNode { Type: XscnSceneType scene } => ClassInScene(scene.Path, TscnNodePaths.Root, properties.Length, location),
+                XscnOverride over when placed.InstancedBy is { } scene => ClassInScene(scene, over.Path, properties.Length, location),
+                _ => null,
+            };
+
+        // A scene that cannot be read is warned about once per reference and reason, at the first section that meets it.
+        // The scene's uid is the one its ext_resource is written with.
+        private GodotClassInfo? ClassInScene(string scene, string path, int count, string location)
+        {
+            if (count < 2 || instancedClasses is null)
+            {
+                return null;
+            }
+
+            InstancedClass found = instancedClasses.ClassOf(scene, UidOf(scene), path);
+            if (found.Failure is { } failure && unreadableScenes.Add((failure.Reference, failure.Reason)))
+            {
+                string message =
+                    $"The class of \"{failure.Reference}\" could not be read ({failure.Reason}), so this section keeps its written property order.";
+                Report(ConversionCodes.InstancedClassUnreadable, ConversionSeverity.Warning, message, location);
+            }
+
+            return found.Class;
         }
 
         // An instanced, inherited or placeholder node is made by its scene, so the .tscn names no class for it
@@ -227,6 +261,10 @@ public static partial class XscnToTscn
         private static string Location(string path) => $"node \"{path}\"";
 
         // An element with its name and its path as the .tscn writes them, and its parent's path (null for the root).
-        private sealed record PlacedElement(XscnNodeElement Element, string Name, string Path, string? Parent);
+        private sealed record PlacedElement(XscnNodeElement Element, string Name, string Path, string? Parent)
+        {
+            // For an override, the scene its parent instances, where its path leads; null for a node.
+            public string? InstancedBy { get; init; }
+        }
     }
 }

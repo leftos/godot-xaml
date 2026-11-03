@@ -95,6 +95,8 @@ public static partial class XscnToTscn
         private readonly ConversionOptions options;
         private readonly Func<string, ulong> siteHash;
         private readonly PropertyOrder order;
+        private readonly InstancedClasses? instancedClasses;
+        private readonly HashSet<(string Reference, string Reason)> unreadableScenes = [];
         private readonly Dictionary<string, XscnResource> table = new(StringComparer.Ordinal);
         private readonly List<ExtUse> extUses = [];
         private readonly HashSet<string> extSeen = new(StringComparer.Ordinal);
@@ -112,6 +114,7 @@ public static partial class XscnToTscn
             this.options = options;
             this.siteHash = siteHash;
             order = new PropertyOrder(metadata);
+            instancedClasses = options.SceneFiles is { } files && options.SourceKey is { } key ? new InstancedClasses(metadata, files, key) : null;
             IndexTable();
         }
 
@@ -369,10 +372,13 @@ public static partial class XscnToTscn
             Properties(resource.Type, resource.Properties, location);
 
         // owner says the section's class, which sets the property order; anything but a class keeps source order.
-        private ImmutableArray<TscnProperty> Properties(XscnType? owner, ImmutableArray<XscnProperty> source, string location)
+        private ImmutableArray<TscnProperty> Properties(XscnType? owner, ImmutableArray<XscnProperty> source, string location) =>
+            Properties((owner as XscnClassType)?.Class, source, location);
+
+        private ImmutableArray<TscnProperty> Properties(GodotClassInfo? cls, ImmutableArray<XscnProperty> source, string location)
         {
             ImmutableArray<TscnProperty>.Builder properties = ImmutableArray.CreateBuilder<TscnProperty>();
-            foreach (XscnProperty property in order.Sort((owner as XscnClassType)?.Class, source))
+            foreach (XscnProperty property in order.Sort(cls, source))
             {
                 if (Value(property.Value, location + "." + property.GodotName) is { } value)
                 {

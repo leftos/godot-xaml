@@ -116,4 +116,10 @@ public static class ConversionCodes
 
     /// <summary>A comment of the previous document that the converted document cannot carry; it is dropped and warned about.</summary>
     public const string CommentDropped = "GXC0117";
+
+    /// <summary>
+    /// An instanced scene whose class <see cref="ConversionOptions.SceneFiles"/> could not give (not given, unparsable, a
+    /// cycle, a node path it does not hold, a <c>uid://</c> reference); the section keeps its written property order.
+    /// </summary>
+    public const string InstancedClassUnreadable = "GXC0118";
 }

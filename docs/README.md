@@ -37,6 +37,7 @@
 - **Remap**: a `.remap` file Godot adds beside a path in an export, naming the file to load instead; the export plugin uses it to send an `.xscn`/`.xres` path to its binary copy.
 - **Round trip**: converting a `.tscn` to `.xscn` and back (or the reverse) and getting the same scene as Godot loads it.
 - **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn` in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
+- **Scene lookup**: the host's reader of another scene file's text (`ISceneFiles`), which the way back uses to learn the class of an instanced node or an override.
 - **Seed scene**: the one-node scene `tools/scene-fixtures/` saves first so the inherited-scene case can be saved from it; a script cannot set up scene inheritance directly.
 - **Sidecar**: the `.uid` file beside a file that has no header to hold its uid (`main.xscn.uid`); `convert` moves a uid between a `.tscn` header and it.
 - **Site key**: where a sub-resource is used in an `.xscn` (its element path and property, nested), from which the way back mints its id, so ids do not shift when the file is edited elsewhere.

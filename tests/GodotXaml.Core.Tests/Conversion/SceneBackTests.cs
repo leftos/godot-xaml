@@ -23,9 +23,11 @@ public sealed partial class SceneBackTests
             "groups",
             "inherited",
             "instanced",
+            "instanced_order",
             "lone_root",
             "multiline",
             "nested",
+            "order_inner",
             "placeholder",
             "property_order",
             "script_node",
@@ -39,7 +41,12 @@ public sealed partial class SceneBackTests
     public void ConvertsXscnToTheGodotScene(string fixture)
     {
         TscnDocument expected = TscnReader.Read(ReadFixture(fixture + ".tscn"));
-        ConversionOptions options = Options with { ExtResourceTypes = new TypesOf(expected) };
+        ConversionOptions options = Options with
+        {
+            ExtResourceTypes = new TypesOf(expected),
+            SceneFiles = FixtureScenes.Instance,
+            SourceKey = $"res://cases/{fixture}.xscn",
+        };
 
         ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse(Inputs[fixture]), Metadata, options);
 
@@ -600,5 +607,19 @@ public sealed partial class SceneBackTests
     private sealed class TypesOf(TscnDocument source) : IExtResourceTypes
     {
         public string? ClassOf(string path) => source.ExtResources.FirstOrDefault(ext => ext.Path == path)?.Type;
+    }
+
+    // The scene fixtures at the res://cases/ paths they instance each other by, as the generator saved them.
+    internal sealed class FixtureScenes : ISceneFiles
+    {
+        private const string Cases = "res://cases/";
+
+        public static FixtureScenes Instance { get; } = new();
+
+        public SceneFile? Read(string referrer, string reference, string? uid) =>
+            reference.StartsWith(Cases, StringComparison.Ordinal)
+            && File.Exists(RepoFiles.PathOf("tests", "fixtures", "scenes", reference[Cases.Length..]))
+                ? new SceneFile(reference, ReadFixture(reference[Cases.Length..]))
+                : null;
     }
 }

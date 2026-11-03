@@ -68,7 +68,7 @@ The default XML namespace is Godot's classes. Everything the format adds rather 
 
 ## Overrides inside an instance are named by path
 
-A node inside an instanced scene that the scene changes is written as `<x:Override Path="Centre/Panel">`, a child of the instance element, holding only the changed properties; nodes the scene adds under it nest inside it. The path is relative to the instance, so the core parses the file without opening the instanced scene to learn the type of each node on the way. `x:Editable="True"` on the instance element is the `.tscn`'s `[editable path=…]`.
+A node inside an instanced scene that the scene changes is written as `<x:Override Path="Centre/Panel">`, a child of the instance element, holding only the changed properties; nodes the scene adds under it nest inside it. The path is relative to the instance, so the core parses the file without opening the instanced scene to learn the type of each node on the way. The way back still reads the instanced scene, through the host's scene lookup, but only to put an instanced node's properties in Godot's order. `x:Editable="True"` on the instance element is the `.tscn`'s `[editable path=…]`.
 
 ## Slash-named properties are dotted attributes
 
@@ -98,7 +98,7 @@ The way back (`.xscn` to `.tscn`) restores Godot's property order instead, becau
 
 `PropertyOrder` sorts a section's properties stably: each class base first, with its own list; `theme_override_*` by the metadata's `ThemeOverrides` index, after Control's or Window's own list; then `script`; then other slash-named names, so a script's own come after it; then script exports, then `metadata/*`.
 
-A section with no class (an instance or inherited root, an `x:Override`, a placeholder, an unknown type) keeps source order. Order among script exports and inside a dynamic family (Theme, TileSet) cannot be restored from the alphabetical `.xscn`. The writer's alphabetical order stays.
+An instanced node, an inherited root and an `x:Override` take their class from the instanced scene, read through the host's scene lookup (`ConversionOptions.SceneFiles`), and then sort as any node of that class, so a script export stays after `script`. With no lookup, or a scene the lookup cannot read, the section keeps source order, and a scene it cannot read is warning GXC0118, naming the file and why. A class is never guessed from a section's names: a guess put a script export named like a class property ahead of `script`, where Godot drops it (`SceneState::instantiate` ignores a failed `set`). A placeholder and an unknown type keep source order. Order among script exports and inside a dynamic family (Theme, TileSet) cannot be restored from the alphabetical `.xscn`. The writer's alphabetical order stays.
 
 ## One error-tolerant XML parser
 

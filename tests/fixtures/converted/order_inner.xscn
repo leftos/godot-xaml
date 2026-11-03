@@ -1,0 +1,8 @@
+<Control
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Name="Root"
+    AnchorsPreset="TopLeft"
+    LayoutMode="Uncontrolled"
+    x:UniqueId="1121728355">
+  <Panel Name="Box" LayoutMode="Anchors" x:UniqueId="614292841" />
+</Control>

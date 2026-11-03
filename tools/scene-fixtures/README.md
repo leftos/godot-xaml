@@ -43,5 +43,7 @@ Regenerate only when a case is added or changed. A changed case commits the whol
 - `placeholder.tscn`: `instance_placeholder=`.
 - `multiline.tscn`: a multi-line string and a dictionary inside a node section.
 - `property_order.tscn`: properties whose result depends on the order they are set in: `grow_horizontal` and `grow_vertical` with `layout_mode`, `button_pressed` with `toggle_mode`.
+- `order_inner.tscn`: the scene `instanced_order` instances: a `Control` root and a `Panel` child at `layout_mode = 1`, so an override that sets 0 is saved.
+- `instanced_order.tscn`: `layout_mode = 0` and `grow_vertical = 2` on an instance root and, through an override, on its child; in alphabetical order the grow direction is reset, so it proves the way back reads the instanced scene's classes.
 
 `uid=` attributes are absent from every fixture: the saver asks the editor's file system for uids, which a `--script` run does not start.

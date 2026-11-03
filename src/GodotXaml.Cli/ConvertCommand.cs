@@ -222,8 +222,14 @@ internal static class ConvertCommand
             return 2;
         }
         var inputs = new HashSet<string>(sources.Select(source => Path.GetFullPath(source.File.Path)), InputFiles.PathComparer);
-        var tally = new Tally { Overwrite = overwrite, Project = project is not null };
+        var tally = new Tally
+        {
+            Overwrite = overwrite,
+            Project = project is not null,
+            SceneFiles = new RunSceneFiles(sources.Select(source => (source.File.Path, source.Text))),
+        };
         List<Planned> planned = Plan(sources, inputs, metadata, tally, invocation.Output);
+        tally.SceneFiles.Converting(planned.Select(item => (item.Source.File.Path, item.Output)));
         Dictionary<string, Dictionary<string, string>> renames = Renames(planned, tally, invocation.Output);
         Rewrite(planned, renames, tally, invocation.Output);
         if (project is null)
@@ -600,6 +606,8 @@ internal static class ConvertCommand
             }
             candidates.Add((source, outputPath));
         }
+        // The check pass reads the candidates' sources for their outputs; Convert narrows this to the planned items.
+        tally.SceneFiles.Converting(candidates.Select(candidate => (candidate.Source.File.Path, candidate.Output)));
         List<Planned> planned = [];
         foreach ((Source source, string outputPath) in candidates)
         {
@@ -793,7 +801,13 @@ internal static class ConvertCommand
             {
                 return new Converted(XscnWriter.Write(item.Document, metadata), item.Uid, []);
             }
-            var options = new ConversionOptions { Seed = SeedOf(item.Output), Uid = item.Uid };
+            var options = new ConversionOptions
+            {
+                Seed = SeedOf(item.Output),
+                Uid = item.Uid,
+                SceneFiles = tally.SceneFiles,
+                SourceKey = Path.GetFullPath(item.Source.File.Path),
+            };
             ConversionResult<TscnDocument> result = XscnToTscn.Convert(item.Document, metadata, options);
             return Report(item.Source.File.Path, result.Issues, tally, output, errorsOnly: check)
                 ? new Converted(TscnWriter.Write(result.Document), SidecarUid: null, result.Issues)
@@ -1271,6 +1285,9 @@ internal static class ConvertCommand
         public bool Overwrite { get; init; }
 
         public bool Project { get; init; }
+
+        // The scenes the way back reads for the class of an instanced node, shared by every conversion of the run.
+        public required RunSceneFiles SceneFiles { get; init; }
 
         public int Converted { get; set; }
 

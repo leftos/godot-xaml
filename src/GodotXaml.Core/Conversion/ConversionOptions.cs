@@ -37,4 +37,14 @@ public sealed record ConversionOptions
     /// kept; its comments are carried onto the parts of the new document that match it; null converts from scratch.
     /// </summary>
     public XscnDocument? Previous { get; init; }
+
+    /// <summary>
+    /// The host's reader of the scenes the document instances, which gives the way back the class of an instanced node,
+    /// an inherited root or an <c>x:Override</c>, so their properties come back in Godot's order; with this or
+    /// <see cref="SourceKey"/> null, those sections keep source order.
+    /// </summary>
+    public ISceneFiles? SceneFiles { get; init; }
+
+    /// <summary>The host's key for the file being converted, the first referrer <see cref="SceneFiles"/> is asked with.</summary>
+    public string? SourceKey { get; init; }
 }

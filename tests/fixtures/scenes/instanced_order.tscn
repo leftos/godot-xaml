@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://cases/order_inner.tscn" id="1_0rd3r"]
+
+[node name="Root" type="Control" unique_id=183478099]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="Inst" parent="." unique_id=1121728355 instance=ExtResource("1_0rd3r")]
+layout_mode = 0
+grow_vertical = 2
+
+[node name="Box" parent="Inst" index="0" unique_id=614292841]
+layout_mode = 0
+grow_vertical = 2
+
+[editable path="Inst"]

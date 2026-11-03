@@ -24,9 +24,11 @@ public sealed class SceneRoundTripTests
             "groups",
             "inherited",
             "instanced",
+            "instanced_order",
             "lone_root",
             "multiline",
             "nested",
+            "order_inner",
             "placeholder",
             "property_order",
             "script_node",
@@ -307,6 +309,8 @@ public sealed class SceneRoundTripTests
         {
             ExtResourceTypes = new TypesOf(source),
             Uid = source.Header.Uid,
+            SceneFiles = SceneBackTests.FixtureScenes.Instance,
+            SourceKey = "res://cases/round_trip.xscn",
         };
 
     private static string Comparable(TscnDocument document) => TscnWriter.Write(TscnTestNormalizer.Normalize(document));

@@ -94,7 +94,8 @@ internal static class XscnLoading
         try
         {
             // The text loader's dependency pass is silent on a valid file, so only errors are pushed.
-            ReadAndConvert(path, pushWarnings: false, out TscnDocument? converted);
+            // Listing needs no property order, so the scan thread parses no instanced scene.
+            ReadAndConvert(path, sceneKey: null, pushWarnings: false, out TscnDocument? converted);
             return converted is null ? [] : [.. converted.ExtResources.Select(ext => DependencyEntry(path, ext, addTypes))];
         }
         // Godot reads an exception escaping a virtual as a nil return, which is an empty list.
@@ -159,18 +160,28 @@ internal static class XscnLoading
     /// <returns>The converted document and the conversion's issues.</returns>
     internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document) => XscnToTscn.Convert(document, XscnMetadata.Value, Options);
 
+    /// <summary>
+    /// Converts a parsed document as <see cref="ToTscn(XscnDocument)"/> does, reading the scenes it instances so their
+    /// nodes' properties come back in Godot's order.
+    /// </summary>
+    /// <param name="document">The parsed <c>.xscn</c> or <c>.xres</c>.</param>
+    /// <param name="path">The file's <c>res://</c> path, which its relative references are resolved against.</param>
+    /// <returns>The converted document and the conversion's issues.</returns>
+    internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document, string path) =>
+        XscnToTscn.Convert(document, XscnMetadata.Value, Options with { SceneFiles = GodotSceneFiles.Instance, SourceKey = path });
+
     private static Variant LoadConverted(string path, string originalPath, int cacheMode)
     {
-        Error error = ReadAndConvert(path, pushWarnings: true, out TscnDocument? converted);
+        // The text loader resolves a relative path against the file it reads (resource_format_text.cpp:509-512), and the
+        // converted text is read from the temp folder, so each path is made a resource path here, against the path asked for
+        // before any remap, as the text loader's own load does (:1445). The instanced scenes are read against it too.
+        string asked = originalPath.Length > 0 ? originalPath : path;
+        Error error = ReadAndConvert(path, asked, pushWarnings: true, out TscnDocument? converted);
         if (converted is null)
         {
             return (int)error;
         }
 
-        // The text loader resolves a relative path against the file it reads (resource_format_text.cpp:509-512), and the
-        // converted text is read from the temp folder, so each path is made a resource path here, against the path asked for
-        // before any remap, as the text loader's own load does (:1445).
-        string asked = originalPath.Length > 0 ? originalPath : path;
         converted = converted with { ExtResources = [.. converted.ExtResources.Select(ext => ext with { Path = Localized(asked, ext.Path) })] };
         bool isScene = IsScene(path);
         string typeHint = isScene ? "PackedScene" : converted.Header.Type ?? "Resource";
@@ -330,7 +341,8 @@ internal static class XscnLoading
     }
 
     // The converted document, or null with the error after pushing the reason to Godot's log; warnings only when asked.
-    private static Error ReadAndConvert(string path, bool pushWarnings, out TscnDocument? converted)
+    // With a scene key, the instanced scenes are read against it for their classes; null reads none.
+    private static Error ReadAndConvert(string path, string? sceneKey, bool pushWarnings, out TscnDocument? converted)
     {
         converted = null;
         Error error = ReadAndParse(path, pushWarnings, out XscnDocument? document);
@@ -339,7 +351,7 @@ internal static class XscnLoading
             return error;
         }
 
-        ConversionResult<TscnDocument> result = ToTscn(document);
+        ConversionResult<TscnDocument> result = sceneKey is null ? ToTscn(document) : ToTscn(document, sceneKey);
         if (PushIssues(path, result.Issues, pushWarnings))
         {
             return Error.ParseError;

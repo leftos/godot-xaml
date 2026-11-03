@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[node name="Root" type="Control" unique_id=1121728355]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="Box" type="Panel" parent="." unique_id=614292841]
+layout_mode = 1

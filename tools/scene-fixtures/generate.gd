@@ -58,6 +58,8 @@ func _run() -> String:
 		_placeholder,
 		_multiline,
 		_property_order,
+		_order_inner,
+		_instanced_order,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -239,6 +241,34 @@ func _property_order() -> String:
 	toggle.toggle_mode = true
 	toggle.button_pressed = true
 	return _save_scene("property_order", root)
+
+
+## The scene instanced_order instances: a Control root and a Panel Box in Anchors layout mode,
+## so an override that sets Position is saved.
+func _order_inner() -> String:
+	var root := _root("Control")
+	var box: Panel = _add(root, "Box", "Panel")
+	box.set("layout_mode", 1)
+	return _save_scene("order_inner", root)
+
+
+## An instance of order_inner with layout_mode Position and grow_vertical Both set on its root
+## and, through an override, on Box: neither section names a class, and Position set after
+## grow_vertical resets it (control.cpp, Control::_set_layout_mode).
+func _instanced_order() -> String:
+	var root := _root("Control")
+	var inner := _scene("order_inner", "instanced_order.tscn", "1_0rd3r")
+	var instance: Control = inner.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)
+	instance.name = "Inst"
+	root.add_child(instance)
+	instance.owner = root
+	instance.set("layout_mode", 0)
+	instance.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var box: Panel = instance.get_node("Box")
+	box.set("layout_mode", 0)
+	box.grow_vertical = Control.GROW_DIRECTION_BOTH
+	root.set_editable_instance(instance, true)
+	return _save_scene("instanced_order", root)
 
 
 ## A gradient with non-default colours, its sub-resource id pinned.

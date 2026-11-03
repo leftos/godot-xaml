@@ -45,6 +45,14 @@ public sealed partial class SceneBackTests
               </x:Instance>
             </Node>
             """,
+        ["instanced_order"] = $$"""
+            <Control {{X}} Name="Root" AnchorsPreset="TopLeft" LayoutMode="Uncontrolled" x:UniqueId="183478099">
+              <x:Instance Name="Inst" Scene="res://cases/order_inner.tscn" GrowVertical="Both" LayoutMode="Position"
+                  x:Editable="True" x:UniqueId="1121728355">
+                <x:Override Path="Box" GrowVertical="Both" LayoutMode="Position" x:Index="0" x:UniqueId="614292841" />
+              </x:Instance>
+            </Control>
+            """,
         ["lone_root"] = $$"""
             <Node {{X}} Name="Root" x:UniqueId="841232467" />
             """,
@@ -67,6 +75,11 @@ public sealed partial class SceneBackTests
               </Node2D>
               <Node Name="D" x:UniqueId="433799269" />
             </Node>
+            """,
+        ["order_inner"] = $$"""
+            <Control {{X}} Name="Root" AnchorsPreset="TopLeft" LayoutMode="Uncontrolled" x:UniqueId="1121728355">
+              <Panel Name="Box" LayoutMode="Anchors" x:UniqueId="614292841" />
+            </Control>
             """,
         ["placeholder"] = $$"""
             <Node {{X}} Name="Root" x:UniqueId="974068946">

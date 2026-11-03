@@ -25,7 +25,7 @@ namespace GodotXaml.Addon.Compare;
 public partial class Compare : Node
 {
     private const string CasesPath = "res://cases/";
-    private const int ExpectedPairs = 13;
+    private const int ExpectedPairs = 15;
 
     /// <inheritdoc/>
     public override void _Ready()

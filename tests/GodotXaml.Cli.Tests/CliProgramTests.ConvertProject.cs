@@ -566,6 +566,74 @@ public sealed partial class CliProgramTests
         AssertBackedUp(Assert.Single(BackupFolders()), before);
     }
 
+    // The rewrite makes the reference res://ui/button.tscn, an output not yet on disk, so the second conversion reads
+    // the button's source from the run.
+    [Fact]
+    public void BackRunOrdersAnInstanceOfAFileConvertedInTheSameRun()
+    {
+        Write("project.godot", Project);
+        Write("ui/button.xscn", $"<Control {Namespace} Name=\"Root\" />\n");
+        Write("main.xscn", InstancingScene("res://ui/button.xscn"));
+
+        RunResult run = RunProject("--back");
+
+        string main = File.ReadAllText(Located("main.tscn"));
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("path=\"res://ui/button.tscn\"", main, StringComparison.Ordinal);
+        Assert.Contains("instance=ExtResource(\"1_", main, StringComparison.Ordinal);
+        Assert.Contains("\nlayout_mode = 1\ngrow_vertical = 0\n", main, StringComparison.Ordinal);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("GXC0118", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PlainBackRunResolvesARelativeReferenceWithNoProject()
+    {
+        Write("godot-xaml.json", "{}");
+        Write("child.xscn", $"<Control {Namespace} Name=\"Root\" />\n");
+        string scene = Write("main.xscn", InstancingScene("child.xscn"));
+
+        RunResult run = RunIn(folder, "convert", scene);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("1 converted, 0 refused, 0 error(s), 1 warning(s)", run.Lines);
+        Assert.Contains("\nlayout_mode = 1\ngrow_vertical = 0\n", File.ReadAllText(Path.ChangeExtension(scene, ".tscn")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BackRunWarnsOnAMissingInstancedScene()
+    {
+        Write("project.godot", Project);
+        string scene = Write("main.xscn", InstancingScene("res://missing.tscn"));
+
+        RunResult run = RunProject("--back");
+
+        const string Message = "The class of \"res://missing.tscn\" could not be read (not found), so this section keeps its written property order.";
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(1, run.Lines.Count(line => line == $"{scene}: warning GXC0118: {Message} (node \"Button\")"));
+        Assert.Contains("\ngrow_vertical = 0\nlayout_mode = 1\n", File.ReadAllText(Located("main.tscn")), StringComparison.Ordinal);
+    }
+
+    // a.xscn is refused, since a.tscn exists, so b's reference to res://a.tscn names the Node2D on disk, whose list holds
+    // neither property, and not a.xscn's Control.
+    [Fact]
+    public void ARefusedSourceDoesNotStandInForTheOutputOnDisk()
+    {
+        Write("project.godot", Project);
+        Write("godot-xaml.json", "{}");
+        string a = Write("a.xscn", $"<Control {Namespace} Name=\"Root\" />\n");
+        Write("a.tscn", "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Node2D\"]\n");
+        string b = Write("b.xscn", InstancingScene("res://a.tscn"));
+
+        RunResult run = RunIn(folder, "convert", a, b);
+
+        Assert.Contains("0 error(s)", run.Lines[^1], StringComparison.Ordinal);
+        Assert.Contains("1 converted, 1 refused", run.Lines[^1], StringComparison.Ordinal);
+        Assert.Contains("\ngrow_vertical = 0\nlayout_mode = 1\n", File.ReadAllText(Located("b.tscn")), StringComparison.Ordinal);
+    }
+
+    private static string InstancingScene(string reference) =>
+        $"<Node {Namespace} Name=\"Root\">\n  <x:Instance Name=\"Button\" Scene=\"{reference}\" GrowVertical=\"0\" LayoutMode=\"1\" />\n</Node>\n";
+
     [Fact]
     public void ProjectChangesNothingWhenASceneFails()
     {
