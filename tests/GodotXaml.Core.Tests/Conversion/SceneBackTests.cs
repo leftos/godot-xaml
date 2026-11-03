@@ -221,6 +221,32 @@ public sealed partial class SceneBackTests
         Assert.Equal(["texture", "script"], Names(back.Document.Nodes[1].Properties));
     }
 
+    // Both sections instance one scene, so its uid is looked up for each; the disagreeing entries are warned about once.
+    [Fact]
+    public void TwoUidsOnAnInstancedScenePathWarnOnce()
+    {
+        var files = new MemoryScenes(("res://child.xscn", "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Node\"]\n"));
+
+        ConversionResult<TscnDocument> back = BackWith(
+            $$"""
+            <Node {{X}} Name="Root">
+              <x:Instance Name="A" Scene="res://child.xscn" ProcessPriority="1" ProcessPhysicsPriority="2" />
+              <x:Instance Name="B" Scene="res://child.xscn" ProcessPriority="1" ProcessPhysicsPriority="2" />
+              <x:Uids>
+                <x:Uid Path="res://child.xscn" Value="uid://bbb" />
+                <x:Uid Path="res://child.xscn" Value="uid://aaa" />
+              </x:Uids>
+            </Node>
+            """,
+            files
+        );
+
+        ConversionIssue issue = Assert.Single(back.Issues, issue => issue.Code == ConversionCodes.UidsDisagree);
+        Assert.Equal(ConversionSeverity.Warning, issue.Severity);
+        Assert.Contains("res://child.xscn", issue.Message, StringComparison.Ordinal);
+        Assert.Equal("uid://bbb", Assert.Single(back.Document.ExtResources, ext => ext.Path == "res://child.xscn").Uid);
+    }
+
     // A resource's references are found in sorted name order (resource_format_text.cpp:1680-1683), though it is written in
     // list order: BaseMaterial3D lists roughness_texture before emission_texture, which sorts first.
     [Fact]

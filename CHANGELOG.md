@@ -8,6 +8,7 @@
 - `godot-xaml check` and every host report a second format prefix, an empty property element, an empty `x:Key` and a placeholder at the scene's root.
 - A signal-named attribute on an instance that fails as a property now suggests `<x:Connect>`.
 - A `.tscn` property name holding a control character is reported as error GXC0119 instead of crashing the conversion.
+- Converting back warns (GXC0120) when `x:Uids` gives one path two different uids, as `convert` can make by rewriting one file's path onto another's.
 - The core's `.tscn` reader rejects and reads a bare resource header, cross-typed name and path fields, and a first-node placeholder as Godot does.
 - `convert` mints the same new ids for a project in any checkout, seeding them from each file's `res://` path.
 - `convert --project` keeps as text the files that scripts of startup resources name, so they load before the addon.

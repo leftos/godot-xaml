@@ -296,6 +296,10 @@ Warning. The class of an instanced scene could not be read: no lookup was given,
 
 Error. `The property name "metadata/a\u0001b" holds a character XML cannot hold; the property is dropped.` A `.tscn` or `.tres` names a property whose name holds a control character, U+FFFE, U+FFFF or a lone surrogate, which neither an attribute nor an `x:Prop` name can hold. Rename the property in Godot; a name holding a control character cannot be written as XML.
 
+### GXC0120 Uids disagree
+
+Warning. `x:Uids gives 'res://a.tres' more than one uid (uid://bbb, uid://aaa); its ext_resource keeps 'uid://bbb'.` Two `x:Uid` entries name one path with different uids, written so or made so when `convert` rewrites one file's path onto another's. The `.tscn` keeps the first uid; check which file the path should name, and remove the other entry.
+
 ## Project conversion: `GXP`
 
 Reported by `godot-xaml convert`; the [CLI reference](../../src/GodotXaml.Cli/README.md#convert) has every message.

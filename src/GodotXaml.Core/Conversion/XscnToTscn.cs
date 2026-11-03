@@ -328,6 +328,7 @@ public static partial class XscnToTscn
                 ExtUse use = extUses[i];
                 string id = options.KeepIds?.ExtIdOf(use.Path) ?? result.NewExtResourceId(SeedOf(i));
                 extIds[use.Path] = id;
+                WarnOnDisagreeingUids(use.Path);
                 var ext = new TscnExtResource
                 {
                     Type = ExtType(use),
@@ -343,6 +344,20 @@ public static partial class XscnToTscn
 
         // x:Uids first, else a uid written with the path in value text.
         private string? UidOf(string path) => document.Uids.FirstOrDefault(uid => uid.Path == path)?.Uid ?? textUids.GetValueOrDefault(path);
+
+        // Each distinct uid the path's x:Uids entries give, in first-seen order; two make the ext_resource's choice worth
+        // a warning, and it keeps the first.
+        private void WarnOnDisagreeingUids(string path)
+        {
+            string[] uids = [.. document.Uids.Where(uid => uid.Path == path).Select(uid => uid.Uid).Distinct(StringComparer.Ordinal)];
+            if (uids.Length < 2)
+            {
+                return;
+            }
+
+            string message = $"x:Uids gives '{path}' more than one uid ({string.Join(", ", uids)}); its ext_resource keeps '{uids[0]}'.";
+            Report(ConversionCodes.UidsDisagree, ConversionSeverity.Warning, message, $"x:Uid \"{path}\"");
+        }
 
         private ulong SeedOf(int ordinal) => options.Seed ^ ((ulong)(ordinal + 1) * 0x9E3779B97F4A7C15UL);
 

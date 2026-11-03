@@ -67,6 +67,36 @@ public sealed partial class CliProgramTests
         Assert.Equal(XresOf(Material), File.ReadAllText(xres));
     }
 
+    // The rewrite puts a.xres's uid on a.tres's path, so x:Uids gives one path two uids; the ext_resource keeps the first.
+    [Fact]
+    public void ConvertWarnsWhenTwoUidsMergeOntoOnePath()
+    {
+        string axres = Write("a.xres", XresOf(Material));
+        Write("a.tres", Material);
+        string main = Write(
+            "main.xscn",
+            $"<Sprite2D {Namespace} Name=\"Root\" Material=\"res://a.xres\">\n"
+                + "  <Sprite2D Name=\"Child\" Material=\"res://a.tres\" />\n"
+                + "  <x:Uids>\n"
+                + "    <x:Uid Path=\"res://a.tres\" Value=\"uid://bbb\" />\n"
+                + "    <x:Uid Path=\"res://a.xres\" Value=\"uid://aaa\" />\n"
+                + "  </x:Uids>\n"
+                + "</Sprite2D>\n"
+        );
+
+        RunResult run = RunConvert("--force", main, axres);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains(
+            $"{main}: warning GXC0120: x:Uids gives 'res://a.tres' more than one uid (uid://bbb, uid://aaa); "
+                + "its ext_resource keeps 'uid://bbb'. (x:Uid \"res://a.tres\")",
+            run.Lines
+        );
+        string written = File.ReadAllText(Path.ChangeExtension(main, ".tscn"));
+        Assert.Contains("uid=\"uid://bbb\"", written, StringComparison.Ordinal);
+        Assert.DoesNotContain("uid://aaa", written, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ConvertOverwritesWhenTheConfigAllowsIt()
     {

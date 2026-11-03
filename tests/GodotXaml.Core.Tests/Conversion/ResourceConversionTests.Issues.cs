@@ -200,6 +200,59 @@ public sealed partial class ResourceConversionTests
             ConversionSeverity.Error
         );
 
+    // A path rewritten onto another's leaves x:Uids naming it twice, with the uids of both files.
+    [Fact]
+    public void TwoUidsOnOnePathWarnAndKeepTheFirst()
+    {
+        XscnDocument document = Xres(Res("Resource", Prop("metadata/a", new GodotPathRef(null, "res://a.tres")))) with
+        {
+            Uids = [new XscnUid("res://a.tres", "uid://bbb"), new XscnUid("res://a.tres", "uid://aaa")],
+        };
+
+        ConversionResult<TscnDocument> back = Back(document);
+
+        ConversionIssue issue = Assert.Single(back.Issues);
+        Assert.Equal(
+            (
+                ConversionCodes.UidsDisagree,
+                ConversionSeverity.Warning,
+                "x:Uids gives 'res://a.tres' more than one uid (uid://bbb, uid://aaa); its ext_resource keeps 'uid://bbb'.",
+                "x:Uid \"res://a.tres\""
+            ),
+            (issue.Code, issue.Severity, issue.Message, issue.Location)
+        );
+        Assert.Equal("uid://bbb", Assert.Single(back.Document.ExtResources).Uid);
+    }
+
+    [Fact]
+    public void ThreeEntriesListEachUidOnce()
+    {
+        XscnDocument document = Xres(Res("Resource", Prop("metadata/a", new GodotPathRef(null, "res://a.tres")))) with
+        {
+            Uids = [new XscnUid("res://a.tres", "uid://bbb"), new XscnUid("res://a.tres", "uid://bbb"), new XscnUid("res://a.tres", "uid://aaa")],
+        };
+
+        ConversionResult<TscnDocument> back = Back(document);
+
+        ConversionIssue issue = Assert.Single(back.Issues);
+        Assert.Equal("x:Uids gives 'res://a.tres' more than one uid (uid://bbb, uid://aaa); its ext_resource keeps 'uid://bbb'.", issue.Message);
+        Assert.Equal("uid://bbb", Assert.Single(back.Document.ExtResources).Uid);
+    }
+
+    [Fact]
+    public void RepeatedSameUidOnOnePathRaisesNothing()
+    {
+        XscnDocument document = Xres(Res("Resource", Prop("metadata/a", new GodotPathRef(null, "res://a.tres")))) with
+        {
+            Uids = [new XscnUid("res://a.tres", "uid://bbb"), new XscnUid("res://a.tres", "uid://bbb")],
+        };
+
+        ConversionResult<TscnDocument> back = Back(document);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal("uid://bbb", Assert.Single(back.Document.ExtResources).Uid);
+    }
+
     // A quoted key keeps the character Godot's loader drops from an unquoted one, and XML 1.0 cannot hold it at all, so
     // the property has no attribute or x:Prop name to be written by.
     [Fact]

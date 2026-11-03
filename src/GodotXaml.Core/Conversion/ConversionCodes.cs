@@ -128,4 +128,10 @@ public static class ConversionCodes
     /// it; the property is dropped.
     /// </summary>
     public const string PropertyNameNotXml = "GXC0119";
+
+    /// <summary>
+    /// Two <c>x:Uids</c> entries give one path different uids (written so, or made so by a path rewrite); the
+    /// ext_resource keeps the first.
+    /// </summary>
+    public const string UidsDisagree = "GXC0120";
 }
