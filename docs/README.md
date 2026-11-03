@@ -16,6 +16,7 @@
 - **Built path**: a path a script assembles at run time (`"res://ui/" + name + ".tscn"`) instead of writing whole; `convert` cannot rewrite it and warns (`GXP0006`) when a literal ends in an extension the run converts.
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.
 - **Canonical fixture**: an `.xscn` or `.xres` under `tests/fixtures/xscn/canonical/` that the writer must reproduce byte for byte.
+- **Case tables**: Godot's lower-to-upper and upper-to-lower code point tables from `core/string/ucaps.h`, written as C# by `tools/case-tables/` into `GodotCaseTables.g.cs` and used by `GodotCase` for the case of a C# name.
 - **Compat mode**: the writer flag Godot uses to write a file as format 3: byte arrays as number lists and negative infinity as `inf_neg`; off, it writes base64 and `-inf`. `ValueWriteOptions.Compat`, on by default.
 - **Diagnostic code**: the stable code naming one kind of problem: `GX` plus four digits for the parser (`XscnCodes`), `GXC` for the conversion (`ConversionCodes`), `GXP` and `GXT` for the CLI (`CliCodes`). Each has a heading in [`format/diagnostics.md`](format/diagnostics.md).
 - **Doc example**: a fenced block in the docs whose info string is `xml xscn` or `xml xres`, optionally with `canonical` or `invalid <code>`; the docs tests parse every one.

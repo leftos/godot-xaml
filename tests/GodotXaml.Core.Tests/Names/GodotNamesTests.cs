@@ -48,6 +48,11 @@ public sealed class GodotNamesTests
     [InlineData("VECTOR2_ID", true, "Vector2Id")]
     [InlineData("node_2d", false, "Node2D")]
     [InlineData("vector2d", false, "Vector2D")]
+    // ucaps.h's tables, not .NET's casing: _find_upper(U+0131) is U+0049, which the invariant culture leaves alone.
+    [InlineData("ı_x", false, "IX")]
+    // Godot's String holds code points, so a letter beyond U+FFFF is cased as one character.
+    [InlineData("\U00010428b_c", false, "\U00010400bC")]
+    [InlineData("A\U00010400", true, "A\U00010428")]
     public void SnakeToPascalCaseReturnsTheConvertedName(string name, bool inputIsUpper, string expected) =>
         Assert.Equal(expected, GodotNames.SnakeToPascalCase(name, inputIsUpper));
 
@@ -102,6 +107,18 @@ public sealed class GodotNamesTests
     [InlineData("Node2d", "Node2D")]
     [InlineData("Id", "ID")]
     [InlineData("", "")]
+    // Lengths and split points count code points (naming_utils.cpp:150-151, :105-139), never splitting a surrogate pair.
+    [InlineData("\U00010428a", "\U00010400A")]
+    [InlineData("A\U00010428b", "A\U00010400b")]
     public void PascalToPascalCaseReturnsTheConvertedName(string name, string expected) =>
         Assert.Equal(expected, GodotNames.PascalToPascalCase(name));
+
+    // The unpaired-surrogate rows are facts: an attribute's strings are stored as UTF-8, which cannot hold a lone
+    // surrogate. Godot keeps an unpaired surrogate as its own code point (ustring.cpp:2098-2121).
+    [Fact]
+    public void PascalToPascalCaseCountsAnUnpairedSurrogateAsOneCodePoint() =>
+        Assert.Equal("\uD800\U00010400", GodotNames.PascalToPascalCase("\uD800\U00010428"));
+
+    [Fact]
+    public void SnakeToPascalCaseKeepsAnUnpairedSurrogate() => Assert.Equal("\uD800x", GodotNames.SnakeToPascalCase("\uD800x", false));
 }

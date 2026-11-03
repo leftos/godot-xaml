@@ -77,3 +77,5 @@ Still to come in version 1: a language server for Visual Studio and VS Code, and
 MIT.
 
 The float text writer in `src/GodotXaml.Core/Values/Grisu2.cs` is a port of Godot's grisu2 and carries its MIT and Apache-2.0 notice, the one in Godot's `thirdparty/grisu2/LICENSE`.
+
+The case tables in `src/GodotXaml.Core/Names/GodotCaseTables.g.cs` are generated from Godot's `core/string/ucaps.h` and carry its MIT notice.

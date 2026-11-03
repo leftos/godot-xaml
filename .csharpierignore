@@ -1,2 +1,3 @@
 .claude/worktrees/
 .tmp/
+src/GodotXaml.Core/Names/GodotCaseTables.g.cs
