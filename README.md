@@ -32,8 +32,8 @@ Names are those of Godot's C# API, and values are enum names, never integers.
 You need a Godot 4.7 .NET project (tested on 4.7.2). The full walk-through is in [Getting started](docs/guide/getting-started.md).
 
 1. Give the project a solution file (`.sln` or `.slnx`) that contains its `.csproj`, if it has none, or an export fails on the C# step: `dotnet new sln -n <AssemblyName>`, then `dotnet sln add <AssemblyName>.csproj`.
-2. Download `godot-xaml-addon-0.1.0.zip` from [the latest release](https://github.com/leftos/godot-xaml/releases/latest) and unzip it at the project root, which puts it at `addons/godot_xaml/`, dotfiles included.
-3. Add the package to your `.csproj`: `<PackageReference Include="GodotXaml.Core" Version="0.1.0" />`.
+2. Download `godot-xaml-addon-0.1.1.zip` from [the latest release](https://github.com/leftos/godot-xaml/releases/latest) and unzip it at the project root, which puts it at `addons/godot_xaml/`, dotfiles included.
+3. Add the package to your `.csproj`: `<PackageReference Include="GodotXaml.Core" Version="0.1.1" />`.
 
    The project's own `.csproj` must compile `addons/godot_xaml/`: a `<Compile Remove="addons\**" />` makes every file fail with `No loader found`. It also needs `<EnableDynamicLoading>true</EnableDynamicLoading>`. `godot/GodotXaml.Addon.csproj` is a working example.
 4. Run `dotnet build` before you first open the project. An editor that finds no built assembly turns the plugin off.
@@ -67,7 +67,7 @@ Otherwise the originals are copied to `.godot-xaml-backup/` before they are remo
 
 ## Status
 
-0.1.0 is the first release, for Godot 4.7 with .NET; what changed is in [`CHANGELOG.md`](CHANGELOG.md). It ships:
+0.1.1 is the current release, for Godot 4.7 with .NET, and fixes conversion, parsing and CLI issues found in 0.1.0; what changed in each release is in [`CHANGELOG.md`](CHANGELOG.md). It ships:
 
 - `.xscn` and `.xres` open, edit and save in the Godot editor through a C# addon, with no `.tscn` beside them.
 - Exported games load `.xscn` and `.xres` as Godot binary, with no addon code run on a load and no raw XML shipped, once the `godot-xaml` editor plugin is enabled.
