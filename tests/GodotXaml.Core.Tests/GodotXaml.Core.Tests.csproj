@@ -8,12 +8,15 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
-    <!-- Read, never loaded, by GodotSharpEnumTests: the C# enum names Godot generates, to check GodotEnumNames against. -->
+    <!-- Read, never loaded, by GodotSharpEnumTests and GodotSharpMemberNameTests: the C# API Godot generates, to check the
+         computed names against. Editor classes' API is in GodotSharpEditor (bindings_generator.cpp), not GodotSharp. -->
     <PackageReference Include="GodotSharp" ExcludeAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="GodotSharpEditor" ExcludeAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
     <AssemblyMetadata Include="GodotSharpPath" Value="$(PkgGodotSharp)\lib\net8.0\GodotSharp.dll" />
+    <AssemblyMetadata Include="GodotSharpEditorPath" Value="$(PkgGodotSharpEditor)\lib\net8.0\GodotSharpEditor.dll" />
   </ItemGroup>
 
   <ItemGroup>
