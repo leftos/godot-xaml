@@ -148,6 +148,10 @@ A save keeps an `x:Resources` key: the saver pairs a sub_resource with the previ
 
 When an id pairs, the original keeps the key and a value-equal duplicate takes `Type1`; a resource whose type changed under the same id gets a new key; a keyed entry used once goes inline and drops its key, which no duplicate then takes.
 
+The first save of a hand-written file writes it in this canonical form, with no attempt to keep the file's own spelling: an instance written `x:Instance` becomes its scene's namespace tag, the `x:Uids` table and the nodes' `x:UniqueId` are added, and a relative reference is written as its `res://` path, since loading resolves it before Godot sees the scene. Comments still carry.
+
+From then on a save of an unchanged scene changes nothing, so the one-time diff is the cost of a single form; keeping each file's own spelling would leave two forms of one scene and files with no uids for moves to resolve.
+
 ## References: paths inline, XML namespaces for scenes
 
 - A file is referenced by its `res://` path where it is used (`Texture="res://Art/frame.png"`).
