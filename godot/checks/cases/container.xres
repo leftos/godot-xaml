@@ -1,0 +1,8 @@
+<Theme xmlns:x="https://github.com/leftos/godot-xaml/format/1">
+  <x:Resources>
+    <StyleBoxFlat x:Key="Listed" BgColor="0, 1, 0, 1" />
+    <StyleBoxFlat x:Key="Plain" BgColor="1, 0, 0, 1" />
+  </x:Resources>
+  <x:Prop Name="Button/styles/normal" Value="{Plain}" />
+  <x:Prop Name="metadata/list" Value='[SubResource("Listed")]' />
+</Theme>

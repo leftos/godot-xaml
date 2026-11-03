@@ -173,8 +173,8 @@ public sealed class SubResourceIdTests
         Assert.Equal(NodeSubIds(first), NodeSubIds(second));
     }
 
-    // The comment carry rebuilds every resource it matches, inline at any depth or kept in the table, and the ids still
-    // name each resource of the document the conversion returns.
+    // The comment carry rebuilds every resource it matches, inline at any depth or kept in the table, and every one keeps
+    // the id the carry started from: the id of the .tscn's sub_resource of its class.
     [Fact]
     public void IdsFindEveryResourceAfterTheCommentCarry()
     {
@@ -182,6 +182,7 @@ public sealed class SubResourceIdTests
             <Node2D {{X}} Name="Root">
               <x:Resources>
                 <CanvasItemMaterial x:Key="Shared" LightMode="Unshaded" />
+                <ShaderMaterial x:Key="Shaded"><ShaderMaterial.Shader><Shader /></ShaderMaterial.Shader></ShaderMaterial>
               </x:Resources>
               <Sprite2D Name="One" Material="{Shared}">
                 <Sprite2D.Texture>
@@ -191,6 +192,8 @@ public sealed class SubResourceIdTests
                 </Sprite2D.Texture>
               </Sprite2D>
               <Sprite2D Name="Two" Material="{Shared}" />
+              <Sprite2D Name="Three" Material="{Shaded}" />
+              <Sprite2D Name="Four" Material="{Shaded}" />
             </Node2D>
             """;
         XscnDocument previous = Parse(text);
@@ -198,11 +201,16 @@ public sealed class SubResourceIdTests
 
         ConversionResult<XscnDocument> forward = TscnToXscn.Convert(saved, Metadata, Options with { Previous = previous });
 
-        Assert.Equal("Shared", Assert.Single(forward.Document.Resources).Key);
+        Assert.Equal(["Shared", "Shaded"], forward.Document.Resources.Select(entry => entry.Key));
         ConversionIds ids = Assert.IsType<ConversionIds>(forward.Ids);
         XscnResource[] resources = [.. AllResources(forward.Document)];
-        Assert.Equal(3, resources.Length);
-        Assert.All(resources, resource => Assert.NotNull(ids.SubIdOf(resource)));
+        Assert.Equal(5, resources.Length);
+
+        // Each class is on one resource only, so the .tscn's sub_resource whose type is that class is the one it must get.
+        var savedIds = saved.SubResources.ToDictionary(sub => sub.Type, sub => sub.Id);
+        Assert.Equal(5, savedIds.Count);
+        Assert.All(resources, resource => Assert.Equal(savedIds[Assert.IsType<XscnClassType>(resource.Type).Class.Name], ids.SubIdOf(resource)));
+        Assert.Equal(5, resources.Select(resource => ids.SubIdOf(resource)).Distinct(StringComparer.Ordinal).Count());
     }
 
     // Every resource a document holds: the table's entries and each resource held inline, at any depth.

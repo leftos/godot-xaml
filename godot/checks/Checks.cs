@@ -29,6 +29,7 @@ public partial class Checks : Node
     private const string HolderPath = CasesPath + "holder.xscn";
     private const string ParentPath = CasesPath + "parent.xscn";
     private const string ContainedPath = CasesPath + "contained.xscn";
+    private const string ContainerPath = CasesPath + "container.xres";
     private const string SavesFolder = "user://gx-saves/";
     private const string OutFolder = "res://checks/out/";
     private const string HeldScriptPath = CasesPath + "held.gd";
@@ -61,6 +62,9 @@ public partial class Checks : Node
 
     // The garbage collections C45 allows a dropped scene's sub-resource to leave the cache in, each followed by a frame.
     private const int ContainerReleaseGcPasses = 3;
+
+    // The colour of C53's box held only inside an array, which its fixture gives the other box in a plain property.
+    private static readonly Color ListedBoxColor = new(0, 1, 0);
 
     private static int tempPathsBefore;
 
@@ -123,6 +127,7 @@ public partial class Checks : Node
             ("C40", ReuseKeepsADroppedScenesSubResourceInATscn),
             ("C42", DroppedSceneLeavesTheCache),
             ("C45", DroppedSceneReleasesContainerSubResources),
+            ("C53", DroppedResourceReleasesContainerSubResources),
         ];
         DeleteFolder(SavesFolder);
         int total = checks.Length + frameChecks.Length;
@@ -1675,6 +1680,62 @@ public partial class Checks : Node
             DeleteFolder(OutFolder);
         }
     }
+
+    // A resource's array property holds its items the way a plain property holds its value, and the walk disposes every
+    // container it reads: a dropped .xres releases one box as soon as the other, before any collection. Both wrappers are
+    // taken the same way, so equal counts is what the walk leaves.
+    private async Task<string> DroppedResourceReleasesContainerSubResources()
+    {
+        const string path = OutFolder + "container.xres";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.Copy(ProjectSettings.GlobalizePath(ContainerPath), ProjectSettings.GlobalizePath(path));
+            XscnParseResult parsed = XscnParser.Parse(
+                File.ReadAllText(ProjectSettings.GlobalizePath(path)),
+                XscnDocumentKind.Resource,
+                XscnMetadata.Value
+            );
+            string[] subPaths = [.. XscnLoading.ToTscn(parsed.Document).Document.SubResources.Select(sub => path + "::" + sub.Id)];
+            if (subPaths.Length != 2)
+            {
+                return $"{path} converts to {subPaths.Length} sub-resources, not 2";
+            }
+
+            Resource? loaded = ResourceLoader.Load(path);
+            if (loaded is null)
+            {
+                return $"{path} did not load";
+            }
+
+            Resource? first = ResourceLoader.GetCachedRef(subPaths[0]);
+            Resource? second = ResourceLoader.GetCachedRef(subPaths[1]);
+            loaded.Dispose();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (first is null || second is null)
+            {
+                return $"{string.Join(" and ", subPaths)} not cached while {path} was held";
+            }
+
+            (int listed, int plain) = ContainerBoxCounts(first, second);
+            string counts =
+                $"{path}: the box in metadata/list holds {listed} references and the box in Button/styles/normal holds"
+                + $" {plain}, a frame after the resource was dropped";
+            return listed == plain ? "" : counts;
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // The reference counts of the box only the array holds and the box a plain property holds, in that order; the fixture
+    // gives the array's box the colour the other box does not have.
+    private static (int Listed, int Plain) ContainerBoxCounts(Resource first, Resource second) =>
+        first.Get("bg_color").AsColor() == ListedBoxColor
+            ? (first.GetReferenceCount(), second.GetReferenceCount())
+            : (second.GetReferenceCount(), first.GetReferenceCount());
 
     // The box stays alive while its scene leaves the cache; a reuse load of the scene then reuses the box (:589-592).
     private async Task<string> ReuseKeepsTheObject(string path)
