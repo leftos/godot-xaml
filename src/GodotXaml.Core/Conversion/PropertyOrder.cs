@@ -162,10 +162,11 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         Dictionary<string, Rank> listed = new(StringComparer.Ordinal);
         for (int depth = 0; depth < chain.Length; depth++)
         {
-            ImmutableArray<GodotPropertyInfo> own = chain[depth].Properties;
+            // ListOrder, not Properties: it holds the slash-named names ClassDB lists too (glow_levels/1, params/bias).
+            ImmutableArray<string> own = chain[depth].ListOrder;
             for (int index = 0; index < own.Length; index++)
             {
-                listed.TryAdd(own[index].Name, new Rank(Tier.ClassList, depth, Family.OwnList, index));
+                listed.TryAdd(own[index], new Rank(Tier.ClassList, depth, Family.OwnList, index));
             }
         }
 

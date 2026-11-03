@@ -153,7 +153,15 @@ func _class_entry(class_title: String, api_props: Dictionary) -> Dictionary:
 	var parent := String(ClassDB.get_parent_class(class_title))
 	var instantiable := ClassDB.can_instantiate(class_title)
 	var props := []
+	var list_order := []
+	var has_slash_name := false
 	for entry: Dictionary in ClassDB.class_get_property_list(class_title, true):
+		if (entry.usage & SKIPPED_USAGE) != 0:
+			continue
+		var name := String(entry.name)
+		list_order.append(name)
+		if name.contains("/"):
+			has_slash_name = true
 		if _is_skipped(entry):
 			continue
 		props.append(_property_entry(class_title, entry, api_props))
@@ -164,6 +172,10 @@ func _class_entry(class_title: String, api_props: Dictionary) -> Dictionary:
 		"properties": props,
 		"signals": _signal_entries(class_title),
 	}
+	# Slash-named names stay out of `properties`; a class holding any lists all its names in
+	# ClassDB order, for property order only.
+	if has_slash_name:
+		class_entry["listOrder"] = list_order
 	if not _class_has_defaults(class_title):
 		class_entry["hasDefaults"] = false
 	if _has_theme_overrides(class_title):

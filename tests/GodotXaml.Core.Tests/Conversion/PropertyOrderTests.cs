@@ -1174,6 +1174,39 @@ public sealed class PropertyOrderTests
         );
     }
 
+    // environment.cpp registers glow_levels/1..7 after glow_enabled and before glow_normalized, ahead of glow_intensity.
+    [Fact]
+    public void AClassDbSlashNameGoesAtItsClassListPlace()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <Environment {{X}} GlowEnabled="true" GlowIntensity="1.5" GlowNormalized="true">
+              <x:Prop Name="glow_levels/1" Value="0.5" />
+            </Environment>
+            """
+        );
+
+        Assert.Equal(["glow_enabled", "glow_levels/1", "glow_normalized", "glow_intensity"], Names(resource.ResourceProperties));
+    }
+
+    // hinge_joint_3d.cpp registers params/bias, then angular_limit/..., then motor/..., all after Joint3D's own list.
+    [Fact]
+    public void AJointsSlashNamesGoInTheirClassListOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <HingeJoint3D {{X}} Name="Root" NodeA="../A">
+              <x:Prop Name="motor/enable" Value="true" />
+              <x:Prop Name="angular_limit/upper" Value="1.0" />
+              <x:Prop Name="params/bias" Value="0.5" />
+              <x:Prop Name="angular_limit/enable" Value="true" />
+            </HingeJoint3D>
+            """
+        );
+
+        Assert.Equal(["node_a", "params/bias", "angular_limit/enable", "angular_limit/upper", "motor/enable"], Names(scene.Nodes[0].Properties));
+    }
+
     private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
 
     // Parses a resource document and converts it with no issue.

@@ -12,7 +12,7 @@ Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent
 
 Top level: `godot` (the engine's version string), `globalEnums`, `classes`.
 
-- A class: `parent` (null for `Object`), `instantiable`, `enums`, `properties`, `signals`, and `hasDefaults`, `defaultOverrides` and `themeOverrides` on some (below).
+- A class: `parent` (null for `Object`), `instantiable`, `enums`, `properties`, `signals`, and `hasDefaults`, `defaultOverrides`, `themeOverrides` and `listOrder` on some (below). `listOrder`, on a class that declares a slash-named property itself, lists every property name the class declares in ClassDB order, slash-named ones included; `properties` leaves slash-named ones out, so it alone serves typing and C# names, and `listOrder` serves property order.
 - An enum: `{"bitfield": bool, "values": [[name, int], …]}`, members in declaration order.
 - A property: `name`, `type` (Variant type name), `enumType` (`"Control.MouseFilter"`, or null), `bitfield`, `hint`, `hintString`, `usage`, `className`, `default`.
 - A signal: `name` and `args`, an array in ClassDB order of `{name, type, className}` per argument. `type` is the argument's Variant type (`Object` for a node argument) and `className` its class (`Area2D`'s `body_entered` takes `body`, `Object`, `Node2D`). A class with no signals of its own has `[]`.

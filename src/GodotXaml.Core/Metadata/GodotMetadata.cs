@@ -305,6 +305,7 @@ internal static class GodotMetadataReader
                 JsonFields.Bool(entry, "instantiable", where),
                 JsonFields.OptionalBool(entry, "hasDefaults", where) ?? true,
                 properties,
+                ListOrder(entry, properties, where),
                 DefaultOverrides(entry, name, where),
                 [.. JsonFields.Object(entry, "enums", where).EnumerateObject().Select(e => ClassEnum(name, e))],
                 [.. JsonFields.OptionalArray(entry, "themeOverrides", where).Select(t => ThemeOverride(name, t))],
@@ -312,6 +313,23 @@ internal static class GodotMetadataReader
             )
         );
     }
+
+    // The names the class declares in ClassDB order, slash-named ones included: listOrder where the dump wrote one (a class
+    // with a slash-named name), else the names of its properties.
+    private static ImmutableArray<string> ListOrder(JsonElement entry, ImmutableArray<GodotPropertyInfo> properties, string where) =>
+        entry.TryGetProperty("listOrder", out _)
+            ?
+            [
+                .. JsonFields
+                    .Array(entry, "listOrder", where)
+                    .EnumerateArray()
+                    .Select(n =>
+                        n.ValueKind == JsonValueKind.String
+                            ? n.GetString()!
+                            : throw new InvalidDataException($"{where}: 'listOrder' holds an item that is not a string.")
+                    ),
+            ]
+            : [.. properties.Select(p => p.Name)];
 
     private static GodotPropertyInfo Property(string className, string classCSharpName, JsonElement entry)
     {

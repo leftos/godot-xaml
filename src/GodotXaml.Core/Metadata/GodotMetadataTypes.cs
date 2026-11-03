@@ -21,6 +21,7 @@ public sealed class GodotClassInfo
         Instantiable = parts.Instantiable;
         HasDefaults = parts.HasDefaults;
         Properties = parts.Properties;
+        ListOrder = parts.ListOrder;
         Enums = parts.Enums;
         ThemeOverrides = parts.ThemeOverrides;
         Signals = parts.Signals;
@@ -57,6 +58,12 @@ public sealed class GodotClassInfo
     /// <summary>The properties the class declares itself, in ClassDB order.</summary>
     public ImmutableArray<GodotPropertyInfo> Properties { get; }
 
+    /// <summary>
+    /// The names the class declares itself in ClassDB order, slash-named ones included, for property order only; the names of
+    /// <see cref="Properties"/> for a class with no slash-named name.
+    /// </summary>
+    public ImmutableArray<string> ListOrder { get; }
+
     /// <summary>The enums the class declares itself.</summary>
     public ImmutableArray<GodotEnumInfo> Enums { get; }
 
@@ -88,6 +95,7 @@ internal sealed record GodotClassParts(
     bool Instantiable,
     bool HasDefaults,
     ImmutableArray<GodotPropertyInfo> Properties,
+    ImmutableArray<string> ListOrder,
     ImmutableArray<KeyValuePair<string, GodotPropertyDefault>> DefaultOverrides,
     ImmutableArray<GodotEnumInfo> Enums,
     ImmutableArray<GodotThemeOverrideInfo> ThemeOverrides,

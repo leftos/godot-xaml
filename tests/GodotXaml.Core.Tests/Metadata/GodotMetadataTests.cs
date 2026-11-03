@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using GodotXaml.Core.Metadata;
@@ -350,6 +351,47 @@ public sealed class GodotMetadataTests
              "{{name}}": {"parent": "{{parent}}", "instantiable": true, "hasDefaults": false, "enums": {},
                "properties": [], "signals": []}
             """;
+
+    // environment.cpp registers glow_levels/1..7 between glow_enabled and glow_normalized; Properties leaves them out.
+    [Fact]
+    public void ListOrderHoldsAClasssSlashNamesAtTheirClassDbPlace()
+    {
+        ImmutableArray<string> order = Class("Environment").ListOrder;
+        int enabled = order.IndexOf("glow_enabled");
+
+        Assert.Equal(
+            [
+                "glow_enabled",
+                "glow_levels/1",
+                "glow_levels/2",
+                "glow_levels/3",
+                "glow_levels/4",
+                "glow_levels/5",
+                "glow_levels/6",
+                "glow_levels/7",
+                "glow_normalized",
+            ],
+            order.Skip(enabled).Take(9)
+        );
+        Assert.DoesNotContain(Class("Environment").Properties, p => p.Name == "glow_levels/1");
+    }
+
+    [Fact]
+    public void ListOrderOfAClassWithNoSlashNameIsItsPropertyNames()
+    {
+        GodotClassInfo label = Class("Label");
+
+        Assert.Equal(label.Properties.Select(p => p.Name), label.ListOrder);
+    }
+
+    [Fact]
+    public void EveryClassesListOrderWithoutSlashNamesIsItsPropertyNames()
+    {
+        foreach (GodotClassInfo cls in Real.Classes)
+        {
+            Assert.Equal(cls.Properties.Select(p => p.Name), cls.ListOrder.Where(n => !n.Contains('/', StringComparison.Ordinal)));
+        }
+    }
 
     private static GodotClassInfo Class(string name) => Real.FindClass(name) ?? throw new InvalidOperationException($"No class {name}.");
 

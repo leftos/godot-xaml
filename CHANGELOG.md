@@ -9,6 +9,7 @@
 ### Fixed
 
 - Converting back writes PhysicalBone3D joint constraints and SoftBody3D attachments in Godot's order.
+- Converting back writes slash-named properties such as Environment's `glow_levels/1` and joint `params/` at their place in Godot's order.
 
 ## 0.1.1 - 2026-11-03
 
