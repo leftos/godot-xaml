@@ -34,6 +34,8 @@ public partial class Checks : Node
     private const string SavesFolder = "user://gx-saves/";
     private const string OutFolder = "res://checks/out/";
     private const string HeldScriptPath = CasesPath + "held.gd";
+    private const string ScriptedCsPath = CasesPath + "scripted_cs.xres";
+    private const string ScriptedGdPath = CasesPath + "scripted_gd.xres";
     private const string RelativeCasesPath = CasesPath + "relative/";
     private const string RelativeHolderPath = RelativeCasesPath + "holder.xscn";
     private const string AbstractSubResource =
@@ -152,6 +154,8 @@ public partial class Checks : Node
             ("C55", ForeignSubResourceDoesNotTakeAnEditedKey),
             ("C56", OneForeignUserKeepsTheOwnComment),
             ("C58", NonCanonicalPathKeepsTheKey),
+            ("C59", ScriptedResourceKeepsItsWrapper),
+            ("C60", ScriptHandsItselfToCSharp),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -2360,5 +2364,85 @@ public partial class Checks : Node
             .. ExternalPathFailures(scene, ThemePath),
         ];
         return string.Join("; ", failures.Where(f => f.Length > 0));
+    }
+
+    // The root carries a C# script, so the load's wrapper may have been handed out while the file loaded: the load leaves
+    // it alone, and the Count reads through it before and after a collection.
+    private static string ScriptedResourceKeepsItsWrapper()
+    {
+        CheckedResource? loaded = ResourceLoader.Load<CheckedResource>(ScriptedCsPath);
+        if (loaded is null)
+        {
+            return $"loading {ScriptedCsPath} gave null";
+        }
+
+        var failures = new List<string>();
+        try
+        {
+            if (loaded.Count != 7)
+            {
+                failures.Add($"its Count is {loaded.Count}, not 7");
+            }
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            if (loaded.Count != 7)
+            {
+                failures.Add($"after a collection its Count is {loaded.Count}, not 7");
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            return "the load disposed the resource's C# wrapper, so its Count cannot be read";
+        }
+
+        GC.KeepAlive(loaded);
+        return string.Join("; ", failures);
+    }
+
+    // The script's setter hands its own resource to C#, which keeps it: the load therefore leaves that wrapper alone, and
+    // what C# holds is the load's object and still answers after a collection.
+    private static string ScriptHandsItselfToCSharp()
+    {
+        CheckHandoff.Held = null;
+        Resource? loaded = ResourceLoader.Load(ScriptedGdPath);
+        if (loaded is null)
+        {
+            return $"loading {ScriptedGdPath} gave null";
+        }
+
+        Resource? held = CheckHandoff.Held;
+        if (held is null)
+        {
+            return $"loading {ScriptedGdPath} did not hand its resource to CheckHandoff";
+        }
+
+        string failure;
+        try
+        {
+            failure = Failures(
+                held.GetInstanceId() == loaded.GetInstanceId()
+                    ? ""
+                    : $"Held is object {held.GetInstanceId()}, not the load's {loaded.GetInstanceId()}",
+                HeldCountFailure(held, "after the load")
+            );
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            failure = Failures(failure, HeldCountFailure(held, "after a collection"));
+        }
+        catch (ObjectDisposedException)
+        {
+            return "the load disposed the wrapper the script handed to C#";
+        }
+
+        GC.KeepAlive(loaded);
+        return failure;
+    }
+
+    // The count as the wrapper C# holds reads it back, or why it cannot.
+    private static string HeldCountFailure(Resource held, string when)
+    {
+        int count = held.Get("count").AsInt32();
+        return count == 5 ? "" : $"its count is {count} {when}, not 5";
     }
 }
