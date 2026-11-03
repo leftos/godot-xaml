@@ -24,18 +24,19 @@ The release ships the core, the CLI and the addon package at one version, on one
 
 ## Phase 2: Version
 
-Set `<v>` in the six homes `tools/pack-release.ps1` checks:
+Set `<v>` in the seven homes `tools/pack-release.ps1` checks:
 
 - `VersionPrefix` in `Directory.Build.props`;
 - `version` in `godot/addons/godot_xaml/plugin.cfg`;
 - the `GodotXaml.Core` `PackageReference` in `README.md`;
 - every `godot-xaml-addon-<v>.zip` name in `README.md`'s install steps;
+- the `GodotXaml.Cli --version <v>` install line in `README.md`;
 - the `GodotXaml.Cli --version <v>` install line in `godot/addons/godot_xaml/AGENTS.md`;
 - every `godot-xaml/blob/v<v>/` link, and the version line, in `godot/addons/godot_xaml/AGENTS.md`.
 
-Then run `pwsh -NoProfile -File tools/pack-release.ps1 -Version <v> -CheckOnly`, which checks the six homes, refuses a `v<v>` tag already on `origin` (the minutes before nuget.org lists a pushed version) and a version nuget.org lists, and packs nothing.
+Then run `pwsh -NoProfile -File tools/pack-release.ps1 -Version <v> -CheckOnly`, which checks the seven homes, refuses a `v<v>` tag already on `origin` (the minutes before nuget.org lists a pushed version) and a version nuget.org lists, and packs nothing.
 
-**Done when** all six read `<v>` and `-CheckOnly` prints `pack-release.ps1: <v> is free to release`.
+**Done when** all seven read `<v>` and `-CheckOnly` prints `pack-release.ps1: <v> is free to release`.
 
 ## Phase 3: Changelog
 

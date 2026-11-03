@@ -4,10 +4,10 @@
 Builds the three files a godot-xaml release ships, under .tmp/release/<version>/.
 
 .DESCRIPTION
-Checks that the version in its six homes equals -Version: VersionPrefix in Directory.Build.props, version in
+Checks that the version in its seven homes equals -Version: VersionPrefix in Directory.Build.props, version in
 godot/addons/godot_xaml/plugin.cfg, the GodotXaml.Core PackageReference in README.md, the godot-xaml-addon-<version>.zip
-name in README.md's install steps, the CLI install line's --version in godot/addons/godot_xaml/AGENTS.md, and every docs
-link at the release tag in godot/addons/godot_xaml/AGENTS.md. Then
+name in README.md's install steps, the CLI install line's --version in README.md and in godot/addons/godot_xaml/AGENTS.md,
+and every docs link at the release tag in godot/addons/godot_xaml/AGENTS.md. Then
 it deletes and recreates .tmp/release/<version>/, packs GodotXaml.Core and GodotXaml.Cli there, and zips the addon
 there as godot-xaml-addon-<version>.zip, with entries under addons/godot_xaml/, dotfiles and .uid files included, and
 any bin/ or obj/ left out. The zip's plugin.cfg entry carries the packaged version.
@@ -97,6 +97,8 @@ function Assert-VersionHomes {
         Get-VersionMismatch -VersionHome 'README.md' -Pattern '<PackageReference Include="GodotXaml\.Core" Version="([^"]*)" />'
         Get-VersionMismatch -VersionHome 'README.md' -AllMatches `
             -Pattern 'godot-xaml-addon-(\d+\.\d+\.\d+)\.zip'
+        Get-VersionMismatch -VersionHome 'README.md' -AllMatches `
+            -Pattern 'GodotXaml\.Cli --version (\d+\.\d+\.\d+)'
         Get-VersionMismatch -VersionHome 'godot/addons/godot_xaml/AGENTS.md' -AllMatches `
             -Pattern 'godot-xaml/blob/v(\d+\.\d+\.\d+)/'
         Get-VersionMismatch -VersionHome 'godot/addons/godot_xaml/AGENTS.md' -AllMatches `
