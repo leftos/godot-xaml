@@ -44,6 +44,9 @@ internal static class DynamicPropertyFamilies
     // point only on its node.
     private static readonly string[] BlendPointKeys = ["node", "pos", "name"];
 
+    // scene/animation/animation_blend_tree.cpp, AnimationNodeTransition::_get_property_list.
+    private static readonly string[] TransitionInputKeys = ["name", "auto_advance", "break_loop_at_end", "reset"];
+
     // modules/visual_shader/visual_shader.cpp, VisualShader::_get_property_list; VisualShader::_set creates a node only on its
     // node, and casts the node unchecked for size, input_ports, output_ports and expression.
     private static readonly string[] VisualShaderNodeKeys = ["node", "position", "size", "input_ports", "output_ports", "expression"];
@@ -449,8 +452,9 @@ internal static class DynamicPropertyFamilies
         Row.OnKey("AnimationNodeBlendSpace1D", @"^blend_point_(?<index>\d+)/(?<key>[^/]*)", BlendPointKeys),
         // scene/animation/animation_blend_space_2d.cpp, AnimationNodeBlendSpace2D::_get_property_list
         Row.OnKey("AnimationNodeBlendSpace2D", @"^blend_point_(?<index>\d+)/(?<key>[^/]*)", BlendPointKeys),
-        // scene/animation/animation_blend_tree.cpp, AnimationNodeTransition::_get_property_list
-        Row.SizedFirst("AnimationNodeTransition", @"^input_\d+/", "input_count"),
+        // scene/animation/animation_blend_tree.cpp, AnimationNodeTransition::_get_property_list; _set adds an input only on
+        // input_<count>/name, and input_count is an editor-only property the file never holds.
+        Row.OnKey("AnimationNodeTransition", @"^input_(?<index>\d+)/(?<key>[^/]*)", TransitionInputKeys),
         // scene/resources/2d/skeleton/skeleton_modification_2d_ccdik.cpp, SkeletonModification2DCCDIK::_get_property_list
         Row.SizedFirst("SkeletonModification2DCCDIK", @"^joint_data/\d+/", "ccdik_data_chain_length"),
         Row.AnyOrder("SkeletonModification2DCCDIK", @"^editor/draw_gizmo$"),

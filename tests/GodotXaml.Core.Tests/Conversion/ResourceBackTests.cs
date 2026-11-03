@@ -22,6 +22,12 @@ public sealed class ResourceBackTests
             (section, name) => section.Class == "VisualShader" && name.StartsWith("varyings/", StringComparison.Ordinal)
         ),
         new(
+            "AnimationNodeBlendTree nodes",
+            // AnimationNodeBlendTree::_get_property_list walks its nodes map (an AHashMap) in the order the nodes were added,
+            // which the text keeps no record of (docs/DECISIONS.md, "Canonical attribute order").
+            (section, name) => section.Class == "AnimationNodeBlendTree" && name.StartsWith("nodes/", StringComparison.Ordinal)
+        ),
+        new(
             "quoted_name script exports",
             // A script's own _get_property_list order; neither the class metadata nor a family row lists these names.
             (section, name) => section.Fixture == "quoted_name" && section.Root && IsScriptExport(section.Class, name)

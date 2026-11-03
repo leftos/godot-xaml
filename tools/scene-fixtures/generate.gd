@@ -69,6 +69,7 @@ func _run() -> String:
 		_visual_shader_nodes,
 		_replication_properties,
 		_tile_set_patterns,
+		_animation_nodes,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -632,6 +633,79 @@ func _tile_set_patterns() -> String:
 		pattern.set_cell(Vector2i(index, 0), 0, Vector2i(0, 0))
 		tile_set.add_pattern(pattern)
 	return _save("tile_set_patterns.tres", tile_set)
+
+
+## An AnimationNodeBlendTree of 12 nodes added out of name order, a Transition of 12 inputs fed
+## by six of them and wired to the output, a StateMachine of 12 states with transitions and a
+## graph offset, and a BlendSpace1D and a BlendSpace2D of 12 named points each:
+## AnimationNodeBlendTree::_get_property_list (animation_blend_tree.cpp) walks its nodes in the
+## order they were added, AnimationNodeStateMachine::_get_property_list sorts its states by
+## name, and the blend spaces and the transition list their entries in numeric order.
+func _animation_nodes() -> String:
+	var tree := AnimationNodeBlendTree.new()
+	var transition := AnimationNodeTransition.new()
+	transition.input_count = 12
+	for index in 12:
+		transition.set_input_name(index, "in_%d" % index)
+		transition.set_input_as_auto_advance(index, index % 3 == 0)
+		transition.set_input_break_loop_at_end(index, index % 4 == 1)
+		transition.set_input_reset(index, index % 2 == 0)
+	var machine := AnimationNodeStateMachine.new()
+	for index in 12:
+		machine.add_node(
+			"s%d" % index,
+			_animation_node("state_%d" % index),
+			Vector2(10 + 40 * index, 5 + 15 * index)
+		)
+	for index in 6:
+		machine.add_transition(
+			"s%d" % index, "s%d" % (11 - index), AnimationNodeStateMachineTransition.new()
+		)
+	machine.add_transition("Start", "s0", AnimationNodeStateMachineTransition.new())
+	machine.graph_offset = Vector2(15, -25)
+	var space_1d := AnimationNodeBlendSpace1D.new()
+	var space_2d := AnimationNodeBlendSpace2D.new()
+	for index in 12:
+		space_1d.add_blend_point(
+			_animation_node("line_%d" % index), (index - 5.5) * 0.125, -1, StringName("p%d" % index)
+		)
+		space_2d.add_blend_point(
+			_animation_node("plane_%d" % index),
+			Vector2((index - 5.5) * 0.125, 0.5 - 0.0625 * index),
+			-1,
+			StringName("q%d" % index)
+		)
+	var nodes: Array = [
+		["n10", transition],
+		["n2", machine],
+		["zeta", space_1d],
+		["alpha", space_2d],
+		["n1", null],
+		["b3", null],
+		["omega", null],
+		["k7", null],
+		["beta", null],
+		["c0", null],
+		["n11", null],
+		["mid", null],
+	]
+	for index in nodes.size():
+		var entry: Array = nodes[index]
+		var node: AnimationNode = entry[1]
+		if node == null:
+			node = _animation_node("tree_%d" % index)
+		tree.add_node(entry[0], node, Vector2(10 + 30 * index, 20 + 10 * index))
+	tree.connect_node("output", 0, "n10")
+	for index in 6:
+		tree.connect_node("n10", index, nodes[index + 1][0])
+	return _save("animation_nodes.tres", tree)
+
+
+## An AnimationNodeAnimation that plays the named animation.
+func _animation_node(animation: String) -> AnimationNodeAnimation:
+	var node := AnimationNodeAnimation.new()
+	node.animation = animation
+	return node
 
 
 ## The property a track of this kind animates on its target.

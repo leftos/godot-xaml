@@ -372,6 +372,56 @@ public sealed class PropertyOrderTests
         );
     }
 
+    // AnimationNodeTransition::_set adds an input only on input_<count>/name; input_count is not stored.
+    [Fact]
+    public void ATransitionInputStartsWithItsNameAndInputsRunInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <AnimationNodeTransition {{X}}>
+              <x:Prop Name="input_0/auto_advance" Value="true" />
+              <x:Prop Name="input_0/break_loop_at_end" Value="false" />
+              <x:Prop Name="input_0/name" Value='"in_0"' />
+              <x:Prop Name="input_0/reset" Value="true" />
+              <x:Prop Name="input_1/auto_advance" Value="false" />
+              <x:Prop Name="input_1/break_loop_at_end" Value="true" />
+              <x:Prop Name="input_1/name" Value='"in_1"' />
+              <x:Prop Name="input_1/reset" Value="false" />
+              <x:Prop Name="input_10/auto_advance" Value="false" />
+              <x:Prop Name="input_10/break_loop_at_end" Value="false" />
+              <x:Prop Name="input_10/name" Value='"in_10"' />
+              <x:Prop Name="input_10/reset" Value="true" />
+              <x:Prop Name="input_2/auto_advance" Value="false" />
+              <x:Prop Name="input_2/break_loop_at_end" Value="false" />
+              <x:Prop Name="input_2/name" Value='"in_2"' />
+              <x:Prop Name="input_2/reset" Value="true" />
+            </AnimationNodeTransition>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "input_0/name",
+                "input_0/auto_advance",
+                "input_0/break_loop_at_end",
+                "input_0/reset",
+                "input_1/name",
+                "input_1/auto_advance",
+                "input_1/break_loop_at_end",
+                "input_1/reset",
+                "input_2/name",
+                "input_2/auto_advance",
+                "input_2/break_loop_at_end",
+                "input_2/reset",
+                "input_10/name",
+                "input_10/auto_advance",
+                "input_10/break_loop_at_end",
+                "input_10/reset",
+            ],
+            Names(resource.ResourceProperties)
+        );
+    }
+
     // TileSet::_set appends at most one pattern per pattern_<N>, so the patterns must come in numeric order.
     [Fact]
     public void TileSetPatternsRunInNumericOrder()

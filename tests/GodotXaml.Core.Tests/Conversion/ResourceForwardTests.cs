@@ -16,6 +16,7 @@ public sealed class ResourceForwardTests
 
     public static TheoryData<string> Resources =>
         new(
+            "animation_nodes",
             "animation_tracks",
             "gradient_texture",
             "material",

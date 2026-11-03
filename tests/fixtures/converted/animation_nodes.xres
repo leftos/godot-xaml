@@ -1,0 +1,236 @@
+<AnimationNodeBlendTree
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    node_connections='[&amp;"output", 0, &amp;"n10", &amp;"n10", 0, &amp;"n2", &amp;"n10", 1, &amp;"zeta", &amp;"n10", 2, &amp;"alpha", &amp;"n10", 3, &amp;"n1", &amp;"n10", 4, &amp;"b3", &amp;"n10", 5, &amp;"omega"]'>
+  <x:Resources>
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation1" Animation="plane_0" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation2" Animation="plane_1" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation3" Animation="plane_10" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation4" Animation="plane_11" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation5" Animation="plane_2" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation6" Animation="plane_3" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation7" Animation="plane_4" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation8" Animation="plane_5" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation9" Animation="plane_6" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation10" Animation="plane_7" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation11" Animation="plane_8" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation12" Animation="plane_9" />
+    <AnimationNodeBlendSpace2D x:Key="AnimationNodeBlendSpace2D1">
+      <x:Prop Name="blend_point_0/name" Value='&amp;"q0"' />
+      <x:Prop Name="blend_point_0/node" Value="{AnimationNodeAnimation1}" />
+      <x:Prop Name="blend_point_0/pos" Value="Vector2(-0.6875, 0.5)" />
+      <x:Prop Name="blend_point_1/name" Value='&amp;"q1"' />
+      <x:Prop Name="blend_point_1/node" Value="{AnimationNodeAnimation2}" />
+      <x:Prop Name="blend_point_1/pos" Value="Vector2(-0.5625, 0.4375)" />
+      <x:Prop Name="blend_point_10/name" Value='&amp;"q10"' />
+      <x:Prop Name="blend_point_10/node" Value="{AnimationNodeAnimation3}" />
+      <x:Prop Name="blend_point_10/pos" Value="Vector2(0.5625, -0.125)" />
+      <x:Prop Name="blend_point_11/name" Value='&amp;"q11"' />
+      <x:Prop Name="blend_point_11/node" Value="{AnimationNodeAnimation4}" />
+      <x:Prop Name="blend_point_11/pos" Value="Vector2(0.6875, -0.1875)" />
+      <x:Prop Name="blend_point_2/name" Value='&amp;"q2"' />
+      <x:Prop Name="blend_point_2/node" Value="{AnimationNodeAnimation5}" />
+      <x:Prop Name="blend_point_2/pos" Value="Vector2(-0.4375, 0.375)" />
+      <x:Prop Name="blend_point_3/name" Value='&amp;"q3"' />
+      <x:Prop Name="blend_point_3/node" Value="{AnimationNodeAnimation6}" />
+      <x:Prop Name="blend_point_3/pos" Value="Vector2(-0.3125, 0.3125)" />
+      <x:Prop Name="blend_point_4/name" Value='&amp;"q4"' />
+      <x:Prop Name="blend_point_4/node" Value="{AnimationNodeAnimation7}" />
+      <x:Prop Name="blend_point_4/pos" Value="Vector2(-0.1875, 0.25)" />
+      <x:Prop Name="blend_point_5/name" Value='&amp;"q5"' />
+      <x:Prop Name="blend_point_5/node" Value="{AnimationNodeAnimation8}" />
+      <x:Prop Name="blend_point_5/pos" Value="Vector2(-0.0625, 0.1875)" />
+      <x:Prop Name="blend_point_6/name" Value='&amp;"q6"' />
+      <x:Prop Name="blend_point_6/node" Value="{AnimationNodeAnimation9}" />
+      <x:Prop Name="blend_point_6/pos" Value="Vector2(0.0625, 0.125)" />
+      <x:Prop Name="blend_point_7/name" Value='&amp;"q7"' />
+      <x:Prop Name="blend_point_7/node" Value="{AnimationNodeAnimation10}" />
+      <x:Prop Name="blend_point_7/pos" Value="Vector2(0.1875, 0.0625)" />
+      <x:Prop Name="blend_point_8/name" Value='&amp;"q8"' />
+      <x:Prop Name="blend_point_8/node" Value="{AnimationNodeAnimation11}" />
+      <x:Prop Name="blend_point_8/pos" Value="Vector2(0.3125, 0)" />
+      <x:Prop Name="blend_point_9/name" Value='&amp;"q9"' />
+      <x:Prop Name="blend_point_9/node" Value="{AnimationNodeAnimation12}" />
+      <x:Prop Name="blend_point_9/pos" Value="Vector2(0.4375, -0.0625)" />
+    </AnimationNodeBlendSpace2D>
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation13" Animation="tree_5" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation14" Animation="tree_8" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation15" Animation="tree_9" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation16" Animation="tree_7" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation17" Animation="tree_11" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation18" Animation="tree_4" />
+    <AnimationNodeTransition x:Key="AnimationNodeTransition1">
+      <x:Prop Name="input_0/auto_advance" Value="true" />
+      <x:Prop Name="input_0/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_0/name" Value='"in_0"' />
+      <x:Prop Name="input_0/reset" Value="true" />
+      <x:Prop Name="input_1/auto_advance" Value="false" />
+      <x:Prop Name="input_1/break_loop_at_end" Value="true" />
+      <x:Prop Name="input_1/name" Value='"in_1"' />
+      <x:Prop Name="input_1/reset" Value="false" />
+      <x:Prop Name="input_10/auto_advance" Value="false" />
+      <x:Prop Name="input_10/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_10/name" Value='"in_10"' />
+      <x:Prop Name="input_10/reset" Value="true" />
+      <x:Prop Name="input_11/auto_advance" Value="false" />
+      <x:Prop Name="input_11/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_11/name" Value='"in_11"' />
+      <x:Prop Name="input_11/reset" Value="false" />
+      <x:Prop Name="input_2/auto_advance" Value="false" />
+      <x:Prop Name="input_2/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_2/name" Value='"in_2"' />
+      <x:Prop Name="input_2/reset" Value="true" />
+      <x:Prop Name="input_3/auto_advance" Value="true" />
+      <x:Prop Name="input_3/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_3/name" Value='"in_3"' />
+      <x:Prop Name="input_3/reset" Value="false" />
+      <x:Prop Name="input_4/auto_advance" Value="false" />
+      <x:Prop Name="input_4/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_4/name" Value='"in_4"' />
+      <x:Prop Name="input_4/reset" Value="true" />
+      <x:Prop Name="input_5/auto_advance" Value="false" />
+      <x:Prop Name="input_5/break_loop_at_end" Value="true" />
+      <x:Prop Name="input_5/name" Value='"in_5"' />
+      <x:Prop Name="input_5/reset" Value="false" />
+      <x:Prop Name="input_6/auto_advance" Value="true" />
+      <x:Prop Name="input_6/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_6/name" Value='"in_6"' />
+      <x:Prop Name="input_6/reset" Value="true" />
+      <x:Prop Name="input_7/auto_advance" Value="false" />
+      <x:Prop Name="input_7/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_7/name" Value='"in_7"' />
+      <x:Prop Name="input_7/reset" Value="false" />
+      <x:Prop Name="input_8/auto_advance" Value="false" />
+      <x:Prop Name="input_8/break_loop_at_end" Value="false" />
+      <x:Prop Name="input_8/name" Value='"in_8"' />
+      <x:Prop Name="input_8/reset" Value="true" />
+      <x:Prop Name="input_9/auto_advance" Value="true" />
+      <x:Prop Name="input_9/break_loop_at_end" Value="true" />
+      <x:Prop Name="input_9/name" Value='"in_9"' />
+      <x:Prop Name="input_9/reset" Value="false" />
+    </AnimationNodeTransition>
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation19" Animation="tree_10" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation20" Animation="state_0" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation21" Animation="state_1" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation22" Animation="state_10" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation23" Animation="state_11" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation24" Animation="state_2" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation25" Animation="state_3" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation26" Animation="state_4" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation27" Animation="state_5" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation28" Animation="state_6" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation29" Animation="state_7" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation30" Animation="state_8" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation31" Animation="state_9" />
+    <AnimationNodeStateMachineTransition x:Key="AnimationNodeStateMachineTransition1" />
+    <AnimationNodeStateMachineTransition x:Key="AnimationNodeStateMachineTransition2" />
+    <AnimationNodeStateMachineTransition x:Key="AnimationNodeStateMachineTransition3" />
+    <AnimationNodeStateMachineTransition x:Key="AnimationNodeStateMachineTransition4" />
+    <AnimationNodeStateMachineTransition x:Key="AnimationNodeStateMachineTransition5" />
+    <AnimationNodeStateMachineTransition x:Key="AnimationNodeStateMachineTransition6" />
+    <AnimationNodeStateMachineTransition x:Key="AnimationNodeStateMachineTransition7" />
+    <AnimationNodeStateMachine
+        x:Key="AnimationNodeStateMachine1"
+        graph_offset="Vector2(15, -25)"
+        transitions='["s0", "s11", SubResource("AnimationNodeStateMachineTransition1"), "s1", "s10", SubResource("AnimationNodeStateMachineTransition2"), "s2", "s9", SubResource("AnimationNodeStateMachineTransition3"), "s3", "s8", SubResource("AnimationNodeStateMachineTransition4"), "s4", "s7", SubResource("AnimationNodeStateMachineTransition5"), "s5", "s6", SubResource("AnimationNodeStateMachineTransition6"), "Start", "s0", SubResource("AnimationNodeStateMachineTransition7")]'>
+      <x:Prop Name="states/s0/node" Value="{AnimationNodeAnimation20}" />
+      <x:Prop Name="states/s0/position" Value="Vector2(10, 5)" />
+      <x:Prop Name="states/s1/node" Value="{AnimationNodeAnimation21}" />
+      <x:Prop Name="states/s1/position" Value="Vector2(50, 20)" />
+      <x:Prop Name="states/s10/node" Value="{AnimationNodeAnimation22}" />
+      <x:Prop Name="states/s10/position" Value="Vector2(410, 155)" />
+      <x:Prop Name="states/s11/node" Value="{AnimationNodeAnimation23}" />
+      <x:Prop Name="states/s11/position" Value="Vector2(450, 170)" />
+      <x:Prop Name="states/s2/node" Value="{AnimationNodeAnimation24}" />
+      <x:Prop Name="states/s2/position" Value="Vector2(90, 35)" />
+      <x:Prop Name="states/s3/node" Value="{AnimationNodeAnimation25}" />
+      <x:Prop Name="states/s3/position" Value="Vector2(130, 50)" />
+      <x:Prop Name="states/s4/node" Value="{AnimationNodeAnimation26}" />
+      <x:Prop Name="states/s4/position" Value="Vector2(170, 65)" />
+      <x:Prop Name="states/s5/node" Value="{AnimationNodeAnimation27}" />
+      <x:Prop Name="states/s5/position" Value="Vector2(210, 80)" />
+      <x:Prop Name="states/s6/node" Value="{AnimationNodeAnimation28}" />
+      <x:Prop Name="states/s6/position" Value="Vector2(250, 95)" />
+      <x:Prop Name="states/s7/node" Value="{AnimationNodeAnimation29}" />
+      <x:Prop Name="states/s7/position" Value="Vector2(290, 110)" />
+      <x:Prop Name="states/s8/node" Value="{AnimationNodeAnimation30}" />
+      <x:Prop Name="states/s8/position" Value="Vector2(330, 125)" />
+      <x:Prop Name="states/s9/node" Value="{AnimationNodeAnimation31}" />
+      <x:Prop Name="states/s9/position" Value="Vector2(370, 140)" />
+    </AnimationNodeStateMachine>
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation32" Animation="tree_6" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation33" Animation="line_0" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation34" Animation="line_1" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation35" Animation="line_10" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation36" Animation="line_11" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation37" Animation="line_2" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation38" Animation="line_3" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation39" Animation="line_4" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation40" Animation="line_5" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation41" Animation="line_6" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation42" Animation="line_7" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation43" Animation="line_8" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation44" Animation="line_9" />
+    <AnimationNodeBlendSpace1D x:Key="AnimationNodeBlendSpace1D1">
+      <x:Prop Name="blend_point_0/name" Value='&amp;"p0"' />
+      <x:Prop Name="blend_point_0/node" Value="{AnimationNodeAnimation33}" />
+      <x:Prop Name="blend_point_0/pos" Value="-0.6875" />
+      <x:Prop Name="blend_point_1/name" Value='&amp;"p1"' />
+      <x:Prop Name="blend_point_1/node" Value="{AnimationNodeAnimation34}" />
+      <x:Prop Name="blend_point_1/pos" Value="-0.5625" />
+      <x:Prop Name="blend_point_10/name" Value='&amp;"p10"' />
+      <x:Prop Name="blend_point_10/node" Value="{AnimationNodeAnimation35}" />
+      <x:Prop Name="blend_point_10/pos" Value="0.5625" />
+      <x:Prop Name="blend_point_11/name" Value='&amp;"p11"' />
+      <x:Prop Name="blend_point_11/node" Value="{AnimationNodeAnimation36}" />
+      <x:Prop Name="blend_point_11/pos" Value="0.6875" />
+      <x:Prop Name="blend_point_2/name" Value='&amp;"p2"' />
+      <x:Prop Name="blend_point_2/node" Value="{AnimationNodeAnimation37}" />
+      <x:Prop Name="blend_point_2/pos" Value="-0.4375" />
+      <x:Prop Name="blend_point_3/name" Value='&amp;"p3"' />
+      <x:Prop Name="blend_point_3/node" Value="{AnimationNodeAnimation38}" />
+      <x:Prop Name="blend_point_3/pos" Value="-0.3125" />
+      <x:Prop Name="blend_point_4/name" Value='&amp;"p4"' />
+      <x:Prop Name="blend_point_4/node" Value="{AnimationNodeAnimation39}" />
+      <x:Prop Name="blend_point_4/pos" Value="-0.1875" />
+      <x:Prop Name="blend_point_5/name" Value='&amp;"p5"' />
+      <x:Prop Name="blend_point_5/node" Value="{AnimationNodeAnimation40}" />
+      <x:Prop Name="blend_point_5/pos" Value="-0.0625" />
+      <x:Prop Name="blend_point_6/name" Value='&amp;"p6"' />
+      <x:Prop Name="blend_point_6/node" Value="{AnimationNodeAnimation41}" />
+      <x:Prop Name="blend_point_6/pos" Value="0.0625" />
+      <x:Prop Name="blend_point_7/name" Value='&amp;"p7"' />
+      <x:Prop Name="blend_point_7/node" Value="{AnimationNodeAnimation42}" />
+      <x:Prop Name="blend_point_7/pos" Value="0.1875" />
+      <x:Prop Name="blend_point_8/name" Value='&amp;"p8"' />
+      <x:Prop Name="blend_point_8/node" Value="{AnimationNodeAnimation43}" />
+      <x:Prop Name="blend_point_8/pos" Value="0.3125" />
+      <x:Prop Name="blend_point_9/name" Value='&amp;"p9"' />
+      <x:Prop Name="blend_point_9/node" Value="{AnimationNodeAnimation44}" />
+      <x:Prop Name="blend_point_9/pos" Value="0.4375" />
+    </AnimationNodeBlendSpace1D>
+  </x:Resources>
+  <x:Prop Name="nodes/alpha/node" Value="{AnimationNodeBlendSpace2D1}" />
+  <x:Prop Name="nodes/alpha/position" Value="Vector2(100, 50)" />
+  <x:Prop Name="nodes/b3/node" Value="{AnimationNodeAnimation13}" />
+  <x:Prop Name="nodes/b3/position" Value="Vector2(160, 70)" />
+  <x:Prop Name="nodes/beta/node" Value="{AnimationNodeAnimation14}" />
+  <x:Prop Name="nodes/beta/position" Value="Vector2(250, 100)" />
+  <x:Prop Name="nodes/c0/node" Value="{AnimationNodeAnimation15}" />
+  <x:Prop Name="nodes/c0/position" Value="Vector2(280, 110)" />
+  <x:Prop Name="nodes/k7/node" Value="{AnimationNodeAnimation16}" />
+  <x:Prop Name="nodes/k7/position" Value="Vector2(220, 90)" />
+  <x:Prop Name="nodes/mid/node" Value="{AnimationNodeAnimation17}" />
+  <x:Prop Name="nodes/mid/position" Value="Vector2(340, 130)" />
+  <x:Prop Name="nodes/n1/node" Value="{AnimationNodeAnimation18}" />
+  <x:Prop Name="nodes/n1/position" Value="Vector2(130, 60)" />
+  <x:Prop Name="nodes/n10/node" Value="{AnimationNodeTransition1}" />
+  <x:Prop Name="nodes/n10/position" Value="Vector2(10, 20)" />
+  <x:Prop Name="nodes/n11/node" Value="{AnimationNodeAnimation19}" />
+  <x:Prop Name="nodes/n11/position" Value="Vector2(310, 120)" />
+  <x:Prop Name="nodes/n2/node" Value="{AnimationNodeStateMachine1}" />
+  <x:Prop Name="nodes/n2/position" Value="Vector2(40, 30)" />
+  <x:Prop Name="nodes/omega/node" Value="{AnimationNodeAnimation32}" />
+  <x:Prop Name="nodes/omega/position" Value="Vector2(190, 80)" />
+  <x:Prop Name="nodes/zeta/node" Value="{AnimationNodeBlendSpace1D1}" />
+  <x:Prop Name="nodes/zeta/position" Value="Vector2(70, 40)" />
+</AnimationNodeBlendTree>
