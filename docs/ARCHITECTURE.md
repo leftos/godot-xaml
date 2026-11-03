@@ -58,7 +58,7 @@ Each component gets an entry here in the commit that adds its project.
 
   Replace and ReplaceDeep reuse a live same-class sub-resource in place, Reuse hands back a live one as it is (as Godot's text loader does), ReplaceDeep reloads external dependencies in replace mode, and a failed replace puts every moved object back at its path.
 
-  `_Load` returns a Variant that Godot's generated C# dispatch copies and never disposes, so the loader disposes it, on a loader worker thread right after `_load` returns; a dropped scene then leaves the cache a frame later.
+  `_Load` returns a Variant that Godot's generated C# dispatch copies and never disposes, so the loader disposes it, on a loader worker thread right after `_load` returns; a dropped scene then leaves the cache a frame later. The loader also releases its own C# wrapper of the resource it returns (only for a resource with no script, since a script may have handed that wrapper out while the file loaded), so this holds for an engine caller (the editor, GDScript) as for a C# one.
 
   The walks over the loaded resource (and the saver's) read only properties with the storage flag, so a non-exported script variable's resource is never taken over, and they dispose the Variants and containers they make but never a Godot object's C# wrapper; a sub-resource a walk read stays cached until the .NET GC collects its wrapper.
 
@@ -215,7 +215,7 @@ Each component gets an entry here in the commit that adds its project.
 - `convert` seeds new ids from the source's `res://` path with the output's extension (`ConvertCommand.SeedKeyOf`), so one project converts to the same ids in any checkout; a file with no `project.godot` above it is seeded from its output's full path, and only then do two runs need one fixed path to compare.
 - `ContainsDiagnostics` on a `Microsoft.Language.Xml` root stays false when the tree below it holds errors, so the parser's error walk cannot be skipped on that flag.
 - Never dispose a Godot object's C# wrapper in the addon's walks: it is shared with other C# holders. A C# `_Load` override must dispose the Variant it returns, since Godot's generated dispatch copies it and never disposes the original (`DECISIONS.md`, "Sub-resource ids follow where they are used").
-- The `godot-xaml` editor plugin must be enabled in a game project, or an export ships the raw XML instead of binary copies. The loaders ship and register in the game either way (`DECISIONS.md`, "Exported games load binary through a remap"), but a plugin-off export is neither supported nor measured.
+- The `godot-xaml` editor plugin must be enabled in a game project, or an export ships the raw XML instead of binary copies. The loaders ship and register in the game either way (`DECISIONS.md`, "Exported games load binary through a remap"), but the exported game still loads that XML through the shipped loaders, several times slower than the binary copy and with a costly first load, and a game whose export drops the loaders' scripts cannot load it at all; it is a fallback, not a supported setup.
 - The loaders' `.cs` files still ship in an export (the game's assembly needs them); an include or exclude filter that drops them is reported by the plugin, and the filter must be fixed.
 - A file that fails to convert is skipped and the export dialog shows "Failed.", but headless `--export-pack` still exits 0: Godot 4.7.2 gives an export plugin no way to change it, so a script must read the log for `ERROR: godot-xaml:`.
 

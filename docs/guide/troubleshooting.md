@@ -32,7 +32,7 @@ A file whose `.uid` sidecar was not committed gets a new uid. Commit every `*.xs
 
 Check, in order:
 
-1. **The plugin is on.** Without it, the raw XML is exported instead of binary copies.
+1. **The plugin is on.** Without it the raw XML is exported instead of binary copies; the game still loads it through the loaders, more slowly, so a scene that fails to load points at item 3.
 2. **The export log has no `ERROR: godot-xaml:` lines.** A file that failed to convert is skipped, and a headless export still exits 0.
 3. **The preset's filters keep `addons/godot_xaml/`.** The export says so when they do not.
 

@@ -82,7 +82,18 @@ internal static class XscnLoadRoute
 
             bool cached = cacheMode is not (ResourceFormatLoader.CacheMode.Ignore or ResourceFormatLoader.CacheMode.IgnoreDeep);
             NameSubResourcesAfter(loaded, tempPrefix, pathPrefix, cached);
-            return loaded;
+            Variant result = loaded;
+
+            // The returned Variant holds its own reference, so releasing this wrapper lets the resource leave the cache once an
+            // engine caller (the editor, GDScript) lets go of it. An object has one C# wrapper shared by every C# caller, and a
+            // script's code may have handed it out while the file loaded, so it is released only for a resource with no script.
+            using Variant script = loaded.GetScript();
+            if (script.VariantType == Variant.Type.Nil)
+            {
+                loaded.Dispose();
+            }
+
+            return result;
         }
         finally
         {

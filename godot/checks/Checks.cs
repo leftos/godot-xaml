@@ -161,6 +161,7 @@ public partial class Checks : Node
             ("C42", DroppedSceneLeavesTheCache),
             ("C45", DroppedSceneReleasesContainerSubResources),
             ("C53", DroppedResourceReleasesContainerSubResources),
+            ("C57", EngineDroppedSceneLeavesTheCache),
         ];
         DeleteFolder(SavesFolder);
         int total = checks.Length + frameChecks.Length;
@@ -1856,6 +1857,34 @@ public partial class Checks : Node
             loaded.Dispose();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             return ResourceLoader.HasCached(path) ? $"{path} is still cached a frame after its only reference was disposed" : "";
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A scene an engine caller loads (the editor, GDScript) leaves the cache once that caller lets go, as a .tscn does:
+    // the loader keeps no C# wrapper of the resource it returns. The load goes through the engine's ResourceLoader object,
+    // so the check never makes a wrapper of the scene itself; no garbage collection runs.
+    private async Task<string> EngineDroppedSceneLeavesTheCache()
+    {
+        const string path = OutFolder + "engine.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.Copy(ProjectSettings.GlobalizePath(HolderPath), ProjectSettings.GlobalizePath(path));
+            using (Variant loaded = Engine.GetSingleton("ResourceLoader").Call("load", path))
+            {
+                if (loaded.VariantType != Variant.Type.Object)
+                {
+                    return $"{path} did not load";
+                }
+            }
+
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            return ResourceLoader.HasCached(path) ? $"{path} is still cached a frame after the engine caller let go" : "";
         }
         finally
         {

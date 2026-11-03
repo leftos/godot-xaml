@@ -14,7 +14,7 @@ Nothing else is needed: export presets, the export dialog and `--export-release`
 
 ## Requirements
 
-- **The plugin must be on.** Without it, the export ships the raw XML instead of binary copies, a setup that is neither supported nor tested.
+- **The plugin must be on.** Without it, the export ships the raw XML instead of binary copies; the game still loads it through the addon's loaders, but more slowly, and it is not a supported setup.
 - **The addon's `.cs` files must stay in the export.** Godot registers the loaders from the exported list of script classes, and a loader a filter drops is never registered. If an include or exclude filter in the export preset drops `addons/godot_xaml/`, the export reports that it would drop the loaders and names the filter to fix.
 - **The project needs a solution file** (`.sln` or `.slnx`) that contains its `.csproj`, or the C# step of the export fails ([Getting started](getting-started.md#install-the-addon), step 1).
 

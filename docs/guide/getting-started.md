@@ -41,7 +41,7 @@ The format itself is in the [format reference](../format/README.md).
    enabled=PackedStringArray("res://addons/godot_xaml/plugin.cfg")
    ```
 
-   The plugin makes exports convert each `.xscn` and `.xres` to binary. The loader and saver work without it, but an export without it ships the raw XML instead, a setup that is neither supported nor tested.
+   The plugin makes exports convert each `.xscn` and `.xres` to binary. The loader and saver work without it, but an export without it ships the raw XML instead, which the game still loads, more slowly, through the addon's loaders; it is not a supported setup.
 6. **Open the project, close it, and open it again.** Godot scans the project's files before the addon's classes register, so `.xscn` files show in the FileSystem dock only from the second open. That open also writes their `.uid` sidecars. Commit those.
 
    The addon's loaders register from Godot's global class cache (`.godot/global_script_class_cache.cfg`), which only an editor scan or `godot --headless --import` rewrites. A checkout that Godot imported before the addon arrived fails every `.xscn` with "Failed loading scene" until it is imported again, headless and scripted runs included. Run `godot --headless --path <project> --import` once after installing.
