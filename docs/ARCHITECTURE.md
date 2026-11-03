@@ -1,6 +1,6 @@
 # godot-xaml — architecture
 
-godot-xaml lets a Godot 4.7+ .NET project keep its scenes and resources as XAML-style `.xscn` and `.xres` files that Godot opens, edits and saves directly. The code so far is the metadata dump and the start of the C# core; the planned components and their order are in [`plans/v1-design.md`](plans/v1-design.md), and the settled choices in [`DECISIONS.md`](DECISIONS.md). Terms used in a project sense are in the glossary in [`README.md`](README.md).
+godot-xaml lets a Godot 4.7+ .NET project keep its scenes and resources as XAML-style `.xscn` and `.xres` files that Godot opens, edits and saves directly. The code is the metadata dump, the C# core, the Godot addon and the CLI; the language server and the editor extensions are still to come. The planned components and their order are in [`plans/v1-design.md`](plans/v1-design.md), and the settled choices in [`DECISIONS.md`](DECISIONS.md). The format itself is specified in [`format/README.md`](format/README.md). Terms used in a project sense are in the glossary in [`README.md`](README.md).
 
 The rule that shapes it: one C# core, with no Godot dependency, owns the format; the Godot addon, the CLI and the language server are thin hosts over it.
 
@@ -30,6 +30,8 @@ The rule that shapes it: one C# core, with no Godot dependency, owns the format;
 | Change the `ext_resource` type guessed from an extension | `XscnToTscn.cs` (`TypesByExtension`, `ExtType`) in `src/GodotXaml.Core/Conversion/` → Godot source `F:\Godot\src-4.7.2`: `core/io/resource_loader.cpp` and each loader's `handles_type` → `tests/GodotXaml.Core.Tests/Conversion/` (`SceneBackTests`) | — |
 | Export `.xscn`/`.xres` in a game build | [`DECISIONS.md`](DECISIONS.md) ("Exported games load binary through a remap") → `godot/addons/godot_xaml/` (`plugin.cfg`, `XscnEditorPlugin`, `XscnExportPlugin`) → `godot/export_presets.cfg` and `godot/export.ps1` → `tools/export-probe/` (`probe.gd`) | — |
 | Cut a release, or change what one ships | [`.claude/skills/prepare-release/SKILL.md`](../.claude/skills/prepare-release/SKILL.md) → `tools/pack-release.ps1` → `Directory.Build.props` (`VersionPrefix`), `godot/addons/godot_xaml/plugin.cfg`, `README.md` (Install) | — |
+| Write or change the `.xscn`/`.xres` format reference (structure, value text, diagnostics) | [`format/README.md`](format/README.md), [`format/values.md`](format/values.md), [`format/diagnostics.md`](format/diagnostics.md) → [`DECISIONS.md`](DECISIONS.md) (the format headings) → `src/GodotXaml.Core/Xscn/` (`XscnTreeReader*.cs`, `XscnValueText`, `XscnEnumText`, `XscnPropertyNames`, `XscnSignalNames`, `XscnWriter*.cs`) → `src/GodotXaml.Core/Values/` (`GodotValueWriter`, `GodotValueTables`, `GodotFloatFormat`) → the code tables `XscnCodes`, `ConversionCodes`, `CliCodes` → `tests/fixtures/xscn/`, `tests/fixtures/converted/`, `tests/fixtures/values/` → the docs tests (`DocExamplesTests`, `DiagnosticsDocTests`), which parse every `xml xscn`/`xml xres` block and check every code has a heading | — |
+| Document the public C# API | The `///` comments in `src/GodotXaml.Core/`, `src/GodotXaml.Cli/` and `godot/addons/godot_xaml/`: `GenerateDocumentationFile` is on in their three csproj files, so a missing comment fails the build (CS1591) → `src/GodotXaml.Core/README.md`, the package readme | — |
 | Add or change a C# gate, hook or test location | [`.claude/skills/godot-xaml-nextup/SKILL.md`](../.claude/skills/godot-xaml-nextup/SKILL.md) (Gates) → Test locations below → `run.ps1`, `.pre-commit-config.yaml`, `Directory.Build.props`, `.editorconfig` | — |
 
 ## Layers
@@ -140,4 +142,4 @@ Each component gets an entry here in the commit that adds its project.
 
 ## Deep docs
 
-None yet.
+- [`format/README.md`](format/README.md): the `.xscn`/`.xres` format, with [`format/values.md`](format/values.md) (value text) and [`format/diagnostics.md`](format/diagnostics.md) (every code).

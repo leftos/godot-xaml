@@ -53,6 +53,12 @@ To update, raise the package version and copy the folder again.
 
 `godot-xaml convert --project <root>` converts every `.tscn` and `.tres` under a project to `.xscn` and `.xres` (`--back` goes the other way), rewrites the `res://` references between them, and edits the scripts and `project.godot` that name a converted file. It is all or nothing: if any file fails, the project is left as it was. Otherwise the originals are copied to `.godot-xaml-backup/` before they are removed, unless you pass `--nobackup`. `addons/` is never touched, and the files Godot loads before any addon (the custom theme, the bus layout and the like) stay as text. See [the CLI README](src/GodotXaml.Cli/README.md#convert).
 
+## Documentation
+
+- [Getting started](docs/guide/getting-started.md), then [the editor](docs/guide/editor.md), [exporting](docs/guide/export.md), [converting a project](docs/guide/converting.md), [troubleshooting](docs/guide/troubleshooting.md) and [limitations](docs/guide/limitations.md).
+- [The format reference](docs/format/README.md): every element and attribute, [every value type](docs/format/values.md) and [every diagnostic code](docs/format/diagnostics.md).
+- [The CLI reference](src/GodotXaml.Cli/README.md) and [the core library](src/GodotXaml.Core/README.md).
+
 ## Status
 
 Not released yet. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md). Version 1 targets Godot 4.7+ with .NET:

@@ -64,7 +64,7 @@ Booleans are written `True` and `False` (either case is read), and a float has n
 
 ## Format elements and attributes take the `x:` prefix
 
-The default XML namespace is Godot's classes. Everything the format adds rather than Godot's property list takes the reserved `x:` prefix: the uid table (`<x:Uids>`), overrides (`<x:Override>`), and the attributes `x:Index`, `x:UniqueId`, `x:Editable` and `x:Groups`. A script property named `Index` or `Groups` therefore never clashes with them. `Name` and `Script` stay unprefixed, since they are Godot's own `name` and `script`.
+The default XML namespace is Godot's classes. Everything the format adds rather than Godot's property list takes the reserved `x:` prefix: the tables (`<x:Uids>`, `<x:Resources>`), the elements `<x:Instance>`, `<x:Override>`, `<x:Connect>` and `<x:Prop>`, and the attributes `x:Editable`, `x:Groups`, `x:Index`, `x:InstancePlaceholder`, `x:NodePaths`, `x:Owner`, `x:OwnerUidPath`, `x:ParentIdPath`, `x:UniqueId` and `x:Key`. A script property named `Index` or `Groups` therefore never clashes with them. `Name` and `Script` stay unprefixed, since they are Godot's own `name` and `script`.
 
 ## Overrides inside an instance are named by path
 
@@ -122,7 +122,7 @@ Nine integer properties carry an enum-style hint with no C# enum behind it (`lay
 - An inherited scene is a root element whose tag names a scene (`<c:Modal …>` at the root); no marker, since a root cannot be an instance.
 - `Script="res://…"` is an attribute, as the inspector shows it.
 - Groups are `x:Groups="a, b"`, sorted as Godot sorts them.
-- A node's `index`, a non-root `owner`, `instance_placeholder`, `node_paths` and 4.7's `parent_id_path`, `owner_uid_path`, `from_uid_path` and `to_uid_path` are kept as `x:` attributes (`x:Index`, `x:Owner`, `x:InstancePlaceholder`, `x:NodePaths`, …), written only where the `.tscn` has them, so a conversion without a running Godot round-trips. An instance placeholder, which a `.tscn` writes with no `type`, is an `<InstancePlaceholder>` element holding `x:InstancePlaceholder="res://…"`, the class Godot builds it as; its properties are never dropped as defaults, since Godot saves them against the instanced scene.
+- A node's `index`, a non-root `owner`, `instance_placeholder`, `node_paths` and 4.7's `parent_id_path` and `owner_uid_path` are kept as `x:` attributes (`x:Index`, `x:Owner`, `x:InstancePlaceholder`, `x:NodePaths`, `x:ParentIdPath`, `x:OwnerUidPath`), and a connection's `from_uid_path` and `to_uid_path` as `FromUidPath` and `ToUidPath` on its `<x:Connect>`, each written only where the `.tscn` has it, so a conversion without a running Godot round-trips. An instance placeholder, which a `.tscn` writes with no `type`, is an `<InstancePlaceholder>` element holding `x:InstancePlaceholder="res://…"`, the class Godot builds it as; its properties are never dropped as defaults, since Godot saves them against the instanced scene.
 - Not stored: `load_steps` (4.7.2 no longer writes it), `format` (chosen again on conversion back), `script_class` (it follows from the script), and `ext_resource` and `sub_resource` ids (references are paths and keys; ids are made again on conversion back). The scene's own uid lives in its `.uid` sidecar.
 
 ## The metadata file
