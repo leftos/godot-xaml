@@ -28,6 +28,10 @@ public static partial class XscnToTscn
         [".tres"] = "Resource",
         [".xres"] = "Resource",
         [".res"] = "Resource",
+        [".json"] = "JSON",
+        [".po"] = "Translation",
+        [".mo"] = "Translation",
+        [".gdextension"] = "GDExtension",
         [".gd"] = "Script",
         [".cs"] = "Script",
         [".gdshader"] = "Shader",
@@ -49,6 +53,7 @@ public static partial class XscnToTscn
         [".woff2"] = "FontFile",
         [".wav"] = "AudioStream",
         [".ogg"] = "AudioStream",
+        [".ogv"] = "VideoStreamTheora",
         [".mp3"] = "AudioStream",
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
