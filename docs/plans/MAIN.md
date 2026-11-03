@@ -18,7 +18,7 @@
 
 ## Godot addon
 
-- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+1
+- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext
 - [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit · release vNext
 - [ ] GXAML-107 Editor: every changed .xscn is loaded in full for its scene groups · release vNext
 
@@ -36,8 +36,8 @@
   - [ ] GXAML-138 Language server: completions by context · release vNext
   - [ ] GXAML-139 Language server: per-platform executables, CI matrix and release packaging · release vNext
 - [ ] GXAML-15 VS Code extension over the language server · release vNext
-- [ ] GXAML-16 Visual Studio extension over the language server · release vNext+1
-- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+1
+- [ ] GXAML-16 Visual Studio extension over the language server · release vNext
+- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext
 
 ## Later
 
