@@ -115,6 +115,10 @@ public sealed class TscnReaderTests
         "[gd_resource type=\"Resource\" format=3]\n\n[ext_resource type=\"Script\" path=\"res://a.gd\" id=\"1_a\"]\n",
         "Unexpected end of file"
     )]
+    // :1193-1200: the tag read after a header that has nothing after it is ERR_FILE_CORRUPT "Unexpected end of file".
+    [InlineData("[gd_resource type=\"Resource\" format=3]\n", "Unexpected end of file")]
+    [InlineData("[gd_resource type=\"Resource\" format=3]\n\n", "Unexpected end of file")]
+    [InlineData("[gd_resource type=\"Resource\" format=3]", "Unexpected end of file")]
     public void RejectsSectionsGodotRejects(string text, string reason) =>
         Assert.Equal(reason, Assert.Throws<TscnParseException>(() => TscnReader.Read(text)).Reason);
 
@@ -198,7 +202,21 @@ public sealed class TscnReaderTests
     public void ReadsAnInstancePlaceholderAsItsStringValue() =>
         Assert.Equal(
             "5",
-            Assert.Single(TscnReader.Read("[gd_scene format=3]\n\n[node name=\"P\" parent=\".\" instance_placeholder=5]\n").Nodes).InstancePlaceholder
+            TscnReader
+                .Read("[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n\n[node name=\"P\" parent=\".\" instance_placeholder=5]\n")
+                .Nodes[1]
+                .InstancePlaceholder
+        );
+
+    // resource_format_text.cpp:243-253: a placeholder on the first node, which has nothing to inherit from, is
+    // ERR_FILE_CORRUPT with this text.
+    [Fact]
+    public void RejectsAPlaceholderOnTheFirstNode() =>
+        Assert.Equal(
+            "Instance Placeholder can't be used for inheritance",
+            Assert
+                .Throws<TscnParseException>(() => TscnReader.Read("[gd_scene format=3]\n\n[node name=\"P\" instance_placeholder=\"res://a.tscn\"]\n"))
+                .Reason
         );
 
     [Fact]
@@ -236,6 +254,68 @@ public sealed class TscnReaderTests
         TscnDocument document = TscnReader.Read("[gd_scene format=3]\n\n[node name=1 type=\"Node\"]\n\n[node name=\"C\" type=\"Node\" parent=1]\n");
         Assert.Equal(("", ""), (document.Nodes[0].Name, document.Nodes[1].Parent));
     }
+
+    // resource_format_text.cpp:203, 220 and core/variant/variant.cpp:1539-1547: name and type are read as
+    // StringName, so a NodePath in either gives the empty name.
+    [Theory]
+    [InlineData("[node name=NodePath(\"A\") type=\"Node\"]", "", "Node")]
+    [InlineData("[node name=\"R\" type=NodePath(\"Node\")]", "R", "")]
+    public void ReadsANodePathInANameFieldAsEmpty(string tag, string name, string type)
+    {
+        TscnNode node = Assert.Single(TscnReader.Read($"[gd_scene format=3]\n\n{tag}\n").Nodes);
+        Assert.Equal((name, type), (node.Name, node.Type));
+    }
+
+    // The control: a StringName in a name field keeps its own text, as :203's StringName conversion does.
+    [Fact]
+    public void ReadsAStringNameInANameFieldAsItsText() =>
+        Assert.Equal("A", Assert.Single(TscnReader.Read("[gd_scene format=3]\n\n[node name=&\"A\"]\n").Nodes).Name);
+
+    // resource_format_text.cpp:207 and core/variant/variant.cpp:1992-2000: parent is read as a NodePath, so a
+    // StringName in it gives the empty path.
+    [Fact]
+    public void ReadsAStringNameInAParentFieldAsEmpty() =>
+        Assert.Equal(
+            "",
+            TscnReader
+                .Read("[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n\n[node name=\"C\" parent=&\"B\" type=\"Node\"]\n")
+                .Nodes[1]
+                .Parent
+        );
+
+    // resource_format_text.cpp:263 and core/variant/variant.cpp:1992-2000: owner is read as a NodePath, so a
+    // StringName in it gives the empty path.
+    [Fact]
+    public void ReadsAStringNameInAnOwnerFieldAsEmpty() =>
+        Assert.Equal(
+            "",
+            TscnReader.Read("[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n\n[node name=\"C\" parent=\".\" owner=&\"B\"]\n").Nodes[1].Owner
+        );
+
+    // resource_format_text.cpp:336-339 and core/variant/variant.cpp:1539-1547, 1992-2000: from and to are NodePaths
+    // and signal and method StringNames, so the type the other field takes gives the empty text.
+    [Fact]
+    public void ReadsTheOtherFieldsTypeInConnectionFieldsAsEmpty()
+    {
+        TscnConnection connection = Assert.Single(
+            TscnReader
+                .Read(
+                    "[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n\n"
+                        + "[connection signal=NodePath(\"s\") from=&\"A\" to=&\"B\" method=NodePath(\"m\")]\n"
+                )
+                .Connections
+        );
+        Assert.Equal(("", "", "", ""), (connection.Signal, connection.From, connection.To, connection.Method));
+    }
+
+    // resource_format_text.cpp:399 and core/variant/variant.cpp:1992-2000: the editable path is read as a NodePath,
+    // so a StringName in it gives the empty path.
+    [Fact]
+    public void ReadsAStringNameInAnEditablePathAsEmpty() =>
+        Assert.Equal(
+            "",
+            Assert.Single(TscnReader.Read("[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n\n[editable path=&\"X\"]\n").Editables).Path
+        );
 
     [Fact]
     public void ReadsARepeatedAttributeAsItsLastValue() =>

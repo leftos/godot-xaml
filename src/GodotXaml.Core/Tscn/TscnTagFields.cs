@@ -53,18 +53,31 @@ internal sealed class TscnTagFields(TscnTag tag)
     public string Required(string name, string missing) => String(name) ?? throw TscnScanner.Error(missing, tag.Line, tag.Column);
 
     /// <summary>
-    /// A field Godot reads as a path or a name: a String, a StringName or a NodePath gives its text, and every other
-    /// value the empty text, as Variant::operator StringName and operator NodePath do for it
-    /// (core/variant/variant.cpp:1539-1547, 1992-2000).
+    /// A field Godot reads as a name: a String or a StringName gives its text, and every other value the empty name,
+    /// as Variant::operator StringName does for it (core/variant/variant.cpp:1539-1547).
     /// </summary>
     /// <param name="name">The field name.</param>
     /// <returns>The text, or null when the tag has none.</returns>
-    public string? Text(string name) =>
+    public string? Name(string name) =>
         Value(name) switch
         {
             null => null,
             GodotString text => text.Value,
             GodotStringName name2 => name2.Value,
+            _ => "",
+        };
+
+    /// <summary>
+    /// A field Godot reads as a path: a String or a NodePath gives its text, and every other value the empty path, as
+    /// Variant::operator NodePath does for it (core/variant/variant.cpp:1992-2000).
+    /// </summary>
+    /// <param name="name">The field name.</param>
+    /// <returns>The text, or null when the tag has none.</returns>
+    public string? Path(string name) =>
+        Value(name) switch
+        {
+            null => null,
+            GodotString text => text.Value,
             GodotNodePath path => path.Path,
             _ => "",
         };

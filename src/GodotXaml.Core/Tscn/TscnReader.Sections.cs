@@ -58,7 +58,6 @@ public static partial class TscnReader
         private TscnTag? _firstAfterResources;
         private int _rank = -1;
         private bool _resourceSeen;
-        private bool _extOrSubSeen;
 
         public void Add(TscnItem item)
         {
@@ -77,9 +76,9 @@ public static partial class TscnReader
             Finish();
             if (_kind == TscnKind.Resource && !_resourceSeen)
             {
-                // resource_format_text.cpp:648-651: a resource file that ends before its [resource] is an error.
-                string reason = _extOrSubSeen ? "Unexpected end of file" : "Unknown tag '' in file";
-                throw TscnScanner.Error(reason, scanner.Line, scanner.Column);
+                // resource_format_text.cpp:1193-1200: the tag read after the header is a parse error whose text load()
+                // reports as "Unexpected end of file", whatever the file held before it.
+                throw TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
             }
 
             if (_kind == TscnKind.Scene && _nodes.Count == 0)
@@ -146,13 +145,20 @@ public static partial class TscnReader
 
         public Action<ImmutableArray<TscnProperty>> ReadNode(TscnTagFields fields)
         {
+            // resource_format_text.cpp:243-253: a placeholder on the node before any other is ERR_FILE_CORRUPT, since
+            // that node has nothing to inherit from.
+            if (fields.Value("instance_placeholder") is not null && _nodes.Count == 0)
+            {
+                throw Missing("Instance Placeholder can't be used for inheritance");
+            }
+
             // resource_format_text.cpp:202-204: a node without a name field keeps the unassigned name the loader gives it.
             var node = new TscnNode
             {
-                Name = fields.Text("name") ?? "",
-                Type = fields.Text("type"),
-                Parent = fields.Text("parent"),
-                Owner = fields.Text("owner"),
+                Name = fields.Name("name") ?? "",
+                Type = fields.Name("type"),
+                Parent = fields.Path("parent"),
+                Owner = fields.Path("owner"),
                 Index = fields.ToInt("index"),
                 UniqueId = fields.Int("unique_id"),
                 NodePaths = Strings(fields, "node_paths"),
@@ -172,10 +178,10 @@ public static partial class TscnReader
             // resource_format_text.cpp:312-335.
             var connection = new TscnConnection
             {
-                From = fields.Text("from") ?? throw Missing("missing 'from' field from connection tag"),
-                To = fields.Text("to") ?? throw Missing("missing 'to' field from connection tag"),
-                Signal = fields.Text("signal") ?? throw Missing("missing 'signal' field from connection tag"),
-                Method = fields.Text("method") ?? throw Missing("missing 'method' field from connection tag"),
+                From = fields.Path("from") ?? throw Missing("missing 'from' field from connection tag"),
+                To = fields.Path("to") ?? throw Missing("missing 'to' field from connection tag"),
+                Signal = fields.Name("signal") ?? throw Missing("missing 'signal' field from connection tag"),
+                Method = fields.Name("method") ?? throw Missing("missing 'method' field from connection tag"),
                 FromUidPath = fields.Ints("from_uid_path"),
                 ToUidPath = fields.Ints("to_uid_path"),
                 Binds = Binds(fields),
@@ -193,7 +199,7 @@ public static partial class TscnReader
 
         public Action<ImmutableArray<TscnProperty>> ReadEditable(TscnTagFields fields)
         {
-            string path = fields.Text("path") ?? throw Missing("Missing 'path' field from editable tag");
+            string path = fields.Path("path") ?? throw Missing("Missing 'path' field from editable tag");
             _editables.Add(new TscnEditable { Path = path, Extra = fields.Rest() });
             return NoProperties;
         }
@@ -244,7 +250,6 @@ public static partial class TscnReader
 
             _rank = rank;
             _resourceSeen |= tag.Name == "resource";
-            _extOrSubSeen |= tag.Name is "ext_resource" or "sub_resource";
         }
 
         // :904.
