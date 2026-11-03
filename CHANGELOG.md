@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `LineMap` turns a 0-based line and column back into an offset, exactly or clamped as the language server protocol reads positions.
+
 ### Fixed
 
 - Converting back writes PhysicalBone3D joint constraints and SoftBody3D attachments in Godot's order.
