@@ -16,8 +16,9 @@ namespace GodotXaml.Core.Conversion;
 /// entry's names come creating key first, and entries in numeric order, which a family that appends at the next index
 /// (Animation tracks, replication properties, TileSet patterns) needs. Such a pattern names each entry's number in an
 /// <c>index</c> group and any key after it in a <c>key</c> group, and the row carries the declaring class's key order. A
-/// sized-first row whose keys reset one another carries the same groups and key order, and may order one nested level
-/// inside a key: a <c>subindex</c> group, a <c>subkey</c> group and the declaring class's nested key order.
+/// sized-first row may carry the same groups and key order, and one nested level inside a key (a <c>subindex</c> group, a
+/// <c>subkey</c> group and the declaring class's nested key order), which keeps a round trip byte-identical, and which the
+/// load order needs where keys reset or hide one another.
 /// </summary>
 internal static class DynamicPropertyFamilies
 {
@@ -146,6 +147,87 @@ internal static class DynamicPropertyFamilies
         "limitation/rotation_offset",
     ];
 
+    // scene/3d/two_bone_ik_3d.cpp, TwoBoneIK3D::_get_property_list: one setting's keys.
+    private static readonly string[] TwoBoneSettingKeys =
+    [
+        "target_node",
+        "pole_node",
+        "root_bone_name",
+        "root_bone",
+        "middle_bone_name",
+        "middle_bone",
+        "pole_direction",
+        "pole_direction_vector",
+        "end_bone_name",
+        "end_bone",
+        "use_virtual_end",
+        "extend_end_bone",
+        "end_bone/direction",
+        "end_bone/length",
+    ];
+
+    // scene/3d/limit_angular_velocity_modifier_3d.cpp, LimitAngularVelocityModifier3D::_get_property_list: one chain's keys.
+    private static readonly string[] LimitChainKeys = ["root_bone_name", "root_bone", "end_bone_name", "end_bone"];
+
+    // scene/3d/bone_constraint_3d.cpp, BoneConstraint3D::get_property_list: one setting's constraint keys. Each subclass's
+    // _get_property_list calls it for every setting before it lists every setting's own keys.
+    private static readonly string[] ConstraintKeys =
+    [
+        "amount",
+        "apply_bone_name",
+        "apply_bone",
+        "reference_type",
+        "reference_bone_name",
+        "reference_bone",
+        "reference_node",
+    ];
+
+    private static readonly string ConstraintPattern = $@"^settings/(?<index>\d+)/(?<key>{string.Join("|", ConstraintKeys)})$";
+
+    // scene/3d/aim_modifier_3d.cpp, AimModifier3D::_get_property_list: one setting's own keys.
+    private static readonly string[] AimKeys = ["forward_axis", "use_euler", "primary_rotation_axis", "use_secondary_rotation", "relative"];
+
+    // scene/3d/copy_transform_modifier_3d.cpp, CopyTransformModifier3D::_get_property_list: one setting's own keys.
+    private static readonly string[] CopyKeys = ["copy", "axes", "invert", "relative", "additive"];
+
+    // scene/3d/convert_transform_modifier_3d.cpp, ConvertTransformModifier3D::_get_property_list: one setting's own keys.
+    private static readonly string[] ConvertKeys =
+    [
+        "apply/transform_mode",
+        "apply/axis",
+        "apply/range_min",
+        "apply/range_max",
+        "reference/transform_mode",
+        "reference/axis",
+        "reference/range_min",
+        "reference/range_max",
+        "relative",
+        "additive",
+    ];
+
+    // scene/3d/bone_twist_disperser_3d.cpp, BoneTwistDisperser3D::_get_property_list: one setting's keys, its joints after
+    // joint_count.
+    private static readonly string[] DisperserSettingKeys =
+    [
+        "root_bone_name",
+        "root_bone",
+        "end_bone_name",
+        "end_bone",
+        "extend_end_bone",
+        "end_bone_direction",
+        "reference_bone_name",
+        "twist_from_rest",
+        "twist_from",
+        "disperse_mode",
+        "weight_position",
+        "damping_curve",
+        "joint_count",
+        "joints",
+    ];
+
+    // scene/3d/bone_twist_disperser_3d.cpp, BoneTwistDisperser3D::_get_property_list: one joint's keys.
+    private static readonly string[] DisperserJointKeys = ["bone_name", "bone", "twist_amount"];
+
     private static readonly Row[] Entries =
     [
         // scene/animation/animation_mixer.cpp, AnimationMixer::_get_property_list
@@ -208,16 +290,22 @@ internal static class DynamicPropertyFamilies
         // scene/3d/physics/soft_body_3d.cpp, SoftBody3D::_get_property_list
         Row.AnyOrder("SoftBody3D", @"^pinned_points$"),
         Row.SizedFirst("SoftBody3D", @"^attachments/\d+/", "pinned_points"),
-        // scene/3d/bone_twist_disperser_3d.cpp, BoneTwistDisperser3D::_get_property_list
-        Row.SizedFirst("BoneTwistDisperser3D", @"^settings/\d+/", "setting_count"),
-        // scene/3d/aim_modifier_3d.cpp, AimModifier3D::_get_property_list (BoneConstraint3D::get_property_list)
-        Row.SizedFirst("AimModifier3D", @"^settings/\d+/", "setting_count"),
-        // scene/3d/copy_transform_modifier_3d.cpp, CopyTransformModifier3D::_get_property_list (BoneConstraint3D::get_property_list)
-        Row.SizedFirst("CopyTransformModifier3D", @"^settings/\d+/", "setting_count"),
-        // scene/3d/convert_transform_modifier_3d.cpp, ConvertTransformModifier3D::_get_property_list (BoneConstraint3D::get_property_list)
-        Row.SizedFirst("ConvertTransformModifier3D", @"^settings/\d+/", "setting_count"),
+        // scene/3d/bone_twist_disperser_3d.cpp, BoneTwistDisperser3D::_get_property_list: setting by setting, each joint in
+        // numeric order.
+        Row.SizedFirst(
+            "BoneTwistDisperser3D",
+            @"^settings/(?<index>\d+)/(?:(?<key>joints)/(?<subindex>\d+)/(?<subkey>[^/]*)$|(?<key>.*))",
+            "setting_count",
+            DisperserSettingKeys,
+            DisperserJointKeys
+        ),
+        // aim_modifier_3d.cpp, copy_transform_modifier_3d.cpp and convert_transform_modifier_3d.cpp, each class's
+        // _get_property_list (BoneConstraint3D::get_property_list): every setting's constraint keys, then every setting's own keys.
+        .. BoneConstraintRows("AimModifier3D", AimKeys),
+        .. BoneConstraintRows("CopyTransformModifier3D", CopyKeys),
+        .. BoneConstraintRows("ConvertTransformModifier3D", ConvertKeys),
         // scene/3d/limit_angular_velocity_modifier_3d.cpp, LimitAngularVelocityModifier3D::_get_property_list
-        Row.SizedFirst("LimitAngularVelocityModifier3D", @"^chains/\d+/", "chain_count"),
+        Row.SizedFirst("LimitAngularVelocityModifier3D", @"^chains/(?<index>\d+)/(?<key>.*)", "chain_count", LimitChainKeys, []),
         Row.SizedFirst("LimitAngularVelocityModifier3D", @"^joints/\d+/", "joint_count"),
         // scene/3d/iterate_ik_3d.cpp, IterateIK3D::_get_property_list (ChainIK3D::get_property_list): every setting's
         // target_node, then each setting's chain keys, then every setting's joint keys.
@@ -232,7 +320,7 @@ internal static class DynamicPropertyFamilies
         ),
         Row.SizedFirst("IterateIK3D", @"^settings/\d+/", "setting_count"),
         // scene/3d/two_bone_ik_3d.cpp, TwoBoneIK3D::_get_property_list
-        Row.SizedFirst("TwoBoneIK3D", @"^settings/\d+/", "setting_count"),
+        Row.SizedFirst("TwoBoneIK3D", @"^settings/(?<index>\d+)/(?<key>.*)", "setting_count", TwoBoneSettingKeys, []),
         // scene/3d/spline_ik_3d.cpp, SplineIK3D::_get_property_list (ChainIK3D::get_property_list): every setting's path
         // and tilt keys, then each setting's chain keys.
         Row.SizedFirst(
@@ -403,6 +491,14 @@ internal static class DynamicPropertyFamilies
         .GroupBy(row => row.Class, StringComparer.Ordinal)
         .ToFrozenDictionary(group => group.Key, group => group.Select(row => row.Family).ToImmutableArray(), StringComparer.Ordinal);
 
+    // Two rows for a BoneConstraint3D subclass: every setting's constraint keys (BoneConstraint3D::get_property_list), then
+    // every setting's own keys in the subclass's order.
+    private static Row[] BoneConstraintRows(string cls, string[] ownKeys) =>
+        [
+            Row.SizedFirst(cls, ConstraintPattern, "setting_count", ConstraintKeys, []),
+            Row.SizedFirst(cls, @"^settings/(?<index>\d+)/(?<key>.*)", "setting_count", ownKeys, []),
+        ];
+
     // Two VisualShader rows per graph type, in type_string order: the type's nodes, then its connections.
     private static IEnumerable<Row> VisualShaderNodeRows() =>
         VisualShaderTypes.SelectMany(type =>
@@ -420,8 +516,9 @@ internal static class DynamicPropertyFamilies
         AnyOrder,
 
         /// <summary>
-        /// A count property ranked before the family sizes its entries, so each name only fills a slot that exists; a family
-        /// whose keys reset one another also carries the declaring class's key order.
+        /// A count property ranked before the family sizes its entries, so each name only fills a slot that exists. The row may
+        /// carry the declaring class's key order and one nested level, which keeps a round trip byte-identical, and which the
+        /// load order needs where keys reset or hide one another.
         /// </summary>
         SizedFirst,
 

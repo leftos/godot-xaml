@@ -64,6 +64,7 @@ func _run() -> String:
 		_animation_tracks,
 		_skeleton_bones,
 		_bone_chain_settings,
+		_two_bone_ik_modifiers,
 		_visual_shader_nodes,
 		_replication_properties,
 		_tile_set_patterns,
@@ -396,6 +397,130 @@ func _bone_chain_settings() -> String:
 	spline.set("settings/0/end_bone", 5)
 	spline.set("settings/0/joint_count", 6)
 	return _save_scene("bone_chain_settings", skeleton)
+
+
+## A Skeleton3D of a 12-bone chain holding a TwoBoneIK3D, a LimitAngularVelocityModifier3D, an
+## AimModifier3D, a CopyTransformModifier3D, a ConvertTransformModifier3D and a
+## BoneTwistDisperser3D, each with 12 settings (or chains), so entries 10 and 11 sort after 2. Each
+## value is set in its class's _get_property_list order: the BoneConstraint3D subclasses list every
+## setting's base keys (BoneConstraint3D::get_property_list) before every setting's own keys. The
+## LimitAngularVelocityModifier3D joints are derived and never stored; the disperser's twist
+## amounts are stored only in its custom disperse mode (bone_twist_disperser_3d.cpp).
+func _two_bone_ik_modifiers() -> String:
+	var skeleton: Skeleton3D = _root("Skeleton3D")
+	for index in 12:
+		skeleton.add_bone("bone_%d" % index)
+		skeleton.set_bone_parent(index, index - 1)
+		skeleton.set_bone_rest(index, Transform3D(Basis(), Vector3(0, 0.25 * (index + 1), 0)))
+	for index in 12:
+		_add(skeleton, "Target%d" % index, "Node3D")
+		_add(skeleton, "Pole%d" % index, "Node3D")
+
+	var two_bone: Node = _add(skeleton, "TwoBone", "TwoBoneIK3D")
+	two_bone.set("setting_count", 12)
+	for setting in 12:
+		var prefix := "settings/%d/" % setting
+		# 12 bones hold 10 chains of three; settings 10 and 11 reuse the bones of settings 8 and 9.
+		var root_bone := setting if setting < 10 else setting - 2
+		var virtual_end := setting % 2 == 0
+		two_bone.set(prefix + "target_node", NodePath("../Target%d" % setting))
+		two_bone.set(prefix + "pole_node", NodePath("../Pole%d" % setting))
+		two_bone.set(prefix + "root_bone", root_bone)
+		two_bone.set(prefix + "middle_bone", root_bone + 1)
+		two_bone.set(prefix + "pole_direction", 1 + setting % 6)
+		if not virtual_end:
+			two_bone.set(prefix + "end_bone", root_bone + 2)
+		two_bone.set(prefix + "use_virtual_end", virtual_end)
+		two_bone.set(prefix + "extend_end_bone", true)
+		two_bone.set(prefix + "end_bone/direction", setting % 6)
+		two_bone.set(prefix + "end_bone/length", 0.0625 * (setting + 1))
+
+	var limit: Node = _add(skeleton, "Limit", "LimitAngularVelocityModifier3D")
+	limit.set("chain_count", 12)
+	for chain in 12:
+		limit.set("chains/%d/root_bone" % chain, chain % 6)
+		@warning_ignore("integer_division")
+		limit.set("chains/%d/end_bone" % chain, 11 - chain / 6)
+
+	var aim: Node = _add(skeleton, "Aim", "AimModifier3D")
+	var copy: Node = _add(skeleton, "Copy", "CopyTransformModifier3D")
+	var convert: Node = _add(skeleton, "Convert", "ConvertTransformModifier3D")
+	for constraint: Node in [aim, copy, convert]:
+		constraint.set("setting_count", 12)
+		for setting in 12:
+			var prefix := "settings/%d/" % setting
+			constraint.set(prefix + "amount", 0.0625 * (setting + 1))
+			constraint.set(prefix + "apply_bone", setting)
+			constraint.set(prefix + "reference_type", 0)
+			constraint.set(prefix + "reference_bone", 11 - setting)
+	# Forward axes +X, -X, -Y, +Z, -Z (+Y is the default), each with a primary rotation axis that is
+	# neither X (the default) nor parallel to it (AimModifier3D::get_configuration_warnings).
+	var forward_axes: Array[int] = [0, 1, 3, 4, 5]
+	var primary_axes: Array[int] = [1, 2, 2, 1, 1]
+	for setting in 12:
+		var prefix := "settings/%d/" % setting
+		aim.set(prefix + "forward_axis", forward_axes[setting % 5])
+		aim.set(prefix + "use_euler", true)
+		aim.set(prefix + "primary_rotation_axis", primary_axes[setting % 5])
+		aim.set(prefix + "use_secondary_rotation", setting % 2 == 1)
+		aim.set(prefix + "relative", setting % 4 >= 2)
+	for setting in 12:
+		var prefix := "settings/%d/" % setting
+		copy.set(prefix + "copy", 1 + setting % 6)
+		copy.set(prefix + "axes", 6 - setting % 6)
+		copy.set(prefix + "invert", 1 + setting % 7)
+		copy.set(prefix + "relative", setting % 2 == 1)
+		copy.set(prefix + "additive", setting % 4 < 2)
+	for setting in 12:
+		var prefix := "settings/%d/" % setting
+		convert.set(prefix + "apply/transform_mode", 1 + setting % 2)
+		convert.set(prefix + "apply/axis", 1 + setting % 2)
+		convert.set(prefix + "apply/range_min", -0.125 * (setting + 1))
+		convert.set(prefix + "apply/range_max", 0.125 * (setting + 1))
+		convert.set(prefix + "reference/transform_mode", 2 - setting % 2)
+		convert.set(prefix + "reference/axis", 2 - setting % 2)
+		convert.set(prefix + "reference/range_min", -0.25 * (setting + 1))
+		convert.set(prefix + "reference/range_max", 0.25 * (setting + 1))
+		convert.set(prefix + "relative", setting % 2 == 1)
+		convert.set(prefix + "additive", setting % 4 < 2)
+
+	# Odd settings extend the end bone with a direction; settings 2, 6 and 10 twist from a set
+	# quaternion; settings 0, 3, 6 and 9 are custom (twist amounts per joint), 1, 4, 7 and 10 weighted
+	# (a weight position), the rest even (the default).
+	var twist_from: Array[Quaternion] = [
+		Quaternion(0, 0.6, 0, 0.8),
+		Quaternion(0.6, 0, 0, 0.8),
+		Quaternion(0, 0, 0.6, 0.8),
+	]
+	var disperser: Node = _add(skeleton, "Disperser", "BoneTwistDisperser3D")
+	disperser.set("setting_count", 12)
+	for setting in 12:
+		var prefix := "settings/%d/" % setting
+		var root_bone := setting % 6
+		@warning_ignore("integer_division")
+		var end_bone := 11 - setting / 6
+		var extended := setting % 2 == 1
+		var joint_count := end_bone - root_bone + 1
+		disperser.set(prefix + "root_bone", root_bone)
+		disperser.set(prefix + "end_bone", end_bone)
+		if extended:
+			disperser.set(prefix + "extend_end_bone", true)
+			disperser.set(prefix + "end_bone_direction", setting % 6)
+		if setting % 4 == 2:
+			disperser.set(prefix + "twist_from_rest", false)
+			@warning_ignore("integer_division")
+			disperser.set(prefix + "twist_from", twist_from[setting / 4])
+		if setting % 3 == 0:
+			disperser.set(prefix + "disperse_mode", 2)
+		elif setting % 3 == 1:
+			disperser.set(prefix + "disperse_mode", 1)
+			disperser.set(prefix + "weight_position", 0.05 * (setting + 1))
+		disperser.set(prefix + "joint_count", joint_count)
+		if setting % 3 == 0:
+			# Without an extended end bone, the last joint's amount is hidden and not stored.
+			for joint in joint_count if extended else joint_count - 1:
+				disperser.set(prefix + "joints/%d/twist_amount" % joint, 0.5 + 0.03125 * joint)
+	return _save_scene("two_bone_ik_modifiers", skeleton)
 
 
 ## A VisualShader with an Expression node (ports and code) at id 10 in the fragment and vertex

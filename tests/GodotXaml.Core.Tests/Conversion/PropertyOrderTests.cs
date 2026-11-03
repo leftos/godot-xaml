@@ -518,6 +518,280 @@ public sealed class PropertyOrderTests
         );
     }
 
+    // TwoBoneIK3D::_get_property_list lists each setting's keys in turn, settings in numeric order.
+    [Fact]
+    public void ATwoBoneIKSettingRunsInGodotsKeyOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <TwoBoneIK3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/end_bone" Value="2" />
+              <x:Prop Name="settings/0/end_bone/direction" Value="1" />
+              <x:Prop Name="settings/0/end_bone/length" Value="0.5" />
+              <x:Prop Name="settings/0/end_bone_name" Value='""' />
+              <x:Prop Name="settings/0/extend_end_bone" Value="true" />
+              <x:Prop Name="settings/0/middle_bone" Value="1" />
+              <x:Prop Name="settings/0/pole_direction" Value="2" />
+              <x:Prop Name="settings/0/pole_node" Value='NodePath("P0")' />
+              <x:Prop Name="settings/0/root_bone" Value="0" />
+              <x:Prop Name="settings/0/target_node" Value='NodePath("T0")' />
+              <x:Prop Name="settings/0/use_virtual_end" Value="false" />
+              <x:Prop Name="settings/10/extend_end_bone" Value="true" />
+              <x:Prop Name="settings/10/middle_bone" Value="2" />
+              <x:Prop Name="settings/10/root_bone" Value="1" />
+              <x:Prop Name="settings/10/target_node" Value='NodePath("T10")' />
+              <x:Prop Name="settings/10/use_virtual_end" Value="true" />
+            </TwoBoneIK3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/target_node",
+                "settings/0/pole_node",
+                "settings/0/root_bone",
+                "settings/0/middle_bone",
+                "settings/0/pole_direction",
+                "settings/0/end_bone_name",
+                "settings/0/end_bone",
+                "settings/0/use_virtual_end",
+                "settings/0/extend_end_bone",
+                "settings/0/end_bone/direction",
+                "settings/0/end_bone/length",
+                "settings/10/target_node",
+                "settings/10/root_bone",
+                "settings/10/middle_bone",
+                "settings/10/use_virtual_end",
+                "settings/10/extend_end_bone",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // LimitAngularVelocityModifier3D::_get_property_list lists each chain's root bone, then its end bone.
+    [Fact]
+    public void ALimitAngularVelocityChainListsItsRootBoneFirst()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <LimitAngularVelocityModifier3D {{X}} Name="Root">
+              <x:Prop Name="chains/0/end_bone" Value="3" />
+              <x:Prop Name="chains/0/end_bone_name" Value='""' />
+              <x:Prop Name="chains/0/root_bone" Value="0" />
+              <x:Prop Name="chains/0/root_bone_name" Value='""' />
+              <x:Prop Name="chains/10/end_bone" Value="4" />
+              <x:Prop Name="chains/10/end_bone_name" Value='""' />
+              <x:Prop Name="chains/10/root_bone" Value="1" />
+              <x:Prop Name="chains/10/root_bone_name" Value='""' />
+            </LimitAngularVelocityModifier3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "chains/0/root_bone_name",
+                "chains/0/root_bone",
+                "chains/0/end_bone_name",
+                "chains/0/end_bone",
+                "chains/10/root_bone_name",
+                "chains/10/root_bone",
+                "chains/10/end_bone_name",
+                "chains/10/end_bone",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // AimModifier3D::_get_property_list calls BoneConstraint3D::get_property_list (every setting's constraint keys) before
+    // it lists every setting's own keys.
+    [Fact]
+    public void AnAimModifierListsConstraintsThenItsOwnKeys()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <AimModifier3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/amount" Value="0.5" />
+              <x:Prop Name="settings/0/apply_bone" Value="0" />
+              <x:Prop Name="settings/0/forward_axis" Value="1" />
+              <x:Prop Name="settings/0/reference_bone" Value="1" />
+              <x:Prop Name="settings/0/reference_type" Value="0" />
+              <x:Prop Name="settings/0/relative" Value="false" />
+              <x:Prop Name="settings/0/use_euler" Value="true" />
+              <x:Prop Name="settings/10/amount" Value="0.25" />
+              <x:Prop Name="settings/10/apply_bone" Value="2" />
+              <x:Prop Name="settings/10/forward_axis" Value="3" />
+              <x:Prop Name="settings/10/reference_bone" Value="3" />
+              <x:Prop Name="settings/10/reference_type" Value="0" />
+              <x:Prop Name="settings/10/use_euler" Value="true" />
+            </AimModifier3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/amount",
+                "settings/0/apply_bone",
+                "settings/0/reference_type",
+                "settings/0/reference_bone",
+                "settings/10/amount",
+                "settings/10/apply_bone",
+                "settings/10/reference_type",
+                "settings/10/reference_bone",
+                "settings/0/forward_axis",
+                "settings/0/use_euler",
+                "settings/0/relative",
+                "settings/10/forward_axis",
+                "settings/10/use_euler",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // CopyTransformModifier3D::_get_property_list calls BoneConstraint3D::get_property_list (every setting's constraint keys)
+    // before it lists every setting's own keys.
+    [Fact]
+    public void ACopyTransformModifierListsConstraintsThenItsOwnKeys()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <CopyTransformModifier3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/additive" Value="true" />
+              <x:Prop Name="settings/0/amount" Value="0.5" />
+              <x:Prop Name="settings/0/apply_bone" Value="0" />
+              <x:Prop Name="settings/0/axes" Value="3" />
+              <x:Prop Name="settings/0/copy" Value="1" />
+              <x:Prop Name="settings/0/invert" Value="2" />
+              <x:Prop Name="settings/0/reference_bone" Value="1" />
+              <x:Prop Name="settings/0/reference_type" Value="0" />
+              <x:Prop Name="settings/0/relative" Value="false" />
+              <x:Prop Name="settings/10/amount" Value="0.25" />
+              <x:Prop Name="settings/10/copy" Value="2" />
+              <x:Prop Name="settings/10/reference_bone" Value="3" />
+            </CopyTransformModifier3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/amount",
+                "settings/0/apply_bone",
+                "settings/0/reference_type",
+                "settings/0/reference_bone",
+                "settings/10/amount",
+                "settings/10/reference_bone",
+                "settings/0/copy",
+                "settings/0/axes",
+                "settings/0/invert",
+                "settings/0/relative",
+                "settings/0/additive",
+                "settings/10/copy",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // ConvertTransformModifier3D::_get_property_list calls BoneConstraint3D::get_property_list (every setting's constraint
+    // keys) before it lists every setting's own keys.
+    [Fact]
+    public void AConvertTransformModifierListsConstraintsThenItsOwnKeys()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <ConvertTransformModifier3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/additive" Value="true" />
+              <x:Prop Name="settings/0/amount" Value="0.5" />
+              <x:Prop Name="settings/0/apply/axis" Value="1" />
+              <x:Prop Name="settings/0/apply/range_min" Value="-1.0" />
+              <x:Prop Name="settings/0/apply/transform_mode" Value="1" />
+              <x:Prop Name="settings/0/apply_bone" Value="0" />
+              <x:Prop Name="settings/0/reference/axis" Value="2" />
+              <x:Prop Name="settings/0/reference/transform_mode" Value="2" />
+              <x:Prop Name="settings/0/reference_bone" Value="1" />
+              <x:Prop Name="settings/0/reference_type" Value="0" />
+              <x:Prop Name="settings/0/relative" Value="false" />
+              <x:Prop Name="settings/10/amount" Value="0.25" />
+              <x:Prop Name="settings/10/apply/axis" Value="2" />
+              <x:Prop Name="settings/10/reference_bone" Value="3" />
+            </ConvertTransformModifier3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/amount",
+                "settings/0/apply_bone",
+                "settings/0/reference_type",
+                "settings/0/reference_bone",
+                "settings/10/amount",
+                "settings/10/reference_bone",
+                "settings/0/apply/transform_mode",
+                "settings/0/apply/axis",
+                "settings/0/apply/range_min",
+                "settings/0/reference/transform_mode",
+                "settings/0/reference/axis",
+                "settings/0/relative",
+                "settings/0/additive",
+                "settings/10/apply/axis",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // BoneTwistDisperser3D::_get_property_list lists each setting's keys in turn, its joints after joint_count in numeric
+    // order.
+    [Fact]
+    public void ABoneTwistDisperserSettingListsItsJointsInNumericOrderAfterItsKeys()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <BoneTwistDisperser3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/disperse_mode" Value="2" />
+              <x:Prop Name="settings/0/end_bone" Value="11" />
+              <x:Prop Name="settings/0/end_bone_direction" Value="2" />
+              <x:Prop Name="settings/0/extend_end_bone" Value="true" />
+              <x:Prop Name="settings/0/joint_count" Value="12" />
+              <x:Prop Name="settings/0/joints/0/twist_amount" Value="0.5" />
+              <x:Prop Name="settings/0/joints/1/twist_amount" Value="0.25" />
+              <x:Prop Name="settings/0/joints/10/twist_amount" Value="0.75" />
+              <x:Prop Name="settings/0/joints/2/twist_amount" Value="0.125" />
+              <x:Prop Name="settings/0/root_bone" Value="0" />
+              <x:Prop Name="settings/10/disperse_mode" Value="1" />
+              <x:Prop Name="settings/10/end_bone" Value="3" />
+              <x:Prop Name="settings/10/joint_count" Value="2" />
+              <x:Prop Name="settings/10/joints/0/twist_amount" Value="0.5" />
+              <x:Prop Name="settings/10/root_bone" Value="2" />
+              <x:Prop Name="settings/10/twist_from" Value="Quaternion(0, 0.6, 0, 0.8)" />
+              <x:Prop Name="settings/10/twist_from_rest" Value="false" />
+              <x:Prop Name="settings/10/weight_position" Value="0.25" />
+            </BoneTwistDisperser3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/root_bone",
+                "settings/0/end_bone",
+                "settings/0/extend_end_bone",
+                "settings/0/end_bone_direction",
+                "settings/0/disperse_mode",
+                "settings/0/joint_count",
+                "settings/0/joints/0/twist_amount",
+                "settings/0/joints/1/twist_amount",
+                "settings/0/joints/2/twist_amount",
+                "settings/0/joints/10/twist_amount",
+                "settings/10/root_bone",
+                "settings/10/end_bone",
+                "settings/10/twist_from_rest",
+                "settings/10/twist_from",
+                "settings/10/disperse_mode",
+                "settings/10/weight_position",
+                "settings/10/joint_count",
+                "settings/10/joints/0/twist_amount",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
     private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
 
     // Parses a resource document and converts it with no issue.

@@ -36,6 +36,7 @@ public sealed partial class SceneBackTests
             "script_node",
             "skeleton_bones",
             "sub_resources",
+            "two_bone_ik_modifiers",
             "unique_name"
         );
 

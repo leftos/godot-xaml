@@ -35,6 +35,7 @@ public sealed partial class SceneForwardTests
             "script_node",
             "skeleton_bones",
             "sub_resources",
+            "two_bone_ik_modifiers",
             "unique_name"
         );
 
