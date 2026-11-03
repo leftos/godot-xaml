@@ -1,0 +1,4 @@
+<Resource
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Script="res://tagged.gd"
+    label='"tagged"' />

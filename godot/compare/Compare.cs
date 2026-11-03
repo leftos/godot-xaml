@@ -11,10 +11,10 @@ using GodotDictionary = Godot.Collections.Dictionary;
 namespace GodotXaml.Addon.Compare;
 
 /// <summary>
-/// Loads each scene fixture in <c>res://cases/</c> and its converted <c>.xscn</c>, and compares a canonical dump of the
-/// two: each packed scene's state and node ids, then the tree each instantiates. Prints <c>COMPARE &lt;name&gt; PASS</c>
-/// or <c>COMPARE &lt;name&gt; FAIL &lt;detail&gt;</c> per fixture, then <c>DONE &lt;passed&gt;/&lt;total&gt;</c>, and
-/// quits with exit code 0 only when every fixture passed.
+/// Loads each fixture in <c>res://cases/</c> with its converted counterpart and compares a canonical dump of the two: a
+/// scene's packed state and node ids, then the tree it instantiates, or a resource and its stored properties. Prints
+/// <c>COMPARE &lt;name&gt; PASS</c> or <c>COMPARE &lt;name&gt; FAIL &lt;detail&gt;</c> per fixture, then
+/// <c>DONE &lt;passed&gt;/&lt;total&gt;</c>, and quits with exit code 0 only when every fixture passed.
 /// </summary>
 /// <remarks>
 /// The dump normalises exactly two things: a path's <c>.tscn</c>, <c>.xscn</c>, <c>.tres</c> or <c>.xres</c> extension
@@ -25,7 +25,23 @@ namespace GodotXaml.Addon.Compare;
 public partial class Compare : Node
 {
     private const string CasesPath = "res://cases/";
-    private const int ExpectedPairs = 15;
+    private const int ExpectedPairs = 20;
+
+    // Each pair kind's source and golden extension, paired as the two sides of one dump.
+    private static readonly (PairKind Kind, string Source, string Converted)[] Kinds =
+    [
+        (PairKind.Scene, ".tscn", ".xscn"),
+        (PairKind.Resource, ".tres", ".xres"),
+    ];
+
+    private enum PairKind
+    {
+        Scene,
+        Resource,
+    }
+
+    // One fixture: its stem, its kind, and the extension of each side's file.
+    private sealed record Pair(string Name, PairKind Kind, string Source, string Converted);
 
     /// <inheritdoc/>
     public override void _Ready()
@@ -33,16 +49,16 @@ public partial class Compare : Node
         int passed = 0;
         try
         {
-            string[] names = PairNames();
-            if (names.Length != ExpectedPairs)
+            Pair[] pairs = PairNames();
+            if (pairs.Length != ExpectedPairs)
             {
-                GD.Print($"COMPARE setup FAIL expected {ExpectedPairs} pairs, found {names.Length}");
+                GD.Print($"COMPARE setup FAIL expected {ExpectedPairs} pairs, found {pairs.Length}");
                 return;
             }
 
-            foreach (string name in names)
+            foreach (Pair pair in pairs)
             {
-                passed += Report(name) ? 1 : 0;
+                passed += Report(pair) ? 1 : 0;
             }
         }
         finally
@@ -56,31 +72,51 @@ public partial class Compare : Node
         }
     }
 
-    // The scene names in res://cases/ that have both a .tscn and an .xscn, sorted ordinal. Each scene file without its
-    // partner prints a setup FAIL line and empties the list.
-    private static string[] PairNames()
+    // The fixtures in res://cases/ that have both a source and a golden, sorted ordinal within each kind. A stem that holds
+    // both a scene file and a resource file, or a file without its partner, prints a setup FAIL line and empties the list.
+    private static Pair[] PairNames()
     {
         string[] files = DirAccess.GetFilesAt(CasesPath);
-        HashSet<string> tscn = StemsOf(files, ".tscn");
-        HashSet<string> xscn = StemsOf(files, ".xscn");
-        string[] unpaired = [.. tscn.Except(xscn).Select(name => name + ".tscn"), .. xscn.Except(tscn).Select(name => name + ".xscn")];
-        foreach (string file in unpaired.Order(StringComparer.Ordinal))
+        bool failed = false;
+        HashSet<string> scene = [.. StemsOf(files, ".tscn"), .. StemsOf(files, ".xscn")];
+        HashSet<string> resource = [.. StemsOf(files, ".tres"), .. StemsOf(files, ".xres")];
+        foreach (string stem in scene.Intersect(resource).Order(StringComparer.Ordinal))
         {
-            GD.Print($"COMPARE setup FAIL unpaired {file}");
+            GD.Print($"COMPARE setup FAIL {stem} is both a scene and a resource");
+            failed = true;
         }
 
-        return unpaired.Length > 0 ? [] : [.. tscn.Order(StringComparer.Ordinal)];
+        var pairs = new List<Pair>();
+        foreach ((PairKind kind, string source, string converted) in Kinds)
+        {
+            HashSet<string> sources = StemsOf(files, source);
+            HashSet<string> goldens = StemsOf(files, converted);
+            string[] unpaired =
+            [
+                .. sources.Except(goldens).Select(name => name + source),
+                .. goldens.Except(sources).Select(name => name + converted),
+            ];
+            foreach (string file in unpaired.Order(StringComparer.Ordinal))
+            {
+                GD.Print($"COMPARE setup FAIL unpaired {file}");
+                failed = true;
+            }
+
+            pairs.AddRange(sources.Intersect(goldens).Order(StringComparer.Ordinal).Select(name => new Pair(name, kind, source, converted)));
+        }
+
+        return failed ? [] : [.. pairs];
     }
 
     private static HashSet<string> StemsOf(string[] files, string extension) =>
         [.. files.Where(file => file.EndsWith(extension, StringComparison.Ordinal)).Select(file => file[..^extension.Length])];
 
-    private static bool Report(string name)
+    private static bool Report(Pair pair)
     {
         string failure;
         try
         {
-            failure = FailureOf(name);
+            failure = FailureOf(pair);
         }
         // A fixture that throws fails with the exception's text; the remaining fixtures still run.
 #pragma warning disable CA1031
@@ -90,35 +126,53 @@ public partial class Compare : Node
             failure = $"threw {exception.GetType().Name}: {exception.Message}";
         }
 
-        GD.Print(failure.Length == 0 ? $"COMPARE {name} PASS" : $"COMPARE {name} FAIL {failure}");
+        GD.Print(failure.Length == 0 ? $"COMPARE {pair.Name} PASS" : $"COMPARE {pair.Name} FAIL {failure}");
         return failure.Length == 0;
     }
 
     // The first line where the two dumps differ, or an empty string when they are equal. Each dump is also written beside
-    // the fixture as <name>.tscn.dump and <name>.xscn.dump, so a failure can be read whole.
-    private static string FailureOf(string name)
+    // the fixture under its own extension, as <name>.tscn.dump and <name>.xscn.dump or <name>.tres.dump and
+    // <name>.xres.dump, so a failure can be read whole.
+    private static string FailureOf(Pair pair)
     {
-        string tscnFailure = DumpScene(CasesPath + name + ".tscn", "tscn", out List<string> tscn);
-        string xscnFailure = DumpScene(CasesPath + name + ".xscn", "xscn", out List<string> xscn);
-        if (tscnFailure.Length > 0 || xscnFailure.Length > 0)
+        string sourceFailure;
+        string convertedFailure;
+        List<string> source;
+        List<string> converted;
+        string sourceSide;
+        string convertedSide;
+        if (pair.Kind == PairKind.Scene)
         {
-            return string.Join("; ", new[] { tscnFailure, xscnFailure }.Where(failure => failure.Length > 0));
+            (sourceSide, convertedSide) = ("tscn", "xscn");
+            sourceFailure = DumpScene(CasesPath + pair.Name + pair.Source, sourceSide, out source);
+            convertedFailure = DumpScene(CasesPath + pair.Name + pair.Converted, convertedSide, out converted);
+        }
+        else
+        {
+            (sourceSide, convertedSide) = ("tres", "xres");
+            sourceFailure = LoadResourceDump(CasesPath + pair.Name + pair.Source, sourceSide, out source);
+            convertedFailure = LoadResourceDump(CasesPath + pair.Name + pair.Converted, convertedSide, out converted);
         }
 
-        File.WriteAllLines(ProjectSettings.GlobalizePath(CasesPath + name + ".tscn.dump"), tscn);
-        File.WriteAllLines(ProjectSettings.GlobalizePath(CasesPath + name + ".xscn.dump"), xscn);
-        return FirstDifference(tscn, xscn);
+        if (sourceFailure.Length > 0 || convertedFailure.Length > 0)
+        {
+            return string.Join("; ", new[] { sourceFailure, convertedFailure }.Where(failure => failure.Length > 0));
+        }
+
+        File.WriteAllLines(ProjectSettings.GlobalizePath(CasesPath + pair.Name + pair.Source + ".dump"), source);
+        File.WriteAllLines(ProjectSettings.GlobalizePath(CasesPath + pair.Name + pair.Converted + ".dump"), converted);
+        return FirstDifference(source, converted, sourceSide, convertedSide);
     }
 
-    private static string FirstDifference(List<string> tscn, List<string> xscn)
+    private static string FirstDifference(List<string> source, List<string> converted, string sourceSide, string convertedSide)
     {
-        for (int line = 0; line < Math.Max(tscn.Count, xscn.Count); line++)
+        for (int line = 0; line < Math.Max(source.Count, converted.Count); line++)
         {
-            string fromTscn = line < tscn.Count ? tscn[line] : "<end>";
-            string fromXscn = line < xscn.Count ? xscn[line] : "<end>";
-            if (!string.Equals(fromTscn, fromXscn, StringComparison.Ordinal))
+            string fromSource = line < source.Count ? source[line] : "<end>";
+            string fromConverted = line < converted.Count ? converted[line] : "<end>";
+            if (!string.Equals(fromSource, fromConverted, StringComparison.Ordinal))
             {
-                return $"line {line + 1}: tscn `{fromTscn}` xscn `{fromXscn}`";
+                return $"line {line + 1}: {sourceSide} `{fromSource}` {convertedSide} `{fromConverted}`";
             }
         }
 
@@ -152,6 +206,20 @@ public partial class Compare : Node
         }
     }
 
+    // Loads one resource side; returns why it could not, or an empty string with the dump in lines.
+    private static string LoadResourceDump(string path, string side, out List<string> lines)
+    {
+        lines = [];
+        Resource? resource = ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore);
+        if (resource is null)
+        {
+            return $"{side} did not load";
+        }
+
+        lines = new SceneDump(resource).Lines();
+        return "";
+    }
+
     // A resource or scene path with its .tscn, .xscn, .tres or .xres extension removed, so both sides print the same path.
     [GeneratedRegex(@"\.(tscn|xscn|tres|xres)(?=::|$)", RegexOptions.CultureInvariant)]
     private static partial Regex PathExtension();
@@ -171,9 +239,17 @@ public partial class Compare : Node
             : StripExtension(path);
     }
 
-    /// <summary>The canonical dump of one packed scene and the tree it instantiates: one line per fact.</summary>
-    private sealed class SceneDump(PackedScene scene, Node root)
+    /// <summary>The canonical dump of one packed scene and the tree it instantiates, or of one resource and its properties.</summary>
+    private sealed class SceneDump(PackedScene? scene, Node? root, Resource? resource)
     {
+        // A scene side: the packed state and the tree it instantiates.
+        public SceneDump(PackedScene scene, Node root)
+            : this(scene, root, null) { }
+
+        // A resource side: the resource's class, then its stored properties.
+        public SceneDump(Resource resource)
+            : this(null, null, resource) { }
+
         private const string CallableParts = "[v.get_object(), v.get_method(), v.get_bound_arguments(), v.get_unbound_arguments_count()]";
         private const string ArrayTyping = "[v.is_typed(), v.get_typed_builtin(), v.get_typed_class_name(), v.get_typed_script()]";
         private const string DictionaryTyping =
@@ -186,8 +262,14 @@ public partial class Compare : Node
 
         public List<string> Lines()
         {
+            if (resource is not null)
+            {
+                DumpResource(resource);
+                return lines;
+            }
+
             DumpState();
-            DumpNode(root);
+            DumpNode(root!);
             foreach (List<string> connection in connections.OrderBy(block => block[0], StringComparer.Ordinal))
             {
                 lines.AddRange(connection);
@@ -196,14 +278,23 @@ public partial class Compare : Node
             return lines;
         }
 
-        private string PathOf(Node node) => root.GetPathTo(node).ToString();
+        private string PathOf(Node node) => root!.GetPathTo(node).ToString();
+
+        // The resource's class, then its stored properties; the resource itself is visit 1, so a reference back to it is seen.
+        private void DumpResource(Resource top)
+        {
+            lines.Add($"resource {top.GetClass()}");
+            visited[top.GetInstanceId()] = 1;
+            DumpProperties(top, "prop", "", "", lines);
+        }
 
         // The packed state as stored: the base scene, each state node's instance, placeholder flag and stored property
         // names, then each node's unique id from the bundled node_ids, in the state's node order.
         private void DumpState()
         {
-            SceneState state = scene.GetState();
-            GodotDictionary bundled = scene.Get("_bundled").AsGodotDictionary();
+            PackedScene packed = scene!;
+            SceneState state = packed.GetState();
+            GodotDictionary bundled = packed.Get("_bundled").AsGodotDictionary();
             string baseScene = bundled.TryGetValue("base_scene", out Variant baseIndex)
                 ? ResourceName(bundled["variants"].AsGodotArray()[baseIndex.AsInt32()].As<Resource>())
                 : "-";
@@ -246,7 +337,7 @@ public partial class Compare : Node
 
             DumpProperties(node, "prop", path, "", lines);
             CollectConnections(node, path);
-            if (node != root && root.IsEditableInstance(node))
+            if (node != root && root!.IsEditableInstance(node))
             {
                 lines.Add($"editable {path}");
             }

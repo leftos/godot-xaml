@@ -1,16 +1,17 @@
 #requires -Version 7
 <#
 .SYNOPSIS
-Compares each scene fixture with its converted .xscn as Godot 4.7 instantiates them.
+Compares each scene fixture with its converted .xscn and each .tres fixture with its converted .xres, as Godot 4.7 loads
+them.
 
 .DESCRIPTION
-Copies the scene fixtures (tests/fixtures/scenes/*.tscn and *.tres), their converted goldens
-(tests/fixtures/converted/*.xscn) into godot/cases/, recreated on each run, and the scripts the fixtures name
-(holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the fixtures' res:// paths point. Then builds the godot/ project,
-imports it headless (which registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless.
-The scene prints
+Copies the fixtures (tests/fixtures/scenes/*.tscn and *.tres), their converted goldens
+(tests/fixtures/converted/*.xscn and *.xres) into godot/cases/, recreated on each run, and the scripts the fixtures name
+(holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the
+fixtures' res:// paths point. Then builds the godot/ project, imports it headless (which registers the addon's loader),
+then imports it again, and runs res://compare/Compare.tscn headless. The scene prints
 COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is left in
-godot/cases/<name>.tscn.dump and <name>.xscn.dump.
+godot/cases/<name>.tscn.dump and <name>.xscn.dump, or <name>.tres.dump and <name>.xres.dump.
 
 Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no fixture failed,
 every expected fixture passed and the scene printed DONE with all of them.
@@ -33,7 +34,7 @@ $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env
 $project = $PSScriptRoot
 $repo = Split-Path $project -Parent
 $cases = Join-Path $project 'cases'
-$expectedFixtures = 15
+$expectedFixtures = 20
 # The scripts the fixtures name by res:// path, copied from the generator's project; .gitignore lists each copy.
 $fixtureScripts = @('holder.gd', 'quoted.gd', 'tagged.gd')
 
@@ -54,6 +55,7 @@ New-Item -ItemType Directory -Path $cases | Out-Null
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/scenes/*.tscn') -Destination $cases
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/scenes/*.tres') -Destination $cases
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/converted/*.xscn') -Destination $cases
+Copy-Item -Path (Join-Path $repo 'tests/fixtures/converted/*.xres') -Destination $cases
 foreach ($script in $fixtureScripts) {
     foreach ($copy in @((Join-Path $project $script), (Join-Path $project "$script.uid"))) {
         if (Test-Path -LiteralPath $copy) {

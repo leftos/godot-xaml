@@ -1,0 +1,8 @@
+<Resource
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Script="res://quoted.gd"
+    naïve="true">
+  <x:Prop Name="key=value" Value='"x"' />
+  <x:Prop Name='say "hi"' Value="2" />
+  <x:Prop Name="with space" Value="1" />
+</Resource>

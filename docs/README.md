@@ -42,7 +42,7 @@
 - **`res://` path**: a path from a project root, written with each folder and file name in its on-disk casing.
 - **Remap**: a `.remap` file Godot adds beside a path in an export, naming the file to load instead; the export plugin uses it to send an `.xscn`/`.xres` path to its binary copy.
 - **Round trip**: converting a `.tscn` to `.xscn` and back (or the reverse) and getting the same scene as Godot loads it.
-- **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn` in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
+- **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn`, and each `.tres` fixture and its converted `.xres`, in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
 - **Scene lookup**: the host's reader of another scene file's text (`ISceneFiles`), which the way back uses to learn the class of an instanced node or an override.
 - **Scene namespace**: an XML namespace on the root binding a prefix to a `res://` folder (`xmlns:c="res://ui/"`), so a scene in that folder is instanced as a tag (`<c:Modal Name="Confirm" />`).
 - **Seed scene**: the one-node scene `tools/scene-fixtures/` saves first so the inherited-scene case can be saved from it; a script cannot set up scene inheritance directly.
