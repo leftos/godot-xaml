@@ -34,12 +34,50 @@ public sealed class ReferenceScanTests
         AssertFound("<Node Name=\"N\" Meta='[Resource(\"a\\\"b\"), Resource(\"res://themes/t.tres\")]' />", QuoteGrammar.Xml, Theme);
 
     [Fact]
+    public void XmlFindsAPathInEntityEncodedValueText()
+    {
+        const string Line = "<Node Name=\"N\" Value=\"[Resource(&quot;res://ui/button.tscn&quot;), 'x']\" />";
+
+        // The column is the raw one: the '&' that opens the &quot; the path follows, so an editor lands on it.
+        int column = Line.IndexOf("&quot;res://ui/button.tscn", StringComparison.Ordinal) + 1;
+
+        Assert.Contains((1, column, Button), ReferenceScan.Quoted(Line, QuoteGrammar.Xml));
+    }
+
+    [Fact]
+    public void XmlFindsAPathWithAnEncodedAmpersand()
+    {
+        const string Line = "<x:Instance Name=\"I\" Scene=\"res://a&amp;b.tscn\" />";
+
+        // The value decodes, and the column is the raw one: the quote that opens the value.
+        int column = Line.IndexOf("res://a&amp;b.tscn", StringComparison.Ordinal);
+
+        Assert.Contains((1, column, "res://a&b.tscn"), ReferenceScan.Quoted(Line, QuoteGrammar.Xml));
+    }
+
+    [Fact]
     public void XmlFindsAUidTablePath()
     {
         const string Line = "<x:Uid Path=\"res://ui/button.tscn\" Value=\"uid://bbutt\" />";
 
         AssertFound(Line, QuoteGrammar.Xml, Button);
         Assert.Equal(Button, ReferenceScan.AttributeValue(Line, "Path"));
+    }
+
+    [Fact]
+    public void AttributeValueMatchesWholeNamesOnly()
+    {
+        const string Line = "<x:Uid ScenePath=\"res://other.tscn\" Path=\"res://ui/button.tscn\" Value=\"uid://bbutt\" />";
+
+        Assert.Equal(Button, ReferenceScan.AttributeValue(Line, "Path"));
+    }
+
+    [Fact]
+    public void AttributeValueFindsAPathAfterAnotherAttributeEndingInPath()
+    {
+        const string Line = "<x:Uid ScenePath=\"res://other.tscn\" Value=\"uid://bbutt\" />";
+
+        Assert.Null(ReferenceScan.AttributeValue(Line, "Path"));
     }
 
     [Fact]

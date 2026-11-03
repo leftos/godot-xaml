@@ -1,3 +1,4 @@
+using System.Text;
 using GodotXaml.Core.Diagnostics;
 
 namespace GodotXaml.Cli;
@@ -30,6 +31,14 @@ internal static class ReferenceScan
     private const string CommentClose = "-->";
     private static readonly string[] Extensions = [".tscn", ".tres", ".xscn", ".xres"];
     private static readonly char[] Quotes = ['"', '\''];
+    private static readonly Dictionary<string, string> NamedEntities = new(StringComparer.Ordinal)
+    {
+        ["quot"] = "\"",
+        ["apos"] = "'",
+        ["amp"] = "&",
+        ["lt"] = "<",
+        ["gt"] = ">",
+    };
 
     /// <summary>Finds every whole quoted rename key in the scene and resource files under a root, and every script hit.</summary>
     /// <param name="root">The project root to walk.</param>
@@ -70,21 +79,22 @@ internal static class ReferenceScan
         string[] lines = text.Split('\n');
         if (grammar == QuoteGrammar.Xml)
         {
-            XmlSpans(lines, spans);
+            XmlSpans(lines, spans, tags: null);
         }
         else
         {
             for (int index = 0; index < lines.Length; index++)
             {
-                GodotTextSpans(lines[index], index + 1, 0, spans);
+                GodotTextSpans(lines[index], index + 1, 0, raw: null, spans);
             }
         }
         return [.. spans.OrderBy(span => span.Line).ThenBy(span => span.Column)];
     }
 
     // The spans of Godot value text that starts at a 0-based offset in its line. Each quote kind is paired on its own, so
-    // a path in double quotes inside a single-quoted value is a span too.
-    private static void GodotTextSpans(string text, int line, int offset, List<(int Line, int Column, string Text)> spans)
+    // a path in double quotes inside a single-quoted value is a span too. A span of a decoded value takes its column
+    // from the raw line index of the first character it came from.
+    private static void GodotTextSpans(string text, int line, int offset, int[]? raw, List<(int Line, int Column, string Text)> spans)
     {
         foreach (char quote in Quotes)
         {
@@ -95,45 +105,71 @@ internal static class ReferenceScan
                 {
                     break;
                 }
-                spans.Add((line, offset + at + 1, text[(at + 1)..close]));
+                spans.Add((line, (raw is null ? offset + at : raw[at]) + 1, text[(at + 1)..close]));
                 at = close;
             }
         }
     }
 
     // The spans of an XML file: each attribute value whole, and the Godot value text's quoted strings inside it. Tags,
-    // comments and values run across lines, so the place in the markup carries from one line to the next.
-    private static void XmlSpans(string[] lines, List<(int Line, int Column, string Text)> spans)
+    // comments and values run across lines, so the place in the markup carries from one line to the next. A walk given
+    // tags instead records each tag with its name and its attribute values, which is how an x:Uids table is read.
+    private static void XmlSpans(string[] lines, List<(int Line, int Column, string Text)>? spans, List<XamlTag>? tags)
     {
+        XamlWalk walk = new(spans, tags);
         Markup markup = Markup.Text;
         for (int index = 0; index < lines.Length; index++)
         {
-            string line = lines[index];
-            for (int at = 0; at < line.Length; )
+            for (int at = 0; at < lines[index].Length; )
             {
-                (markup, at) = markup switch
-                {
-                    Markup.Comment => AfterComment(line, at),
-                    Markup.Tag => AfterTagCharacter(line, index + 1, at, spans),
-                    Markup.DoubleQuoted => AfterValue(line, at, '"', markup),
-                    Markup.SingleQuoted => AfterValue(line, at, '\'', markup),
-                    _ => AfterText(line, at),
-                };
+                (markup, at) = Step(walk, markup, lines[index], index + 1, at);
             }
         }
     }
 
-    // Element text up to the next tag or comment.
-    private static (Markup Markup, int At) AfterText(string line, int at)
+    // One step through an XML file: the place the markup is at next and the index it starts at.
+    private static (Markup Markup, int At) Step(XamlWalk walk, Markup markup, string line, int number, int at)
+    {
+        if (markup == Markup.Comment)
+        {
+            return AfterComment(line, at);
+        }
+        if (markup == Markup.Tag)
+        {
+            return TagStep(walk, line, number, at);
+        }
+        if (markup == Markup.Text)
+        {
+            return AfterText(walk, line, at);
+        }
+        return AfterValue(line, at, markup == Markup.DoubleQuoted ? '"' : '\'', markup);
+    }
+
+    // Element text up to the next tag or comment, which the walk opens.
+    private static (Markup Markup, int At) AfterText(XamlWalk walk, string line, int at)
     {
         int open = line.IndexOf('<', at);
         if (open < 0)
         {
             return (Markup.Text, line.Length);
         }
-        return string.CompareOrdinal(line, open, CommentOpen, 0, CommentOpen.Length) == 0
-            ? (Markup.Comment, open + CommentOpen.Length)
-            : (Markup.Tag, open + 1);
+        if (string.CompareOrdinal(line, open, CommentOpen, 0, CommentOpen.Length) == 0)
+        {
+            return (Markup.Comment, open + CommentOpen.Length);
+        }
+        walk.Tag = new XamlTag(NameAt(line, open + 1));
+        return (Markup.Tag, open + 1);
+    }
+
+    // The name of a tag at a 0-based offset: up to white space, '/' or '>'.
+    private static string NameAt(string line, int at)
+    {
+        int start = at;
+        while (at < line.Length && !char.IsWhiteSpace(line[at]) && line[at] is not ('/' or '>'))
+        {
+            at++;
+        }
+        return line[start..at];
     }
 
     private static (Markup Markup, int At) AfterComment(string line, int at)
@@ -149,14 +185,25 @@ internal static class ReferenceScan
         return close < 0 ? (markup, line.Length) : (Markup.Tag, close + 1);
     }
 
-    // One step through a tag: an attribute value opens at the quote after '=' and closes at the next same quote, with no
-    // escape, as XscnWriter writes it.
-    private static (Markup Markup, int At) AfterTagCharacter(string line, int number, int at, List<(int Line, int Column, string Text)> spans)
+    // One step through a tag, which ends at its '>': the walk then hands the tag on.
+    private static (Markup Markup, int At) TagStep(XamlWalk walk, string line, int number, int at)
     {
-        if (line[at] != '=')
+        if (line[at] == '=')
         {
-            return (line[at] == '>' ? Markup.Text : Markup.Tag, at + 1);
+            return AttributeStep(walk, line, number, at);
         }
+        if (line[at] != '>')
+        {
+            return (Markup.Tag, at + 1);
+        }
+        walk.EndTag();
+        return (Markup.Text, at + 1);
+    }
+
+    // The attribute whose '=' stands at a 0-based offset: its value opens at the quote after '=' and closes at the next
+    // same quote, with no escape, as XscnWriter writes it. The value is read decoded, so an entity-encoded path is found.
+    private static (Markup Markup, int At) AttributeStep(XamlWalk walk, string line, int number, int at)
+    {
         int open = SkipWhiteSpace(line, at + 1);
         if (open >= line.Length || line[open] is not ('"' or '\''))
         {
@@ -167,10 +214,37 @@ internal static class ReferenceScan
         {
             return (line[open] == '"' ? Markup.DoubleQuoted : Markup.SingleQuoted, line.Length);
         }
-        string value = line[(open + 1)..close];
-        spans.Add((number, open + 1, value));
-        GodotTextSpans(value, number, open + 1, spans);
+        RecordAttribute(walk, AttributeName(line, at), open, number, DecodeValue(line, open + 1, close));
         return (Markup.Tag, close + 1);
+    }
+
+    // Records an attribute whose value starts after an opening quote: its tag gets the decoded text, and the spans inside
+    // that text are added at the raw line column of the character each came from.
+    private static void RecordAttribute(XamlWalk walk, string name, int open, int number, (string Text, int[] Raw) value)
+    {
+        walk.Tag?.Attributes.Add(new XamlAttribute(name, value.Text));
+        if (walk.Spans is null)
+        {
+            return;
+        }
+        walk.Spans.Add((number, open + 1, value.Text));
+        GodotTextSpans(value.Text, number, 0, value.Raw, walk.Spans);
+    }
+
+    // The name of the attribute whose '=' stands at a 0-based offset: the run before it, after white space.
+    private static string AttributeName(string line, int at)
+    {
+        int end = at;
+        while (end > 0 && char.IsWhiteSpace(line[end - 1]))
+        {
+            end--;
+        }
+        int start = end;
+        while (start > 0 && !char.IsWhiteSpace(line[start - 1]) && line[start - 1] != '<')
+        {
+            start--;
+        }
+        return line[start..end];
     }
 
     // XML allows white space on either side of an attribute's '='.
@@ -181,6 +255,110 @@ internal static class ReferenceScan
             at++;
         }
         return at;
+    }
+
+    // The text of an XML attribute value that starts at a 0-based offset and ends before another, with its entities
+    // decoded, and the raw index in the line of the first character each decoded character came from.
+    private static (string Text, int[] Raw) DecodeValue(string line, int start, int end)
+    {
+        StringBuilder text = new(end - start);
+        List<int> raw = new(end - start);
+        int at = start;
+        while (at < end)
+        {
+            (string Text, int Length)? entity = line[at] == '&' ? EntityAt(line, at, end) : null;
+            if (entity is null)
+            {
+                text.Append(line[at]);
+                raw.Add(at);
+                at++;
+                continue;
+            }
+            text.Append(entity.Value.Text);
+            for (int index = 0; index < entity.Value.Text.Length; index++)
+            {
+                raw.Add(at);
+            }
+            at += entity.Value.Length;
+        }
+        return (text.ToString(), [.. raw]);
+    }
+
+    // What an XML entity at a 0-based offset stands for and the raw characters it takes, or null when it is not one of
+    // the five named entities or a decimal or hex character reference to a code point XML can carry.
+    private static (string Text, int Length)? EntityAt(string line, int at, int end)
+    {
+        int semicolon = line.IndexOf(';', at + 1);
+        if (semicolon < 0 || semicolon >= end)
+        {
+            return null;
+        }
+        string body = line[(at + 1)..semicolon];
+        int length = semicolon - at + 1;
+        return NamedEntities.TryGetValue(body, out string? named) ? (named, length) : CharacterReference(body, length);
+    }
+
+    // A decimal or hex character reference, or null when its text is not one or names a code point XML cannot carry.
+    private static (string Text, int Length)? CharacterReference(string body, int length)
+    {
+        if (body.Length < 2 || body[0] != '#')
+        {
+            return null;
+        }
+        int code = DigitValue(body);
+        return Carried(code) ? (TextOf(code), length) : null;
+    }
+
+    // The number a character reference names, or -1 when it is not a decimal or hex run of digits.
+    private static int DigitValue(string body)
+    {
+        bool hexadecimal = body[1] is 'x' or 'X';
+        return Digits(body[(hexadecimal ? 2 : 1)..], hexadecimal ? 16 : 10);
+    }
+
+    // The text a code point is written as.
+    private static string TextOf(int code) => code <= 0xFFFF ? ((char)code).ToString() : char.ConvertFromUtf32(code);
+
+    // The number a run of digits in a base names, or -1 when the run is empty, too wide for a code point, or holds a
+    // digit the base does not have.
+    private static int Digits(string digits, int numberBase)
+    {
+        if (digits.Length is 0 or > 7)
+        {
+            return -1;
+        }
+        int code = 0;
+        foreach (char digit in digits)
+        {
+            int value = DigitOf(digit, numberBase);
+            if (value < 0)
+            {
+                return -1;
+            }
+            code = (code * numberBase) + value;
+        }
+        return code;
+    }
+
+    // Whether a number is a code point XML can carry: a Unicode scalar value, so not a surrogate.
+    private static bool Carried(int code) => code > 0 && code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF);
+
+    // The value of a digit in a base, or -1 when the character is not one.
+    private static int DigitOf(char digit, int numberBase)
+    {
+        if (digit is >= '0' and <= '9')
+        {
+            return digit - '0';
+        }
+        if (numberBase == 16 && digit is >= 'a' and <= 'f')
+        {
+            return digit - 'a' + 10;
+        }
+        if (numberBase == 16 && digit is >= 'A' and <= 'F')
+        {
+            return digit - 'A' + 10;
+        }
+        return -1;
     }
 
     // The quote that closes a span: a backslash escapes the next character, as Godot's value text writes it.
@@ -256,7 +434,7 @@ internal static class ReferenceScan
         }
         int close = line.IndexOf(')', open);
         int afterSpan = quote + span.Length + 1;
-        return close > afterSpan && line[(open + ResourceCall.Length)..close].Contains("uid://", StringComparison.Ordinal);
+        return close > afterSpan && DecodeValue(line, open + ResourceCall.Length, close).Text.Contains("uid://", StringComparison.Ordinal);
     }
 
     /// <summary>The quoting rules of a file, by its extension: XML for <c>.xscn</c> and <c>.xres</c>, Godot value text otherwise.</summary>
@@ -271,43 +449,54 @@ internal static class ReferenceScan
         return xml ? QuoteGrammar.Xml : QuoteGrammar.GodotText;
     }
 
-    // Every path the file's x:Uids table gives a uid.
+    // Every path the file's x:Uids table gives a uid, read by the scan's own tokenizer so an entry may run across lines.
     private static HashSet<string> UidTablePaths(string text)
     {
         HashSet<string> paths = new(StringComparer.Ordinal);
-        foreach (string line in text.Split('\n'))
+        foreach (XamlTag tag in Tags(text))
         {
-            if (line.Contains("<x:Uid ", StringComparison.Ordinal) && line.Contains("uid://", StringComparison.Ordinal))
+            if (!string.Equals(tag.Name, "x:Uid", StringComparison.Ordinal))
             {
-                string? path = AttributeValue(line, "Path");
-                if (path is not null)
-                {
-                    paths.Add(path);
-                }
+                continue;
+            }
+            string? path = Attribute(tag, "Path");
+            string? value = Attribute(tag, "Value");
+            if (path is not null && value?.StartsWith("uid://", StringComparison.Ordinal) == true)
+            {
+                paths.Add(path);
             }
         }
         return paths;
     }
 
-    /// <summary>The value of an XML attribute on a line, read by the XML grammar.</summary>
+    /// <summary>The value of an XML attribute on a line, read by the scan's tokenizer with its entities decoded.</summary>
     /// <param name="line">The line that holds the attribute.</param>
-    /// <param name="name">The attribute's name.</param>
+    /// <param name="name">The attribute's name, which matches only whole.</param>
     /// <returns>The value between its quotes, or null when the line has no such attribute or its value does not close.</returns>
     internal static string? AttributeValue(string line, string name)
     {
-        int at = line.IndexOf(name + "=", StringComparison.Ordinal);
-        if (at < 0)
+        foreach (XamlTag tag in Tags(line))
         {
-            return null;
+            string? value = Attribute(tag, name);
+            if (value is not null)
+            {
+                return value;
+            }
         }
-        int open = at + name.Length + 1;
-        if (open >= line.Length || line[open] is not ('"' or '\''))
-        {
-            return null;
-        }
-        int close = line.IndexOf(line[open], open + 1);
-        return close < 0 ? null : line[(open + 1)..close];
+        return null;
     }
+
+    // Every tag of a text, with the attributes whose values close on it, read by the scan's tokenizer.
+    private static List<XamlTag> Tags(string text)
+    {
+        List<XamlTag> tags = [];
+        XmlSpans(text.Split('\n'), spans: null, tags);
+        return tags;
+    }
+
+    // The value of one named attribute of a tag, matched whole.
+    private static string? Attribute(XamlTag tag, string name) =>
+        tag.Attributes.Find(attribute => string.Equals(attribute.Name, name, StringComparison.Ordinal))?.Value;
 
     // Every accepted file under the root, in one order on every OS. A folder Godot leaves out of its file system is
     // skipped: a hidden one, one holding .gdignore, and one holding its own project.godot, a nested project. So is a
@@ -390,6 +579,37 @@ internal static class ReferenceScan
         || File.Exists(Path.Combine(folder, "project.godot"));
 
     private static bool IsBuildOutput(string folder) => Path.GetFileName(folder) is "bin" or "obj";
+
+    // One pass over an XML text: what the walk collects, and the tag it is reading, which carries from line to line.
+    private sealed class XamlWalk(List<(int Line, int Column, string Text)>? spans, List<XamlTag>? tags)
+    {
+        public List<(int Line, int Column, string Text)>? Spans { get; } = spans;
+
+        public List<XamlTag>? Tags { get; } = tags;
+
+        public XamlTag? Tag { get; set; }
+
+        // Hands the tag just read to the walk's tags, when it collects them.
+        public void EndTag()
+        {
+            if (Tag is not null)
+            {
+                Tags?.Add(Tag);
+                Tag = null;
+            }
+        }
+    }
+
+    // A tag a walk read: its name, and each attribute whose value closes on a line of it, with the value decoded.
+    private sealed class XamlTag(string name)
+    {
+        public string Name { get; } = name;
+
+        public List<XamlAttribute> Attributes { get; } = [];
+    }
+
+    // An attribute of a tag, with its value decoded.
+    private sealed record XamlAttribute(string Name, string Value);
 
     // Where an XML scan stands at a character: in element text, a comment, a tag, or an attribute value still open.
     private enum Markup

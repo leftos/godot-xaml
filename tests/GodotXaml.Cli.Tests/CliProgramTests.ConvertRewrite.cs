@@ -378,6 +378,84 @@ public sealed partial class CliProgramTests
     }
 
     [Fact]
+    public void ConvertWarnsAboutAnEntityEncodedReference()
+    {
+        Write("project.godot", Project);
+        string button = Write("ui/button.tscn", ButtonScene);
+        const string Node = "  <Node Name=\"N\" Value=\"[Resource(&quot;res://ui/button.tscn&quot;), 'x']\" />";
+        string other = Write("other.xscn", $"<Control {Namespace} Name=\"Root\">\n{Node}\n</Control>\n");
+        int column = Node.IndexOf("&quot;res://ui/button.tscn", StringComparison.Ordinal) + 1;
+
+        RunResult run = RunConvert(button);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(
+            [
+                $"{button} -> {Path.ChangeExtension(button, ".xscn")}",
+                $"{other}(2,{column}): warning GXP0002: refers to res://ui/button.tscn, which this run converts to "
+                    + "res://ui/button.xscn; no uid on this reference; it breaks once the source is removed",
+                "1 converted, 0 refused, 0 error(s), 1 warning(s)",
+            ],
+            run.Lines
+        );
+    }
+
+    [Fact]
+    public void ConvertWarnsTheUidTableCarriesTheReferenceAcrossLines()
+    {
+        Write("project.godot", Project);
+        string button = Write("ui/button.tscn", ButtonScene);
+        const string Entry = "      Path=\"res://ui/button.tscn\"";
+        const string Value = "      Value=\"uid://bbutt\" />";
+        const string Property = "  <x:Prop Name=\"metadata/path\" Value='Resource(\"res://ui/button.tscn\")' />";
+        string other = Write(
+            "other.xscn",
+            $"<Control {Namespace} Name=\"Root\">\n  <x:Uids>\n    <x:Uid\n{Entry}\n{Value}\n  </x:Uids>\n{Property}\n</Control>\n"
+        );
+        int tableColumn = Entry.IndexOf("\"res://ui/button.tscn\"", StringComparison.Ordinal) + 1;
+        int propertyColumn = Property.IndexOf("\"res://ui/button.tscn\"", StringComparison.Ordinal) + 1;
+        const string Message =
+            "warning GXP0002: refers to res://ui/button.tscn, which this run converts to res://ui/button.xscn; "
+            + "still resolves by its uid once the source is removed and the uid moves with the file";
+
+        RunResult run = RunConvert(button);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(
+            [
+                $"{button} -> {Path.ChangeExtension(button, ".xscn")}",
+                $"{other}(4,{tableColumn}): {Message}",
+                $"{other}(7,{propertyColumn}): {Message}",
+                "1 converted, 0 refused, 0 error(s), 2 warning(s)",
+            ],
+            run.Lines
+        );
+    }
+
+    [Fact]
+    public void ConvertWarnsTheUidTableCarriesAnEntityEncodedPath()
+    {
+        Write("project.godot", Project);
+        string resource = Write("a&b.tscn", ButtonScene);
+        const string Entry = "    <x:Uid Path=\"res://a&amp;b.tscn\" Value=\"uid://camb\" />";
+        string other = Write("other.xscn", $"<Control {Namespace} Name=\"Root\">\n  <x:Uids>\n{Entry}\n  </x:Uids>\n</Control>\n");
+        int column = Entry.IndexOf("\"res://a&amp;b.tscn\"", StringComparison.Ordinal) + 1;
+
+        RunResult run = RunConvert(resource);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(
+            [
+                $"{resource} -> {Path.ChangeExtension(resource, ".xscn")}",
+                $"{other}(3,{column}): warning GXP0002: refers to res://a&b.tscn, which this run converts to "
+                    + "res://a&b.xscn; still resolves by its uid once the source is removed and the uid moves with the file",
+                "1 converted, 0 refused, 0 error(s), 1 warning(s)",
+            ],
+            run.Lines
+        );
+    }
+
+    [Fact]
     public void ConvertWarnsTheUidTableCarriesTheReference()
     {
         Write("project.godot", Project);
