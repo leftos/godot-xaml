@@ -503,6 +503,29 @@ public sealed class XscnParserErrorTests
         Assert.Equal("pressed", Assert.Single(gadget.Properties).GodotName);
     }
 
+    [Fact]
+    public void APlaceholderAsTheRootIsAnError()
+    {
+        string text = $"<InstancePlaceholder {X} Name=\"P\" x:InstancePlaceholder=\"res://c.tscn\" />";
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(text);
+
+        Assert.Equal([("GX0119", 1, text.IndexOf("x:InstancePlaceholder", StringComparison.Ordinal) + 1)], positions);
+        XscnDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal("The root cannot be an instance placeholder; Godot loads no scene whose first node is one.", diagnostic.Message);
+        Assert.Equal("x:InstancePlaceholder=\"res://c.tscn\"".Length, diagnostic.Span.Length);
+    }
+
+    [Fact]
+    public void APlaceholderBelowTheRootIsNoError()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Node {X} Name=\"Root\"><InstancePlaceholder Name=\"P\" x:InstancePlaceholder=\"res://c.tscn\" /></Node>"
+        );
+
+        Assert.Empty(positions);
+        Assert.False(result.HasErrors);
+    }
+
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text) => Parse(text, Real);
 
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text, GodotMetadata metadata) =>

@@ -23,6 +23,7 @@ internal sealed partial class XscnTreeReader
 
     private XscnNode ReadRootNode(IXmlElementSyntax root)
     {
+        CheckPlaceholderRoot(root);
         TagKind kind = KindOf(root);
         if (kind == TagKind.Format && LocalName(root) == "Instance")
         {
@@ -31,6 +32,24 @@ internal sealed partial class XscnTreeReader
 
         XscnType type = kind is TagKind.Property or TagKind.Format ? MisplacedRoot(root, "node") : NodeType(root, kind);
         return ReadNode(new ElementParts(root, ElementKind.Node, ClassOf(type), isRoot: true), type, []);
+    }
+
+    // Godot's text loader refuses a scene whose first node is an instance placeholder (resource_format_text.cpp:243-253);
+    // the element is read as any other, so the file gives one error.
+    private void CheckPlaceholderRoot(IXmlElementSyntax root)
+    {
+        foreach (AttributeText attribute in FirstOfEachName(root).Select(Attribute))
+        {
+            if (attribute.LocalName == "InstancePlaceholder" && attribute.Prefix == formatPrefix)
+            {
+                Report(
+                    XscnCodes.PlaceholderRoot,
+                    "The root cannot be an instance placeholder; Godot loads no scene whose first node is one.",
+                    attribute.Span
+                );
+                return;
+            }
+        }
     }
 
     private XscnResource ReadRootResource(IXmlElementSyntax root)

@@ -146,6 +146,10 @@ Error. `<tag> is a Class, not a Resource; only a resource can be held here.` The
 
 Error. `<x:Connect> has both Signal and GodotSignal; write one.` Keep `Signal` (the C# name) unless it would read back as another signal, then keep `GodotSignal` (Godot's name).
 
+### GX0119 Placeholder at the root
+
+Error. `The root cannot be an instance placeholder; Godot loads no scene whose first node is one.` Godot refuses a scene whose first node is an instance placeholder, because the scene cannot be used for inheritance. Make the root a node of the scene's own, and put the placeholder under it.
+
 ## Conversion to `.xscn`: `GXC00xx`
 
 Reported when a `.tscn` or `.tres` is converted forward, by `godot-xaml convert` and by the editor's saver.

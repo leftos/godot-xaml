@@ -60,8 +60,8 @@ public static class XscnCodes
     public const string MisplacedNamespace = "GX0109";
 
     /// <summary>
-    /// A namespace declaration the format does not accept: a default <c>xmlns</c>, <c>x</c> bound to another URI, or a
-    /// scene prefix bound to something other than a <c>res://</c> folder.
+    /// A namespace declaration the format does not accept: a default <c>xmlns</c>, <c>x</c> bound to another URI, a
+    /// second prefix bound to the format namespace, or a scene prefix bound to something other than a <c>res://</c> folder.
     /// </summary>
     public const string InvalidNamespace = "GX0110";
 
@@ -91,4 +91,7 @@ public static class XscnCodes
 
     /// <summary>An <c>x:Connect</c> with both <c>Signal</c> and <c>GodotSignal</c>; the connection is not read.</summary>
     public const string SignalAndGodotSignal = "GX0118";
+
+    /// <summary>A scene's root is an instance placeholder, which Godot refuses to load.</summary>
+    public const string PlaceholderRoot = "GX0119";
 }
