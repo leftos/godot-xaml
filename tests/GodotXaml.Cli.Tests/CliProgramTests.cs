@@ -220,6 +220,45 @@ public sealed partial class CliProgramTests : IDisposable
     }
 
     [Fact]
+    public void AUtf16FileWithoutItsBomIsNotUtf8()
+    {
+        string file = WriteBytes("utf16-no-bom.xscn", Encoding.Unicode.GetBytes("<Control Name=\"Root\" />"));
+        string[] expected = [$"{file}: not UTF-8 text."];
+
+        RunResult run = Run("check", file);
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Equal("", run.Output);
+        Assert.Equal(expected, run.ErrorLines);
+    }
+
+    [Fact]
+    public void AFileWithANulByteIsNotUtf8()
+    {
+        string file = WriteBytes("nul.xscn", [.. Encoding.UTF8.GetBytes("<Control Name=\"Root\" />"), 0x00]);
+        string[] expected = [$"{file}: not UTF-8 text."];
+
+        RunResult run = Run("check", file);
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Equal("", run.Output);
+        Assert.Equal(expected, run.ErrorLines);
+    }
+
+    [Fact]
+    public void AUtf16FileWithItsLittleEndianBomIsNotUtf8()
+    {
+        string file = WriteBytes("utf16-bom.xscn", [.. Encoding.Unicode.GetPreamble(), .. Encoding.Unicode.GetBytes("<Control Name=\"Root\" />")]);
+        string[] expected = [$"{file}: not UTF-8 text."];
+
+        RunResult run = Run("check", file);
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Equal("", run.Output);
+        Assert.Equal(expected, run.ErrorLines);
+    }
+
+    [Fact]
     public void AUtf8BomDoesNotShiftColumns()
     {
         string file = WriteBytes(
@@ -305,23 +344,28 @@ public sealed partial class CliProgramTests : IDisposable
     }
 
     [Fact]
-    public void ADotSlashPathReachesALeadingDashFile()
+    public void ADashPathBeforeADoubleDashIsStillAParseError()
     {
-        string previous = Directory.GetCurrentDirectory();
-        Directory.SetCurrentDirectory(folder);
-        try
-        {
-            Write("-name.xscn", "<Control Name=\"Root\" />");
+        Write("ok.xscn", "<Control Name=\"Root\" />");
+        string[] expected = ["Unrecognized command or argument '-x.xscn'."];
 
-            RunResult run = Run("check", "./-name.xscn");
+        RunResult run = Run("check", "-x.xscn", "--", "ok.xscn");
 
-            Assert.Equal(0, run.ExitCode);
-            Assert.Equal(["1 file(s) checked, 0 error(s), 0 warning(s)"], run.Lines);
-        }
-        finally
-        {
-            Directory.SetCurrentDirectory(previous);
-        }
+        Assert.Equal(2, run.ExitCode);
+        Assert.Equal("", run.Output);
+        Assert.Equal(expected, run.ErrorLines);
+    }
+
+    [Fact]
+    public void ACheckWithOnlyADoubleDashNeedsAPath()
+    {
+        string[] expected = ["Required argument missing for command: 'check'."];
+
+        RunResult run = Run("check", "--");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Equal("", run.Output);
+        Assert.Equal(expected, run.ErrorLines);
     }
 
     [Fact]
@@ -374,16 +418,19 @@ public sealed partial class CliProgramTests : IDisposable
     }
 
     [Fact]
-    public void AFolderAsMetadataIsAccessDenied()
+    public void AFolderAsMetadataSaysItIsAFolder()
     {
         string file = Write("clean.xscn", "<Control Name=\"Root\" />");
-        string[] expected = [$"{folder}: access denied."];
+        string[] expected = [$"{folder}: is a folder, not a metadata file."];
 
-        RunResult run = Run("check", file, "--metadata", folder);
+        foreach (string command in new[] { "check", "format", "convert" })
+        {
+            RunResult run = Run(command, file, "--metadata", folder);
 
-        Assert.Equal(2, run.ExitCode);
-        Assert.Equal("", run.Output);
-        Assert.Equal(expected, run.ErrorLines);
+            Assert.Equal(expected, run.ErrorLines);
+            Assert.Equal(2, run.ExitCode);
+            Assert.Equal("", run.Output);
+        }
     }
 
     [Fact]

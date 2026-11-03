@@ -32,13 +32,19 @@ internal static class SourceText
         return Decode(bytes, path, error);
     }
 
-    // The strict decoder rejects every UTF-16 and UTF-32 byte order mark, so only a UTF-8 one is stripped here.
+    // The strict decoder rejects every UTF-16 and UTF-32 byte order mark, so only a UTF-8 one is stripped here. A NUL is
+    // legal UTF-8 but no XML or Godot text holds one, so a file holding one is another encoding rather than text.
     private static string? Decode(byte[] bytes, string path, TextWriter error)
     {
         ReadOnlySpan<byte> text = bytes;
         if (text.StartsWith(Utf8Bom))
         {
             text = text[3..];
+        }
+        if (text.IndexOf((byte)0) >= 0)
+        {
+            error.WriteLine($"{path}: not UTF-8 text.");
+            return null;
         }
         try
         {

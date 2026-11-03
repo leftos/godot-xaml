@@ -15,6 +15,11 @@ internal static class MetadataFile
     internal static GodotMetadata? TryLoad(string? givenPath, TextWriter error)
     {
         string path = givenPath ?? Shipped;
+        if (Directory.Exists(path))
+        {
+            error.WriteLine($"{path}: is a folder, not a metadata file.");
+            return null;
+        }
         try
         {
             return GodotMetadata.Load(path);

@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.CommandLine.Parsing;
 using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
@@ -26,25 +25,11 @@ internal static class CheckCommand
         return command;
     }
 
-    /// <summary>The paths argument every command takes: one or more, none of them starting with <c>-</c>.</summary>
+    /// <summary>The paths argument every command takes: one or more, none of them starting with <c>-</c> unless after <c>--</c>.</summary>
     /// <param name="description">What a path may be, for the help.</param>
     /// <returns>The argument.</returns>
-    internal static Argument<string[]> PathsArgument(string description)
-    {
-        Argument<string[]> paths = new("path") { Description = description, Arity = ArgumentArity.OneOrMore };
-        // A token that looks like an option is a usage error, as it would be had the parser not matched it to a path.
-        paths.Validators.Add(result =>
-        {
-            foreach (Token token in result.Tokens)
-            {
-                if (token.Value.StartsWith('-'))
-                {
-                    result.AddError($"Unrecognized command or argument '{token.Value}'.");
-                }
-            }
-        });
-        return paths;
-    }
+    internal static Argument<string[]> PathsArgument(string description) =>
+        new("path") { Description = description, Arity = ArgumentArity.OneOrMore };
 
     /// <summary>The <c>--metadata</c> option every command takes.</summary>
     /// <returns>The option.</returns>

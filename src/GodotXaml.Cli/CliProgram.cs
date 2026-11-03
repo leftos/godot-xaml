@@ -31,13 +31,18 @@ public static class CliProgram
         ArgumentNullException.ThrowIfNull(workingDirectory);
         try
         {
-            ParseResult parseResult = Build(enumerate, workingDirectory).Parse(args);
+            // Response files are off: a token starting with @ is a path like any other.
+            ParseResult parseResult = Build(enumerate, workingDirectory).Parse(args, new ParserConfiguration { ResponseFileTokenReplacer = null });
             if (parseResult.Errors.Count > 0)
             {
                 foreach (ParseError parseError in parseResult.Errors)
                 {
                     error.WriteLine(parseError.Message);
                 }
+                return 2;
+            }
+            if (RefusesOptionLikePath(parseResult, error))
+            {
                 return 2;
             }
             var configuration = new InvocationConfiguration
@@ -54,6 +59,49 @@ public static class CliProgram
             error.WriteLine($"godot-xaml: {exception.Message}");
             return 2;
         }
+    }
+
+    // A token that looks like an option is a usage error, as it would be had the parser not matched it to a path, until
+    // the first `--`: after it every token is a path, for every command.
+    private static bool RefusesOptionLikePath(ParseResult parseResult, TextWriter error)
+    {
+        if (
+            parseResult.CommandResult.Command.Arguments.FirstOrDefault(argument => argument.Name == "path") is not Argument<string[]> paths
+            || parseResult.CommandResult.GetResult(paths) is not { } result
+        )
+        {
+            return false;
+        }
+        HashSet<Token> afterDoubleDash = TokensAfterDoubleDash(parseResult.Tokens);
+        bool refused = false;
+        foreach (Token token in result.Tokens)
+        {
+            if (token.Value.StartsWith('-') && !afterDoubleDash.Contains(token))
+            {
+                error.WriteLine($"Unrecognized command or argument '{token.Value}'.");
+                refused = true;
+            }
+        }
+        return refused;
+    }
+
+    // The parser's tokens keep the `--` itself, which no symbol result does, so the boundary is found here.
+    private static HashSet<Token> TokensAfterDoubleDash(IReadOnlyList<Token> tokens)
+    {
+        var after = new HashSet<Token>(ReferenceEqualityComparer.Instance);
+        bool past = false;
+        foreach (Token token in tokens)
+        {
+            if (past)
+            {
+                after.Add(token);
+            }
+            else if (token.Type == TokenType.DoubleDash)
+            {
+                past = true;
+            }
+        }
+        return after;
     }
 
     private static RootCommand Build(Func<string, IEnumerable<string>> enumerate, string workingDirectory)

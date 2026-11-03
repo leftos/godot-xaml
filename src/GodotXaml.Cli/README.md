@@ -16,9 +16,11 @@ godot-xaml check <path>...
 
 Each path is a `.xscn` or `.xres` file, or a folder searched recursively for both. `--metadata <file>` selects the Godot metadata file; the default is the `metadata/godot-4.7.json` shipped with the tool.
 
-A file whose text is not UTF-8 is refused, so it is never misread.
+A file whose text is not UTF-8 is refused, so it is never misread: a file holding a NUL byte, BOM-less UTF-16 text included, prints `<path>: not UTF-8 text.` and exits 2. A folder given as `--metadata` prints `<path>: is a folder, not a metadata file.` and exits 2, for `check`, `format` and `convert`.
 
-A path whose file name starts with `-` would read as an option; write it with a leading `./`, as in `godot-xaml check ./-name.xscn`.
+A path whose file name starts with `-` would read as an option (`check -x.xscn` prints `Unrecognized command or argument '-x.xscn'.` and exits 2); write it with a leading `./`, as in `godot-xaml check ./-name.xscn`, or after `--`: every token after the first `--` is a path, for `check`, `format` and `convert`, so `godot-xaml check -- -x.xscn` checks that file.
+
+An `@` is part of the path, never a response file: `godot-xaml check @resp.xscn` checks the file named `@resp.xscn`.
 
 Each problem is one line, in the form editors and CI read:
 
