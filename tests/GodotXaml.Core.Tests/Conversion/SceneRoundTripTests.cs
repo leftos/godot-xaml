@@ -19,6 +19,7 @@ public sealed class SceneRoundTripTests
 
     public static TheoryData<string> Fixtures =>
         new(
+            "bone_chain_settings",
             "connections",
             "ext_resource",
             "groups",

@@ -6,7 +6,7 @@
 
 - An `.xscn` edited outside the editor loads its new content at once, instead of the cached old scene until .NET collected garbage.
 - Converting back to `.tscn` numbers a node's file references and orders placeholder properties as Godot does, and names `.json`, `.po`, `.mo`, `.gdextension` and `.ogv` types.
-- Converting back writes Animation tracks, bones, blend points, visual shader nodes, replication properties and tile patterns in the order Godot needs to load them.
+- Converting back writes animation tracks, bones, blend points, shader nodes, replication properties, tile patterns, spring bones and IK chains in the order Godot needs.
 - Converting back places names a class adds itself (`libraries/`, `shader_parameter/`, `current`) in that class's place, so an AnimationPlayer's libraries load before its current animation.
 - `godot-xaml check` and every host report a second format prefix, an empty property element, an empty `x:Key` and a placeholder at the scene's root.
 - A signal-named attribute on an instance that fails as a property now suggests `<x:Connect>`.

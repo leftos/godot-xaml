@@ -15,7 +15,9 @@ namespace GodotXaml.Core.Conversion;
 /// before the family, named on the row; or on one key. Godot creates an entry only on one key (the creating key), so each
 /// entry's names come creating key first, and entries in numeric order, which a family that appends at the next index
 /// (Animation tracks, replication properties, TileSet patterns) needs. Such a pattern names each entry's number in an
-/// <c>index</c> group and any key after it in a <c>key</c> group, and the row carries the declaring class's key order.
+/// <c>index</c> group and any key after it in a <c>key</c> group, and the row carries the declaring class's key order. A
+/// sized-first row whose keys reset one another carries the same groups and key order, and may order one nested level
+/// inside a key: a <c>subindex</c> group, a <c>subkey</c> group and the declaring class's nested key order.
 /// </summary>
 internal static class DynamicPropertyFamilies
 {
@@ -65,6 +67,84 @@ internal static class DynamicPropertyFamilies
     // modules/multiplayer/scene_replication_config.cpp, SceneReplicationConfig::_get_property_list;
     // SceneReplicationConfig::_set creates an entry only on its path, when the entry's index equals the count so far.
     private static readonly string[] ReplicationPropertyKeys = ["path", "spawn", "replication_mode"];
+
+    // scene/3d/spring_bone_simulator_3d.cpp, SpringBoneSimulator3D::_get_property_list: one setting's keys. With no skeleton
+    // (a scene sets properties before it adds the node), set_root_bone and set_end_bone free the setting's joints, so the
+    // bones come before joint_count and the joints; set_collision_count and set_collision_path return early while
+    // enable_all_child_collisions is true, so it comes before the collisions.
+    private static readonly string[] SpringSettingKeys =
+    [
+        "root_bone_name",
+        "root_bone",
+        "end_bone_name",
+        "end_bone",
+        "extend_end_bone",
+        "end_bone/direction",
+        "end_bone/length",
+        "center_from",
+        "center_node",
+        "center_bone_name",
+        "center_bone",
+        "individual_config",
+        "rotation_axis",
+        "rotation_axis_vector",
+        "radius/value",
+        "radius/damping_curve",
+        "stiffness/value",
+        "stiffness/damping_curve",
+        "drag/value",
+        "drag/damping_curve",
+        "gravity/value",
+        "gravity/damping_curve",
+        "gravity/direction",
+        "joint_count",
+        "joints",
+        "enable_all_child_collisions",
+        "exclude_collision_count",
+        "exclude_collisions",
+        "collision_count",
+        "collisions",
+    ];
+
+    // scene/3d/spring_bone_simulator_3d.cpp, SpringBoneSimulator3D::_get_property_list: one joint's keys.
+    private static readonly string[] SpringJointKeys =
+    [
+        "bone_name",
+        "bone",
+        "rotation_axis",
+        "rotation_axis_vector",
+        "radius",
+        "stiffness",
+        "drag",
+        "gravity",
+        "gravity_direction",
+    ];
+
+    // scene/3d/chain_ik_3d.cpp, ChainIK3D::get_property_list: one setting's chain keys (its joints/<M>/bone_name and bone are
+    // read-only and never stored). With no skeleton, set_root_bone and set_end_bone free the setting's joints.
+    private static readonly string[] ChainKeys =
+    [
+        "root_bone_name",
+        "root_bone",
+        "end_bone_name",
+        "end_bone",
+        "extend_end_bone",
+        "end_bone/direction",
+        "end_bone/length",
+        "joint_count",
+    ];
+
+    // scene/3d/iterate_ik_3d.cpp, IterateIK3D::_get_property_list: one joint's keys. It lists every setting's target_node,
+    // then ChainIK3D::get_property_list, then every setting's joint keys.
+    private static readonly string[] IterateJointKeys =
+    [
+        "rotation_axis",
+        "rotation_axis_vector",
+        "limitation",
+        "limitation/right_axis",
+        "limitation/right_axis_vector",
+        "limitation/rotation_offset",
+    ];
 
     private static readonly Row[] Entries =
     [
@@ -139,14 +219,39 @@ internal static class DynamicPropertyFamilies
         // scene/3d/limit_angular_velocity_modifier_3d.cpp, LimitAngularVelocityModifier3D::_get_property_list
         Row.SizedFirst("LimitAngularVelocityModifier3D", @"^chains/\d+/", "chain_count"),
         Row.SizedFirst("LimitAngularVelocityModifier3D", @"^joints/\d+/", "joint_count"),
-        // scene/3d/iterate_ik_3d.cpp, IterateIK3D::_get_property_list (ChainIK3D::get_property_list)
+        // scene/3d/iterate_ik_3d.cpp, IterateIK3D::_get_property_list (ChainIK3D::get_property_list): every setting's
+        // target_node, then each setting's chain keys, then every setting's joint keys.
+        Row.SizedFirst("IterateIK3D", @"^settings/(?<index>\d+)/(?<key>target_node)$", "setting_count", ["target_node"], []),
+        Row.SizedFirst("IterateIK3D", @"^settings/(?<index>\d+)/(?!joints/)(?<key>.*)", "setting_count", ChainKeys, []),
+        Row.SizedFirst(
+            "IterateIK3D",
+            @"^settings/(?<index>\d+)/(?<key>joints)/(?<subindex>\d+)/(?<subkey>.*)",
+            "setting_count",
+            ["joints"],
+            IterateJointKeys
+        ),
         Row.SizedFirst("IterateIK3D", @"^settings/\d+/", "setting_count"),
         // scene/3d/two_bone_ik_3d.cpp, TwoBoneIK3D::_get_property_list
         Row.SizedFirst("TwoBoneIK3D", @"^settings/\d+/", "setting_count"),
-        // scene/3d/spline_ik_3d.cpp, SplineIK3D::_get_property_list (ChainIK3D::get_property_list)
-        Row.SizedFirst("SplineIK3D", @"^settings/\d+/", "setting_count"),
-        // scene/3d/spring_bone_simulator_3d.cpp, SpringBoneSimulator3D::_get_property_list
-        Row.SizedFirst("SpringBoneSimulator3D", @"^settings/\d+/", "setting_count"),
+        // scene/3d/spline_ik_3d.cpp, SplineIK3D::_get_property_list (ChainIK3D::get_property_list): every setting's path
+        // and tilt keys, then each setting's chain keys.
+        Row.SizedFirst(
+            "SplineIK3D",
+            @"^settings/(?<index>\d+)/(?<key>path_3d|tilt_enabled|tilt_fade_in|tilt_fade_out)$",
+            "setting_count",
+            ["path_3d", "tilt_enabled", "tilt_fade_in", "tilt_fade_out"],
+            []
+        ),
+        Row.SizedFirst("SplineIK3D", @"^settings/(?<index>\d+)/(?<key>.*)", "setting_count", ChainKeys, []),
+        // scene/3d/spring_bone_simulator_3d.cpp, SpringBoneSimulator3D::_get_property_list: setting by setting, each joint
+        // and collision in numeric order.
+        Row.SizedFirst(
+            "SpringBoneSimulator3D",
+            @"^settings/(?<index>\d+)/(?:(?<key>joints|exclude_collisions|collisions)/(?<subindex>\d+)(?:/(?<subkey>[^/]*))?$|(?<key>.*))",
+            "setting_count",
+            SpringSettingKeys,
+            SpringJointKeys
+        ),
         // modules/multiplayer/multiplayer_spawner.cpp, MultiplayerSpawner::_get_property_list (editor-only: never stored)
         Row.AnyOrder("MultiplayerSpawner", @"^_spawnable_scene_count$"),
         Row.SizedFirst("MultiplayerSpawner", @"^scenes/\d+$", "_spawnable_scene_count"),
@@ -283,7 +388,13 @@ internal static class DynamicPropertyFamilies
         .. Entries.Select(entry =>
             (
                 entry.Class,
-                new DynamicFamily(new Regex(entry.Pattern, RegexOptions.CultureInvariant), entry.Creation, entry.SizedBy, [.. entry.KeyOrder])
+                new DynamicFamily(
+                    new Regex(entry.Pattern, RegexOptions.CultureInvariant),
+                    entry.Creation,
+                    entry.SizedBy,
+                    [.. entry.KeyOrder],
+                    [.. entry.SubKeyOrder]
+                )
             )
         ),
     ];
@@ -308,7 +419,10 @@ internal static class DynamicPropertyFamilies
         /// <summary>Each name sets its value on its own, or any key of an entry creates it: the source order loads.</summary>
         AnyOrder,
 
-        /// <summary>A count property ranked before the family sizes its entries, so each name only fills a slot that exists.</summary>
+        /// <summary>
+        /// A count property ranked before the family sizes its entries, so each name only fills a slot that exists; a family
+        /// whose keys reset one another also carries the declaring class's key order.
+        /// </summary>
         SizedFirst,
 
         /// <summary>
@@ -331,24 +445,35 @@ internal static class DynamicPropertyFamilies
     /// <summary>A dynamic name family: its anchored pattern, how Godot creates its entries and the key order inside one entry.</summary>
     /// <param name="Pattern">
     /// The pattern over a property name; an <see cref="EntryCreation.OnKey"/> family names an <c>index</c> group, and a
-    /// <c>key</c> group when its entries have keys.
+    /// <c>key</c> group when its entries have keys. A <see cref="EntryCreation.SizedFirst"/> family with a key order names
+    /// both, and one level nested inside a key adds a <c>subindex</c> group and a <c>subkey</c> group when it has keys.
     /// </param>
     /// <param name="Creation">How Godot creates the family's entries on load.</param>
     /// <param name="SizedBy">The count property's name for a <see cref="EntryCreation.SizedFirst"/> family; null otherwise.</param>
     /// <param name="KeyOrder">The keys of one entry in the declaring class's order, creating key first; empty for a family without keys.</param>
-    internal readonly record struct DynamicFamily(Regex Pattern, EntryCreation Creation, string? SizedBy, ImmutableArray<string> KeyOrder);
+    /// <param name="SubKeyOrder">
+    /// The keys of one nested entry in the declaring class's order; empty for a family without nested keys.
+    /// </param>
+    internal readonly record struct DynamicFamily(
+        Regex Pattern,
+        EntryCreation Creation,
+        string? SizedBy,
+        ImmutableArray<string> KeyOrder,
+        ImmutableArray<string> SubKeyOrder
+    );
 
     // A table row: a class, its family's pattern and how Godot creates the family's entries. Only the factories make one, so
     // every row states its kind: in any order, sized first by a named count property, or on one key with its key order.
     private sealed record Row
     {
-        private Row(string cls, string pattern, EntryCreation creation, string? sizedBy, string[] keyOrder)
+        private Row(string cls, string pattern, EntryCreation creation, string? sizedBy, string[] keyOrder, string[] subKeyOrder)
         {
             Class = cls;
             Pattern = pattern;
             Creation = creation;
             SizedBy = sizedBy;
             KeyOrder = keyOrder;
+            SubKeyOrder = subKeyOrder;
         }
 
         public string Class { get; }
@@ -361,13 +486,20 @@ internal static class DynamicPropertyFamilies
 
         public string[] KeyOrder { get; }
 
+        public string[] SubKeyOrder { get; }
+
         // A family whose names Godot sets in any order.
-        public static Row AnyOrder(string cls, string pattern) => new(cls, pattern, EntryCreation.AnyOrder, null, []);
+        public static Row AnyOrder(string cls, string pattern) => new(cls, pattern, EntryCreation.AnyOrder, null, [], []);
 
         // A family whose entries a count property, ranked before it, sizes first.
-        public static Row SizedFirst(string cls, string pattern, string sizedBy) => new(cls, pattern, EntryCreation.SizedFirst, sizedBy, []);
+        public static Row SizedFirst(string cls, string pattern, string sizedBy) => SizedFirst(cls, pattern, sizedBy, [], []);
+
+        // A sized family whose keys reset one another, with the declaring class's key order and, for one nested level, its
+        // nested key order (empty for nested entries without keys).
+        public static Row SizedFirst(string cls, string pattern, string sizedBy, string[] keyOrder, string[] subKeyOrder) =>
+            new(cls, pattern, EntryCreation.SizedFirst, sizedBy, keyOrder, subKeyOrder);
 
         // A family Godot creates entry by entry on one key; an empty key order for a family with no key group.
-        public static Row OnKey(string cls, string pattern, string[] keyOrder) => new(cls, pattern, EntryCreation.OnKey, null, keyOrder);
+        public static Row OnKey(string cls, string pattern, string[] keyOrder) => new(cls, pattern, EntryCreation.OnKey, null, keyOrder, []);
     }
 }

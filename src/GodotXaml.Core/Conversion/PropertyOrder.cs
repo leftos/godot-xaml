@@ -17,7 +17,8 @@ namespace GodotXaml.Core.Conversion;
 /// the order among script exports or inside a dynamic family, so those keep source order: a family whose names Godot sets
 /// in any order, or whose entries a count property ranked before it sizes first, loads that way. A family whose entries
 /// Godot creates on one key goes entry by entry in numeric order, each entry's keys in the declaring class's order,
-/// creating key first.
+/// creating key first; a sized family whose keys reset one another does the same. A family can order one nested level the
+/// same way: inside a key, its sub-entries in numeric order, each sub-entry's keys in the declaring class's order.
 /// </summary>
 internal sealed class PropertyOrder(GodotMetadata metadata)
 {
@@ -77,7 +78,13 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
             Match match = family.Pattern.Match(name);
             if (match.Success)
             {
-                return slot with { Entry = EntryOf(match), Key = KeyOf(family.KeyOrder, match) };
+                return slot with
+                {
+                    Entry = EntryOf(match, "index"),
+                    Key = KeyOf(family.KeyOrder, match, "key"),
+                    SubEntry = EntryOf(match, "subindex"),
+                    SubKey = KeyOf(family.SubKeyOrder, match, "subkey"),
+                };
             }
         }
 
@@ -94,11 +101,11 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         return new Rank(name == ScriptProperty ? Tier.Script : Tier.Exports);
     }
 
-    // The entry's number from the family's index group; 0 for a family without one, so its names keep source order. A
-    // number past int's range goes last.
-    private static int EntryOf(Match match)
+    // The entry's number from the named index group (index, or subindex for a nested entry); 0 for a family without one, so
+    // its names keep source order. A number past int's range goes last.
+    private static int EntryOf(Match match, string group)
     {
-        Group index = match.Groups["index"];
+        Group index = match.Groups[group];
         if (!index.Success)
         {
             return 0;
@@ -107,11 +114,11 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         return int.TryParse(index.ValueSpan, NumberStyles.None, CultureInfo.InvariantCulture, out int entry) ? entry : int.MaxValue;
     }
 
-    // The key's place in the family's key order; a key the order lacks, or a family with no order, takes the order's length,
-    // so it goes after the listed keys of its entry, in source order.
-    private static int KeyOf(ImmutableArray<string> keyOrder, Match match)
+    // The place in the key order of the named key group (key, or subkey for a nested entry); a key the order lacks, or a
+    // family with no order, takes the order's length, so it goes after the listed keys of its entry, in source order.
+    private static int KeyOf(ImmutableArray<string> keyOrder, Match match, string group)
     {
-        Group key = match.Groups["key"];
+        Group key = match.Groups[group];
         int place = key.Success ? keyOrder.IndexOf(key.Value) : -1;
         return place >= 0 ? place : keyOrder.Length;
     }
@@ -182,10 +189,21 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
     );
 
     // Entry and Key order a dynamic family's names: entry by entry in numeric order, each entry's keys in the class's order.
-    private readonly record struct Rank(Tier Tier, int Depth = 0, Family Family = Family.OwnList, int Index = 0, int Entry = 0, int Key = 0)
-        : IComparable<Rank>
+    // SubEntry and SubKey order one nested level inside a key the same way (a setting's joints, each joint's keys).
+    private readonly record struct Rank(
+        Tier Tier,
+        int Depth = 0,
+        Family Family = Family.OwnList,
+        int Index = 0,
+        int Entry = 0,
+        int Key = 0,
+        int SubEntry = 0,
+        int SubKey = 0
+    ) : IComparable<Rank>
     {
         public int CompareTo(Rank other) =>
-            (Tier, Depth, Family, Index, Entry, Key).CompareTo((other.Tier, other.Depth, other.Family, other.Index, other.Entry, other.Key));
+            (Tier, Depth, Family, Index, Entry, Key, SubEntry, SubKey).CompareTo(
+                (other.Tier, other.Depth, other.Family, other.Index, other.Entry, other.Key, other.SubEntry, other.SubKey)
+            );
     }
 }

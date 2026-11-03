@@ -331,6 +331,193 @@ public sealed class PropertyOrderTests
         Assert.Equal(["pattern_0", "pattern_1", "pattern_2", "pattern_10"], Names(resource.ResourceProperties));
     }
 
+    // With no skeleton, SpringBoneSimulator3D::set_root_bone frees a setting's joints, and the collision setters return early
+    // while enable_all_child_collisions is true; joints and collisions run in numeric order, each joint's keys in Godot's order.
+    [Fact]
+    public void ASpringBoneSettingSetsItsBonesFirstAndItsJointsInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <SpringBoneSimulator3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/end_bone" Value="3" />
+              <x:Prop Name="settings/0/individual_config" Value="true" />
+              <x:Prop Name="settings/0/joint_count" Value="11" />
+              <x:Prop Name="settings/0/joints/0/drag" Value="0.1" />
+              <x:Prop Name="settings/0/joints/0/radius" Value="0.2" />
+              <x:Prop Name="settings/0/joints/0/stiffness" Value="0.3" />
+              <x:Prop Name="settings/0/joints/1/drag" Value="0.1" />
+              <x:Prop Name="settings/0/joints/1/radius" Value="0.2" />
+              <x:Prop Name="settings/0/joints/1/stiffness" Value="0.3" />
+              <x:Prop Name="settings/0/joints/10/drag" Value="0.1" />
+              <x:Prop Name="settings/0/joints/10/radius" Value="0.2" />
+              <x:Prop Name="settings/0/joints/10/stiffness" Value="0.3" />
+              <x:Prop Name="settings/0/joints/2/drag" Value="0.1" />
+              <x:Prop Name="settings/0/joints/2/radius" Value="0.2" />
+              <x:Prop Name="settings/0/joints/2/stiffness" Value="0.3" />
+              <x:Prop Name="settings/0/root_bone" Value="0" />
+              <x:Prop Name="settings/0/root_bone_name" Value='"a"' />
+              <x:Prop Name="settings/1/collision_count" Value="11" />
+              <x:Prop Name="settings/1/collisions/0" Value='NodePath("C0")' />
+              <x:Prop Name="settings/1/collisions/1" Value='NodePath("C1")' />
+              <x:Prop Name="settings/1/collisions/10" Value='NodePath("C10")' />
+              <x:Prop Name="settings/1/enable_all_child_collisions" Value="false" />
+            </SpringBoneSimulator3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/root_bone_name",
+                "settings/0/root_bone",
+                "settings/0/end_bone",
+                "settings/0/individual_config",
+                "settings/0/joint_count",
+                "settings/0/joints/0/radius",
+                "settings/0/joints/0/stiffness",
+                "settings/0/joints/0/drag",
+                "settings/0/joints/1/radius",
+                "settings/0/joints/1/stiffness",
+                "settings/0/joints/1/drag",
+                "settings/0/joints/2/radius",
+                "settings/0/joints/2/stiffness",
+                "settings/0/joints/2/drag",
+                "settings/0/joints/10/radius",
+                "settings/0/joints/10/stiffness",
+                "settings/0/joints/10/drag",
+                "settings/1/enable_all_child_collisions",
+                "settings/1/collision_count",
+                "settings/1/collisions/0",
+                "settings/1/collisions/1",
+                "settings/1/collisions/10",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // SpringBoneSimulator3D::_get_property_list lists a setting's excluded collisions after its joints and before its
+    // collisions, each list in numeric order.
+    [Fact]
+    public void ASpringBoneSettingListsItsExcludedCollisionsBeforeItsCollisions()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <SpringBoneSimulator3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/collision_count" Value="1" />
+              <x:Prop Name="settings/0/collisions/0" Value='NodePath("C0")' />
+              <x:Prop Name="settings/0/enable_all_child_collisions" Value="true" />
+              <x:Prop Name="settings/0/exclude_collision_count" Value="11" />
+              <x:Prop Name="settings/0/exclude_collisions/0" Value='NodePath("E0")' />
+              <x:Prop Name="settings/0/exclude_collisions/1" Value='NodePath("E1")' />
+              <x:Prop Name="settings/0/exclude_collisions/10" Value='NodePath("E10")' />
+              <x:Prop Name="settings/0/individual_config" Value="true" />
+              <x:Prop Name="settings/0/joint_count" Value="1" />
+              <x:Prop Name="settings/0/joints/0/radius" Value="0.2" />
+            </SpringBoneSimulator3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/individual_config",
+                "settings/0/joint_count",
+                "settings/0/joints/0/radius",
+                "settings/0/enable_all_child_collisions",
+                "settings/0/exclude_collision_count",
+                "settings/0/exclude_collisions/0",
+                "settings/0/exclude_collisions/1",
+                "settings/0/exclude_collisions/10",
+                "settings/0/collision_count",
+                "settings/0/collisions/0",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // IterateIK3D::_get_property_list lists every setting's target_node, then each setting's chain keys (with no skeleton
+    // ChainIK3D::set_root_bone frees the joints), then every setting's joint keys.
+    [Fact]
+    public void AnIterateIKNodeListsTargetsThenChainsThenJoints()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Fabrik3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/end_bone" Value="1" />
+              <x:Prop Name="settings/0/joint_count" Value="2" />
+              <x:Prop Name="settings/0/joints/0/limitation/right_axis" Value="1" />
+              <x:Prop Name="settings/0/joints/0/rotation_axis" Value="1" />
+              <x:Prop Name="settings/0/joints/1/limitation/right_axis" Value="2" />
+              <x:Prop Name="settings/0/joints/1/rotation_axis" Value="2" />
+              <x:Prop Name="settings/0/root_bone" Value="0" />
+              <x:Prop Name="settings/0/target_node" Value='NodePath("T0")' />
+              <x:Prop Name="settings/1/end_bone" Value="2" />
+              <x:Prop Name="settings/1/joint_count" Value="2" />
+              <x:Prop Name="settings/1/joints/0/limitation/right_axis" Value="1" />
+              <x:Prop Name="settings/1/joints/0/rotation_axis" Value="1" />
+              <x:Prop Name="settings/1/joints/1/limitation/right_axis" Value="2" />
+              <x:Prop Name="settings/1/joints/1/rotation_axis" Value="2" />
+              <x:Prop Name="settings/1/root_bone" Value="1" />
+              <x:Prop Name="settings/1/target_node" Value='NodePath("T1")' />
+            </Fabrik3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/target_node",
+                "settings/1/target_node",
+                "settings/0/root_bone",
+                "settings/0/end_bone",
+                "settings/0/joint_count",
+                "settings/1/root_bone",
+                "settings/1/end_bone",
+                "settings/1/joint_count",
+                "settings/0/joints/0/rotation_axis",
+                "settings/0/joints/0/limitation/right_axis",
+                "settings/0/joints/1/rotation_axis",
+                "settings/0/joints/1/limitation/right_axis",
+                "settings/1/joints/0/rotation_axis",
+                "settings/1/joints/0/limitation/right_axis",
+                "settings/1/joints/1/rotation_axis",
+                "settings/1/joints/1/limitation/right_axis",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
+    // SplineIK3D::_get_property_list lists every setting's path and tilt keys, then each setting's chain keys.
+    [Fact]
+    public void ASplineIKNodeListsPathsThenChains()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <SplineIK3D {{X}} Name="Root">
+              <x:Prop Name="settings/0/joint_count" Value="2" />
+              <x:Prop Name="settings/0/path_3d" Value='NodePath("P0")' />
+              <x:Prop Name="settings/0/root_bone" Value="0" />
+              <x:Prop Name="settings/0/tilt_enabled" Value="true" />
+              <x:Prop Name="settings/1/joint_count" Value="3" />
+              <x:Prop Name="settings/1/path_3d" Value='NodePath("P1")' />
+              <x:Prop Name="settings/1/root_bone" Value="1" />
+              <x:Prop Name="settings/1/tilt_enabled" Value="true" />
+            </SplineIK3D>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "settings/0/path_3d",
+                "settings/0/tilt_enabled",
+                "settings/1/path_3d",
+                "settings/1/tilt_enabled",
+                "settings/0/root_bone",
+                "settings/0/joint_count",
+                "settings/1/root_bone",
+                "settings/1/joint_count",
+            ],
+            Names(scene.Nodes[0].Properties)
+        );
+    }
+
     private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
 
     // Parses a resource document and converts it with no issue.

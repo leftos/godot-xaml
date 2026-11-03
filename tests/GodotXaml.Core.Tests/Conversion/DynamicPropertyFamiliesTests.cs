@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tests.Values;
@@ -23,16 +24,7 @@ public sealed class DynamicPropertyFamiliesTests
         Assert.Empty(
             Offenders(row =>
                 row.Family.Creation == EntryCreation.OnKey
-                && (
-                    !Has(row.Family, "index")
-                    || row.Family.SizedBy is not null
-                    || (
-                        Has(row.Family, "key")
-                            ? row.Family.KeyOrder.IsEmpty
-                                || row.Family.KeyOrder.Distinct(StringComparer.Ordinal).Count() != row.Family.KeyOrder.Length
-                            : !row.Family.KeyOrder.IsEmpty
-                    )
-                )
+                && (!Has(row.Family, "index") || row.Family.SizedBy is not null || IsNested(row.Family) || !HasKeyOrder(row.Family))
             )
         );
     }
@@ -55,15 +47,33 @@ public sealed class DynamicPropertyFamiliesTests
     }
 
     // Whether the row names a count property the metadata lists for its class or an ancestor, or an earlier row of its class
-    // matches in full, and has no entry order of its own.
+    // matches in full; and either has no entry order of its own, or names its entries and keys with a distinct key order.
     private static bool IsSizedFirst(List<(string Class, DynamicFamily Family)> rows, int index)
     {
         (string cls, DynamicFamily family) = rows[index];
         bool sized =
             family.SizedBy is { } sizedBy
             && (IsListed(cls, sizedBy) || rows.Take(index).Any(earlier => earlier.Class == cls && MatchesInFull(earlier.Family, sizedBy)));
-        return sized && !Has(family, "index") && !Has(family, "key") && family.KeyOrder.IsEmpty;
+        return sized && IsOrderedAsSized(family);
     }
+
+    // A sized row with an index group names its keys with a distinct key order (and a distinct nested one); a row without
+    // one has no keys, no nested entries and no orders.
+    private static bool IsOrderedAsSized(DynamicFamily family) =>
+        Has(family, "index")
+            ? Has(family, "key") && HasKeyOrder(family) && IsDistinct(family.SubKeyOrder)
+            : !Has(family, "key") && !IsNested(family) && family.KeyOrder.IsEmpty;
+
+    // A nested entry is ordered inside its outer entry's key, so a row naming one names the outer entry and key too; a nested
+    // key order needs a subkey group to read, while a row may name nested entries without keys (a list of collisions).
+    [Fact]
+    public void ANestedEntryNamesItsOuterEntry() =>
+        Assert.Empty(
+            Offenders(row =>
+                ((Has(row.Family, "subindex") || Has(row.Family, "subkey")) && !(Has(row.Family, "index") && Has(row.Family, "key")))
+                || (!row.Family.SubKeyOrder.IsEmpty && !Has(row.Family, "subkey"))
+            )
+        );
 
     [Fact]
     public void AnAnyOrderFamilyHasNoEntryOrder()
@@ -71,10 +81,25 @@ public sealed class DynamicPropertyFamiliesTests
         Assert.Empty(
             Offenders(row =>
                 row.Family.Creation == EntryCreation.AnyOrder
-                && (Has(row.Family, "index") || Has(row.Family, "key") || !row.Family.KeyOrder.IsEmpty || row.Family.SizedBy is not null)
+                && (
+                    Has(row.Family, "index")
+                    || Has(row.Family, "key")
+                    || IsNested(row.Family)
+                    || !row.Family.KeyOrder.IsEmpty
+                    || row.Family.SizedBy is not null
+                )
             )
         );
     }
+
+    // Whether the row names nested entries or keys, or carries a nested key order.
+    private static bool IsNested(DynamicFamily family) => Has(family, "subindex") || Has(family, "subkey") || !family.SubKeyOrder.IsEmpty;
+
+    // A row with a key group carries a non-empty, distinct key order; a row without one carries none.
+    private static bool HasKeyOrder(DynamicFamily family) =>
+        Has(family, "key") ? !family.KeyOrder.IsEmpty && IsDistinct(family.KeyOrder) : family.KeyOrder.IsEmpty;
+
+    private static bool IsDistinct(ImmutableArray<string> keys) => keys.Distinct(StringComparer.Ordinal).Count() == keys.Length;
 
     // The rows that fail the check, each named by its class and pattern.
     private static List<string> Offenders(Func<(string Class, DynamicFamily Family), bool> fails) =>

@@ -63,6 +63,7 @@ func _run() -> String:
 		_placeholder_order,
 		_animation_tracks,
 		_skeleton_bones,
+		_bone_chain_settings,
 		_visual_shader_nodes,
 		_replication_properties,
 		_tile_set_patterns,
@@ -334,6 +335,67 @@ func _skeleton_bones() -> String:
 	skeleton.set_bone_enabled(7, false)
 	skeleton.set_bone_meta(3, "tag", "spine")
 	return _save_scene("skeleton_bones", skeleton)
+
+
+## A Skeleton3D of a 12-bone chain holding a SpringBoneSimulator3D (an individual-config setting
+## with per-joint values, and a setting with a collision list), a FABRIK3D with per-joint axes, and
+## a SplineIK3D, which stores its path and tilt keys, then its chain keys and joint_count (Godot
+## stores no joint keys for it). With no skeleton, SpringBoneSimulator3D::set_root_bone and
+## ChainIK3D::set_root_bone zero the setting's joints, and SpringBoneSimulator3D's collision
+## setters return early while enable_all_child_collisions is true, so the bones and that flag
+## must be set before the joints and collisions (spring_bone_simulator_3d.cpp, chain_ik_3d.cpp).
+func _bone_chain_settings() -> String:
+	var skeleton: Skeleton3D = _root("Skeleton3D")
+	for index in 12:
+		skeleton.add_bone("bone_%d" % index)
+		skeleton.set_bone_parent(index, index - 1)
+		skeleton.set_bone_rest(index, Transform3D(Basis(), Vector3(0, 0.25 * (index + 1), 0)))
+	for index in 2:
+		_add(skeleton, "Sphere%d" % index, "SpringBoneCollisionSphere3D")
+		_add(skeleton, "Target%d" % index, "Node3D")
+	_add(skeleton, "Path", "Path3D")
+
+	var spring: Node = _add(skeleton, "Spring", "SpringBoneSimulator3D")
+	spring.set("setting_count", 2)
+	spring.set("settings/0/root_bone", 0)
+	spring.set("settings/0/end_bone", 11)
+	spring.set("settings/0/individual_config", true)
+	spring.set("settings/0/joint_count", 12)
+	for joint in 12:
+		var prefix := "settings/0/joints/%d/" % joint
+		spring.set(prefix + "radius", 0.0625 * (joint + 1))
+		spring.set(prefix + "stiffness", 0.5 + 0.03125 * joint)
+		spring.set(prefix + "drag", 0.25 + 0.015625 * joint)
+		spring.set(prefix + "gravity", 0.125 * (joint + 1))
+	spring.set("settings/1/root_bone", 1)
+	spring.set("settings/1/end_bone", 3)
+	spring.set("settings/1/enable_all_child_collisions", false)
+	spring.set("settings/1/collision_count", 2)
+	spring.set("settings/1/collisions/0", NodePath("../Sphere0"))
+	spring.set("settings/1/collisions/1", NodePath("../Sphere1"))
+
+	var fabrik: Node = _add(skeleton, "Fabrik", "FABRIK3D")
+	fabrik.set("setting_count", 2)
+	var chains: Array[Vector3i] = [Vector3i(0, 11, 12), Vector3i(6, 8, 3)]
+	for setting in 2:
+		fabrik.set("settings/%d/target_node" % setting, NodePath("../Target%d" % setting))
+	for setting in 2:
+		var prefix := "settings/%d/" % setting
+		fabrik.set(prefix + "root_bone", chains[setting].x)
+		fabrik.set(prefix + "end_bone", chains[setting].y)
+		fabrik.set(prefix + "joint_count", chains[setting].z)
+	for setting in 2:
+		for joint in chains[setting].z:
+			fabrik.set("settings/%d/joints/%d/rotation_axis" % [setting, joint], joint % 3)
+
+	var spline: Node = _add(skeleton, "Spline", "SplineIK3D")
+	spline.set("setting_count", 1)
+	spline.set("settings/0/path_3d", NodePath("../Path"))
+	spline.set("settings/0/tilt_enabled", true)
+	spline.set("settings/0/root_bone", 0)
+	spline.set("settings/0/end_bone", 5)
+	spline.set("settings/0/joint_count", 6)
+	return _save_scene("bone_chain_settings", skeleton)
 
 
 ## A VisualShader with an Expression node (ports and code) at id 10 in the fragment and vertex

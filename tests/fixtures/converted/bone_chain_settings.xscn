@@ -1,0 +1,257 @@
+<Skeleton3D
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Name="Root"
+    x:UniqueId="931671723">
+  <x:Prop Name="bones/0/enabled" Value="true" />
+  <x:Prop Name="bones/0/name" Value='"bone_0"' />
+  <x:Prop Name="bones/0/parent" Value="-1" />
+  <x:Prop Name="bones/0/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/0/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)" />
+  <x:Prop Name="bones/0/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/0/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/1/enabled" Value="true" />
+  <x:Prop Name="bones/1/name" Value='"bone_1"' />
+  <x:Prop Name="bones/1/parent" Value="0" />
+  <x:Prop Name="bones/1/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/1/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)" />
+  <x:Prop Name="bones/1/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/1/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/10/enabled" Value="true" />
+  <x:Prop Name="bones/10/name" Value='"bone_10"' />
+  <x:Prop Name="bones/10/parent" Value="9" />
+  <x:Prop Name="bones/10/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/10/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.75, 0)" />
+  <x:Prop Name="bones/10/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/10/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/11/enabled" Value="true" />
+  <x:Prop Name="bones/11/name" Value='"bone_11"' />
+  <x:Prop Name="bones/11/parent" Value="10" />
+  <x:Prop Name="bones/11/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/11/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)" />
+  <x:Prop Name="bones/11/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/11/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/2/enabled" Value="true" />
+  <x:Prop Name="bones/2/name" Value='"bone_2"' />
+  <x:Prop Name="bones/2/parent" Value="1" />
+  <x:Prop Name="bones/2/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/2/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)" />
+  <x:Prop Name="bones/2/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/2/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/3/enabled" Value="true" />
+  <x:Prop Name="bones/3/name" Value='"bone_3"' />
+  <x:Prop Name="bones/3/parent" Value="2" />
+  <x:Prop Name="bones/3/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/3/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)" />
+  <x:Prop Name="bones/3/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/3/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/4/enabled" Value="true" />
+  <x:Prop Name="bones/4/name" Value='"bone_4"' />
+  <x:Prop Name="bones/4/parent" Value="3" />
+  <x:Prop Name="bones/4/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/4/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)" />
+  <x:Prop Name="bones/4/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/4/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/5/enabled" Value="true" />
+  <x:Prop Name="bones/5/name" Value='"bone_5"' />
+  <x:Prop Name="bones/5/parent" Value="4" />
+  <x:Prop Name="bones/5/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/5/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)" />
+  <x:Prop Name="bones/5/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/5/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/6/enabled" Value="true" />
+  <x:Prop Name="bones/6/name" Value='"bone_6"' />
+  <x:Prop Name="bones/6/parent" Value="5" />
+  <x:Prop Name="bones/6/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/6/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)" />
+  <x:Prop Name="bones/6/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/6/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/7/enabled" Value="true" />
+  <x:Prop Name="bones/7/name" Value='"bone_7"' />
+  <x:Prop Name="bones/7/parent" Value="6" />
+  <x:Prop Name="bones/7/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/7/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)" />
+  <x:Prop Name="bones/7/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/7/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/8/enabled" Value="true" />
+  <x:Prop Name="bones/8/name" Value='"bone_8"' />
+  <x:Prop Name="bones/8/parent" Value="7" />
+  <x:Prop Name="bones/8/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/8/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.25, 0)" />
+  <x:Prop Name="bones/8/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/8/scale" Value="Vector3(1, 1, 1)" />
+  <x:Prop Name="bones/9/enabled" Value="true" />
+  <x:Prop Name="bones/9/name" Value='"bone_9"' />
+  <x:Prop Name="bones/9/parent" Value="8" />
+  <x:Prop Name="bones/9/position" Value="Vector3(0, 0, 0)" />
+  <x:Prop Name="bones/9/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)" />
+  <x:Prop Name="bones/9/rotation" Value="Quaternion(0, 0, 0, 1)" />
+  <x:Prop Name="bones/9/scale" Value="Vector3(1, 1, 1)" />
+  <SpringBoneCollisionSphere3D Name="Sphere0" x:UniqueId="1205412338" />
+  <Node3D Name="Target0" x:UniqueId="766362382" />
+  <SpringBoneCollisionSphere3D Name="Sphere1" x:UniqueId="967820918" />
+  <Node3D Name="Target1" x:UniqueId="430654535" />
+  <Path3D Name="Path" x:UniqueId="295948955" />
+  <SpringBoneSimulator3D Name="Spring" SettingCount="2" x:UniqueId="1756322195">
+    <x:Prop Name="settings/0/center_from" Value="0" />
+    <x:Prop Name="settings/0/enable_all_child_collisions" Value="true" />
+    <x:Prop Name="settings/0/end_bone" Value="11" />
+    <x:Prop Name="settings/0/end_bone_name" Value='""' />
+    <x:Prop Name="settings/0/exclude_collision_count" Value="0" />
+    <x:Prop Name="settings/0/extend_end_bone" Value="false" />
+    <x:Prop Name="settings/0/individual_config" Value="true" />
+    <x:Prop Name="settings/0/joint_count" Value="12" />
+    <x:Prop Name="settings/0/joints/0/drag" Value="0.25" />
+    <x:Prop Name="settings/0/joints/0/gravity" Value="0.125" />
+    <x:Prop Name="settings/0/joints/0/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/0/radius" Value="0.0625" />
+    <x:Prop Name="settings/0/joints/0/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/0/stiffness" Value="0.5" />
+    <x:Prop Name="settings/0/joints/1/drag" Value="0.265625" />
+    <x:Prop Name="settings/0/joints/1/gravity" Value="0.25" />
+    <x:Prop Name="settings/0/joints/1/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/1/radius" Value="0.125" />
+    <x:Prop Name="settings/0/joints/1/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/1/stiffness" Value="0.53125" />
+    <x:Prop Name="settings/0/joints/10/drag" Value="0.40625" />
+    <x:Prop Name="settings/0/joints/10/gravity" Value="1.375" />
+    <x:Prop Name="settings/0/joints/10/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/10/radius" Value="0.6875" />
+    <x:Prop Name="settings/0/joints/10/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/10/stiffness" Value="0.8125" />
+    <x:Prop Name="settings/0/joints/11/drag" Value="0.421875" />
+    <x:Prop Name="settings/0/joints/11/gravity" Value="1.5" />
+    <x:Prop Name="settings/0/joints/11/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/11/radius" Value="0.75" />
+    <x:Prop Name="settings/0/joints/11/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/11/stiffness" Value="0.84375" />
+    <x:Prop Name="settings/0/joints/2/drag" Value="0.28125" />
+    <x:Prop Name="settings/0/joints/2/gravity" Value="0.375" />
+    <x:Prop Name="settings/0/joints/2/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/2/radius" Value="0.1875" />
+    <x:Prop Name="settings/0/joints/2/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/2/stiffness" Value="0.5625" />
+    <x:Prop Name="settings/0/joints/3/drag" Value="0.296875" />
+    <x:Prop Name="settings/0/joints/3/gravity" Value="0.5" />
+    <x:Prop Name="settings/0/joints/3/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/3/radius" Value="0.25" />
+    <x:Prop Name="settings/0/joints/3/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/3/stiffness" Value="0.59375" />
+    <x:Prop Name="settings/0/joints/4/drag" Value="0.3125" />
+    <x:Prop Name="settings/0/joints/4/gravity" Value="0.625" />
+    <x:Prop Name="settings/0/joints/4/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/4/radius" Value="0.3125" />
+    <x:Prop Name="settings/0/joints/4/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/4/stiffness" Value="0.625" />
+    <x:Prop Name="settings/0/joints/5/drag" Value="0.328125" />
+    <x:Prop Name="settings/0/joints/5/gravity" Value="0.75" />
+    <x:Prop Name="settings/0/joints/5/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/5/radius" Value="0.375" />
+    <x:Prop Name="settings/0/joints/5/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/5/stiffness" Value="0.65625" />
+    <x:Prop Name="settings/0/joints/6/drag" Value="0.34375" />
+    <x:Prop Name="settings/0/joints/6/gravity" Value="0.875" />
+    <x:Prop Name="settings/0/joints/6/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/6/radius" Value="0.4375" />
+    <x:Prop Name="settings/0/joints/6/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/6/stiffness" Value="0.6875" />
+    <x:Prop Name="settings/0/joints/7/drag" Value="0.359375" />
+    <x:Prop Name="settings/0/joints/7/gravity" Value="1.0" />
+    <x:Prop Name="settings/0/joints/7/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/7/radius" Value="0.5" />
+    <x:Prop Name="settings/0/joints/7/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/7/stiffness" Value="0.71875" />
+    <x:Prop Name="settings/0/joints/8/drag" Value="0.375" />
+    <x:Prop Name="settings/0/joints/8/gravity" Value="1.125" />
+    <x:Prop Name="settings/0/joints/8/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/8/radius" Value="0.5625" />
+    <x:Prop Name="settings/0/joints/8/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/8/stiffness" Value="0.75" />
+    <x:Prop Name="settings/0/joints/9/drag" Value="0.390625" />
+    <x:Prop Name="settings/0/joints/9/gravity" Value="1.25" />
+    <x:Prop Name="settings/0/joints/9/gravity_direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/0/joints/9/radius" Value="0.625" />
+    <x:Prop Name="settings/0/joints/9/rotation_axis" Value="3" />
+    <x:Prop Name="settings/0/joints/9/stiffness" Value="0.78125" />
+    <x:Prop Name="settings/0/root_bone" Value="0" />
+    <x:Prop Name="settings/0/root_bone_name" Value='""' />
+    <x:Prop Name="settings/1/center_from" Value="0" />
+    <x:Prop Name="settings/1/collision_count" Value="2" />
+    <x:Prop Name="settings/1/collisions/0" Value='NodePath("../Sphere0")' />
+    <x:Prop Name="settings/1/collisions/1" Value='NodePath("../Sphere1")' />
+    <x:Prop Name="settings/1/drag/damping_curve" Value="null" />
+    <x:Prop Name="settings/1/drag/value" Value="0.4" />
+    <x:Prop Name="settings/1/enable_all_child_collisions" Value="false" />
+    <x:Prop Name="settings/1/end_bone" Value="3" />
+    <x:Prop Name="settings/1/end_bone_name" Value='""' />
+    <x:Prop Name="settings/1/extend_end_bone" Value="false" />
+    <x:Prop Name="settings/1/gravity/damping_curve" Value="null" />
+    <x:Prop Name="settings/1/gravity/direction" Value="Vector3(0, -1, 0)" />
+    <x:Prop Name="settings/1/gravity/value" Value="0.0" />
+    <x:Prop Name="settings/1/individual_config" Value="false" />
+    <x:Prop Name="settings/1/radius/damping_curve" Value="null" />
+    <x:Prop Name="settings/1/radius/value" Value="0.02" />
+    <x:Prop Name="settings/1/root_bone" Value="1" />
+    <x:Prop Name="settings/1/root_bone_name" Value='""' />
+    <x:Prop Name="settings/1/rotation_axis" Value="3" />
+    <x:Prop Name="settings/1/stiffness/damping_curve" Value="null" />
+    <x:Prop Name="settings/1/stiffness/value" Value="1.0" />
+  </SpringBoneSimulator3D>
+  <Fabrik3D Name="Fabrik" SettingCount="2" x:UniqueId="624935357">
+    <x:Prop Name="settings/0/end_bone" Value="11" />
+    <x:Prop Name="settings/0/end_bone_name" Value='""' />
+    <x:Prop Name="settings/0/extend_end_bone" Value="false" />
+    <x:Prop Name="settings/0/joint_count" Value="12" />
+    <x:Prop Name="settings/0/joints/0/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/0/rotation_axis" Value="0" />
+    <x:Prop Name="settings/0/joints/1/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/1/rotation_axis" Value="1" />
+    <x:Prop Name="settings/0/joints/10/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/10/rotation_axis" Value="1" />
+    <x:Prop Name="settings/0/joints/11/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/11/rotation_axis" Value="2" />
+    <x:Prop Name="settings/0/joints/2/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/2/rotation_axis" Value="2" />
+    <x:Prop Name="settings/0/joints/3/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/3/rotation_axis" Value="0" />
+    <x:Prop Name="settings/0/joints/4/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/4/rotation_axis" Value="1" />
+    <x:Prop Name="settings/0/joints/5/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/5/rotation_axis" Value="2" />
+    <x:Prop Name="settings/0/joints/6/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/6/rotation_axis" Value="0" />
+    <x:Prop Name="settings/0/joints/7/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/7/rotation_axis" Value="1" />
+    <x:Prop Name="settings/0/joints/8/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/8/rotation_axis" Value="2" />
+    <x:Prop Name="settings/0/joints/9/limitation" Value="null" />
+    <x:Prop Name="settings/0/joints/9/rotation_axis" Value="0" />
+    <x:Prop Name="settings/0/root_bone" Value="0" />
+    <x:Prop Name="settings/0/root_bone_name" Value='""' />
+    <x:Prop Name="settings/0/target_node" Value='NodePath("../Target0")' />
+    <x:Prop Name="settings/1/end_bone" Value="8" />
+    <x:Prop Name="settings/1/end_bone_name" Value='""' />
+    <x:Prop Name="settings/1/extend_end_bone" Value="false" />
+    <x:Prop Name="settings/1/joint_count" Value="3" />
+    <x:Prop Name="settings/1/joints/0/limitation" Value="null" />
+    <x:Prop Name="settings/1/joints/0/rotation_axis" Value="0" />
+    <x:Prop Name="settings/1/joints/1/limitation" Value="null" />
+    <x:Prop Name="settings/1/joints/1/rotation_axis" Value="1" />
+    <x:Prop Name="settings/1/joints/2/limitation" Value="null" />
+    <x:Prop Name="settings/1/joints/2/rotation_axis" Value="2" />
+    <x:Prop Name="settings/1/root_bone" Value="6" />
+    <x:Prop Name="settings/1/root_bone_name" Value='""' />
+    <x:Prop Name="settings/1/target_node" Value='NodePath("../Target1")' />
+  </Fabrik3D>
+  <SplineIK3D Name="Spline" SettingCount="1" x:UniqueId="2076682939">
+    <x:Prop Name="settings/0/end_bone" Value="5" />
+    <x:Prop Name="settings/0/end_bone_name" Value='""' />
+    <x:Prop Name="settings/0/extend_end_bone" Value="false" />
+    <x:Prop Name="settings/0/joint_count" Value="6" />
+    <x:Prop Name="settings/0/path_3d" Value='NodePath("../Path")' />
+    <x:Prop Name="settings/0/root_bone" Value="0" />
+    <x:Prop Name="settings/0/root_bone_name" Value='""' />
+    <x:Prop Name="settings/0/tilt_enabled" Value="true" />
+    <x:Prop Name="settings/0/tilt_fade_in" Value="1" />
+    <x:Prop Name="settings/0/tilt_fade_out" Value="1" />
+  </SplineIK3D>
+</Skeleton3D>
