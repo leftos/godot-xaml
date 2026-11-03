@@ -4,22 +4,24 @@
 
 ## Core format
 
-- [ ] GXAML-78 Metadata dump: slash-named ClassDB properties · release vNext
-- [ ] GXAML-82 Conversion back: place dynamic names by their declaring class · release vNext
+- [ ] GXAML-78 Metadata dump: slash-named ClassDB properties · release vNext+1
+- [ ] GXAML-103 Dynamic-family table: tests, shared helpers, ordinal matching and the Godot version tie
+- [ ] GXAML-105 Metadata: type misdeclared properties by their getter, for classes with no defaults too
+- [ ] GXAML-108 Conversion back: VisualShader nodes and SceneReplicationConfig entries are created on one key too · release vNext
+- [ ] GXAML-109 Dynamic families: Skeleton3D's 3.x bone keys, ASCII entry indexes, and the untested ranking paths
 
 ## Godot addon
 
 - [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+2
-- [ ] GXAML-60 Addon: refresh the editor's cached dependencies of .xscn/.xres after an upgrade · release vNext
-- [ ] GXAML-64 Addon: trace the PackedScene left cached, the unsaved mark after a move, and raw XML in an export · release vNext
-- [ ] GXAML-68 Addon tests: pin each sub-resource's id after the comment carry, and catch an undisposed container in the walk · release vNext
-- [ ] GXAML-76 Addon saver: a foreign sub-resource can take an x:Resources key by id · release vNext
 - [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit · release vNext
+- [ ] GXAML-104 Addon saver: after B's save takes over A's built-in, a later save of A may lose its key
+- [ ] GXAML-106 Addon saver: the owned-ids walk's cost, and one path form for the map and the takeover
+- [ ] GXAML-107 Editor: every changed .xscn is loaded in full for its scene groups
+- [ ] GXAML-110 Addon checks: a scripted .xres root keeps its C# wrapper after the load
 
 ## Agent tooling
 
 - [ ] GXAML-38 CLI: upgrade a project's .xscn files across a typing-changing Godot release
-- [ ] GXAML-98 convert: two x:Uids merged onto one path drop the second uid silently · release vNext
 
 ## Editor support
 
@@ -35,14 +37,10 @@
 
 ## Backlog
 
-- [ ] GXAML-24 Write docs/DEVELOPMENT.md: toolchain, run.ps1 verbs, hooks, metadata regeneration · release vNext
-- [ ] GXAML-28 Metadata dump: silence or fix the OpenXR render_model_extension errors · release vNext
-- [ ] GXAML-29 Docs: drop counts and path:line references from durable docs · release vNext
-- [ ] GXAML-33 Metadata dump: defaults that do not match their declared type · release vNext
-- [ ] GXAML-69 Docs: split the Markdown lines over 500 characters · release vNext
-- [ ] GXAML-83 Addon saver: a save with no scene change keeps the file's own form · release vNext
 - [ ] GXAML-84 Find the cause of two rare Godot crashes during first import · release vNext
-- [ ] GXAML-94 Local install packs never take a released version's place in the shared NuGet cache · release vNext
+- [ ] GXAML-99 Release: check nuget.org before the release commit, and allow for the index lag
+- [ ] GXAML-100 ARCHITECTURE.md: the sub-resource check range and two missing Task Index rows
+- [ ] GXAML-101 A -Local addon zip's plugin.cfg still names the release version
 
 ## Design files
 
