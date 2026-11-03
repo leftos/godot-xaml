@@ -11,23 +11,10 @@ namespace GodotXaml.Core.Xscn;
 /// <summary>The format's elements with fixed attributes: <c>x:Prop</c> and <c>x:Connect</c>, and the parts both build on.</summary>
 internal sealed partial class XscnTreeReader
 {
-    private static readonly string[] ConnectAttributes =
-    [
-        "Signal",
-        "GodotSignal",
-        "To",
-        "Method",
-        "Flags",
-        "Binds",
-        "Unbinds",
-        "FromUidPath",
-        "ToUidPath",
-    ];
-
     // <x:Prop Name="…" Value="…" />: the Godot name verbatim, the value untyped Godot value text.
     private void AddProp(ElementParts parent, IXmlElementSyntax element)
     {
-        Dictionary<string, AttributeText> attributes = FixedAttributes(element, ["Name", "Value"]);
+        Dictionary<string, AttributeText> attributes = FixedAttributes(element, XscnFormatVocabulary.PropAttributes);
         ExpectNoElements(element);
         AttributeText? name = Required(element, attributes, "Name");
         AttributeText? value = Required(element, attributes, "Value");
@@ -44,7 +31,7 @@ internal sealed partial class XscnTreeReader
             return;
         }
 
-        Dictionary<string, AttributeText> attributes = FixedAttributes(element, ConnectAttributes);
+        Dictionary<string, AttributeText> attributes = FixedAttributes(element, XscnFormatVocabulary.ConnectAttributes);
         ExpectNoElements(element);
         string? signal = ConnectionSignal(element, attributes, parent.Class);
         AttributeText? method = Required(element, attributes, "Method");

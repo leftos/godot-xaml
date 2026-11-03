@@ -25,35 +25,43 @@ internal sealed partial class XscnTreeReader
     // Script's type, which the writer shares.
     internal static readonly XscnValueType ObjectType = new("Object", null);
 
-    // The x: attributes of a node or an override, by local name.
-    private static readonly FrozenDictionary<string, AttributeReader> NodeFormatAttributes = new Dictionary<string, AttributeReader>(
+    // The x: attributes of a node or an override, by local name; the names are the vocabulary's.
+    private static readonly FrozenDictionary<string, AttributeReader> NodeFormatAttributes = XscnFormatVocabulary.NodeAttributes.ToFrozenDictionary(
+        name => name,
+        NodeFormatAttribute,
         StringComparer.Ordinal
-    )
-    {
-        ["Index"] = (reader, parts, attribute) => parts.Index = reader.ReadInt(attribute),
-        ["Owner"] = (_, parts, attribute) => parts.Owner = attribute.Value,
-        ["Editable"] = (reader, parts, attribute) => parts.Editable = reader.ReadBool(attribute),
-        ["Groups"] = (reader, parts, attribute) => parts.Groups = reader.ReadNameList(attribute),
-        ["InstancePlaceholder"] = (_, parts, attribute) => parts.InstancePlaceholder = attribute.Value,
-        ["NodePaths"] = (reader, parts, attribute) => parts.NodePaths = reader.ReadNameList(attribute),
-        ["ParentIdPath"] = (reader, parts, attribute) => parts.ParentIdPath = reader.ReadIdPath(attribute),
-        ["OwnerUidPath"] = (reader, parts, attribute) => parts.OwnerUidPath = reader.ReadIdPath(attribute),
-        ["UniqueId"] = (reader, parts, attribute) => parts.UniqueId = reader.ReadInt(attribute),
-    }.ToFrozenDictionary(StringComparer.Ordinal);
+    );
 
-    // The unprefixed attributes that are not properties, by the kind of element that carries them.
-    private static readonly FrozenDictionary<(ElementKind, string), AttributeReader> SpecialAttributes = new Dictionary<
-        (ElementKind, string),
-        AttributeReader
-    >
-    {
-        [(ElementKind.Node, "Name")] = (_, parts, attribute) => SetName(parts, attribute.Value),
-        [(ElementKind.Instance, "Name")] = (_, parts, attribute) => SetName(parts, attribute.Value),
-        [(ElementKind.Instance, "Scene")] = (_, parts, attribute) => parts.Scene = attribute.Value,
-        [(ElementKind.Override, "Path")] = (_, parts, attribute) => parts.Path = attribute.Value,
-    }.ToFrozenDictionary();
+    // The unprefixed attributes that are not properties, by the kind of element that carries them; the names are the
+    // vocabulary's.
+    private static readonly FrozenDictionary<(ElementKind, string), AttributeReader> SpecialAttributes =
+        XscnFormatVocabulary.SpecialAttributes.ToFrozenDictionary(a => (Enum.Parse<ElementKind>(a.Kind), a.Name), a => SpecialAttribute(a.Name));
 
     private delegate void AttributeReader(XscnTreeReader reader, ElementParts parts, AttributeText attribute);
+
+    private static AttributeReader NodeFormatAttribute(string name) =>
+        name switch
+        {
+            "Index" => (reader, parts, attribute) => parts.Index = reader.ReadInt(attribute),
+            "Owner" => (_, parts, attribute) => parts.Owner = attribute.Value,
+            "Editable" => (reader, parts, attribute) => parts.Editable = reader.ReadBool(attribute),
+            "Groups" => (reader, parts, attribute) => parts.Groups = reader.ReadNameList(attribute),
+            "InstancePlaceholder" => (_, parts, attribute) => parts.InstancePlaceholder = attribute.Value,
+            "NodePaths" => (reader, parts, attribute) => parts.NodePaths = reader.ReadNameList(attribute),
+            "ParentIdPath" => (reader, parts, attribute) => parts.ParentIdPath = reader.ReadIdPath(attribute),
+            "OwnerUidPath" => (reader, parts, attribute) => parts.OwnerUidPath = reader.ReadIdPath(attribute),
+            "UniqueId" => (reader, parts, attribute) => parts.UniqueId = reader.ReadInt(attribute),
+            _ => throw new InvalidOperationException($"The vocabulary lists x:{name} on a node, which the reader cannot read."),
+        };
+
+    private static AttributeReader SpecialAttribute(string name) =>
+        name switch
+        {
+            "Name" => (_, parts, attribute) => SetName(parts, attribute.Value),
+            "Scene" => (_, parts, attribute) => parts.Scene = attribute.Value,
+            "Path" => (_, parts, attribute) => parts.Path = attribute.Value,
+            _ => throw new InvalidOperationException($"The vocabulary reserves {name}, which the reader cannot read."),
+        };
 
     private static bool IsNamespaceDeclaration(AttributeText attribute) => IsNamespaceDeclaration(attribute.Prefix, attribute.LocalName);
 
@@ -111,7 +119,7 @@ internal sealed partial class XscnTreeReader
         {
             read(this, parts, attribute);
         }
-        else if (attribute.LocalName == "Script")
+        else if (attribute.LocalName == XscnFormatVocabulary.Script)
         {
             parts.Properties.Add(new XscnProperty("script", ReadValue(attribute, ObjectType)));
         }
@@ -132,7 +140,7 @@ internal sealed partial class XscnTreeReader
         {
             read(this, parts, attribute);
         }
-        else if (parts.Kind == ElementKind.TableEntry && attribute.LocalName == "Key")
+        else if (parts.Kind == ElementKind.TableEntry && attribute.LocalName == XscnFormatVocabulary.Key)
         {
             parts.Key = attribute.Value;
             parts.KeySpan = attribute.ValueSpan;

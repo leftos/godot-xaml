@@ -8,18 +8,27 @@ namespace GodotXaml.Core.Xscn;
 /// <summary>The elements: the root, nodes, overrides, resources, property elements and the format's own elements.</summary>
 internal sealed partial class XscnTreeReader
 {
-    // The format's elements that sit among a node's or a resource's content, by local name.
-    private static readonly FrozenDictionary<string, ChildReader> FormatChildren = new Dictionary<string, ChildReader>(StringComparer.Ordinal)
-    {
-        ["Override"] = (reader, parent, element) => reader.AddOverride(parent, element),
-        ["Instance"] = (reader, parent, element) => reader.AddInstance(parent, element),
-        ["Connect"] = (reader, parent, element) => reader.AddConnection(parent, element),
-        ["Prop"] = (reader, parent, element) => reader.AddProp(parent, element),
-        ["Uids"] = (reader, parent, element) => reader.AddUidTable(parent, element),
-        ["Resources"] = (reader, parent, element) => reader.AddResourceTable(parent, element),
-    }.ToFrozenDictionary(StringComparer.Ordinal);
+    // The format's elements that sit among a node's or a resource's content, by local name; the names are the
+    // vocabulary's, less x:Uid, which sits only in x:Uids.
+    private static readonly FrozenDictionary<string, ChildReader> FormatChildren = XscnFormatVocabulary
+        .Elements.Select(name => (Name: name, Read: FormatChild(name)))
+        .Where(child => child.Read is not null)
+        .ToFrozenDictionary(child => child.Name, child => child.Read!, StringComparer.Ordinal);
 
     private delegate void ChildReader(XscnTreeReader reader, ElementParts parent, IXmlElementSyntax element);
+
+    private static ChildReader? FormatChild(string name) =>
+        name switch
+        {
+            "Override" => (reader, parent, element) => reader.AddOverride(parent, element),
+            "Instance" => (reader, parent, element) => reader.AddInstance(parent, element),
+            "Connect" => (reader, parent, element) => reader.AddConnection(parent, element),
+            "Prop" => (reader, parent, element) => reader.AddProp(parent, element),
+            "Uids" => (reader, parent, element) => reader.AddUidTable(parent, element),
+            "Resources" => (reader, parent, element) => reader.AddResourceTable(parent, element),
+            "Uid" => null,
+            _ => throw new InvalidOperationException($"The vocabulary lists x:{name}, which the reader cannot read."),
+        };
 
     private XscnNode ReadRootNode(IXmlElementSyntax root)
     {
@@ -482,7 +491,7 @@ internal sealed partial class XscnTreeReader
 
     private XscnUid? ReadUid(IXmlElementSyntax entry)
     {
-        Dictionary<string, AttributeText> attributes = FixedAttributes(entry, ["Path", "Value"]);
+        Dictionary<string, AttributeText> attributes = FixedAttributes(entry, XscnFormatVocabulary.UidAttributes);
         ExpectNoElements(entry);
         AttributeText? path = Required(entry, attributes, "Path");
         AttributeText? value = Required(entry, attributes, "Value");

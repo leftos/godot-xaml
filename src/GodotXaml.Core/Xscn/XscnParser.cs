@@ -32,6 +32,24 @@ public static class XscnParser
         return new XscnParseResult(document, diagnostics, diagnostics.Any(d => d.Severity == XscnSeverity.Error));
     }
 
+    /// <summary>
+    /// Says what an offset of a document's text is on: a tag name, an attribute's name or value, content, a comment or an
+    /// end tag, with the element around it. Works on broken text, a half-typed tag or an unterminated value included.
+    /// </summary>
+    /// <param name="text">The document's text.</param>
+    /// <param name="offset">The offset, in UTF-16 code units, from 0 to the text's length.</param>
+    /// <param name="metadata">The metadata a class tag is resolved with.</param>
+    /// <returns>The context at the offset.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="offset"/> is negative or past the text's end.</exception>
+    public static XscnCursorContext ContextAt(string text, int offset, GodotMetadata metadata)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, text.Length);
+        return new XscnContextReader(text, offset, metadata).Read();
+    }
+
     // Indexing every class's properties is costly, so each metadata's names are built once.
     private static readonly ConditionalWeakTable<GodotMetadata, XscnPropertyNames> Names = new();
 
