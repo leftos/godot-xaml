@@ -1,0 +1,30 @@
+<SkeletonModification2DLookAt
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Bone2DNode="Skeleton2D/bone_2"
+    BoneIndex="2"
+    Metadata.extra='[SubResource("SkeletonModification2DStackHolder1"), SubResource("SkeletonModification2DTwoBoneIK1")]'
+    TargetNodePath="Target"
+    additional_rotation="90.0"
+    constraint_angle_invert="true"
+    constraint_angle_max="45.0"
+    constraint_angle_min="-30.0"
+    constraint_in_localspace="false"
+    enable_constraint="true">
+  <x:Resources>
+    <SkeletonModification2DStackHolder x:Key="SkeletonModification2DStackHolder1">
+      <SkeletonModification2DStackHolder.held_modification_stack>
+        <SkeletonModificationStack2D ModificationCount="1">
+          <SkeletonModificationStack2D.Modifications.0>
+            <SkeletonModification2DLookAt BoneIndex="1" />
+          </SkeletonModificationStack2D.Modifications.0>
+        </SkeletonModificationStack2D>
+      </SkeletonModification2DStackHolder.held_modification_stack>
+    </SkeletonModification2DStackHolder>
+    <SkeletonModification2DTwoBoneIK
+        x:Key="SkeletonModification2DTwoBoneIK1"
+        joint_one_bone2d_node='NodePath("Skeleton2D/bone_3")'
+        joint_one_bone_idx="3"
+        joint_two_bone2d_node='NodePath("Skeleton2D/bone_3/bone_4")'
+        joint_two_bone_idx="4" />
+  </x:Resources>
+</SkeletonModification2DLookAt>

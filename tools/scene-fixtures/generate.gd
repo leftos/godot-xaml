@@ -72,6 +72,7 @@ func _run() -> String:
 		_animation_nodes,
 		_animation_player_library,
 		_skeleton_modification_chains,
+		_skeleton_modification_singles,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -824,6 +825,41 @@ func _skeleton_modification_chains() -> String:
 		stack.add_modification(two_bone)
 	skeleton.set("modification_stack", stack)
 	return _save_scene("skeleton_modification_chains", skeleton)
+
+
+## A SkeletonModification2DLookAt with every stored key off its default, set in
+## SkeletonModification2DLookAt::_get_property_list order (the constraint keys are listed only
+## once enable_constraint is on), holding under metadata/extra a SkeletonModification2DStackHolder
+## whose held stack has one modification and a SkeletonModification2DTwoBoneIK with its four joint
+## keys (scene/resources/2d/skeleton/). The editor/ rows are listed only under an editor hint and
+## are never stored by a script run.
+func _skeleton_modification_singles() -> String:
+	var look_at := SkeletonModification2DLookAt.new()
+	look_at.set("bone_index", 2)
+	look_at.set("bone2d_node", NodePath("Skeleton2D/bone_2"))
+	look_at.set("target_nodepath", NodePath("Target"))
+	look_at.set("enable_constraint", true)
+	look_at.set("constraint_angle_min", -30.0)
+	look_at.set("constraint_angle_max", 45.0)
+	look_at.set("constraint_angle_invert", true)
+	look_at.set("constraint_in_localspace", false)
+	look_at.set("additional_rotation", 90.0)
+
+	var held := SkeletonModificationStack2D.new()
+	var held_look_at := SkeletonModification2DLookAt.new()
+	held_look_at.set("bone_index", 1)
+	held.add_modification(held_look_at)
+	var holder := SkeletonModification2DStackHolder.new()
+	holder.set("held_modification_stack", held)
+
+	var two_bone := SkeletonModification2DTwoBoneIK.new()
+	two_bone.set("joint_one_bone_idx", 3)
+	two_bone.set("joint_one_bone2d_node", NodePath("Skeleton2D/bone_3"))
+	two_bone.set("joint_two_bone_idx", 4)
+	two_bone.set("joint_two_bone2d_node", NodePath("Skeleton2D/bone_3/bone_4"))
+
+	look_at.set_meta("extra", [holder, two_bone])
+	return _save("skeleton_modification_singles.tres", look_at)
 
 
 ## An AnimationNodeAnimation that plays the named animation.

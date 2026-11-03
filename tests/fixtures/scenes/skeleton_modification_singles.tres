@@ -1,0 +1,29 @@
+[gd_resource type="SkeletonModification2DLookAt" format=3]
+
+[sub_resource type="SkeletonModification2DLookAt" id="SkeletonModification2DLookAt_a4ome"]
+bone_index = 1
+
+[sub_resource type="SkeletonModificationStack2D" id="SkeletonModificationStack2D_cxno4"]
+modification_count = 1
+modifications/0 = SubResource("SkeletonModification2DLookAt_a4ome")
+
+[sub_resource type="SkeletonModification2DStackHolder" id="SkeletonModification2DStackHolder_mm1q2"]
+held_modification_stack = SubResource("SkeletonModificationStack2D_cxno4")
+
+[sub_resource type="SkeletonModification2DTwoBoneIK" id="SkeletonModification2DTwoBoneIK_cwji1"]
+joint_one_bone_idx = 3
+joint_one_bone2d_node = NodePath("Skeleton2D/bone_3")
+joint_two_bone_idx = 4
+joint_two_bone2d_node = NodePath("Skeleton2D/bone_3/bone_4")
+
+[resource]
+bone_index = 2
+bone2d_node = NodePath("Skeleton2D/bone_2")
+target_nodepath = NodePath("Target")
+enable_constraint = true
+constraint_angle_min = -30.0
+constraint_angle_max = 45.0
+constraint_angle_invert = true
+constraint_in_localspace = false
+additional_rotation = 90.0
+metadata/extra = [SubResource("SkeletonModification2DStackHolder_mm1q2"), SubResource("SkeletonModification2DTwoBoneIK_cwji1")]
