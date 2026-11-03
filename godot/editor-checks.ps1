@@ -6,9 +6,9 @@ Runs the addon's editor checks in a windowed Godot 4.7 editor.
 .DESCRIPTION
 Recreates <repo>/.tmp/editor-checks, copies godot/, src/ and metadata/ into its run/ folder, overlays the editor_checks plugin
 and the fixtures of tools/editor-checks, and enables the plugin in the copy, so the tracked files stay untouched and nothing
-needs restoring. It then builds the copy, imports it headless twice, and starts the editor twice with the plugin's user
-arguments: once with --xscn-editor-checks=run, and once with --xscn-editor-checks=reopen, for the check that needs a fresh
-editor.
+needs restoring. It then builds the copy as a full rebuild (--no-incremental), imports it headless twice, and starts the
+editor twice with the plugin's user arguments: once with --xscn-editor-checks=run, and once with
+--xscn-editor-checks=reopen, for the check that needs a fresh editor.
 
 The plugin writes its CHECK, NOTE and DONE lines to results/results.txt under that folder, with a screenshot per check and
 copies of the saved scenes. The script echoes results.txt and prints EDITOR-CHECKS passed <p>, failed <f>, expected <n>.
@@ -126,7 +126,7 @@ Set-RunProjectSettings (Join-Path $runProject 'project.godot')
 
 # The first scan of a fresh project runs before the C# global classes register, so .xscn and .xres files get no uid
 # (docs/DECISIONS.md, "The addon registers from C#, as global classes"); the second scan has the classes.
-$prepared = (Invoke-Step 'build' { dotnet build (Join-Path $runProject 'GodotXaml.Addon.csproj') -c Debug -warnaserror }) -and
+$prepared = (Invoke-Step 'build' { dotnet build (Join-Path $runProject 'GodotXaml.Addon.csproj') -c Debug -warnaserror --no-incremental }) -and
     (Invoke-Step 'import' { & $godot --headless --path $runProject --import }) -and
     (Invoke-Step 'reimport' { & $godot --headless --path $runProject --import })
 

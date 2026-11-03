@@ -4,8 +4,9 @@
 Exports the godot/ project headless and checks that its .xscn and .xres ship as Godot binary.
 
 .DESCRIPTION
-Builds the godot/ project, imports it headless (which registers the addon's global classes and enables its editor
-plugin), then imports it again, then exports each preset of godot/export_presets.cfg to .tmp/export/ and checks it:
+Builds the godot/ project as a full rebuild (--no-incremental), imports it headless (which registers the addon's global
+classes and enables its editor plugin), then imports it again, then exports each preset of godot/export_presets.cfg to
+.tmp/export/ and checks it:
 
   EXPORT all           "Windows Desktop" (all resources): no godot-xaml error. Then PROBE P1..P8 on its pack.
   EXPORT selected      "Windows Selected" (selected scenes, no include filter): the loader-drop error naming the
@@ -30,7 +31,8 @@ Godot is $env:GODOT_PATH, else $env:GODOT_BIN. Prints EXPORT <id> PASS|FAIL <det
 lines and DONE <passed>/<total>; exits 0 only when every expected line passed.
 
 .EXAMPLE
-pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-export.log --slot heavy --timeout 1800 -- pwsh -NoProfile -File godot/export.ps1
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-export.log --slot heavy --timeout 1800 `
+    -- pwsh -NoProfile -File godot/export.ps1
 #>
 [CmdletBinding()]
 param()
@@ -135,7 +137,7 @@ function Test-Probe {
     }
 }
 
-$built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror }
+$built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror --no-incremental }
 if (-not $built) {
     exit 1
 }

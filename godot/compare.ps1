@@ -8,8 +8,8 @@ them.
 Copies the fixtures (tests/fixtures/scenes/*.tscn and *.tres), their converted goldens
 (tests/fixtures/converted/*.xscn and *.xres) into godot/cases/, recreated on each run, and the scripts the fixtures name
 (holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the
-fixtures' res:// paths point. Then builds the godot/ project, imports it headless (which registers the addon's loader),
-then imports it again, and runs res://compare/Compare.tscn headless. The expected pair count is the number of fixtures in
+fixtures' res:// paths point. Then builds the godot/ project as a full rebuild (--no-incremental), imports it headless
+(which registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless. The expected pair count is the number of fixtures in
 tests/fixtures/scenes (its .tscn and .tres files), passed to the scene as --expected-pairs=<n>. The scene prints
 COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is left in
 godot/cases/<name>.tscn.dump and <name>.xscn.dump, or <name>.tres.dump and <name>.xres.dump.
@@ -76,7 +76,7 @@ foreach ($script in $fixtureScripts) {
 }
 [Console]::Out.WriteLine('STEP copy exit 0')
 
-$built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror }
+$built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror --no-incremental }
 if (-not $built) {
     exit 1
 }
