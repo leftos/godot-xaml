@@ -4,42 +4,29 @@
 
 ## Core format
 
-- [ ] GXAML-23 GodotNames: match Godot's case tables and UTF-32 indexing, and check names against GodotSharp.dll · release vNext
-- [ ] GXAML-39 Core names: check the editor-class enum names against GodotSharpEditor · release vNext
-- [ ] GXAML-47 Core xscn parser: second format prefix, signal attributes on instances, empty property element
-- [ ] GXAML-48 Core xscn parser: pin XmlText decoding and comment-slot equality, reject an empty x:Key
-- [ ] GXAML-49 Metadata: round-trip the default-override texts, and point GodotPropertyInfo.Default at FindDefault
-- [ ] GXAML-54 Core conversion back: number a node's files in Godot's property-list order
-- [ ] GXAML-55 Core conversion: a property key holding a control character loses it
-- [ ] GXAML-75 Scene comparison: cover resources · release vNext
-- [ ] GXAML-78 Metadata dump: slash-named ClassDB properties
-- [ ] GXAML-79 Conversion back: more extensions with strict loaders
-- [ ] GXAML-82 Conversion back: place dynamic names by their declaring class
+- [ ] GXAML-78 Metadata dump: slash-named ClassDB properties · release vNext
+- [ ] GXAML-82 Conversion back: place dynamic names by their declaring class · release vNext
 
 ## Godot addon
 
-- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+1
-- [ ] GXAML-60 Addon: refresh the editor's cached dependencies of .xscn/.xres after an upgrade
-- [ ] GXAML-64 Addon: trace the PackedScene left cached, the unsaved mark after a move, and raw XML in an export
-- [ ] GXAML-68 Addon tests: pin each sub-resource's id after the comment carry, and catch an undisposed container in the walk
-- [ ] GXAML-76 Addon saver: a foreign sub-resource can take an x:Resources key by id
-- [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit
+- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext+2
+- [ ] GXAML-60 Addon: refresh the editor's cached dependencies of .xscn/.xres after an upgrade · release vNext
+- [ ] GXAML-64 Addon: trace the PackedScene left cached, the unsaved mark after a move, and raw XML in an export · release vNext
+- [ ] GXAML-68 Addon tests: pin each sub-resource's id after the comment carry, and catch an undisposed container in the walk · release vNext
+- [ ] GXAML-76 Addon saver: a foreign sub-resource can take an x:Resources key by id · release vNext
+- [ ] GXAML-81 Addon: check for a Variant finalizer crash at Godot exit · release vNext
 
 ## Agent tooling
 
 - [ ] GXAML-38 CLI: upgrade a project's .xscn files across a typing-changing Godot release
-- [ ] GXAML-51 CLI check: response files, -- before paths, BOM-less UTF-16, folder metadata, cwd in a test
-- [ ] GXAML-56 CLI convert: seed new ids from the res:// path, not the OS path
-- [ ] GXAML-58 CLI convert: a back conversion the rewrite breaks leaves dangling references
-- [ ] GXAML-59 CLI convert: reference scan misses entity-encoded quotes and matches Path= as a substring
-- [ ] GXAML-80 convert --project: follow scripts a left resource attaches
+- [ ] GXAML-98 convert: two x:Uids merged onto one path drop the second uid silently · release vNext
 
 ## Editor support
 
-- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext
-- [ ] GXAML-15 VS Code extension over the language server · release vNext
-- [ ] GXAML-16 Visual Studio extension over the language server · release vNext+1
-- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+1
+- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext+1
+- [ ] GXAML-15 VS Code extension over the language server · release vNext+1
+- [ ] GXAML-16 Visual Studio extension over the language server · release vNext+2
+- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+2
 
 ## Later
 
@@ -48,16 +35,17 @@
 
 ## Backlog
 
-- [ ] GXAML-24 Write docs/DEVELOPMENT.md: toolchain, run.ps1 verbs, hooks, metadata regeneration
-- [ ] GXAML-28 Metadata dump: silence or fix the OpenXR render_model_extension errors
-- [ ] GXAML-29 Docs: drop counts and path:line references from durable docs
-- [ ] GXAML-33 Metadata dump: defaults that do not match their declared type
-- [ ] GXAML-42 Core tscn: two remaining loader differences (bare resource file, cross-typed name and path fields)
-- [ ] GXAML-69 Docs: split the Markdown lines over 500 characters
-- [ ] GXAML-83 Addon saver: a save with no scene change keeps the file's own form
-- [ ] GXAML-84 Find the cause of two rare Godot crashes during first import
-- [ ] GXAML-86 Conversion back: property order on instance placeholders
+- [ ] GXAML-24 Write docs/DEVELOPMENT.md: toolchain, run.ps1 verbs, hooks, metadata regeneration · release vNext
+- [ ] GXAML-28 Metadata dump: silence or fix the OpenXR render_model_extension errors · release vNext
+- [ ] GXAML-29 Docs: drop counts and path:line references from durable docs · release vNext
+- [ ] GXAML-33 Metadata dump: defaults that do not match their declared type · release vNext
+- [ ] GXAML-69 Docs: split the Markdown lines over 500 characters · release vNext
+- [ ] GXAML-83 Addon saver: a save with no scene change keeps the file's own form · release vNext
+- [ ] GXAML-84 Find the cause of two rare Godot crashes during first import · release vNext
+- [ ] GXAML-94 Local install packs never take a released version's place in the shared NuGet cache · release vNext
 
 ## Design files
 
-- [v1-design.md](v1-design.md) — GXAML-11, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, GXAML-23, Agent tooling, Core format, Editor support, Godot addon
+- [language-server-libraries.md](language-server-libraries.md) — GXAML-14
+- [language-server.md](language-server.md) — GXAML-14
+- [v1-design.md](v1-design.md) — GXAML-11, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, Agent tooling, Core format, Editor support, Godot addon
