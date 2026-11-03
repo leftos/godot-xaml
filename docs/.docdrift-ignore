@@ -2,3 +2,7 @@
 extension_api.json
 GodotTools/*
 godot-xaml.json
+ScriptMethodsGenerator.cs
+VariantUtils.generic.cs
+# This PC's gate configuration, outside the repo.
+remote.json
