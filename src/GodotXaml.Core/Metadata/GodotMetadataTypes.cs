@@ -104,8 +104,14 @@ internal sealed record GodotClassParts(
 /// <param name="HintString">The hint string.</param>
 /// <param name="Usage">The property usage flags.</param>
 /// <param name="ClassName">The class name of an Object property, or empty.</param>
-/// <param name="DefaultText">The default as Godot value text, or null when no default is known.</param>
-/// <param name="Default">The default read from <paramref name="DefaultText"/>, or null when no default is known.</param>
+/// <param name="DefaultText">
+/// The declaring class's default for the property as Godot value text, or null when no default is known. The default for
+/// an element of a given class is <see cref="GodotMetadata.FindDefault"/>.
+/// </param>
+/// <param name="Default">
+/// The declaring class's default read from <paramref name="DefaultText"/>, or null when no default is known. The default
+/// for an element of a given class is <see cref="GodotMetadata.FindDefault"/>.
+/// </param>
 public sealed record GodotPropertyInfo(
     string Name,
     string CSharpName,

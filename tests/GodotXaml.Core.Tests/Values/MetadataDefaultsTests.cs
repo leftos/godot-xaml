@@ -28,6 +28,27 @@ public sealed class MetadataDefaultsTests
         Assert.Equal(DefaultCount, defaults.Count);
     }
 
+    // A default override is var_to_str of a class's own value for an inherited property too, and its texts include forms no
+    // declared default uses (1e-05, Array[Font]([]), mixed untyped arrays), so each one reads and writes back as itself.
+    [Fact]
+    public void WritesEveryDefaultOverrideBackUnchanged()
+    {
+        List<(string Class, string Property, string Text)> overrides = DefaultOverrides();
+        var mismatches = new List<string>();
+        foreach ((string _, string _, string text) in overrides)
+        {
+            string written = WriteBack(text);
+            if (written != text)
+            {
+                mismatches.Add($"{text} -> {written}");
+            }
+        }
+
+        Assert.True(mismatches.Count == 0, $"{mismatches.Count} of {overrides.Count} overrides differ:\n{string.Join('\n', mismatches.Take(20))}");
+        Assert.NotEmpty(overrides);
+        Assert.Equal("2", overrides.FirstOrDefault(o => o.Class == "Button" && o.Property == "focus_mode").Text);
+    }
+
     private static string WriteBack(string text)
     {
         try
@@ -56,5 +77,25 @@ public sealed class MetadataDefaultsTests
         }
 
         return defaults;
+    }
+
+    private static List<(string Class, string Property, string Text)> DefaultOverrides()
+    {
+        using var metadata = JsonDocument.Parse(File.ReadAllText(RepoFiles.PathOf("metadata", "godot-4.7.json")));
+        var overrides = new List<(string Class, string Property, string Text)>();
+        foreach (JsonProperty godotClass in metadata.RootElement.GetProperty("classes").EnumerateObject())
+        {
+            if (!godotClass.Value.TryGetProperty("defaultOverrides", out JsonElement defaults))
+            {
+                continue;
+            }
+
+            foreach (JsonProperty property in defaults.EnumerateObject())
+            {
+                overrides.Add((godotClass.Name, property.Name, property.Value.GetString()!));
+            }
+        }
+
+        return overrides;
     }
 }
