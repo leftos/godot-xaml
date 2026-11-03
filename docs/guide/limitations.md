@@ -16,7 +16,7 @@ What godot-xaml 0.1 does not do, or does differently from a `.tscn`.
 
 ## Projects
 
-- **Files Godot loads before any addon stay `.tscn` and `.tres`:** the files named by six project settings (the custom theme and font, the default bus layout, the custom mouse cursor, the default environment, the translations), and what they reference. No loader for `.xscn` exists that early.
+- **Files Godot loads before any addon stay `.tscn` and `.tres`:** the files named by the project settings for the custom theme and font, the default bus layout, the custom mouse cursor, the default environment and the translations, and what they reference. No loader for `.xscn` exists that early.
 - **A path a script builds at runtime is not rewritten** by `convert --project`; it warns about them (`GXP0006`).
 - **`godot-xaml check` reports parse problems only.** Problems found while converting a file for a load (`GXC` codes) show in the editor's Output panel.
 - **The first open after installing** does not list `.xscn` files; the second does ([Working in the editor](editor.md#the-first-open)).

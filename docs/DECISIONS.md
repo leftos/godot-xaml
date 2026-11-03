@@ -10,15 +10,17 @@ Why it is possible, from the Godot 4.7.2 source (`F:\Godot\src-4.7.2`):
 
 - A script can register both: `ResourceLoader.add_resource_format_loader` and `ResourceSaver.add_resource_format_saver` are bound in `core/core_bind.cpp`, and the virtuals cover uids (`_get_resource_uid`, `_set_uid`), dependencies (`_get_dependencies`) and the FileSystem dock's move and rename (`_rename_dependencies`) in `core/io/resource_loader.h` and `core/io/resource_saver.h`.
 - The editor's scene Open and Save dialogs list the extensions every registered loader and saver reports for `PackedScene` (`ResourceLoader::get_recognized_extensions_for_type` and `ResourceSaver::get_recognized_extensions` in `editor/editor_node.cpp`).
-- "Run current scene" passes the scene as `--scene <path>` (`editor/run/editor_run.cpp` L151), which takes any extension. Only a bare positional path on the command line must end in `.scn`, `.tscn`, `.escn`, `.res` or `.tres` (`main/main.cpp`).
-- Export converts only `.tscn` and `.tres` to binary (`editor/export/editor_export_platform.cpp` L1714), so the addon converts `.xscn` and `.xres` itself at export ("Exported games load binary through a remap").
-- About ten other places in the editor match `.tscn` by name, none of them on the open, edit, save or run path (for example the large-file warning in `editor/editor_node.cpp` L2539 and the FileSystem dock's open action in `editor/docks/filesystem_dock.cpp`).
+- "Run current scene" passes the scene as `--scene <path>` (`EditorRun::run` in `editor/run/editor_run.cpp`), which takes any extension. Only a bare positional path on the command line must end in `.scn`, `.tscn`, `.escn`, `.res` or `.tres` (`main/main.cpp`).
+- Export converts only `.tscn` and `.tres` to binary (`EditorExportPlatform::export_project_files` in `editor/export/editor_export_platform.cpp`, its `force_binary` test), so the addon converts `.xscn` and `.xres` itself at export ("Exported games load binary through a remap").
+- Other places in the editor match `.tscn` by name, none of them on the open, edit, save or run path (for example the large-file warning in `EditorNode::_save_scene` in `editor/editor_node.cpp` and the FileSystem dock's open action in `editor/docks/filesystem_dock.cpp`).
 
 ## The addon registers from C#, as global classes
 
 The loader and saver are C# classes marked `[GlobalClass]` and `[Tool]`, with bases `ResourceFormatLoader` and `ResourceFormatSaver`. No `EditorPlugin` adds them and no GDScript shim is needed.
 
-An `EditorPlugin` that adds them by hand does not last: on every script-class update the editor removes every script-backed loader and saver and re-adds only global classes (`editor/file_system/editor_file_system.cpp:2199-2205`, `core/io/resource_loader.cpp:1684-1713`, `core/io/resource_saver.cpp:254-283`). And an assembly reload recreates script instances only for tool scripts (`modules/mono/csharp_script.cpp:920-952`).
+An `EditorPlugin` that adds them by hand does not last: on every script-class update the editor removes every script-backed loader and saver and re-adds only global classes (`EditorFileSystem::_update_script_classes` in `editor/file_system/editor_file_system.cpp`, `ResourceLoader::add_custom_loaders` and `remove_custom_loaders` in `core/io/resource_loader.cpp`, `ResourceSaver::add_custom_savers` and `remove_custom_savers` in `core/io/resource_saver.cpp`).
+
+And an assembly reload recreates script instances only for tool scripts (`CSharpLanguage::reload_assemblies` in `modules/mono/csharp_script.cpp`).
 
 Measured on Godot 4.7.2 .NET with the GXAML-3 spike; `godot/editor-checks.ps1` runs the same checks on the real addon:
 - **Headless.** `--import` and a game run both find the C# global classes. A `.xscn` loads, instances inside a `.tscn`, saves and reloads, and runs with `--scene` the way F6 does.
@@ -28,7 +30,9 @@ Measured on Godot 4.7.2 .NET with the GXAML-3 spike; `godot/editor-checks.ps1` r
   - It is instanced into a `.tscn`, which records its path and uid.
   - A move resolves through the uid sidecar.
   - It still saves as `.xscn` after a C# rebuild with the scene open, and reopens after an editor restart.
-- **Rebuild.** Running a scene builds C# first (`editor/run/editor_run_bar.cpp:350-353` into GodotTools' `_Build`). The editor then reloads the assembly when its file is newer (`GodotTools/HotReloadAssemblyWatcher.cs`, `modules/mono/csharp_script.cpp:594-623`). The spike saw the build rewrite the assembly and the scene save correctly afterwards, but no script can observe the reload itself, so the addon's tests prove it with a counter that the reloaded assembly resets.
+- **Rebuild.** Running a scene builds C# first (`EditorRunBar::_run_scene` in `editor/run/editor_run_bar.cpp` calls `EditorNode::call_build`, into GodotTools' `_Build`). The editor then reloads the assembly when its file is newer (`GodotTools/HotReloadAssemblyWatcher.cs`, `CSharpLanguage::is_assembly_reloading_needed` in `modules/mono/csharp_script.cpp`).
+
+  The spike saw the build rewrite the assembly and the scene save correctly afterwards, but no script can observe the reload itself, so the addon's tests prove it with a counter that the reloaded assembly resets.
 - **First import.** A brand-new project's first import writes no `.uid` sidecar for a `.xscn`: the first file scan runs before the C# global classes register, so no loader claims the file yet, and the file does not show in the FileSystem dock at all, even with a sidecar. The second open shows it and writes the sidecar. The addon must give every `.xscn` a uid before a scene references it.
 - **By hand.** The owner checked the rest in the editor, and both passed:
   - Renaming a `.xscn` in the FileSystem dock renames its `.uid` sidecar too, rewrites the `.tscn` that instances it (path and uid), and the instance still loads.
@@ -45,7 +49,7 @@ A later `godot-xaml install` CLI verb can automate both steps. The folder's `.ed
 The format is XML in the XAML style: an element per node, its type as the tag, its properties as attributes. Names are those of Godot's C# API: PascalCase properties (`CustomMinimumSize`, `SizeFlagsHorizontal`) and C# enum member names as values (`MouseFilter="Ignore"`, `StretchMode="KeepAspectCentered"`, `SizeFlagsHorizontal="ExpandFill"`), never the backing integers a `.tscn` stores.
 
 - `Name="%Press"` marks a unique name (`unique_name_in_owner`), the way `GetNode("%Press")` reads it.
-- A value equal to the default is not written, and neither is a value the parent decides: `layout_mode` under a `Container` is always Container, so it is omitted. Outside a Container `layout_mode` is always written: its default comes from an unparented instance, and Godot's loader honours a value that is written (`scene/gui/control.cpp:981-982`).
+- A value equal to the default is not written, and neither is a value the parent decides: `layout_mode` under a `Container` is always Container, so it is omitted. Outside a Container `layout_mode` is always written: its default comes from an unparented instance, and Godot's loader honours a value that is written (`Control::_get_layout_mode` in `scene/gui/control.cpp`).
 - Enum names come from Godot itself, dumped to a metadata file by a headless Godot run, so tools outside Godot (the language server, Visual Studio) can name them too. A property's hint string is not enough: it holds display names (`mouse_filter`'s hint is `Stop,Pass (Propagate Up),Ignore`) and leaves out combined constants such as `ExpandFill`, so the dump takes the enum's members from `ClassDB.class_get_enum_constants`, linked to the property by its enum type.
 
 ## Attribute values are typed by the metadata
@@ -82,7 +86,7 @@ A Godot property whose name holds a `/` (`theme_override_constants/separation`, 
 
 A value that needs an element, such as an inline resource, uses the same name as a property element (`<VBoxContainer.ThemeOverrideStyles.panel>`). A key that is not a legal XML name falls back to `<x:Prop Name="…" Value="…" />` with the Godot name verbatim.
 
-The value follows the typed-values rule. Each theme-override family has one fixed type (`scene/gui/control.cpp:400-417`: colors are `Color`, constants and font sizes `int`, fonts `Font`, icons `Texture2D`, styles `StyleBox`), so the metadata file records each family's type and the core writes them in compact text (`ThemeOverrideColors.font_color="1, 0.8, 0, 1"`). `metadata/…` and `shader_parameter/…` values have no fixed type, so they are written as Godot value text.
+The value follows the typed-values rule. Each theme-override family has one fixed type (`Control::_get` in `scene/gui/control.cpp`: colors are `Color`, constants and font sizes `int`, fonts `Font`, icons `Texture2D`, styles `StyleBox`), so the metadata file records each family's type and the core writes them in compact text (`ThemeOverrideColors.font_color="1, 0.8, 0, 1"`). `metadata/…` and `shader_parameter/…` values have no fixed type, so they are written as Godot value text.
 
 ## Signals are attributes on the emitter
 
@@ -290,7 +294,9 @@ It also leaves every `.tres`/`.tscn` those reach through ext_resources, and ever
 
 A `uid://` value is resolved from the sources' headers, and a feature-tagged key counts. A `uid://` that names no file leaves nothing and prints nothing. The CLI does not read `override.cfg`. Each left file is named on an uncounted line, and the run neither converts, renames, backs up, removes nor rewrites references to it.
 
-Why, from the Godot 4.7.2 source: Godot loads these files before `ResourceLoader::add_custom_loaders()` (`main/main.cpp:3880-3881` and `:3691`, before `:4494`), so the addon's loaders do not exist yet; and a left theme whose ext_resource was converted fails whole at startup (`scene/resources/resource_format_text.cpp:147-160`). Whether a left file hits an export is unmeasured.
+Why, from the Godot 4.7.2 source: Godot loads these files before `ResourceLoader::add_custom_loaders()` (`Main::setup2` in `main/main.cpp`, through its `initialize_theme`, `load_default_bus_layout` and `load_project_translations` calls, before `Main::start` calls `add_custom_loaders`), so the addon's loaders do not exist yet; and a left theme whose ext_resource was converted fails whole at startup (`ResourceLoaderText::_parse_ext_resource` in `scene/resources/resource_format_text.cpp`).
+
+Whether a left file hits an export is unmeasured.
 
 ## A project conversion runs on one thread
 
