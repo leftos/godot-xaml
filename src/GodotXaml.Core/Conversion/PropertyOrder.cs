@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
 
@@ -7,17 +8,19 @@ namespace GodotXaml.Core.Conversion;
 /// <summary>
 /// Sorts a section's properties as Godot lists them, since a .tscn sets them in file order and some depend on it. Godot
 /// walks the class chain base first, each class's own properties then its dynamic names, then script, the script's
-/// exports and metadata (object.h:322-334, object.cpp:475-538). A slash-named name no list holds is a leaf class's dynamic
-/// name or a script's own; it goes after script, since a script's would be lost on a node with no script yet
-/// (packed_scene.cpp:494), and a section with no script loses nothing by it. The .xscn's alphabetical order cannot say the
-/// order among script exports or inside a dynamic family, so those keep source order.
+/// exports and metadata (object.h, the GDCLASS macro's _get_property_listv override; object.cpp,
+/// Object::get_property_list). A name the dynamic-family table (<see cref="DynamicPropertyFamilies"/>) places goes in its
+/// declaring class's place. Any other slash-named name no list holds is a script's own (or a family the table lacks); it
+/// goes after script, since a script's would be lost on a node with no script yet (packed_scene.cpp,
+/// SceneState::instantiate), and a section with no script loses nothing by it. The .xscn's alphabetical order cannot say
+/// the order among script exports or inside a dynamic family, so those keep source order.
 /// </summary>
 internal sealed class PropertyOrder(GodotMetadata metadata)
 {
     private const string MetadataPrefix = "metadata/";
     private const string ScriptProperty = "script";
 
-    private readonly Dictionary<string, Dictionary<string, Rank>> tables = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ClassOrder> tables = new(StringComparer.Ordinal);
 
     // The parts of Godot's list, in its order.
     private enum Tier
@@ -29,11 +32,12 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         Metadata,
     }
 
-    // Inside a class of the chain: its own list, then the theme overrides of Control or Window.
+    // Inside a class of the chain: its own list, then the theme overrides of Control or Window, then its dynamic names.
     private enum Family
     {
         OwnList,
         ThemeOverrides,
+        Dynamic,
     }
 
     /// <summary>The properties in Godot's order; a stable sort, so a repeated name keeps its order.</summary>
@@ -47,20 +51,29 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
             return properties;
         }
 
-        if (!tables.TryGetValue(cls.Name, out Dictionary<string, Rank>? table))
+        if (!tables.TryGetValue(cls.Name, out ClassOrder? order))
         {
-            table = Build(cls);
-            tables.Add(cls.Name, table);
+            order = Build(cls);
+            tables.Add(cls.Name, order);
         }
 
-        return [.. properties.OrderBy(property => RankOf(table, property.GodotName))];
+        return [.. properties.OrderBy(property => RankOf(order, property.GodotName))];
     }
 
-    private static Rank RankOf(Dictionary<string, Rank> listed, string name)
+    // The exact name, then the chain's dynamic families base first (Godot lists the base class first), then the name's shape.
+    private static Rank RankOf(ClassOrder order, string name)
     {
-        if (listed.TryGetValue(name, out Rank rank))
+        if (order.Listed.TryGetValue(name, out Rank rank))
         {
             return rank;
+        }
+
+        foreach ((Regex pattern, Rank slot) in order.Families)
+        {
+            if (pattern.IsMatch(name))
+            {
+                return slot;
+            }
         }
 
         if (name.StartsWith(MetadataPrefix, StringComparison.Ordinal))
@@ -90,7 +103,23 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         return -1;
     }
 
-    private Dictionary<string, Rank> Build(GodotClassInfo cls)
+    // Each chain class's dynamic families, base first, in the order the class adds them.
+    private static ImmutableArray<(Regex Pattern, Rank Slot)> FamiliesOf(ImmutableArray<GodotClassInfo> chain)
+    {
+        ImmutableArray<(Regex Pattern, Rank Slot)>.Builder families = ImmutableArray.CreateBuilder<(Regex Pattern, Rank Slot)>();
+        for (int depth = 0; depth < chain.Length; depth++)
+        {
+            ImmutableArray<Regex> declared = DynamicPropertyFamilies.Of(chain[depth].Name);
+            for (int index = 0; index < declared.Length; index++)
+            {
+                families.Add((declared[index], new Rank(Tier.ClassList, depth, Family.Dynamic, index)));
+            }
+        }
+
+        return families.ToImmutable();
+    }
+
+    private ClassOrder Build(GodotClassInfo cls)
     {
         ImmutableArray<GodotClassInfo> chain = [.. metadata.ChainOf(cls).Reverse()];
         Dictionary<string, Rank> listed = new(StringComparer.Ordinal);
@@ -113,8 +142,11 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
             }
         }
 
-        return listed;
+        return new ClassOrder(listed, FamiliesOf(chain));
     }
+
+    // A class's exact names and its chain's dynamic families.
+    private sealed record ClassOrder(Dictionary<string, Rank> Listed, ImmutableArray<(Regex Pattern, Rank Slot)> Families);
 
     private readonly record struct Rank(Tier Tier, int Depth = 0, Family Family = Family.OwnList, int Index = 0) : IComparable<Rank>
     {
