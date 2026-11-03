@@ -55,7 +55,11 @@ internal static class XscnSaveRoute
             Seed = XscnLoading.Seed,
             ScriptClassOf = GodotProjectLookups.ScriptClassOf,
             Previous = previous,
-            OwnedSubResourceIds = OwnedSubResourceIds(resource, path),
+            // The map pairs only with the previous file's x:Resources entries, so with none there is nothing to walk for.
+            OwnedSubResourceIds =
+                previous is null || previous.Resources.IsDefaultOrEmpty
+                    ? new Dictionary<string, string>(StringComparer.Ordinal)
+                    : OwnedSubResourceIds(resource, path),
         };
         TscnDocument withUids = WithProjectUids(tscn, path, previous);
         ConversionResult<XscnDocument> converted = TscnToXscn.Convert(withUids, XscnMetadata.Value, options);
@@ -119,24 +123,56 @@ internal static class XscnSaveRoute
     // same id as one of its own; Godot's text saver then keeps the id on the first of the two it meets and re-mints the
     // other's on the live resource (resource_format_text.cpp, ResourceFormatSaverTextInstance::save), so the live id is the
     // text's and the path still names the id it loaded with. ResourceSaver hands the saver the path unlocalized
-    // (resource_saver.cpp, ResourceSaver::save). Read before TakeOverSubResourcePaths renames them.
+    // (resource_saver.cpp, ResourceSaver::save). A load names a sub-resource from the localized path, which simplifies a
+    // "res://a/../b" (project_settings.cpp, ProjectSettings::localize_path), but TakeOverSubResourcePaths, like Godot's text
+    // saver, names it from the raw one, so either form marks the file's own (SubResourceOwner). Read before
+    // TakeOverSubResourcePaths renames them.
     private static Dictionary<string, string> OwnedSubResourceIds(Resource saved, string path)
     {
-        string prefix = ProjectSettings.LocalizePath(path) + "::";
+        string localized = ProjectSettings.LocalizePath(path);
         Dictionary<string, string> owned = new(StringComparer.Ordinal);
         XscnLoadRoute.WalkOwnResources(
             saved,
             IsBuiltIn,
             resource =>
             {
-                // The root's path is the file's or empty, never "<file>::<id>", so the prefix alone skips it.
-                if (resource.ResourcePath.StartsWith(prefix, StringComparison.Ordinal))
+                // The root's path is the file's or empty, never "<file>::<id>", so it is no sub-resource of the file.
+                if (SubResourceOwner(resource.ResourcePath, path, localized, out string id) == Owner.ThisFile)
                 {
-                    owned[resource.ResourceSceneUniqueId] = resource.ResourcePath[prefix.Length..];
+                    owned[resource.ResourceSceneUniqueId] = id;
                 }
             }
         );
         return owned;
+    }
+
+    private enum Owner
+    {
+        // An empty path or a file's own path, not "<file>::<id>".
+        None,
+        ThisFile,
+        OtherFile,
+    }
+
+    // Which file a "<file>::<id>" path names: the saved one when its file part is the path the saver was given or its
+    // localized form, another file's otherwise. The id is the part after "::", empty unless the owner is ThisFile.
+    private static Owner SubResourceOwner(string resourcePath, string path, string localizedPath, out string id)
+    {
+        id = "";
+        int separator = resourcePath.IndexOf("::", StringComparison.Ordinal);
+        if (separator < 0)
+        {
+            return Owner.None;
+        }
+
+        string file = resourcePath[..separator];
+        if (!string.Equals(file, path, StringComparison.Ordinal) && !string.Equals(file, localizedPath, StringComparison.Ordinal))
+        {
+            return Owner.OtherFile;
+        }
+
+        id = resourcePath[(separator + 2)..];
+        return Owner.ThisFile;
     }
 
     private static bool TakesOverPaths(string path, uint flags) =>

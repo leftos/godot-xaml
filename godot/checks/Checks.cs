@@ -151,6 +151,7 @@ public partial class Checks : Node
             ("C54", ForeignSubResourceDoesNotTakeAKey),
             ("C55", ForeignSubResourceDoesNotTakeAnEditedKey),
             ("C56", OneForeignUserKeepsTheOwnComment),
+            ("C58", NonCanonicalPathKeepsTheKey),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -806,6 +807,57 @@ public partial class Checks : Node
                         : ""
                 )
         );
+
+    // ResourceSaver hands the saver the path unlocalized and the takeover names the sub-resources with it, as Godot's text
+    // saver does, so after a save through res://<folder>/../<folder>/b.xscn the box's path holds the "..". B's own box,
+    // edited so only its id pairs it, still keeps its key and comment on the next save through the same path.
+    private static string NonCanonicalPathKeepsTheKey()
+    {
+        const string name = "non-canonical";
+        string folder = OutFolder + name + "/";
+        string path = folder + "b.xscn";
+        string rawPath = folder + "../" + name + "/b.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(folder));
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), ForeignBScene);
+            if (ResourceLoader.Load(path) is not PackedScene scene)
+            {
+                return $"loading {path} did not return a PackedScene";
+            }
+
+            Node root = scene.Instantiate();
+            string failure;
+            try
+            {
+                if (root.GetNodeOrNull("Own1")?.Get("theme_override_styles/panel").AsGodotObject() is not StyleBoxFlat own)
+                {
+                    return "B's Own1 has no StyleBoxFlat";
+                }
+
+                failure = PackAndSave(root, rawPath, "the first save through the non-canonical path");
+                if (failure.Length == 0)
+                {
+                    own.BgColor = new Color(0, 1, 0);
+                    failure = PackAndSave(root, rawPath, "the second save through the non-canonical path");
+                }
+            }
+            finally
+            {
+                root.Free();
+            }
+
+            GC.KeepAlive(scene);
+            return failure.Length > 0
+                ? failure
+                : OwnBoxFailure(File.ReadAllText(ProjectSettings.GlobalizePath(path)).ReplaceLineEndings("\n"), "0, 1, 0, 1");
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
 
     private static string Failures(params string[] failures) => string.Join("; ", failures.Where(f => f.Length > 0));
 

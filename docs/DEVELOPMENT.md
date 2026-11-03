@@ -52,7 +52,7 @@ Call it bare, `./run.ps1 <verb>` or `pwsh -NoProfile -File run.ps1 <verb>`, neve
 
 ## Godot-side harnesses
 
-Each script builds the `godot/` project, imports it headless, which registers the addon's global classes, then imports it again, then runs its scene or export, and exits 0 only when every step exited 0, nothing failed and every expected line passed. Each runs through the gate with `--no-markers`, as its help gives it; for the checks, because the expected load failure prints Godot's `ERROR:` line.
+Each script builds the `godot/` project as a full rebuild (`--no-incremental`, so a source restored with an older write time is rebuilt), imports it headless, which registers the addon's global classes, then imports it again, then runs its scene or export, and exits 0 only when every step exited 0, nothing failed and every expected line passed. Each runs through the gate with `--no-markers`, as its help gives it; for the checks, because the expected load failure prints Godot's `ERROR:` line.
 
 ### Headless addon checks
 

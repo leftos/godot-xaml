@@ -1,12 +1,12 @@
 #requires -Version 7
 <#
 .SYNOPSIS
-Runs the addon's headless checks C1 to C57 in Godot 4.7.
+Runs the addon's headless checks C1 to C58 in Godot 4.7.
 
 .DESCRIPTION
-Builds the godot/ project, imports it headless (which registers the addon's global classes), then imports it again, then
-runs res://checks/Checks.tscn headless. The scene prints CHECK <id> PASS or CHECK <id> FAIL <detail> per check and
-DONE <passed>/<total>.
+Builds the godot/ project as a full rebuild (--no-incremental), imports it headless (which registers the addon's global
+classes), then imports it again, then runs res://checks/Checks.tscn headless. The scene prints CHECK <id> PASS or CHECK
+<id> FAIL <detail> per check and DONE <passed>/<total>.
 
 Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no check failed,
 every expected check passed and the scene printed DONE with all of them.
@@ -27,7 +27,7 @@ $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env
 }
 
 $project = $PSScriptRoot
-$expectedChecks = 56
+$expectedChecks = 57
 
 function Invoke-Step {
     param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][scriptblock] $Command)
@@ -38,7 +38,7 @@ function Invoke-Step {
     return $code -eq 0
 }
 
-$built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror }
+$built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror --no-incremental }
 if (-not $built) {
     exit 1
 }
