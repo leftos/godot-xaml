@@ -181,9 +181,12 @@ internal static class XscnLoadRoute
     // after the scene (resource_format_text.cpp:632-636): into the cache unless the cache is ignored. TakeOverPath stands in
     // place of SetPathCache, not after it, since set_path returns early on an equal path (resource.cpp:80-82). The walk
     // enters only the loaded resource and resources with no path or a temp-file path: another file cannot hold this file's
-    // sub-resources, and reading its properties can be costly (a mesh's buffers).
+    // sub-resources, and reading its properties can be costly (a mesh's buffers). Each one named is recorded in
+    // SubResourceOrigins with this file and its id, in one call for the load, since a later save of another file may take
+    // its path over.
     private static void NameSubResourcesAfter(Resource loaded, string tempPrefix, string pathPrefix, bool cached)
     {
+        var origins = new List<(ulong InstanceId, string Id)>();
         WalkOwnResources(
             loaded,
             resourcePath => IsOwnSubResource(resourcePath, tempPrefix),
@@ -192,7 +195,9 @@ internal static class XscnLoadRoute
                 Interlocked.Increment(ref walkVisits);
                 if (resource.ResourcePath.StartsWith(tempPrefix, StringComparison.Ordinal))
                 {
-                    string named = pathPrefix + resource.ResourcePath[tempPrefix.Length..];
+                    string id = resource.ResourcePath[tempPrefix.Length..];
+                    string named = pathPrefix + id;
+                    origins.Add((resource.GetInstanceId(), id));
                     if (cached)
                     {
                         resource.TakeOverPath(named);
@@ -204,6 +209,7 @@ internal static class XscnLoadRoute
                 }
             }
         );
+        SubResourceOrigins.RecordAll(ProjectSettings.LocalizePath(pathPrefix[..^2]), origins);
     }
 
     private static bool IsOwnSubResource(string resourcePath, string tempPrefix) =>

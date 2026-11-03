@@ -84,6 +84,29 @@ public partial class Checks : Node
 
     private const string OwnKeyUse = "ThemeOverrideStyles.panel=\"{StyleBoxFlat1}\"";
 
+    private const string ARedBoxComment = "<!-- A's own red box -->";
+
+    // C61's scene A: C54's A with a comment above its box.
+    private static readonly string ForeignACommentedScene = ForeignAScene.Replace(
+        "  <x:Resources>\n",
+        "  <x:Resources>\n    " + ARedBoxComment + "\n",
+        StringComparison.Ordinal
+    );
+
+    // C62's first file: a shared box and an inline one on the Button, written by hand, so no node carries an id yet.
+    private const string SaveAsFirstScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + "  <x:Resources>\n"
+        + "    <StyleBoxFlat x:Key=\"Shared\" BgColor=\"1, 0, 0, 1\" />\n"
+        + "  </x:Resources>\n"
+        + "  <Button Name=\"Button\" ThemeOverrideStyles.normal=\"{Shared}\">\n"
+        + "    <Button.ThemeOverrideStyles.hover>\n"
+        + "      <StyleBoxFlat BgColor=\"0, 1, 0, 1\" />\n"
+        + "    </Button.ThemeOverrideStyles.hover>\n"
+        + "  </Button>\n"
+        + "  <Panel Name=\"Other\" ThemeOverrideStyles.panel=\"{Shared}\" />\n"
+        + "</Control>\n";
+
     private static readonly string LoaderTempFolder = Path.Combine(Path.GetTempPath(), "godot-xaml");
 
     private static readonly string[] ResourceTypesToHandle = ["StyleBox", "Theme"];
@@ -156,6 +179,8 @@ public partial class Checks : Node
             ("C58", NonCanonicalPathKeepsTheKey),
             ("C59", ScriptedResourceKeepsItsWrapper),
             ("C60", ScriptHandsItselfToCSharp),
+            ("C61", ForeignOwnerKeepsItsKeyAfterTheTakeover),
+            ("C62", SaveAsFromALoadedFileTakesOverTheBoxes),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -861,6 +886,70 @@ public partial class Checks : Node
         {
             DeleteFolder(OutFolder);
         }
+    }
+
+    // As C54, then from the same session: B's save took A's live box over (its path now names b.xscn), and A's own box,
+    // edited so only its id pairs it, is saved with A. A's entry keeps its key and its comment.
+    private static string ForeignOwnerKeepsItsKeyAfterTheTakeover()
+    {
+        string folder = OutFolder + "foreign-owner/";
+        string aPath = folder + "a.xscn";
+        string bPath = folder + "b.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(folder));
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(aPath), ForeignACommentedScene);
+            File.WriteAllText(ProjectSettings.GlobalizePath(bPath), ForeignBScene);
+            if (ResourceLoader.Load(aPath) is not PackedScene a || ResourceLoader.Load(bPath) is not PackedScene b)
+            {
+                return $"loading {aPath} or {bPath} did not return a PackedScene";
+            }
+
+            Node aRoot = a.Instantiate();
+            Node bRoot = b.Instantiate();
+            string failure;
+            string takenOver = "";
+            try
+            {
+                failure = GiveForeignBox(aRoot, bRoot, ["F1", "F2"], null);
+                failure = failure.Length > 0 ? failure : PackAndSave(bRoot, bPath, "saving B");
+                if (failure.Length == 0)
+                {
+                    var box = (StyleBoxFlat)aRoot.GetNode("P1").Get("theme_override_styles/panel").AsGodotObject();
+                    takenOver = box.ResourcePath;
+                    box.BgColor = new Color(1, 1, 0);
+                    failure = PackAndSave(aRoot, aPath, "saving A");
+                }
+            }
+            finally
+            {
+                aRoot.Free();
+                bRoot.Free();
+            }
+
+            GC.KeepAlive(a);
+            GC.KeepAlive(b);
+            return failure.Length > 0
+                ? failure
+                : ARedBoxFailure(File.ReadAllText(ProjectSettings.GlobalizePath(aPath)).ReplaceLineEndings("\n"), takenOver);
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A's edited box keeps its key with its comment directly above it, and its two panels use it.
+    private static string ARedBoxFailure(string text, string takenOver)
+    {
+        string entry = $"{ARedBoxComment}\n    <StyleBoxFlat x:Key=\"StyleBoxFlat1\" BgColor=\"1, 1, 0, 1\" />";
+        int uses = Occurrences(text, OwnKeyUse);
+        string verdict = Failures(
+            text.Contains(entry, StringComparison.Ordinal) ? "" : "the text has no StyleBoxFlat1 of 1, 1, 0, 1 under A's comment",
+            uses == 2 ? "" : $"{OwnKeyUse} appears {uses} times, not twice"
+        );
+        return verdict.Length == 0 ? "" : $"{verdict} (A's box was at \"{takenOver}\" before A's save):\n{text}";
     }
 
     private static string Failures(params string[] failures) => string.Join("; ", failures.Where(f => f.Length > 0));
@@ -1697,6 +1786,54 @@ public partial class Checks : Node
             string failures = SavedBoxFailures(path, [normal, hover]);
             GC.KeepAlive(scene);
             return failures;
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A faithful Save As from a loaded file whose nodes carry no ids yet, onto a file that exists with the same text: the
+    // boxes loaded from the first file, so they are not the target's own, and they move to the file written last, as in C44.
+    private static string SaveAsFromALoadedFileTakesOverTheBoxes()
+    {
+        const string first = OutFolder + "first.xscn";
+        const string path = OutFolder + "existing.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(first), SaveAsFirstScene);
+            File.Copy(ProjectSettings.GlobalizePath(first), ProjectSettings.GlobalizePath(path));
+            if (ResourceLoader.Load(first) is not PackedScene scene)
+            {
+                return $"loading {first} did not return a PackedScene";
+            }
+
+            Node root = scene.Instantiate();
+            Resource[] boxes;
+            string failure;
+            try
+            {
+                Node button = root.GetNode("Button");
+                if (
+                    button.Get("theme_override_styles/normal").AsGodotObject() is not Resource normal
+                    || button.Get("theme_override_styles/hover").AsGodotObject() is not Resource hover
+                )
+                {
+                    return $"{first}'s Button has no normal and hover boxes";
+                }
+
+                boxes = [normal, hover];
+                failure = PackAndSave(root, path, "the Save As");
+            }
+            finally
+            {
+                root.Free();
+            }
+
+            GC.KeepAlive(scene);
+            return failure.Length > 0 ? failure : SavedBoxFailures(path, boxes);
         }
         finally
         {

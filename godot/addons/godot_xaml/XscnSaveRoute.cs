@@ -126,7 +126,9 @@ internal static class XscnSaveRoute
     // (resource_saver.cpp, ResourceSaver::save). A load names a sub-resource from the localized path, which simplifies a
     // "res://a/../b" (project_settings.cpp, ProjectSettings::localize_path), but TakeOverSubResourcePaths, like Godot's text
     // saver, names it from the raw one, so either form marks the file's own (SubResourceOwner). Read before
-    // TakeOverSubResourcePaths renames them.
+    // TakeOverSubResourcePaths renames them. Another file's save takes over the sub-resources it borrowed from this one, so
+    // a path that names no file of its own falls back to the file and id the sub-resource was loaded with
+    // (SubResourceOrigins), which no save changes.
     private static Dictionary<string, string> OwnedSubResourceIds(Resource saved, string path)
     {
         string localized = ProjectSettings.LocalizePath(path);
@@ -140,6 +142,14 @@ internal static class XscnSaveRoute
                 if (SubResourceOwner(resource.ResourcePath, path, localized, out string id) == Owner.ThisFile)
                 {
                     owned[resource.ResourceSceneUniqueId] = id;
+                }
+                else if (
+                    resource.GetInstanceId() != saved.GetInstanceId()
+                    && SubResourceOrigins.TryGet(resource, out (string File, string Id) origin)
+                    && (string.Equals(origin.File, path, StringComparison.Ordinal) || string.Equals(origin.File, localized, StringComparison.Ordinal))
+                )
+                {
+                    owned[resource.ResourceSceneUniqueId] = origin.Id;
                 }
             }
         );

@@ -13,6 +13,7 @@
 - A TileSet whose tiles have terrains keeps them: converting back no longer writes a tile's terrain before its terrain set, which made Godot drop it.
 - Converting back writes TileSet layers, tile proxies and scene tiles in Godot's order.
 - A property Godot registers with a type its getter does not return (SpringBoneCollision3D `BoneName`) is written as a plain attribute on every class, not `x:Prop`.
+- A scene whose built-in sub-resource another scene borrowed, by Make Local or a drag, keeps that entry's `x:Resources` comment when saved after the other scene.
 - Converting back writes PhysicalBone3D joint constraints and SoftBody3D attachments in Godot's order.
 - Converting back writes slash-named properties such as Environment's `glow_levels/1` and joint `params/` at their place in Godot's order.
 
