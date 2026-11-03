@@ -24,9 +24,14 @@ The release ships the core, the CLI and the addon package at one version, on one
 
 ## Phase 2: Version
 
-Set `<v>` in the three homes `tools/pack-release.ps1` checks: `VersionPrefix` in `Directory.Build.props`, `version` in `godot/addons/godot_xaml/plugin.cfg`, and the `GodotXaml.Core` `PackageReference` in `README.md`.
+Set `<v>` in the four homes `tools/pack-release.ps1` checks:
 
-**Done when** all three read `<v>`.
+- `VersionPrefix` in `Directory.Build.props`;
+- `version` in `godot/addons/godot_xaml/plugin.cfg`;
+- the `GodotXaml.Core` `PackageReference` in `README.md`;
+- every `godot-xaml/blob/v<v>/` link, and the version line, in `godot/addons/godot_xaml/AGENTS.md`.
+
+**Done when** all four read `<v>`.
 
 ## Phase 3: Changelog
 
@@ -54,9 +59,9 @@ To stop the script, use `pwsh -NoProfile -File tools/gate.ps1 stop-tree <its bas
 
 The packages carry the commit they were built from, so the release commit comes first.
 
-1. Commit `CHANGELOG.md`, `README.md`, `Directory.Build.props` and `godot/addons/godot_xaml/plugin.cfg` with the message `chore: release <v>`:
+1. Commit `CHANGELOG.md`, `README.md`, `Directory.Build.props`, `godot/addons/godot_xaml/plugin.cfg` and `godot/addons/godot_xaml/AGENTS.md` with the message `chore: release <v>`:
 
-   `pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/commit.log --slot light --timeout 1200 -- git commit -F .tmp/msg-release-<v>.txt -- CHANGELOG.md README.md Directory.Build.props godot/addons/godot_xaml/plugin.cfg`
+   `pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/commit.log --slot light --timeout 1200 -- git commit -F .tmp/msg-release-<v>.txt -- CHANGELOG.md README.md Directory.Build.props godot/addons/godot_xaml/plugin.cfg godot/addons/godot_xaml/AGENTS.md`
 2. Tag it: `git tag -a v<v> -m "godot-xaml <v>"`.
 
 **Done when** `git status --short` is empty and `git rev-parse "v<v>^{commit}"` is `HEAD`.
@@ -80,8 +85,14 @@ pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/pack.log --slot heavy --time
 5. Create the GitHub release, attaching all three files:
 
    `gh release create v<v> --latest --title "godot-xaml <v>" --notes-file .tmp/release-notes-<v>.md .tmp/release/<v>/GodotXaml.Core.<v>.nupkg .tmp/release/<v>/GodotXaml.Cli.<v>.nupkg .tmp/release/<v>/godot-xaml-addon-<v>.zip`
+6. Install the agent skill on this machine, its links pinned to the tag just pushed: `pwsh -NoProfile -File tools/install-skill.ps1 -Version <v>`.
 
-**Done when** `git ls-remote --tags origin v<v>` shows the tag, `gh release view v<v>` lists the three assets and marks the release as latest, and both packages were pushed or reported as duplicates.
+**Done when** all of these hold:
+
+- `git ls-remote --tags origin v<v>` shows the tag;
+- `gh release view v<v>` lists the three assets and marks the release as latest;
+- both packages were pushed or reported as duplicates;
+- `~/.claude/skills/godot-xaml` is a junction to `%LOCALAPPDATA%\godot-xaml\versions\<v>\skill`.
 
 ## Phase 8: Cut
 

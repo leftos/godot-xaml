@@ -1,0 +1,23 @@
+# godot-xaml
+
+> XAML-style .xscn scenes and .xres resources for Godot 4.7+ .NET: nested, readable XML that the Godot editor opens, edits and saves through a C# addon, with a CLI that checks, formats and converts them to and from .tscn/.tres.
+
+Element tags are Godot class names in C# form, attributes are C# property names, and enum values are C# member names. The core library is the NuGet package GodotXaml.Core, the CLI the .NET tool GodotXaml.Cli (command `godot-xaml`), and the editor addon ships as a zip with each GitHub release.
+
+## Docs
+
+- [Getting started](https://github.com/leftos/godot-xaml/blob/main/docs/guide/getting-started.md): install the addon and the CLI, and make a first scene.
+- [Format reference](https://github.com/leftos/godot-xaml/blob/main/docs/format/README.md): elements, attributes, names, resources, instances, signals and the canonical form.
+- [Value text](https://github.com/leftos/godot-xaml/blob/main/docs/format/values.md): every Godot value type's text in an attribute.
+- [Diagnostics](https://github.com/leftos/godot-xaml/blob/main/docs/format/diagnostics.md): every GX, GXC, GXP and GXT code.
+- [CLI reference](https://github.com/leftos/godot-xaml/blob/main/src/GodotXaml.Cli/README.md): `godot-xaml check`, `convert` and `format`.
+
+## Agents
+
+- [AGENTS.md](https://github.com/leftos/godot-xaml/blob/main/godot/addons/godot_xaml/AGENTS.md): the rules for an agent editing a project that uses godot-xaml; it ships inside the addon.
+- [Claude Code skill](https://github.com/leftos/godot-xaml/blob/main/agents/skill/godot-xaml/SKILL.md): the same rules as a skill, with [a condensed reference](https://github.com/leftos/godot-xaml/blob/main/agents/skill/godot-xaml/reference.md).
+
+## Optional
+
+- [Editor guide](https://github.com/leftos/godot-xaml/blob/main/docs/guide/editor.md), [export](https://github.com/leftos/godot-xaml/blob/main/docs/guide/export.md), [converting a project](https://github.com/leftos/godot-xaml/blob/main/docs/guide/converting.md), [troubleshooting](https://github.com/leftos/godot-xaml/blob/main/docs/guide/troubleshooting.md), [limitations](https://github.com/leftos/godot-xaml/blob/main/docs/guide/limitations.md).
+- [Core library](https://github.com/leftos/godot-xaml/blob/main/src/GodotXaml.Core/README.md): parse, write and convert from C#.

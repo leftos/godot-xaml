@@ -3,6 +3,7 @@
 ## Map
 
 - [`guide/getting-started.md`](guide/getting-started.md): the guides for people using godot-xaml: installing, [the editor](guide/editor.md), [exporting](guide/export.md), [converting a project](guide/converting.md), [troubleshooting](guide/troubleshooting.md) and [limitations](guide/limitations.md).
+- [`../agents/skill/godot-xaml/SKILL.md`](../agents/skill/godot-xaml/SKILL.md): the docs for agents, a Claude Code skill installed user-level by `tools/install-skill.ps1`; the same rules ship in the addon as [`AGENTS.md`](../godot/addons/godot_xaml/AGENTS.md), and [`../llms.txt`](../llms.txt) indexes the docs.
 - [`format/README.md`](format/README.md): the `.xscn` and `.xres` format reference, with [`format/values.md`](format/values.md) for every value type's text and [`format/diagnostics.md`](format/diagnostics.md) for every error and warning code.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): the components, what each owns, and where to start for a change.
 - [`DECISIONS.md`](DECISIONS.md): the owner's decisions and the Godot source facts behind them.

@@ -4,11 +4,11 @@
 Builds the three files a godot-xaml release ships, under .tmp/release/<version>/.
 
 .DESCRIPTION
-Checks that the version in its three homes equals -Version: VersionPrefix in Directory.Build.props, version in
-godot/addons/godot_xaml/plugin.cfg, and the GodotXaml.Core PackageReference in README.md. Then it deletes and recreates
-.tmp/release/<version>/, packs GodotXaml.Core and GodotXaml.Cli there, and zips the addon there as
-godot-xaml-addon-<version>.zip, with entries under addons/godot_xaml/, dotfiles and .uid files included, and any bin/ or
-obj/ left out.
+Checks that the version in its four homes equals -Version: VersionPrefix in Directory.Build.props, version in
+godot/addons/godot_xaml/plugin.cfg, the GodotXaml.Core PackageReference in README.md, and every docs link at the
+release tag in godot/addons/godot_xaml/AGENTS.md. Then it deletes and recreates .tmp/release/<version>/, packs
+GodotXaml.Core and GodotXaml.Cli there, and zips the addon there as godot-xaml-addon-<version>.zip, with entries under
+addons/godot_xaml/, dotfiles and .uid files included, and any bin/ or obj/ left out.
 
 The script exits 0 only when the folder holds exactly the two packages and the zip, and prints their names and sizes.
 It tags nothing and publishes nothing.
@@ -37,9 +37,23 @@ $addonFolder = Join-Path $repoRoot 'godot/addons/godot_xaml'
 function Get-VersionMismatch {
     param(
         [Parameter(Mandatory)][string] $VersionHome,
-        [Parameter(Mandatory)][string] $Pattern
+        [Parameter(Mandatory)][string] $Pattern,
+        [switch] $AllMatches
     )
     $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $VersionHome)
+    if ($AllMatches) {
+        $matches = [regex]::Matches($text, $Pattern)
+        if ($matches.Count -eq 0) {
+            return "${VersionHome}: no version found (expected to match $Pattern)"
+        }
+        # Every occurrence must agree with -Version, so a file naming it more than once cannot pass on its first match.
+        foreach ($match in $matches) {
+            if ($match.Groups[1].Value -ne $Version) {
+                return "${VersionHome}: $($match.Groups[1].Value)"
+            }
+        }
+        return $null
+    }
     $found = [regex]::Match($text, $Pattern)
     if (-not $found.Success) {
         return "${VersionHome}: no version found (expected to match $Pattern)"
@@ -56,6 +70,8 @@ function Assert-VersionHomes {
         Get-VersionMismatch -VersionHome 'Directory.Build.props' -Pattern '<VersionPrefix>([^<]*)</VersionPrefix>'
         Get-VersionMismatch -VersionHome 'godot/addons/godot_xaml/plugin.cfg' -Pattern '(?m)^version="([^"]*)"'
         Get-VersionMismatch -VersionHome 'README.md' -Pattern '<PackageReference Include="GodotXaml\.Core" Version="([^"]*)" />'
+        Get-VersionMismatch -VersionHome 'godot/addons/godot_xaml/AGENTS.md' -AllMatches `
+            -Pattern 'godot-xaml/blob/v(\d+\.\d+\.\d+)/'
     ) | Where-Object { $_ }
     if ($mismatches) {
         throw "pack-release.ps1: these version homes differ from $Version; set them, then pack again:`n  $($mismatches -join "`n  ")"
