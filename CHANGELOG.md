@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The addon's `AGENTS.md` and the agent skill install the CLI as a local tool at the addon's version, run as `dotnet godot-xaml`.
+
 ## 0.2.0 - 2026-11-03
 
 ### Added

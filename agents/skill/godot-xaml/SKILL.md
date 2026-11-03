@@ -63,15 +63,15 @@ The rules that trip agents most:
 ## After every edit
 
 ```sh
-godot-xaml check <files or folder>
-godot-xaml format <files or folder>
+dotnet godot-xaml check <files or folder>
+dotnet godot-xaml format <files or folder>
 ```
 
 `check` reports every parse problem as `path(line,col): error GXnnnn: message`. Fix each one; [reference.md](reference.md#codes-you-will-meet) lists the common codes. `format` rewrites files into the canonical layout the editor writes, so a later editor save does not produce a noisy diff. Commit only files that `check` passes.
 
 `check` does not run the conversion a load runs. A few problems show only when Godot loads the file, as `GXC` codes in the Output panel; an unknown `{Key}` (`GXC0102`) is the common one. When a Godot run is available, load the scene once, for example with godot-mcp, to catch them.
 
-When the tool is missing, it installs with `dotnet tool install -g GodotXaml.Cli`.
+Use the CLI at the project's godot-xaml version: the project's `addons/godot_xaml/AGENTS.md` names that version and how to install it, as a local tool run with `dotnet godot-xaml`. That file also wins over this skill for the version of every doc link, since a project may pin an older release than the one this skill was installed from.
 
 ## Uids
 
@@ -82,8 +82,8 @@ When the tool is missing, it installs with `dotnet tool install -g GodotXaml.Cli
 ## Converting
 
 ```sh
-godot-xaml convert --project <root>          # every .tscn/.tres to .xscn/.xres, all or nothing
-godot-xaml convert --project <root> --back   # and back
+dotnet godot-xaml convert --project <root>          # every .tscn/.tres to .xscn/.xres, all or nothing
+dotnet godot-xaml convert --project <root> --back   # and back
 ```
 
 Run these only when the owner asks. The run backs up the originals to `.godot-xaml-backup/`, rewrites references and script strings, and warns about paths it could not rewrite as `GXP0006`, up to three lines per file and then one line for the rest. Those need a change by hand.

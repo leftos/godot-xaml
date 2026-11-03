@@ -21,7 +21,8 @@ The format reference is at https://github.com/leftos/godot-xaml/blob/v0.2.0/docs
 - **Files are `res://` paths.** In value text a file is `Resource("res://…")`; never use `ExtResource(…)`.
 - **Every node has a `Name`.** The root declares `xmlns:x="https://github.com/leftos/godot-xaml/format/1"`.
 - **Nodes inside an instanced scene** are changed with `<x:Override Path="…">`, a direct child of the instance element.
-- **Check and format after every edit.** Run `godot-xaml check <paths>` and `godot-xaml format <paths>`, and fix every reported code. `check` reports parse problems; a few problems (`GXC` codes) show only when Godot loads the file. Install the tool with `dotnet tool install -g GodotXaml.Cli`. The codes are listed at https://github.com/leftos/godot-xaml/blob/v0.2.0/docs/format/diagnostics.md.
+- **Check and format after every edit.** Run `dotnet godot-xaml check <paths>` and `dotnet godot-xaml format <paths>`, and fix every reported code. `check` reports parse problems; a few problems (`GXC` codes) show only when Godot loads the file. The codes are listed at https://github.com/leftos/godot-xaml/blob/v0.2.0/docs/format/diagnostics.md.
+- **Use the CLI at this addon's version.** Install it as a local tool of the project, pinned to 0.2.0: `dotnet new tool-manifest` when the project has no `.config/dotnet-tools.json`, then `dotnet tool install GodotXaml.Cli --version 0.2.0`. When the addon is updated, update the tool to the same version (`dotnet tool update GodotXaml.Cli --version <new version>`). A global `godot-xaml` of another version may check against a different format.
 - **Commit `.uid` sidecars** (`main.xscn.uid`). Never delete one, and never invent a uid. Leave the `<x:Uids>` table to the editor.
 - **Move and rename files in the Godot editor,** so references are rewritten.
 

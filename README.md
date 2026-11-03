@@ -51,7 +51,7 @@ To update, raise the package version and replace `addons/godot_xaml/` with the n
 
 To run a `.xscn` from the command line, use `godot --path <project> --scene res://X.xscn`: a bare `.xscn` path plays the main scene instead.
 
-The command-line tool installs with `dotnet tool install -g GodotXaml.Cli`.
+The command-line tool installs best as a local tool pinned to the same version as the addon and `GodotXaml.Core`: run `dotnet new tool-manifest` if the project has no `.config/dotnet-tools.json`, then `dotnet tool install GodotXaml.Cli --version 0.2.0`, and run it as `dotnet godot-xaml`. A global install (`dotnet tool install -g GodotXaml.Cli`) also works.
 
 ## Converting a project
 

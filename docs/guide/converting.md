@@ -1,6 +1,6 @@
 # Converting a project
 
-`godot-xaml convert` turns `.tscn` and `.tres` files into `.xscn` and `.xres`, and back. Install it with `dotnet tool install -g GodotXaml.Cli`. Every option and message is in [the CLI reference](../../src/GodotXaml.Cli/README.md#convert).
+`godot-xaml convert` turns `.tscn` and `.tres` files into `.xscn` and `.xres`, and back. Install it as a local tool pinned to the addon's version (`dotnet tool install GodotXaml.Cli --version <version>`), which runs as `dotnet godot-xaml convert`; a global install (`-g`) runs as `godot-xaml convert`. Every option and message is in [the CLI reference](../../src/GodotXaml.Cli/README.md#convert).
 
 ## A whole project
 

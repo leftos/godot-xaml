@@ -52,13 +52,18 @@ To open a `.xscn` from a script or a headless run, pass it with `--scene`: `godo
 
 ## Install the command-line tool
 
-The `godot-xaml` tool checks, formats and converts files outside the editor, for scripts, hooks, CI and agents:
+The `godot-xaml` tool checks, formats and converts files outside the editor, for scripts, hooks, CI and agents.
+
+Install it as a local tool pinned to the same version as the addon:
 
 ```sh
-dotnet tool install -g GodotXaml.Cli
+dotnet new tool-manifest
+dotnet tool install GodotXaml.Cli --version <version>
 ```
 
-As a local tool (`dotnet tool install GodotXaml.Cli`), dotnet writes `.config/dotnet-tools.json` with CRLF line endings and no final newline. A repository that enforces LF will see its hooks change that file; commit it as the hooks leave it.
+`dotnet new tool-manifest` is needed only when the project has no `.config/dotnet-tools.json`. A local install runs the commands as `dotnet godot-xaml <verb>`. A global install (`dotnet tool install -g GodotXaml.Cli`) runs them as `godot-xaml <verb>`.
+
+Dotnet writes `.config/dotnet-tools.json` with CRLF line endings and no final newline. A repository that enforces LF will see its hooks change that file; commit it as the hooks leave it.
 
 Its commands are in [the CLI reference](../../src/GodotXaml.Cli/README.md).
 
