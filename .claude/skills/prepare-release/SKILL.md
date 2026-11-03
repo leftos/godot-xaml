@@ -24,14 +24,17 @@ The release ships the core, the CLI and the addon package at one version, on one
 
 ## Phase 2: Version
 
-Set `<v>` in the four homes `tools/pack-release.ps1` checks:
+Set `<v>` in the five homes `tools/pack-release.ps1` checks:
 
 - `VersionPrefix` in `Directory.Build.props`;
 - `version` in `godot/addons/godot_xaml/plugin.cfg`;
 - the `GodotXaml.Core` `PackageReference` in `README.md`;
+- every `godot-xaml-addon-<v>.zip` name in `README.md`'s install steps;
 - every `godot-xaml/blob/v<v>/` link, and the version line, in `godot/addons/godot_xaml/AGENTS.md`.
 
-**Done when** all four read `<v>`.
+Then run `pwsh -NoProfile -File tools/pack-release.ps1 -Version <v> -CheckOnly`, which checks the five homes, refuses a `v<v>` tag already on `origin` (the minutes before nuget.org lists a pushed version) and a version nuget.org lists, and packs nothing.
+
+**Done when** all five read `<v>` and `-CheckOnly` prints `pack-release.ps1: <v> is free to release`.
 
 ## Phase 3: Changelog
 
@@ -76,7 +79,7 @@ pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/pack.log --slot heavy --time
 
 To try an install before a release, pack with `-Local` and point the trial project at that folder, naming the exact version the pack printed (`<PackageReference Include="GodotXaml.Core" Version="<v>-local.<UTC stamp>" />`, or `dotnet tool install --prerelease --version <v>-local.<UTC stamp>` for the CLI): a reference to `<v>` restores the published package instead.
 
-A local version never takes a published version's place in the shared NuGet packages folder, which keeps the first package restored under a version and never fetches it again. Delete the `*-local.*` folders under `godotxaml.core` and `godotxaml.cli` in that packages folder once the trial is done. `tools/pack-release.ps1` refuses, without `-Local`, a version already on nuget.org.
+A local version never takes a published version's place in the shared NuGet packages folder, which keeps the first package restored under a version and never fetches it again. Delete the `*-local.*` folders under `godotxaml.core` and `godotxaml.cli` in that packages folder once the trial is done. `tools/pack-release.ps1` refuses, without `-Local`, a version whose tag is on `origin` or which nuget.org lists. A `-Local` zip's `plugin.cfg` names the local version, so the trial project's plugin list shows it.
 
 ## Phase 7: Push and publish
 
