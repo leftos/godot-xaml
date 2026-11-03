@@ -256,6 +256,8 @@ Each component gets an entry here in the commit that adds its project.
 
   C33 to C45 cover sub-resources: the takeover on save (also over an existing file, after a rename, and not without the flag), the cache on load, Replace and Reuse of live sub-resources, a failed replace, a dropped scene leaving the cache, and a non-stored script variable left alone; the cases `held.gd` and `contained.xscn` serve them.
 
+  C63 to C66 cover load diagnostics: warnings reaching Godot's log by severity (a clean parse logs its warnings, a failed one logs warnings and errors apart), no GX0107 for a class the running engine has, and a failed load pruning old kept temp files.
+
   Run with `pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-checks.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/checks.ps1` (`--no-markers` because the expected load failure prints Godot's `ERROR:` line).
 - `godot/compare/`: the scene comparison inside Godot 4.7.2. `Compare.cs` loads each `tests/fixtures/scenes/*.tscn` and `*.tres` and its golden in `tests/fixtures/converted/` (the `.xscn` or `.xres` through the addon's loader) and compares a canonical dump of each.
 

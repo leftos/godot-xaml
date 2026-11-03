@@ -227,7 +227,7 @@ internal static class XscnLoading
 
     private static Error Rename(string path, Godot.Collections.Dictionary renames)
     {
-        Error readError = ReadAndParse(path, pushWarnings: true, out XscnDocument? document);
+        Error readError = ReadAndParse(path, pushWarnings: false, out XscnDocument? document);
         if (document is null)
         {
             return readError == Error.ParseError ? Error.FileCorrupt : readError;
@@ -374,21 +374,45 @@ internal static class XscnLoading
         }
 
         XscnParseResult result = XscnParser.Parse(text, IsScene(path) ? XscnDocumentKind.Scene : XscnDocumentKind.Resource, XscnMetadata.Value);
+        PushDiagnostics(path, text, result.Diagnostics, pushWarnings);
         if (result.HasErrors)
         {
-            var lines = new LineMap(text);
-            foreach (XscnDiagnostic diagnostic in result.Diagnostics.Where(d => pushWarnings || d.Severity == XscnSeverity.Error))
-            {
-                LinePosition position = lines.OneBased(diagnostic.Span.Start);
-                GD.PushError($"{path}:{position.Line}:{position.Column}: {diagnostic.Code}: {diagnostic.Message}");
-            }
-
             return Error.ParseError;
         }
 
         document = result.Document;
         return Error.Ok;
     }
+
+    // Each diagnostic goes to Godot's log with its own severity: an error always, a warning only when asked.
+    private static void PushDiagnostics(string path, string text, ImmutableArray<XscnDiagnostic> diagnostics, bool pushWarnings)
+    {
+        XscnDiagnostic[] pushed = [.. diagnostics.Where(d => (d.Severity == XscnSeverity.Error || pushWarnings) && !KnownToEngine(d, text))];
+        if (pushed.Length == 0)
+        {
+            return;
+        }
+
+        var lines = new LineMap(text);
+        foreach (XscnDiagnostic diagnostic in pushed)
+        {
+            LinePosition position = lines.OneBased(diagnostic.Span.Start);
+            string message = $"{path}:{position.Line}:{position.Column}: {diagnostic.Code}: {diagnostic.Message}";
+            if (diagnostic.Severity == XscnSeverity.Error)
+            {
+                GD.PushError(message);
+            }
+            else
+            {
+                GD.PushWarning(message);
+            }
+        }
+    }
+
+    // A GDExtension class can be registered in this engine and missing from the bundled metadata, and the file still loads
+    // through it, so a GX0107 naming a class the running engine has is not a warning. The diagnostic's span is the element's tag.
+    private static bool KnownToEngine(XscnDiagnostic diagnostic, string text) =>
+        diagnostic.Code == XscnCodes.UnknownClass && ClassDB.ClassExists(text.Substring(diagnostic.Span.Start, diagnostic.Span.Length));
 
     /// <summary>Pushes each conversion error, and each warning when asked, to Godot's log, and tells whether any was an error.</summary>
     private static bool PushIssues(string path, ImmutableArray<ConversionIssue> issues, bool pushWarnings)

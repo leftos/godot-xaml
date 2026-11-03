@@ -22,7 +22,9 @@ Godot takes a bare path as a scene only when it ends in `.scn`, `.tscn`, `.escn`
 
 ## A scene does not load
 
-The Output panel names the file, the line and column, and each problem with a `GX` code, such as `res://ui/main_menu.xscn:4:6: GX0104: <Button> has no Name; every node needs one.` Look the code up in [the diagnostics reference](../format/diagnostics.md), fix the text, and reload. `godot-xaml check <file>` prints the parse problems (`GX` codes) from the command line; problems found while converting for a load (`GXC` codes) show only in the Output panel.
+The Output panel names the file, the line and column, and each problem with a `GX` code, such as `res://ui/main_menu.xscn:4:6: GX0104: <Button> has no Name; every node needs one.` Look the code up in [the diagnostics reference](../format/diagnostics.md), fix the text, and reload. `godot-xaml check <file>` prints the parse problems (`GX` codes) from the command line; problems found while converting for a load (`GXC` codes) show only in the Output panel. A file that loads can show parse warnings there too (`GX0107` for a tag no class has).
+
+When Godot's text loader rejects the converted text, the message names the temporary file kept for inspection. Kept files over a day old are removed on the next failed load.
 
 ## A uid reference breaks after a move
 

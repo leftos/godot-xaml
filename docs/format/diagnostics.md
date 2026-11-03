@@ -80,7 +80,7 @@ Error. `Expected one of …, or an integer.` An enum or flags property names a m
 
 ### GX0107 Unknown class
 
-Warning. `No Godot class is named Name; the element is kept with an unknown type.` The tag is not a class the metadata knows. It may be a GDExtension class, which loads; otherwise check the spelling, using the class's C# name (`CpuParticles2D`).
+Warning. `No Godot class is named Name; the element is kept with an unknown type.` The tag is not a class the metadata knows. It may be a GDExtension class, which loads; otherwise check the spelling, using the class's C# name (`CpuParticles2D`). The Godot addon does not report it for a class the running engine has, such as a GDExtension class; `godot-xaml check` does.
 
 ### GX0108 Missing attribute
 

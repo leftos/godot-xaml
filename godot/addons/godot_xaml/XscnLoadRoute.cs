@@ -17,6 +17,10 @@ internal static class XscnLoadRoute
 {
     private static readonly string Folder = Path.Combine(Path.GetTempPath(), "godot-xaml");
 
+    // A kept file is never one a live load or save is using: each deletes its own file within the call that made it, so a
+    // file this old is a leftover from a process that died.
+    private static readonly TimeSpan KeptFileRetention = TimeSpan.FromHours(24);
+
     private static int walkVisits;
 
     private static volatile bool recordTempPaths;
@@ -39,7 +43,8 @@ internal static class XscnLoadRoute
 
     /// <summary>
     /// Writes the text to a temp file and loads it through Godot's text loader: with the cache ignored, or on a reuse or a
-    /// replace in that mode, with the live sub-resources; then deletes the file unless the load failed.
+    /// replace in that mode, with the live sub-resources; then deletes the file unless the load failed, in which case it is
+    /// kept and every kept file over a day old in the folder is removed.
     /// </summary>
     /// <param name="path">The <c>.xscn</c> or <c>.xres</c> being loaded, for the error message and its sub-resources' paths.</param>
     /// <param name="text">The converted text.</param>
@@ -76,6 +81,7 @@ internal static class XscnLoadRoute
             if (loaded is null)
             {
                 keep = true;
+                PruneKeptFiles(tempPath);
                 GD.PushError($"{path}: Godot could not load the converted text; it is kept at {tempPath}.");
                 return (int)Error.FileCorrupt;
             }
@@ -102,6 +108,44 @@ internal static class XscnLoadRoute
             if (!keep)
             {
                 File.Delete(tempPath);
+            }
+        }
+    }
+
+    // Deletes every *.tscn and *.tres file left in the folder more than a day ago, never the file a failed load is keeping. A
+    // file that cannot be removed, or a folder that cannot be listed, is a warning: nothing may throw out of the load path.
+    private static void PruneKeptFiles(string keeping)
+    {
+        string kept = Path.GetFileName(keeping);
+        DateTime cutoff = DateTime.UtcNow - KeptFileRetention;
+        string[] files;
+        try
+        {
+            files = Directory.GetFiles(Folder);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            GD.PushWarning($"godot-xaml: could not list the kept files in {Folder}: {exception.Message}");
+            return;
+        }
+
+        foreach (string file in files)
+        {
+            if (Path.GetExtension(file) is not (".tscn" or ".tres") || string.Equals(Path.GetFileName(file), kept, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            try
+            {
+                if (File.GetLastWriteTimeUtc(file) < cutoff)
+                {
+                    File.Delete(file);
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                GD.PushWarning($"godot-xaml: could not remove the old kept file {file}: {exception.Message}");
             }
         }
     }

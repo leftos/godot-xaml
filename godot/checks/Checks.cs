@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Godot;
 using GodotXaml.Addon;
 using GodotXaml.Core.Conversion;
+using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
@@ -107,6 +108,19 @@ public partial class Checks : Node
         + "  <Panel Name=\"Other\" ThemeOverrideStyles.panel=\"{Shared}\" />\n"
         + "</Control>\n";
 
+    // C63's scene: an unknown class parses with a GX0107 warning and nothing else.
+    private const string WarnedScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + "  <NoSuchGodotClass Name=\"Unknown\" />\n"
+        + "</Control>\n";
+
+    // C64's scene: the same warning beside a parse error, a node without a Name (GX0104).
+    private const string FailedParseScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + "  <NoSuchGodotClass Name=\"Unknown\" />\n"
+        + "  <Panel />\n"
+        + "</Control>\n";
+
     private static readonly string LoaderTempFolder = Path.Combine(Path.GetTempPath(), "godot-xaml");
 
     private static readonly string[] ResourceTypesToHandle = ["StyleBox", "Theme"];
@@ -181,6 +195,10 @@ public partial class Checks : Node
             ("C60", ScriptHandsItselfToCSharp),
             ("C61", ForeignOwnerKeepsItsKeyAfterTheTakeover),
             ("C62", SaveAsFromALoadedFileTakesOverTheBoxes),
+            ("C63", CleanParseWarningsArePushed),
+            ("C64", FailedParsePushesWarningsAsWarnings),
+            ("C65", FailedLoadPrunesOldKeptFiles),
+            ("C66", KnownEngineClassIsNotWarned),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -294,6 +312,200 @@ public partial class Checks : Node
         }
 
         return calls == 1 ? "" : $"the custom loader was called {calls} times, not once";
+    }
+
+    // A clean parse's warning reaches Godot's log as a warning: the unknown class makes the parse warn (GX0107) and nothing else.
+    private static string CleanParseWarningsArePushed()
+    {
+        const string path = OutFolder + "warned.xscn";
+        if (ParseSetupFailure(WarnedScene, expectError: false) is { } setup)
+        {
+            return setup;
+        }
+
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), WarnedScene);
+            (Resource? loaded, WarningLog log) = LoadLogged(path);
+            GC.KeepAlive(loaded);
+            return Logged(log.Entries, Logger.ErrorType.Warning, "warned.xscn", XscnCodes.UnknownClass)
+                ? ""
+                : $"the load logged no warning naming warned.xscn and {XscnCodes.UnknownClass}: [{LogText(log.Entries)}]";
+        }
+        finally
+        {
+            DeleteKeptTempFiles(tempPathsBeforeLoad);
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A failed parse pushes its warning as a warning and its error as an error, and still fails the load.
+    private static string FailedParsePushesWarningsAsWarnings()
+    {
+        const string path = OutFolder + "failed.xscn";
+        if (ParseSetupFailure(FailedParseScene, expectError: true) is { } setup)
+        {
+            return setup;
+        }
+
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), FailedParseScene);
+            (Resource? loaded, WarningLog log) = LoadLogged(path);
+
+            // The fixture's error is the node without a Name, and the load returns nothing for either of them.
+            return Failures(
+                loaded is null ? "" : $"loading {path} returned a {loaded.GetClass()}, not null",
+                Logged(log.Entries, Logger.ErrorType.Error, XscnCodes.MissingName) ? "" : $"the log holds no {XscnCodes.MissingName} error",
+                Logged(log.Entries, Logger.ErrorType.Warning, XscnCodes.UnknownClass) ? "" : $"the log holds no {XscnCodes.UnknownClass} warning"
+            );
+        }
+        finally
+        {
+            DeleteKeptTempFiles(tempPathsBeforeLoad);
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A failed load that keeps its temp file prunes the folder: an old kept file goes, a recent one stays, and the error still
+    // names this load's own file.
+    private static string FailedLoadPrunesOldKeptFiles()
+    {
+        const string copyPath = OutFolder + "prune.xscn";
+        string oldFile = Path.Combine(LoaderTempFolder, $"{Guid.NewGuid():N}.tscn");
+        string recentFile = Path.Combine(LoaderTempFolder, $"{Guid.NewGuid():N}.tres");
+        int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
+        try
+        {
+            Directory.CreateDirectory(LoaderTempFolder);
+            File.WriteAllText(oldFile, "");
+            File.WriteAllText(recentFile, "");
+            File.SetLastWriteTimeUtc(oldFile, DateTime.UtcNow - TimeSpan.FromDays(2));
+            File.SetLastWriteTimeUtc(recentFile, DateTime.UtcNow - TimeSpan.FromHours(1));
+            DeleteFolder(OutFolder);
+            Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+            string holder = File.ReadAllText(ProjectSettings.GlobalizePath(HolderPath));
+            File.WriteAllText(
+                ProjectSettings.GlobalizePath(copyPath),
+                holder.Replace("</Control>", AbstractSubResource + "</Control>", StringComparison.Ordinal)
+            );
+            WarningLog log = LoadLogged(copyPath).Log;
+            string[] kept = [.. XscnLoadRoute.TempPaths.Skip(tempPathsBeforeLoad).Where(File.Exists)];
+            return Failures(
+                File.Exists(oldFile) ? $"the file kept two days was not pruned: {oldFile}" : "",
+                File.Exists(recentFile) ? "" : $"the file kept an hour was pruned: {recentFile}",
+                kept.Length > 0 ? "" : "the failed load kept no temp file",
+                kept.Any(file => Logged(log.Entries, Logger.ErrorType.Error, file)) ? "" : $"no error names the kept file [{string.Join(", ", kept)}]"
+            );
+        }
+        finally
+        {
+            File.Delete(recentFile);
+            DeleteKeptTempFiles(tempPathsBeforeLoad);
+            if (File.Exists(oldFile))
+            {
+                File.Delete(oldFile);
+            }
+
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A class the running engine has is never warning material: the bundled metadata can lack a class this engine registered,
+    // and the file still loads through it.
+    private static string KnownEngineClassIsNotWarned()
+    {
+        const string path = OutFolder + "known.xscn";
+        var metadata = GodotMetadata.LoadBundled("4.7");
+        string? engineClass = ClassDB
+            .GetClassList()
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .FirstOrDefault(name =>
+                metadata.FindClassByCSharpName(name) is null
+                && XscnParser.Parse(KnownScene(name), XscnDocumentKind.Scene, metadata).Diagnostics.Any(d => d.Code == XscnCodes.UnknownClass)
+            );
+        if (engineClass is null)
+        {
+            return "setup: every ClassDB class is in the bundled metadata";
+        }
+
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), KnownScene(engineClass));
+            (Resource? loaded, WarningLog log) = LoadLogged(path);
+            GC.KeepAlive(loaded);
+            return LoggedAny(log.Entries, "known.xscn", XscnCodes.UnknownClass)
+                ? $"the load warned about {engineClass}, which this engine has: [{LogText(log.Entries)}]"
+                : "";
+        }
+        finally
+        {
+            DeleteKeptTempFiles(tempPathsBeforeLoad);
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // The scene C66 loads: a root node holding one child of the named class.
+    private static string KnownScene(string className) => $"<Node Name=\"Root\">\n  <{className} Name=\"Known\" />\n</Node>\n";
+
+    // The setup a warning check needs: the parse reaches Godot's log at all, with the diagnostics its fixture means it to have.
+    private static string? ParseSetupFailure(string text, bool expectError)
+    {
+        XscnParseResult result = XscnParser.Parse(text, XscnDocumentKind.Scene, GodotMetadata.LoadBundled("4.7"));
+        bool warned = result.Diagnostics.Any(d => d.Code == XscnCodes.UnknownClass && d.Severity == XscnSeverity.Warning);
+        bool errored = result.Diagnostics.Any(d => d.Severity == XscnSeverity.Error);
+        if (warned && errored == expectError)
+        {
+            return null;
+        }
+
+        string codes = string.Join(", ", result.Diagnostics.Select(d => $"{d.Code} ({d.Severity})"));
+        string expected = expectError ? "an error" : "no error";
+        return $"setup: the parse gave [{codes}], not a {XscnCodes.UnknownClass} warning and {expected}";
+    }
+
+    // Loads the file with a logger added around the load, and hands back what it returned and what it logged.
+    private static (Resource? Loaded, WarningLog Log) LoadLogged(string path)
+    {
+        var log = new WarningLog();
+        OS.AddLogger(log);
+        try
+        {
+            return (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore), log);
+        }
+        finally
+        {
+            OS.RemoveLogger(log);
+        }
+    }
+
+    // Whether the log holds an entry of this severity whose text names every one of the given strings.
+    private static bool Logged(IReadOnlyList<(Logger.ErrorType Type, string Text)> entries, Logger.ErrorType type, params string[] names) =>
+        entries.Any(entry => entry.Type == type && names.All(name => entry.Text.Contains(name, StringComparison.Ordinal)));
+
+    // Whether the log holds any entry, whatever its severity, whose text names every one of the given strings.
+    private static bool LoggedAny(IReadOnlyList<(Logger.ErrorType Type, string Text)> entries, params string[] names) =>
+        entries.Any(entry => names.All(name => entry.Text.Contains(name, StringComparison.Ordinal)));
+
+    // The log's entries as text, each with the severity it was logged as, for a failure message.
+    private static string LogText(IReadOnlyList<(Logger.ErrorType Type, string Text)> entries) =>
+        string.Join(", ", entries.Select(entry => $"{entry.Type}: {entry.Text}"));
+
+    private static void DeleteKeptTempFiles(int countBefore)
+    {
+        foreach (string kept in XscnLoadRoute.TempPaths.Skip(countBefore).Where(File.Exists))
+        {
+            File.Delete(kept);
+        }
     }
 
     private static string CustomSaverIsChosen()
@@ -1079,18 +1291,30 @@ public partial class Checks : Node
             : $"setup: Godot's text saver did not meet A's box first (A's box became {foreignAfter}, B's {ownAfter}, from {id})";
     }
 
-    // The errors and warnings Godot logs while it is added, which may come from any thread.
+    // The errors and warnings Godot logs while it is added, which may come from any thread, each with the severity Godot gave it.
     private sealed partial class WarningLog : Logger
     {
-        private readonly List<string> messages = [];
+        private readonly List<(Logger.ErrorType Type, string Text)> entries = [];
+
+        /// <summary>The log's entries in order, each with the severity it was logged as.</summary>
+        public IReadOnlyList<(Logger.ErrorType Type, string Text)> Entries
+        {
+            get
+            {
+                lock (entries)
+                {
+                    return [.. entries];
+                }
+            }
+        }
 
         public IReadOnlyList<string> Messages
         {
             get
             {
-                lock (messages)
+                lock (entries)
                 {
-                    return [.. messages];
+                    return [.. entries.Select(entry => entry.Text)];
                 }
             }
         }
@@ -1106,9 +1330,9 @@ public partial class Checks : Node
             Godot.Collections.Array<ScriptBacktrace> scriptBacktraces
         )
         {
-            lock (messages)
+            lock (entries)
             {
-                messages.Add($"{code} {rationale}");
+                entries.Add(((Logger.ErrorType)errorType, $"{code} {rationale}"));
             }
         }
     }

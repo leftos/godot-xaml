@@ -40,7 +40,7 @@ A file that does not parse fails to load, as a broken `.tscn` does. The Output p
 res://ui/main_menu.xscn:4:6: GX0104: <Button> has no Name; every node needs one.
 ```
 
-Fix the text and reload the scene. Every code is listed in [the diagnostics reference](../format/diagnostics.md).
+A file that loads can show parse warnings in the Output panel too, in the same form (`GX0107` for a tag no class has). Fix the text and reload the scene. Every code is listed in [the diagnostics reference](../format/diagnostics.md).
 
 `godot-xaml check` reports the parse problems (`GX` codes) without opening the editor. A few problems show only when the file is converted for a load (`GXC` codes, such as a `{Key}` no `x:Resources` entry has), and those appear only in the Output panel.
 

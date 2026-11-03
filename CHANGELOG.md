@@ -6,6 +6,11 @@
 
 - The addon's `AGENTS.md` and the agent skill install the CLI as a local tool at the addon's version, run as `dotnet godot-xaml`.
 
+### Fixed
+
+- A file that loads with parse warnings shows them in Godot's Output as warnings, and a failed load reports its warnings as warnings, not errors.
+- A failed load removes converted temp files that earlier failed loads kept more than a day ago.
+
 ## 0.2.0 - 2026-11-03
 
 ### Added
