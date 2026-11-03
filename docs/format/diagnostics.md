@@ -290,6 +290,10 @@ Warning. A save could not carry a comment of the file it replaced, because what 
 
 Warning. The class of an instanced scene could not be read: no lookup was given, or the file is unparsable, a cycle, missing the node path, or referred to by `uid://` only. The section keeps its written property order rather than Godot's.
 
+### GXC0119 Property name XML cannot hold
+
+Error. `The property name "metadata/a\u0001b" holds a character XML cannot hold; the property is dropped.` A `.tscn` or `.tres` names a property whose name holds a control character, U+FFFE, U+FFFF or a lone surrogate, which neither an attribute nor an `x:Prop` name can hold. Rename the property in Godot; a name holding a control character cannot be written as XML.
+
 ## Project conversion: `GXP`
 
 Reported by `godot-xaml convert`; the [CLI reference](../../src/GodotXaml.Cli/README.md#convert) has every message.

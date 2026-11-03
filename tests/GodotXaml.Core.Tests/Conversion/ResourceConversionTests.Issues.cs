@@ -200,6 +200,49 @@ public sealed partial class ResourceConversionTests
             ConversionSeverity.Error
         );
 
+    // A quoted key keeps the character Godot's loader drops from an unquoted one, and XML 1.0 cannot hold it at all, so
+    // the property has no attribute or x:Prop name to be written by.
+    [Fact]
+    public void ResourcePropertyNameHoldingAControlCharacterIsReportedAndDropped()
+    {
+        ConversionResult<XscnDocument> result = TscnToXscn.Convert(
+            TscnReader.Read(Header + "[resource]\n\"metadata/a\\u0001b\" = 1\n"),
+            Metadata,
+            Options
+        );
+
+        ConversionIssue issue = Assert.Single(result.Issues);
+        Assert.Equal(
+            (
+                ConversionCodes.PropertyNameNotXml,
+                ConversionSeverity.Error,
+                "The property name \"metadata/a\\u0001b\" holds a character XML cannot hold; the property is dropped.",
+                "[resource]"
+            ),
+            (issue.Code, issue.Severity, issue.Message, issue.Location)
+        );
+        Assert.Empty(RootProperties(result.Document));
+        Assert.DoesNotContain("metadata/a", XscnWriter.Write(result.Document, Metadata), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NodePropertyNameHoldingAControlCharacterIsReportedAndDropped()
+    {
+        ConversionResult<XscnDocument> result = TscnToXscn.Convert(
+            TscnReader.Read("[gd_scene format=3]\n\n[node name=\"Root\" type=\"Node\"]\n\"metadata/a\\u0001b\" = 1\n"),
+            Metadata,
+            Options
+        );
+
+        ConversionIssue issue = Assert.Single(result.Issues);
+        Assert.Equal(
+            (ConversionCodes.PropertyNameNotXml, ConversionSeverity.Error, "[node name=\"Root\"]"),
+            (issue.Code, issue.Severity, issue.Location)
+        );
+        Assert.Empty(Assert.IsType<XscnNode>(result.Document.Root).Properties);
+        Assert.DoesNotContain("metadata/a", XscnWriter.Write(result.Document, Metadata), StringComparison.Ordinal);
+    }
+
     private static ImmutableArray<ConversionIssue> Forward(string text) => Forward(TscnReader.Read(text));
 
     private static TscnDocument WithRootProperty(GodotValue value) =>

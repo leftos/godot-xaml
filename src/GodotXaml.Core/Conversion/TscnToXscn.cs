@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
@@ -103,14 +105,53 @@ public static partial class TscnToXscn
             {
                 Type = TypeOf(sub.Type, $"[sub_resource id=\"{sub.Id}\"]"),
                 Key = key,
-                Properties = Properties(sub.Properties),
+                Properties = Properties(sub.Properties, $"[sub_resource id=\"{sub.Id}\"]"),
             };
             subIds[resource] = sub.Id;
             return resource;
         }
 
-        private ImmutableArray<XscnProperty> Properties(ImmutableArray<TscnProperty> properties) =>
-            [.. properties.Select(property => new XscnProperty(property.Name, Value(property.Value)))];
+        private ImmutableArray<XscnProperty> Properties(ImmutableArray<TscnProperty> properties, string location) =>
+            [.. properties.Select(property => Property(property, location)).OfType<XscnProperty>()];
+
+        // A name holding a character XML 1.0 cannot hold has no attribute or x:Prop name to be written by: the property is
+        // dropped, and its error keeps the result from being written.
+        private XscnProperty? Property(TscnProperty property, string location)
+        {
+            if (XscnWriter.FirstForbidden(property.Name) < 0)
+            {
+                return new XscnProperty(property.Name, Value(property.Value));
+            }
+
+            string message = $"The property name \"{EscapedName(property.Name)}\" holds a character XML cannot hold; the property is dropped.";
+            Report(ConversionCodes.PropertyNameNotXml, ConversionSeverity.Error, message, location);
+            return null;
+        }
+
+        // The name with each character XML cannot hold written as a \uXXXX escape, the spelling Godot's string grammar
+        // reads (variant_parser.cpp:315-316).
+        private static string EscapedName(string name)
+        {
+            var text = new StringBuilder(name.Length + 8);
+            for (int i = 0; i < name.Length; i++)
+            {
+                if (char.IsSurrogatePair(name, i))
+                {
+                    text.Append(name, i, 2);
+                    i++;
+                }
+                else if (XscnWriter.IsForbidden(name[i]))
+                {
+                    text.Append("\\u").Append(((int)name[i]).ToString("X4", CultureInfo.InvariantCulture));
+                }
+                else
+                {
+                    text.Append(name[i]);
+                }
+            }
+
+            return text.ToString();
+        }
 
         // A bare reference becomes a file, an inline resource or a key; any other value keeps its text, references
         // rewritten. A reference naming no section was reported by the analysis and is kept as it stands.

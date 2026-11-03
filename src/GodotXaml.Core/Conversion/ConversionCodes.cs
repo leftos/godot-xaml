@@ -122,4 +122,10 @@ public static class ConversionCodes
     /// cycle, a node path it does not hold, a <c>uid://</c> reference); the section keeps its written property order.
     /// </summary>
     public const string InstancedClassUnreadable = "GXC0118";
+
+    /// <summary>
+    /// A property whose name holds a character XML cannot hold, so neither an attribute nor an <c>x:Prop</c> can name
+    /// it; the property is dropped.
+    /// </summary>
+    public const string PropertyNameNotXml = "GXC0119";
 }

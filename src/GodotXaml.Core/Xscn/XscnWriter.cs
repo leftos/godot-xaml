@@ -107,7 +107,7 @@ public static partial class XscnWriter
     }
 
     // XML 1.0 production Char: a control character other than tab, LF and CR, U+FFFE, U+FFFF or a lone surrogate is not one.
-    private static int FirstForbidden(string text)
+    internal static int FirstForbidden(string text)
     {
         for (int i = 0; i < text.Length; i++)
         {
@@ -124,7 +124,7 @@ public static partial class XscnWriter
         return -1;
     }
 
-    private static bool IsForbidden(char c) => char.IsSurrogate(c) || c is (< ' ' and not ('\t' or '\n' or '\r')) or '\uFFFE' or '\uFFFF';
+    internal static bool IsForbidden(char c) => char.IsSurrogate(c) || c is (< ' ' and not ('\t' or '\n' or '\r')) or '\uFFFE' or '\uFFFF';
 
     // The value in '"', or in '\'' when it holds '"' and no '\''; only the quote in use is escaped.
     private static string FormatAttribute(XmlAttr attribute)

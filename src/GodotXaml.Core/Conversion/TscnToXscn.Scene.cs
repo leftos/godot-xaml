@@ -120,7 +120,7 @@ public static partial class TscnToXscn
         private void Merge(SceneElement earlier, TscnNode node)
         {
             var change = (XscnOverride)earlier.Element;
-            earlier.Element = WithNodeFields(change with { Properties = Properties(node.Properties) }, node);
+            earlier.Element = WithNodeFields(change with { Properties = Properties(node.Properties, NodeLocation(node)) }, node);
             earlier.Synthesised = false;
         }
 
@@ -133,7 +133,7 @@ public static partial class TscnToXscn
                 return false;
             }
 
-            var change = new XscnOverride { Path = Relative(scope, path), Properties = Properties(node.Properties) };
+            var change = new XscnOverride { Path = Relative(scope, path), Properties = Properties(node.Properties, location) };
             Add(scope, new SceneElement(path, WithNodeFields(change, node), scope));
             return true;
         }
@@ -286,7 +286,7 @@ public static partial class TscnToXscn
                 Type = type,
                 Name = node.Name,
                 Unique = node.Properties.Any(IsUniqueName),
-                Properties = Properties([.. node.Properties.Where(property => !IsUniqueName(property))]),
+                Properties = Properties([.. node.Properties.Where(property => !IsUniqueName(property))], NodeLocation(node)),
             };
             return (XscnNode)WithNodeFields(element, node);
         }

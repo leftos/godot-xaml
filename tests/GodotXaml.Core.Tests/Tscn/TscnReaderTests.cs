@@ -61,6 +61,16 @@ public sealed class TscnReaderTests
         );
     }
 
+    // variant_parser.cpp:1933 keeps only the characters above ' ' in an unquoted key, so Godot drops a raw control byte
+    // and the scanner does the same.
+    [Fact]
+    public void DropsARawControlByteFromAnUnquotedKey()
+    {
+        TscnDocument document = TscnReader.Read("[gd_resource type=\"Resource\" format=3]\n\n[resource]\nmetadata/a\u0001b = 1\n");
+
+        Assert.Equal("metadata/ab", Assert.Single(document.ResourceProperties).Name);
+    }
+
     [Fact]
     public void ReadsSubResourcesInOrderWithTheirProperties()
     {
