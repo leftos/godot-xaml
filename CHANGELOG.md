@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- A scene whose AnimationPlayer has a default animation library converts to an `.xscn` that reads back.
 - An `.xscn` edited outside the editor loads its new content at once, instead of the cached old scene until .NET collected garbage.
 - Converting back to `.tscn` numbers a node's file references and orders placeholder properties as Godot does, and names `.json`, `.po`, `.mo`, `.gdextension` and `.ogv` types.
 - Converting back orders tracks, bones, blend points, transition inputs, shader nodes, replication properties, tile patterns, spring bones, IK chains and skeleton modifiers as Godot does.

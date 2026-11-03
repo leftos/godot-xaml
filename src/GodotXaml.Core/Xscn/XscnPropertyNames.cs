@@ -59,11 +59,17 @@ public sealed class XscnPropertyNames
     /// <param name="godotName">The property's Godot name.</param>
     /// <returns>
     /// The name that <see cref="Resolve"/> maps back to <paramref name="godotName"/>, or null when there is none and the
-    /// property needs <c>x:Prop</c> (a key that is not an XML name, a script property named like an engine property).
+    /// property needs <c>x:Prop</c> (a key that is not an XML name, an empty key such as the default animation library's
+    /// <c>libraries/</c>, a script property named like an engine property).
     /// </returns>
     public string? AttributeName(GodotClassInfo? cls, string godotName)
     {
         ArgumentNullException.ThrowIfNull(godotName);
+        if (godotName.EndsWith('/'))
+        {
+            return null;
+        }
+
         string candidate = Candidate(cls, godotName);
         return IsXmlName(candidate) && GodotNameOf(cls, candidate) == godotName ? candidate : null;
     }

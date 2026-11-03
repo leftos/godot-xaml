@@ -70,6 +70,7 @@ func _run() -> String:
 		_replication_properties,
 		_tile_set_patterns,
 		_animation_nodes,
+		_animation_player_library,
 	]
 	for step in steps:
 		var error: String = step.call()
@@ -699,6 +700,58 @@ func _animation_nodes() -> String:
 	for index in 6:
 		tree.connect_node("n10", index, nodes[index + 1][0])
 	return _save("animation_nodes.tres", tree)
+
+
+## An AnimationPlayer with the default library and one named extra, 12 animations each (a distinct
+## length, a value track with two keys and three markers; a5 also has a position track and is
+## compressed), the next animation of a0 to a11 and several blend times, beside an AnimationTree
+## whose BlendSpace1D root holds 3 points at a set blend position.
+## AnimationMixer::_get_property_list stores libraries/<name> (animation_mixer.cpp),
+## AnimationPlayer::_get_property_list stores next/ and blend_times (animation_player.cpp),
+## Animation::_get_property_list stores markers and, once compressed, _compression (animation.cpp).
+## AnimationTree builds its parameters/ list lazily in _update_properties (animation_tree.cpp), so
+## the list is read once before saving.
+func _animation_player_library() -> String:
+	var root: Node = _root("Node")
+	var player: AnimationPlayer = _add(root, "Player", "AnimationPlayer")
+	for library_name in ["", "extra"]:
+		var library := AnimationLibrary.new()
+		var prefix := "a" if library_name.is_empty() else "b"
+		var offset := 0.0 if library_name.is_empty() else 2.0
+		for index in 12:
+			var animation := Animation.new()
+			animation.length = 1.0 + offset + 0.125 * index
+			var track := animation.add_track(Animation.TYPE_VALUE)
+			animation.track_set_path(track, NodePath("Target:position:x"))
+			for key in 2:
+				animation.track_insert_key(track, key * 0.5, index + key + offset)
+			for marker in 3:
+				animation.add_marker("m%d" % marker, 0.25 * marker + 0.0625 * index)
+			if library_name.is_empty() and index == 5:
+				# Animation::compress stores only 3D transform and blend shape tracks.
+				var position := animation.add_track(Animation.TYPE_POSITION_3D)
+				animation.track_set_path(position, NodePath("Target"))
+				animation.position_track_insert_key(position, 0.0, Vector3(1, 2, 3))
+				animation.position_track_insert_key(position, 0.5, Vector3(4, 5, 6))
+				animation.compress()
+			library.add_animation("%s%d" % [prefix, index], animation)
+		player.add_animation_library(library_name, library)
+	for index in 12:
+		player.animation_set_next("a%d" % index, "extra/b%d" % index)
+	for index in 4:
+		player.set_blend_time("a%d" % index, "extra/b%d" % (index + 1), 0.25 * (index + 1))
+
+	var tree: AnimationTree = _add(root, "Tree", "AnimationTree")
+	var space := AnimationNodeBlendSpace1D.new()
+	for index in 3:
+		space.add_blend_point(
+			_animation_node("a%d" % index), index - 1.0, -1, StringName("p%d" % index)
+		)
+	tree.tree_root = space
+	tree.anim_player = NodePath("../Player")
+	tree.get_property_list()
+	tree.set("parameters/blend_position", 0.375)
+	return _save_scene("animation_player_library", root)
 
 
 ## An AnimationNodeAnimation that plays the named animation.

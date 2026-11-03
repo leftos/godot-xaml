@@ -84,7 +84,7 @@ The way back still reads the instanced scene, through the host's scene lookup, b
 
 A Godot property whose name holds a `/` (`theme_override_constants/separation`, `metadata/_tab_index`, `shader_parameter/albedo`) is written as a dotted attribute: the part before the slash in PascalCase, the key after it verbatim, since keys are free strings that would not survive a case change (`ThemeOverrideConstants.separation="12"`, `Metadata._tab_index="0"`).
 
-A value that needs an element, such as an inline resource, uses the same name as a property element (`<VBoxContainer.ThemeOverrideStyles.panel>`). A key that is not a legal XML name falls back to `<x:Prop Name="…" Value="…" />` with the Godot name verbatim.
+A value that needs an element, such as an inline resource, uses the same name as a property element (`<VBoxContainer.ThemeOverrideStyles.panel>`). A key that is not a legal XML name falls back to `<x:Prop Name="…" Value="…" />` with the Godot name verbatim; so does an empty key (`libraries/`, an AnimationPlayer's default library), since `<AnimationPlayer.Libraries.>` names no property.
 
 The value follows the typed-values rule. Each theme-override family has one fixed type (`Control::_get` in `scene/gui/control.cpp`: colors are `Color`, constants and font sizes `int`, fonts `Font`, icons `Texture2D`, styles `StyleBox`), so the metadata file records each family's type and the core writes them in compact text (`ThemeOverrideColors.font_color="1, 0.8, 0, 1"`). `metadata/…` and `shader_parameter/…` values have no fixed type, so they are written as Godot value text.
 

@@ -19,6 +19,7 @@ public sealed class SceneRoundTripTests
 
     public static TheoryData<string> Fixtures =>
         new(
+            "animation_player_library",
             "bone_chain_settings",
             "connections",
             "ext_resource",
@@ -267,6 +268,27 @@ public sealed class SceneRoundTripTests
             """,
             XscnDocumentKind.Resource
         );
+
+    // The default library's key is empty, so it is no XML name and takes x:Prop with its resource in the table.
+    [Fact]
+    public void ADefaultAnimationLibraryRoundTripsThroughXProp()
+    {
+        const string Text = """
+            [gd_scene format=3]
+
+            [sub_resource type="AnimationLibrary" id="AnimationLibrary_d3f4u"]
+
+            [node name="Root" type="AnimationPlayer" unique_id=1]
+            libraries/ = SubResource("AnimationLibrary_d3f4u")
+
+            """;
+
+        string xscn = XscnWriter.Write(Forward(TscnReader.Read(Text), XscnDocumentKind.Scene).Document, Metadata);
+
+        Assert.Contains("<x:Prop Name=\"libraries/\"", xscn, StringComparison.Ordinal);
+        Assert.Empty(XscnParser.Parse(xscn, XscnDocumentKind.Scene, Metadata).Diagnostics);
+        AssertRoundTrips(Text);
+    }
 
     private static void AssertRoundTrips(string text, XscnDocumentKind kind = XscnDocumentKind.Scene)
     {

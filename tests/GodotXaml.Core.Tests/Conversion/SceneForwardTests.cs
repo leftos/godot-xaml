@@ -18,6 +18,7 @@ public sealed partial class SceneForwardTests
 
     public static TheoryData<string> Scenes =>
         new(
+            "animation_player_library",
             "bone_chain_settings",
             "connections",
             "ext_resource",

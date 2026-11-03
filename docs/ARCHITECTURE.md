@@ -192,7 +192,7 @@ Each component gets an entry here in the commit that adds its project.
 - The fixture generator needs the console build of Godot and fails on a double-precision build.
 - `tests/fixtures/scenes/**` is Godot's exact bytes too (`tests/fixtures/** -text`, excluded from the whitespace hooks). A node's `unique_id` cannot be pinned from a script, so every run of `tools/scene-fixtures/` rewrites those numbers: regenerate only when a case changes, and commit the whole folder, except for a new case, which is copied alone from an `-OutDir` run so the other fixtures keep their `unique_id`s.
 
-  A new fixture also goes in the fixture lists (`SceneForwardTests.Scenes`, `SceneBackTests.Fixtures`, `SceneRoundTripTests.Fixtures`) and `SceneBackTests.Inputs`; `godot/compare.ps1` counts the fixture files itself and passes the count to the compare scene.
+  A new fixture also goes in the fixture lists (`SceneForwardTests.Scenes`, `SceneBackTests.Fixtures`, `SceneRoundTripTests.Fixtures`); a hand-written back-test input goes in `SceneBackTests.Inputs`, and a fixture without one is read back from its golden `.xscn`; `godot/compare.ps1` counts the fixture files itself and passes the count to the compare scene.
 
   A new `.tres` fixture joins `ResourceConversionTests.Fixtures` and `ResourceForwardTests.Resources`, gets an `.xres` golden in `tests/fixtures/converted/` (written by the CLI's `convert`, as `godot-xaml convert <fixture>.tres` and the `.xres` moved there, and checked by `ResourceForwardTests`). `ResourceBackTests` converts each golden's text back and compares it with the `.tres` Godot saved, as `SceneBackTests` does for scenes; `ResourceConversionTests` round-trips in memory, which keeps Godot's order and so cannot show an order bug on the way back.
 

@@ -49,6 +49,10 @@ public sealed class XscnPropertyNamesTests
         Assert.Null(Names.AttributeName(Class("Control"), "metadata/a:b"));
     }
 
+    // The default library's key is empty: "Libraries." would be an XML name, but no property element can carry it.
+    [Fact]
+    public void AnEmptyKeyHasNoAttributeName() => Assert.Null(Names.AttributeName(Class("AnimationPlayer"), "libraries/"));
+
     [Fact]
     public void AnUnknownClassTypesANameOnlyWhenEveryClassAgrees()
     {

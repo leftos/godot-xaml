@@ -19,6 +19,7 @@ public sealed partial class SceneBackTests
 
     public static TheoryData<string> Fixtures =>
         new(
+            "animation_player_library",
             "bone_chain_settings",
             "connections",
             "ext_resource",
@@ -53,7 +54,10 @@ public sealed partial class SceneBackTests
             SourceKey = $"res://cases/{fixture}.xscn",
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse(Inputs[fixture]), Metadata, options);
+        // A generated fixture with no Inputs entry is read from its golden.
+        string input = Inputs.TryGetValue(fixture, out string? inline) ? inline : ResourceForwardTests.ReadFixture("converted", fixture + ".xscn");
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse(input), Metadata, options);
 
         Assert.Empty(back.Issues);
         Assert.Equal(TscnTestNormalizer.Comparable(expected), TscnTestNormalizer.Comparable(back.Document));

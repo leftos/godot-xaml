@@ -1,0 +1,392 @@
+<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="242511420">
+  <x:Resources>
+    <Animation
+        x:Key="Animation1"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.0&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.25&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.5&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [0.0, 1.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation2"
+        Length="1.125"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.0625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.3125&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.5625&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [1.0, 2.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation3"
+        Length="2.25"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.875&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 1.125&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [10.0, 11.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation4"
+        Length="2.375"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.6875&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.9375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 1.1875&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [11.0, 12.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation5"
+        Length="1.25"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.125&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.625&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [2.0, 3.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation6"
+        Length="1.375"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.1875&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.4375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.6875&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [3.0, 4.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation7"
+        Length="1.5"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.25&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.5&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.75&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [4.0, 5.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation8"
+        Length="1.625"
+        _compression='{&#10;"bounds": [AABB(1, 2, 3, 3, 3, 3)],&#10;"format_version": 1,&#10;"fps": 120,&#10;"pages": [{&#10;"data": PackedByteArray(12, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 17, 81, 188, 10, 0, 0),&#10;"time_offset": 0.0&#10;}]&#10;}'
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.3125&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.5625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.8125&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [5.0, 6.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+      <x:Prop Name="tracks/1/compressed_track" Value="0" />
+      <x:Prop Name="tracks/1/enabled" Value="true" />
+      <x:Prop Name="tracks/1/imported" Value="false" />
+      <x:Prop Name="tracks/1/path" Value='NodePath("Target")' />
+      <x:Prop Name="tracks/1/type" Value='"position_3d"' />
+    </Animation>
+    <Animation
+        x:Key="Animation9"
+        Length="1.75"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.875&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [6.0, 7.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation10"
+        Length="1.875"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.4375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.6875&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.9375&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [7.0, 8.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation11"
+        Length="2"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.5&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.75&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 1.0&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [8.0, 9.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation12"
+        Length="2.125"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.5625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.8125&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 1.0625&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [9.0, 10.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <AnimationLibrary
+        x:Key="AnimationLibrary1"
+        _Data='{&#10;&amp;"a0": SubResource("Animation1"),&#10;&amp;"a1": SubResource("Animation2"),&#10;&amp;"a10": SubResource("Animation3"),&#10;&amp;"a11": SubResource("Animation4"),&#10;&amp;"a2": SubResource("Animation5"),&#10;&amp;"a3": SubResource("Animation6"),&#10;&amp;"a4": SubResource("Animation7"),&#10;&amp;"a5": SubResource("Animation8"),&#10;&amp;"a6": SubResource("Animation9"),&#10;&amp;"a7": SubResource("Animation10"),&#10;&amp;"a8": SubResource("Animation11"),&#10;&amp;"a9": SubResource("Animation12")&#10;}' />
+    <Animation
+        x:Key="Animation13"
+        Length="3"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.0&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.25&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.5&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [2.0, 3.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation14"
+        Length="3.125"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.0625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.3125&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.5625&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [3.0, 4.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation15"
+        Length="4.25"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.875&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 1.125&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [12.0, 13.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation16"
+        Length="4.375"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.6875&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.9375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 1.1875&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [13.0, 14.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation17"
+        Length="3.25"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.125&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.625&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [4.0, 5.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation18"
+        Length="3.375"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.1875&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.4375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.6875&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [5.0, 6.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation19"
+        Length="3.5"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.25&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.5&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.75&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [6.0, 7.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation20"
+        Length="3.625"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.3125&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.5625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.8125&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [7.0, 8.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation21"
+        Length="3.75"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.875&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [8.0, 9.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation22"
+        Length="3.875"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.4375&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.6875&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 0.9375&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [9.0, 10.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation23"
+        Length="4"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.5&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.75&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 1.0&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [10.0, 11.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <Animation
+        x:Key="Animation24"
+        Length="4.125"
+        markers='[{&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m0",&#10;"time": 0.5625&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m1",&#10;"time": 0.8125&#10;}, {&#10;"color": Color(1, 1, 1, 1),&#10;"name": &amp;"m2",&#10;"time": 1.0625&#10;}]'>
+      <x:Prop Name="tracks/0/enabled" Value="true" />
+      <x:Prop Name="tracks/0/imported" Value="false" />
+      <x:Prop Name="tracks/0/interp" Value="1" />
+      <x:Prop
+          Name="tracks/0/keys"
+          Value='{&#10;"times": PackedFloat32Array(0, 0.5),&#10;"transitions": PackedFloat32Array(1, 1),&#10;"update": 0,&#10;"values": [11.0, 12.0]&#10;}' />
+      <x:Prop Name="tracks/0/loop_wrap" Value="true" />
+      <x:Prop Name="tracks/0/path" Value='NodePath("Target:position:x")' />
+      <x:Prop Name="tracks/0/type" Value='"value"' />
+    </Animation>
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation1" Animation="a0" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation2" Animation="a1" />
+    <AnimationNodeAnimation x:Key="AnimationNodeAnimation3" Animation="a2" />
+  </x:Resources>
+  <AnimationPlayer
+      Name="Player"
+      Next.a0='&amp;"extra/b0"'
+      Next.a1='&amp;"extra/b1"'
+      Next.a10='&amp;"extra/b10"'
+      Next.a11='&amp;"extra/b11"'
+      Next.a2='&amp;"extra/b2"'
+      Next.a3='&amp;"extra/b3"'
+      Next.a4='&amp;"extra/b4"'
+      Next.a5='&amp;"extra/b5"'
+      Next.a6='&amp;"extra/b6"'
+      Next.a7='&amp;"extra/b7"'
+      Next.a8='&amp;"extra/b8"'
+      Next.a9='&amp;"extra/b9"'
+      blend_times='[&amp;"a0", &amp;"extra/b1", 0.25, &amp;"a1", &amp;"extra/b2", 0.5, &amp;"a2", &amp;"extra/b3", 0.75, &amp;"a3", &amp;"extra/b4", 1.0]'
+      x:UniqueId="1639881890">
+    <x:Prop Name="libraries/" Value="{AnimationLibrary1}" />
+    <AnimationPlayer.Libraries.extra>
+      <AnimationLibrary
+          _Data='{&#10;&amp;"b0": SubResource("Animation13"),&#10;&amp;"b1": SubResource("Animation14"),&#10;&amp;"b10": SubResource("Animation15"),&#10;&amp;"b11": SubResource("Animation16"),&#10;&amp;"b2": SubResource("Animation17"),&#10;&amp;"b3": SubResource("Animation18"),&#10;&amp;"b4": SubResource("Animation19"),&#10;&amp;"b5": SubResource("Animation20"),&#10;&amp;"b6": SubResource("Animation21"),&#10;&amp;"b7": SubResource("Animation22"),&#10;&amp;"b8": SubResource("Animation23"),&#10;&amp;"b9": SubResource("Animation24")&#10;}' />
+    </AnimationPlayer.Libraries.extra>
+  </AnimationPlayer>
+  <AnimationTree
+      Name="Tree"
+      AnimPlayer="../Player"
+      Parameters.blend_position="0.375"
+      x:UniqueId="475641297">
+    <AnimationTree.TreeRoot>
+      <AnimationNodeBlendSpace1D>
+        <x:Prop Name="blend_point_0/name" Value='&amp;"p0"' />
+        <x:Prop Name="blend_point_0/node" Value="{AnimationNodeAnimation1}" />
+        <x:Prop Name="blend_point_0/pos" Value="-1.0" />
+        <x:Prop Name="blend_point_1/name" Value='&amp;"p1"' />
+        <x:Prop Name="blend_point_1/node" Value="{AnimationNodeAnimation2}" />
+        <x:Prop Name="blend_point_1/pos" Value="0.0" />
+        <x:Prop Name="blend_point_2/name" Value='&amp;"p2"' />
+        <x:Prop Name="blend_point_2/node" Value="{AnimationNodeAnimation3}" />
+        <x:Prop Name="blend_point_2/pos" Value="1.0" />
+      </AnimationNodeBlendSpace1D>
+    </AnimationTree.TreeRoot>
+  </AnimationTree>
+</Node>
