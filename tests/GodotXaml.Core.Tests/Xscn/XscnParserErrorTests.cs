@@ -501,6 +501,35 @@ public sealed class XscnParserErrorTests
         XscnNode gadget = Assert.IsType<XscnNode>(result.Document.Root);
         Assert.Empty(gadget.Connections);
         Assert.Equal("pressed", Assert.Single(gadget.Properties).GodotName);
+        Assert.Equal(
+            "Expected True or False. To connect a signal here, use <x:Connect Signal=\"Pressed\" Method=\"OnPressed\" />.",
+            result.Diagnostics[1].Message
+        );
+    }
+
+    [Fact]
+    public void ASignalNamedAttributeOnAnInstanceHintsAtConnect()
+    {
+        string text = $"<Control {X} Name=\"Root\"><x:Instance Scene=\"res://m.tscn\" Name=\"M\" Pressed=\"OnPressed\" /></Control>";
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(text);
+
+        Assert.Equal([("GX0105", 1, text.IndexOf("OnPressed", StringComparison.Ordinal) + 1)], positions);
+        XscnDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal(
+            "Expected True or False. To connect a signal here, use <x:Connect Signal=\"Pressed\" Method=\"OnPressed\" />.",
+            diagnostic.Message
+        );
+        Assert.Equal("OnPressed".Length, diagnostic.Span.Length);
+    }
+
+    [Fact]
+    public void ANonSignalBoolAttributeOnAnInstanceKeepsThePlainInvalidValueMessage()
+    {
+        string text = $"<Control {X} Name=\"Root\"><x:Instance Scene=\"res://m.tscn\" Name=\"M\" Visible=\"yes\" /></Control>";
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(text);
+
+        Assert.Equal([("GX0105", 1, text.IndexOf("yes", StringComparison.Ordinal) + 1)], positions);
+        Assert.Equal("Expected True or False.", Assert.Single(result.Diagnostics).Message);
     }
 
     [Fact]

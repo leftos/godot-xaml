@@ -70,6 +70,8 @@ Error. A value is not text of its property's type. The message says what was exp
 - `Expected names joined with commas, or a Godot array of strings.`
 - `ExtResource(…) is not used in .xscn; refer to a file as Resource("res://…").`
 
+A signal-named attribute that is a property, such as `Pressed` on an instance, an override or an unknown class, adds `To connect a signal here, use <x:Connect Signal="Pressed" Method="OnPressed" />.` The attribute is still a property; write the signal as `x:Connect`.
+
 Write the value in the form [values.md](values.md) gives for its type.
 
 ### GX0106 Unknown enum member

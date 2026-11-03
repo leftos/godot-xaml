@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Values;
@@ -17,6 +18,9 @@ internal sealed partial class XscnTreeReader
 
     private static readonly XscnValueType IntType = new("int", null);
     private static readonly XscnValueType BoolType = new("bool", null);
+
+    // Every C# signal name in the metadata, built once per metadata rather than once per attribute.
+    private static readonly ConditionalWeakTable<GodotMetadata, FrozenSet<string>> SignalNamesByMetadata = new();
 
     // Script's type, which the writer shares.
     internal static readonly XscnValueType ObjectType = new("Object", null);
@@ -170,11 +174,31 @@ internal sealed partial class XscnTreeReader
         XscnValue value = XscnValueText.Read(attribute.Value, type);
         if (value is XscnInvalid invalid)
         {
-            Report(type.Names is null ? XscnCodes.InvalidValue : XscnCodes.UnknownEnumMember, invalid.Message, attribute.ValueSpan);
+            Report(
+                type.Names is null ? XscnCodes.InvalidValue : XscnCodes.UnknownEnumMember,
+                ConnectHint(attribute, type) is { } hint ? invalid.Message + hint : invalid.Message,
+                attribute.ValueSpan
+            );
         }
 
         return value;
     }
+
+    // A signal-named attribute of an unknown class, an instance or an override is a property; the hint names x:Connect instead.
+    private string? ConnectHint(AttributeText attribute, XscnValueType type) =>
+        type.Names is null && attribute.Prefix.Length == 0 && SignalNamesOf(metadata).Contains(attribute.LocalName)
+            ? $" To connect a signal here, use <x:Connect Signal=\"{attribute.LocalName}\" Method=\"{attribute.Value}\" />."
+            : null;
+
+    private static FrozenSet<string> SignalNamesOf(GodotMetadata metadata) =>
+        SignalNamesByMetadata.GetValue(
+            metadata,
+            static m =>
+                m.Classes.SelectMany(c => c.Signals)
+                    .Where(s => s.CSharpName is not null)
+                    .Select(s => s.CSharpName!)
+                    .ToFrozenSet(StringComparer.Ordinal)
+        );
 
     private int? ReadInt(AttributeText attribute)
     {
