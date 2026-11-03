@@ -1,0 +1,43 @@
+name: Publish to NuGet
+
+# Pushes the .nupkg files attached to a GitHub release to nuget.org through trusted publishing: the job exchanges its
+# GitHub OIDC token for a one-hour nuget.org key, so no long-lived key is stored. The nuget.org policy names this file.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag whose packages to push, such as v0.1.0
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: publish-nuget-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download the release's packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.nupkg' --dir packages
+
+      - name: Exchange the OIDC token for a nuget.org key
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: leftos
+
+      - name: Push the packages
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: dotnet nuget push "packages/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY" --skip-duplicate
