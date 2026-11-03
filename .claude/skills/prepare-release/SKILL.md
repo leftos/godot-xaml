@@ -18,7 +18,7 @@ The release ships the core, the CLI and the addon package at one version, on one
 
 1. Confirm the tree is on `main`, clean and level with `origin` (`git fetch origin`, `git status -sb`).
 2. Run `linear release status godot-xaml`. An open issue in `vNext` stops the cut until the owner says otherwise.
-3. Ask the owner for the version `<v>`, as `major.minor.patch`. The suggested one is the next minor while the project is below 1.0.
+3. Ask the owner for the version `<v>`, as `major.minor.patch`. The suggested one comes from what the release holds, as the **release** row of `~/.claude/docs/plan-operations.md` says: the next minor for a new feature, the next patch for fixes alone.
 
 **Done when** the tree is level with `origin`, `vNext` holds no open issue the owner has not waved through, and the owner has named `<v>`.
 
