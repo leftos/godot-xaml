@@ -36,7 +36,9 @@ Measured on Godot 4.7.2 .NET with the GXAML-3 spike; `godot/editor-checks.ps1` r
 
 ## A project installs the addon by copying it, with one package reference
 
-A project copies `addons/godot_xaml/` and adds one `PackageReference` to `GodotXaml.Core`. An update raises the package version and recopies the folder. The folder is copied because Godot registers a global class only from the game project's own sources: a `.cs` file inside a NuGet package gets a `res://` path outside the project. A later `godot-xaml install` CLI verb can automate both steps. The folder's `.editorconfig` turns off IDE0130 and CS8632, so a host project that treats warnings as errors builds it; the steps are in the README.
+A project copies `addons/godot_xaml/` and adds one `PackageReference` to `GodotXaml.Core`. An update raises the package version and recopies the folder. The folder is copied because Godot registers a global class only from the game project's own sources: a `.cs` file inside a NuGet package gets a `res://` path outside the project.
+
+A later `godot-xaml install` CLI verb can automate both steps. The folder's `.editorconfig` turns off IDE0130 and CS8632, so a host project that treats warnings as errors builds it; the steps are in the README.
 
 ## XAML syntax with C# names
 
@@ -64,11 +66,15 @@ Booleans are written `True` and `False` (either case is read), and a float has n
 
 ## Format elements and attributes take the `x:` prefix
 
-The default XML namespace is Godot's classes. Everything the format adds rather than Godot's property list takes the reserved `x:` prefix: the tables (`<x:Uids>`, `<x:Resources>`), the elements `<x:Instance>`, `<x:Override>`, `<x:Connect>` and `<x:Prop>`, and the attributes `x:Editable`, `x:Groups`, `x:Index`, `x:InstancePlaceholder`, `x:NodePaths`, `x:Owner`, `x:OwnerUidPath`, `x:ParentIdPath`, `x:UniqueId` and `x:Key`. A script property named `Index` or `Groups` therefore never clashes with them. `Name` and `Script` stay unprefixed, since they are Godot's own `name` and `script`.
+The default XML namespace is Godot's classes. Everything the format adds rather than Godot's property list takes the reserved `x:` prefix: the tables (`<x:Uids>`, `<x:Resources>`), the elements `<x:Instance>`, `<x:Override>`, `<x:Connect>` and `<x:Prop>`, and the attributes `x:Editable`, `x:Groups`, `x:Index`, `x:InstancePlaceholder`, `x:NodePaths`, `x:Owner`, `x:OwnerUidPath`, `x:ParentIdPath`, `x:UniqueId` and `x:Key`.
+
+A script property named `Index` or `Groups` therefore never clashes with them. `Name` and `Script` stay unprefixed, since they are Godot's own `name` and `script`.
 
 ## Overrides inside an instance are named by path
 
-A node inside an instanced scene that the scene changes is written as `<x:Override Path="Centre/Panel">`, a child of the instance element, holding only the changed properties; nodes the scene adds under it nest inside it. The path is relative to the instance, so the core parses the file without opening the instanced scene to learn the type of each node on the way. The way back still reads the instanced scene, through the host's scene lookup, but only to put an instanced node's properties in Godot's order. `x:Editable="True"` on the instance element is the `.tscn`'s `[editable path=…]`.
+A node inside an instanced scene that the scene changes is written as `<x:Override Path="Centre/Panel">`, a child of the instance element, holding only the changed properties; nodes the scene adds under it nest inside it. The path is relative to the instance, so the core parses the file without opening the instanced scene to learn the type of each node on the way.
+
+The way back still reads the instanced scene, through the host's scene lookup, but only to put an instanced node's properties in Godot's order. `x:Editable="True"` on the instance element is the `.tscn`'s `[editable path=…]`.
 
 ## Slash-named properties are dotted attributes
 
@@ -84,11 +90,15 @@ A connection is written on the node that emits the signal, like XAML's `Click="H
 
 Any other receiver, non-default flags, binds or unbinds use an element on the emitter, `<x:Connect Signal="Pressed" To="Panel" Method="Hide" Flags="Deferred, OneShot" Binds='[1, "a"]' />`, as does a signal whose name clashes with a property. The method name is the script's own and is never renamed.
 
-`Signal` holds the C# name everywhere, mapped by the emitter's class, or on an instance, an override or an unknown class by the one Godot name every engine class with that C# name agrees on. A C# script's signal keeps its PascalCase name in Godot (`Finished`), which that mapping would read back as an engine signal (`finished`), so where `Signal` would read back as a different signal the writer uses `GodotSignal="Finished"`, holding Godot's own name verbatim. An `<x:Connect>` with both `Signal` and `GodotSignal` is `GX0118`; one with neither is `GX0108`.
+`Signal` holds the C# name everywhere, mapped by the emitter's class, or on an instance, an override or an unknown class by the one Godot name every engine class with that C# name agrees on.
+
+A C# script's signal keeps its PascalCase name in Godot (`Finished`), which that mapping would read back as an engine signal (`finished`), so where `Signal` would read back as a different signal the writer uses `GodotSignal="Finished"`, holding Godot's own name verbatim. An `<x:Connect>` with both `Signal` and `GodotSignal` is `GX0118`; one with neither is `GX0108`.
 
 ## Shared sub-resources live in an `x:Resources` table
 
-A sub-resource used once is written inline, as a property element. One used by several properties, or referenced from inside Godot value text (an array or dictionary), sits in an `<x:Resources>` table at the top of the root with an `x:Key`, like XAML's resource dictionaries. An attribute refers to it as `{Key}`; Godot value text refers to it as `SubResource("Key")`. Inlining a shared resource twice would make Godot load two separate objects. A resource used once on a property that has no attribute name, and so no property element (a Theme's `Button/styles/normal`, a key that is not an XML name), sits in the table too, referenced from `<x:Prop>`.
+A sub-resource used once is written inline, as a property element. One used by several properties, or referenced from inside Godot value text (an array or dictionary), sits in an `<x:Resources>` table at the top of the root with an `x:Key`, like XAML's resource dictionaries. An attribute refers to it as `{Key}`; Godot value text refers to it as `SubResource("Key")`.
+
+Inlining a shared resource twice would make Godot load two separate objects. A resource used once on a property that has no attribute name, and so no property element (a Theme's `Button/styles/normal`, a key that is not an XML name), sits in the table too, referenced from `<x:Prop>`.
 
 ## Canonical attribute order: Name, Script, then alphabetical
 
@@ -102,7 +112,9 @@ An instance and an `InstancePlaceholder` take their class order from their scene
 
 A dynamic name, one a class adds in `_get_property_list` and so absent from the metadata, goes in its declaring class's place: after that class's own list and theme overrides, before the next class down the chain and before `script`. The classes and their name patterns come from a hand table, `DynamicPropertyFamilies`, read from the Godot source, since the metadata dump cannot list them. A name the table does not place keeps the shape rule: a slash name goes after `script`.
 
-An instanced node, an inherited root and an `x:Override` take their class from the instanced scene, read through the host's scene lookup (`ConversionOptions.SceneFiles`), and then sort as any node of that class, so a script export stays after `script`. With no lookup, or a scene the lookup cannot read, the section keeps source order, and a scene it cannot read is warning GXC0118, naming the file and why. A class is never guessed from a section's names: a guess put a script export named like a class property ahead of `script`, where Godot drops it (`SceneState::instantiate` ignores a failed `set`). A placeholder and an unknown type keep source order. Order among script exports and inside a dynamic family (Theme, TileSet) cannot be restored from the alphabetical `.xscn`. The writer's alphabetical order stays.
+An instanced node, an inherited root and an `x:Override` take their class from the instanced scene, read through the host's scene lookup (`ConversionOptions.SceneFiles`), and then sort as any node of that class, so a script export stays after `script`. With no lookup, or a scene the lookup cannot read, the section keeps source order, and a scene it cannot read is warning GXC0118, naming the file and why.
+
+A class is never guessed from a section's names: a guess put a script export named like a class property ahead of `script`, where Godot drops it (`SceneState::instantiate` ignores a failed `set`). A placeholder and an unknown type keep source order. Order among script exports and inside a dynamic family (Theme, TileSet) cannot be restored from the alphabetical `.xscn`. The writer's alphabetical order stays.
 
 ## One error-tolerant XML parser
 
@@ -126,7 +138,9 @@ Nine integer properties carry an enum-style hint with no C# enum behind it (`lay
 - An inherited scene is a root element whose tag names a scene (`<c:Modal …>` at the root); no marker, since a root cannot be an instance.
 - `Script="res://…"` is an attribute, as the inspector shows it.
 - Groups are `x:Groups="a, b"`, sorted as Godot sorts them.
-- A node's `index`, a non-root `owner`, `instance_placeholder`, `node_paths` and 4.7's `parent_id_path` and `owner_uid_path` are kept as `x:` attributes (`x:Index`, `x:Owner`, `x:InstancePlaceholder`, `x:NodePaths`, `x:ParentIdPath`, `x:OwnerUidPath`), and a connection's `from_uid_path` and `to_uid_path` as `FromUidPath` and `ToUidPath` on its `<x:Connect>`, each written only where the `.tscn` has it, so a conversion without a running Godot round-trips. An instance placeholder, which a `.tscn` writes with no `type`, is an `<InstancePlaceholder>` element holding `x:InstancePlaceholder="res://…"`, the class Godot builds it as; its properties are never dropped as defaults, since Godot saves them against the instanced scene.
+- A node's `index`, a non-root `owner`, `instance_placeholder`, `node_paths` and 4.7's `parent_id_path` and `owner_uid_path` are kept as `x:` attributes (`x:Index`, `x:Owner`, `x:InstancePlaceholder`, `x:NodePaths`, `x:ParentIdPath`, `x:OwnerUidPath`), and a connection's `from_uid_path` and `to_uid_path` as `FromUidPath` and `ToUidPath` on its `<x:Connect>`, each written only where the `.tscn` has it, so a conversion without a running Godot round-trips.
+
+  An instance placeholder, which a `.tscn` writes with no `type`, is an `<InstancePlaceholder>` element holding `x:InstancePlaceholder="res://…"`, the class Godot builds it as; its properties are never dropped as defaults, since Godot saves them against the instanced scene.
 - Not stored: `load_steps` (4.7.2 no longer writes it), `format` (chosen again on conversion back), `script_class` (it follows from the script), and `ext_resource` and `sub_resource` ids (references are paths and keys; ids are made again on conversion back). The scene's own uid lives in its `.uid` sidecar.
 
 ## The metadata file
@@ -177,7 +191,11 @@ Choices the format rulings above leave to the core, made by the orchestrator whi
 - **Scene namespaces.** The project root folder is `xmlns:res="res://"`. A tag's file extension comes from the matching `<x:Uids>` path, else `.xscn`. A file name that is not an XML name uses `<x:Instance Scene="res://…">`. Namespace declarations sit only on the root.
 - **Diagnostics** live in `GodotXaml.Core.Diagnostics`: stable `GX` codes, UTF-16 offsets, a line map giving 0-based positions for the language server and 1-based ones for the loader. Any error fails a Godot load.
 - **Unknown elements.** An unknown class tag (a GDExtension class) is kept as a node of unknown type with a warning. An unknown `x:` element or attribute is an error and is not kept.
-- **A default's kind wins.** Godot registers some properties with a type their getter does not return (`oversampling` is registered as float with `ADD_PROPERTY` in `AudioEffectPitchShift::_bind_methods` while `AudioEffectPitchShift::get_oversampling` returns int; `theme_type_variation` is declared String with a StringName default), and it saves the getter's value (`SceneState::_parse_node` in scene/resources/packed_scene.cpp); ClassDB's default is the raw getter value too (`ClassDB::class_get_default_property_value`). An attribute is typed by the kind of the property's default for the node's class, its own or a subclass override, and by the declared type only when there is no default, so such a value is an attribute and converts back as Godot writes it, and a value written in the declared type still reads.
+- **A default's kind wins.**
+
+  Godot registers some properties with a type their getter does not return (`oversampling` is registered as float with `ADD_PROPERTY` in `AudioEffectPitchShift::_bind_methods` while `AudioEffectPitchShift::get_oversampling` returns int; `theme_type_variation` is declared String with a StringName default), and it saves the getter's value (`SceneState::_parse_node` in scene/resources/packed_scene.cpp); ClassDB's default is the raw getter value too (`ClassDB::class_get_default_property_value`).
+
+  An attribute is typed by the kind of the property's default for the node's class, its own or a subclass override, and by the declared type only when there is no default, so such a value is an attribute and converts back as Godot writes it, and a value written in the declared type still reads.
 - **Flags** are written as .NET's `[Flags]` text joined with `", "`; leftover bits mean the integer. FLAGS-hint integers without an enum take bit `1 << i` unless the hint gives `:value`. A hint display name becomes PascalCase by splitting on anything not a letter or digit. An empty hint means the integer.
 - **References.** An explicit null is `{x:Null}`. A file inside Godot value text is `Resource("res://…")`; `ExtResource(…)` is rejected in `.xscn`.
 - **Rect2, Plane, AABB** are Godot value text.
@@ -217,7 +235,9 @@ Godot fact (4.7.2): the C# dispatch of a `ResourceFormatLoader._load` override c
 
 ## Exported games load binary through a remap
 
-An `EditorExportPlugin`, registered by an `EditorPlugin` the project enables, loads each `.xscn` and `.xres` through the loader at export, saves Godot binary and adds it with `add_file(path, bytes, remap: true)`, so the exported game loads binary through Godot's `.remap` and runs no addon code at load. The raw XML is not shipped. The loaders are packed too, as a fallback and for a `.xscn` autoload's type check (`main/main.cpp`, which asks `get_resource_type` of the original path, and that lookup does not follow a remap). The binary sits under `res://.godot/exported/godot-xaml/`, named as Godot names its own conversions, so a project holding both `a.xscn` and `a.scn` gets no clash.
+An `EditorExportPlugin`, registered by an `EditorPlugin` the project enables, loads each `.xscn` and `.xres` through the loader at export, saves Godot binary and adds it with `add_file(path, bytes, remap: true)`, so the exported game loads binary through Godot's `.remap` and runs no addon code at load. The raw XML is not shipped.
+
+The loaders are packed too, as a fallback and for a `.xscn` autoload's type check (`main/main.cpp`, which asks `get_resource_type` of the original path, and that lookup does not follow a remap). The binary sits under `res://.godot/exported/godot-xaml/`, named as Godot names its own conversions, so a project holding both `a.xscn` and `a.scn` gets no clash.
 
 The `.xres` loader reports the type of the file's root tag (a prefix read, not a full parse), so a `Theme.xres` is a Theme in the editor's pickers and in "export selected resources"; an unreadable first tag reports `Resource`.
 
@@ -262,7 +282,11 @@ It is all or nothing. The outputs are written to a hidden staging folder first. 
 
 ## A project conversion leaves the files Godot loads before any addon as text
 
-`convert --project` leaves as text the files named by `gui/theme/custom`, `gui/theme/custom_font`, `audio/buses/default_bus_layout` (its default path `res://default_bus_layout.tres` unless an untagged key sets it, when that file exists), `display/mouse_cursor/custom_image`, `rendering/environment/defaults/default_environment` and `internationalization/locale/translations`, plus every `.tres`/`.tscn` those reach through ext_resources, and every file a left file's `.gd` or `.cs` script names by a `res://` or `uid://` string literal, transitively. `.cs` is followed on purpose though a C# load runs after the addon's loaders exist: a wrongly left file only stays text, while a wrongly converted one breaks the game. Everything else converts.
+`convert --project` leaves as text the files named by `gui/theme/custom`, `gui/theme/custom_font`, `audio/buses/default_bus_layout`, `display/mouse_cursor/custom_image`, `rendering/environment/defaults/default_environment` and `internationalization/locale/translations`. For `audio/buses/default_bus_layout`, that is its default path `res://default_bus_layout.tres` unless an untagged key sets it, when that file exists.
+
+It also leaves every `.tres`/`.tscn` those reach through ext_resources, and every file a left file's `.gd` or `.cs` script names by a `res://` or `uid://` string literal, transitively.
+
+`.cs` is followed on purpose though a C# load runs after the addon's loaders exist: a wrongly left file only stays text, while a wrongly converted one breaks the game. Everything else converts.
 
 A `uid://` value is resolved from the sources' headers, and a feature-tagged key counts. A `uid://` that names no file leaves nothing and prints nothing. The CLI does not read `override.cfg`. Each left file is named on an uncounted line, and the run neither converts, renames, backs up, removes nor rewrites references to it.
 

@@ -55,7 +55,9 @@ The command-line tool installs with `dotnet tool install -g GodotXaml.Cli`.
 
 ## Converting a project
 
-`godot-xaml convert --project <root>` converts every `.tscn` and `.tres` under a project to `.xscn` and `.xres` (`--back` goes the other way), rewrites the `res://` references between them, and edits the scripts and `project.godot` that name a converted file. It is all or nothing: if any file fails, the project is left as it was. Otherwise the originals are copied to `.godot-xaml-backup/` before they are removed, unless you pass `--nobackup`. `addons/` is never touched, and the files Godot loads before any addon (the custom theme, the bus layout and the like) stay as text. See [the CLI README](src/GodotXaml.Cli/README.md#convert).
+`godot-xaml convert --project <root>` converts every `.tscn` and `.tres` under a project to `.xscn` and `.xres` (`--back` goes the other way), rewrites the `res://` references between them, and edits the scripts and `project.godot` that name a converted file. It is all or nothing: if any file fails, the project is left as it was.
+
+Otherwise the originals are copied to `.godot-xaml-backup/` before they are removed, unless you pass `--nobackup`. `addons/` is never touched, and the files Godot loads before any addon (the custom theme, the bus layout and the like) stay as text. See [the CLI README](src/GodotXaml.Cli/README.md#convert).
 
 ## Documentation
 
