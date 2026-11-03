@@ -357,7 +357,7 @@ public sealed partial class CliProgramTests
     }
 
     [Fact]
-    public void ConvertSeedFollowsTheOutputPath()
+    public void ConvertSeedFollowsTheResPath()
     {
         string xresText = XresOf(GradientTexture);
         string xres = Write("grad.xres", xresText);
@@ -367,14 +367,79 @@ public sealed partial class CliProgramTests
 
         string written = File.ReadAllText(tres);
         Assert.Equal(0, run.ExitCode);
+        Assert.Equal(TresOf(xresText, new ConversionOptions { Seed = ConvertCommand.SeedOf("res://grad.tres") }, XscnDocumentKind.Resource), written);
+        Assert.NotEqual(TresOf(xresText, new ConversionOptions(), XscnDocumentKind.Resource), written);
+    }
+
+    [Fact]
+    public void ConvertGivesTheSameIdsInTwoCheckouts()
+    {
+        string xresText = XresOf(GradientTexture);
+        string[] outputs = new string[2];
+        foreach ((string checkout, int index) in new[] { ("a", 0), ("b", 1) })
+        {
+            Write(Path.Combine(checkout, "project.godot"), "");
+            string xres = Write(Path.Combine(checkout, "ui", "grad.xres"), xresText);
+
+            RunResult run = RunConvert(xres);
+
+            Assert.Equal(0, run.ExitCode);
+            outputs[index] = File.ReadAllText(Path.ChangeExtension(xres, ".tres"));
+        }
+        Assert.Equal(outputs[0], outputs[1]);
+        Assert.NotEqual(TresOf(xresText, new ConversionOptions(), XscnDocumentKind.Resource), outputs[0]);
+    }
+
+    [Fact]
+    public void ConvertWithoutAProjectSeedsFromTheFullPath()
+    {
+        Write("godot-xaml.json", "{}");
+        string xresText = XresOf(GradientTexture);
+        string xres = Write("grad.xres", xresText);
+        string tres = Path.ChangeExtension(xres, ".tres");
+
+        RunResult run = RunIn(folder, "convert", xres);
+
+        string[] expected =
+        [
+            $"{xres}: warning GXP0001: no project.godot above this file; its res:// references are not rewritten",
+            $"{xres} -> {tres}",
+            "1 converted, 0 refused, 0 error(s), 1 warning(s)",
+        ];
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(expected, run.Lines);
         Assert.Equal(
             TresOf(xresText, new ConversionOptions { Seed = ConvertCommand.SeedOf(Path.GetFullPath(tres)) }, XscnDocumentKind.Resource),
-            written
+            File.ReadAllText(tres)
         );
-        Assert.NotEqual(TresOf(xresText, new ConversionOptions(), XscnDocumentKind.Resource), written);
-        // FNV-1a 64 over the UTF-8 of the path, worked out by hand.
-        (string path, ulong seed) = OperatingSystem.IsWindows() ? (@"C:\m.tres", 0xCFD718F3E18316CDUL) : ("/m.tres", 0x295E7EB5CBE94B93UL);
-        Assert.Equal(seed, ConvertCommand.SeedOf(path));
+    }
+
+    [Fact]
+    public void ConvertSeedUsesOnDiskCasing()
+    {
+        string xresText = XresOf(GradientTexture);
+        Write(Path.Combine("UI", "grad.xres"), xresText);
+        string typed = Path.Combine(folder, "ui", "Grad.xres");
+        if (!File.Exists(typed))
+        {
+            Assert.Skip("the file system is case-sensitive, so ui/Grad.xres does not name the file on disk");
+        }
+
+        RunResult run = RunConvert(typed);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(
+            TresOf(xresText, new ConversionOptions { Seed = ConvertCommand.SeedOf("res://UI/grad.tres") }, XscnDocumentKind.Resource),
+            File.ReadAllText(Path.ChangeExtension(typed, ".tres"))
+        );
+    }
+
+    [Fact]
+    public void SeedOfHashesTheKeyAsGiven()
+    {
+        // FNV-1a 64 over the UTF-8 of the key, worked out by hand; the key is not resolved against the disk.
+        Assert.Equal(0xCFD718F3E18316CDUL, ConvertCommand.SeedOf(@"C:\m.tres"));
+        Assert.Equal(0x295E7EB5CBE94B93UL, ConvertCommand.SeedOf("/m.tres"));
     }
 
     [Fact]
@@ -425,7 +490,7 @@ public sealed partial class CliProgramTests
 
         RunResult run = RunConvert(xscn);
 
-        var options = new ConversionOptions { Seed = ConvertCommand.SeedOf(Path.GetFullPath(tscn)) };
+        var options = new ConversionOptions { Seed = ConvertCommand.SeedOf("res://main.tscn") };
         Assert.Equal(0, run.ExitCode);
         Assert.Equal([$"{xscn} -> {tscn}", "1 converted, 0 refused, 0 error(s), 0 warning(s)"], run.Lines);
         Assert.Equal(TresOf(xscnText, options, XscnDocumentKind.Scene), File.ReadAllText(tscn));

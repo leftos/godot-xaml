@@ -51,6 +51,8 @@ Each path is a `.tscn`, `.tres`, `.xscn` or `.xres` file, or a folder searched r
 ui/main.tscn -> ui/main.xscn
 ```
 
+New resource ids on the way back are minted from the file's `res://` path, so the same project converts to the same ids wherever it is checked out; a file with no `project.godot` above it is seeded from its full path.
+
 A file's uid moves with it: a `.tscn` header's `uid` is written to the new file's `.uid` sidecar (`main.xscn.uid`), and an `.xscn` with a sidecar gets that uid in the `.tscn` header.
 
 An output that already exists, or its `.uid` sidecar, is refused, and nothing is written for that file:

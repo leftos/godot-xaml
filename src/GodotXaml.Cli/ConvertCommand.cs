@@ -191,19 +191,30 @@ internal static class ConvertCommand
         found.RemoveAll(path => leftPaths.Contains(Path.GetFullPath(path)));
     }
 
-    /// <summary>The seed of an output's new resource ids: FNV-1a over its full path's UTF-8, the same on every run.</summary>
-    /// <param name="outputPath">The output's path.</param>
+    /// <summary>The seed of an output's new resource ids: FNV-1a 64 over the UTF-8 of its key, as given.</summary>
+    /// <param name="key">The output's seed key (<see cref="SeedKeyOf"/>).</param>
     /// <returns>The seed.</returns>
-    internal static ulong SeedOf(string outputPath)
+    internal static ulong SeedOf(string key)
     {
         const ulong OffsetBasis = 14695981039346656037UL;
         const ulong Prime = 1099511628211UL;
         ulong hash = OffsetBasis;
-        foreach (byte value in Encoding.UTF8.GetBytes(Path.GetFullPath(outputPath)))
+        foreach (byte value in Encoding.UTF8.GetBytes(key))
         {
             hash = unchecked((hash ^ value) * Prime);
         }
         return hash;
+    }
+
+    // The key an output's new ids are seeded from: the source's res:// path in its on-disk casing with the output's
+    // extension, so one project converts to the same ids wherever it is checked out. A source with no project.godot
+    // above it has no res:// path, so its output's full path stands in.
+    private static string SeedKeyOf(string sourcePath, string outputPath)
+    {
+        string? root = ProjectRoot.Find(sourcePath);
+        return root is null
+            ? Path.GetFullPath(outputPath)
+            : Path.ChangeExtension(ProjectRoot.ResPath(root, sourcePath), Path.GetExtension(outputPath));
     }
 
     // Every source and every .uid sidecar is read before any file is converted. The run then plans before it writes:
@@ -624,7 +635,7 @@ internal static class ConvertCommand
     // reported an error.
     private static Planned? Prepare(Source source, string outputPath, GodotMetadata metadata, Tally tally, TextWriter output)
     {
-        var options = new ConversionOptions { Seed = SeedOf(outputPath), Uid = source.Uid };
+        var options = new ConversionOptions { Seed = SeedOf(SeedKeyOf(source.File.Path, outputPath)), Uid = source.Uid };
         (XscnDocument? Document, string? Uid) prepared;
         try
         {
@@ -803,7 +814,7 @@ internal static class ConvertCommand
             }
             var options = new ConversionOptions
             {
-                Seed = SeedOf(item.Output),
+                Seed = SeedOf(SeedKeyOf(item.Source.File.Path, item.Output)),
                 Uid = item.Uid,
                 SceneFiles = tally.SceneFiles,
                 SourceKey = Path.GetFullPath(item.Source.File.Path),
