@@ -79,6 +79,7 @@ func _run() -> String:
 		FamilyCases.gui_item_arrays.bind(self),
 		FamilyCases.gui_tabs_graph.bind(self),
 		FamilyCases.visual_shader_modes.bind(self),
+		FamilyCases.visual_shader_depth_test.bind(self),
 		FamilyCases.audio_resources.bind(self),
 		FamilyCases.theme_font_resources.bind(self),
 		FamilyCases.shader_parameters.bind(self),

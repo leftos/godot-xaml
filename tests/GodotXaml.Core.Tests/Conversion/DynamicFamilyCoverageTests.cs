@@ -39,10 +39,6 @@ public sealed class DynamicFamilyCoverageTests
         [("VisualShader", @"^preview_params/")] =
             "VisualShader::_set accepts a preview parameter only under Engine::is_editor_hint(), so a script run stores none.",
 
-        // Pending a fixture: the stale-exception test flags the entry once the fixture lands.
-        [("VisualShader", @"^modes/depth_test\z")] =
-            "pending: fixture GXAML-199 (modes/depth_test = 2 on a spatial shader is stored; no fixture sets it yet)",
-
         // Derived.
         [("LimitAngularVelocityModifier3D", @"^joints/[0-9]+/")] =
             "LimitAngularVelocityModifier3D::_get_property_list lists the joints as read-only, without PROPERTY_USAGE_STORAGE.",

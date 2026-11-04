@@ -33,6 +33,7 @@ public sealed class ResourceForwardTests
             "visual_shader_nodes",
             "visual_shader_particles",
             "visual_shader_sky",
+            "visual_shader_depth_test",
             "visual_shader_types"
         );
 

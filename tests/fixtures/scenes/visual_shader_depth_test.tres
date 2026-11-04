@@ -1,0 +1,4 @@
+[gd_resource type="VisualShader" format=3]
+
+[resource]
+modes/depth_test = 2

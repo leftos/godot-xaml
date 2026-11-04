@@ -255,6 +255,16 @@ static func visual_shader_modes(generator) -> String:
 	return ""
 
 
+## A spatial VisualShader whose one stored property is modes/depth_test = 2 (inverted):
+## VisualShader::_set erases a mode of 0 and stores any other value, and _get_property_list lists
+## depth_test as the enum Default:0,Inverted:2 (visual_shader.cpp), so Godot's file must hold the
+## mode and the way back must keep it. No other fixture sets it.
+static func visual_shader_depth_test(generator) -> String:
+	var shader := VisualShader.new()
+	shader.set("modes/depth_test", 2)
+	return generator._save("visual_shader_depth_test.tres", shader)
+
+
 ## An AudioBusLayout of the Master bus and 12 more, each with its name, solo, mute, bypass_fx,
 ## volume_db and send off their defaults, the first holding 12 EQ effects (EQ6s, an EQ10 and an
 ## EQ21, every band's gain set, some disabled) and every fourth one an EQ6; its metadata/extra

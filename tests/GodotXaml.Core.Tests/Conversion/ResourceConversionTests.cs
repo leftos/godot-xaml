@@ -33,6 +33,7 @@ public sealed partial class ResourceConversionTests
             "visual_shader_nodes.tres",
             "replication_properties.tres",
             "tile_set_patterns.tres",
+            "visual_shader_depth_test.tres",
             "visual_shader_types.tres",
             "animation_nodes.tres",
             "skeleton_modification_singles.tres",
