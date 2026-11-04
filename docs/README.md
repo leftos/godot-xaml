@@ -19,6 +19,7 @@
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.
 - **Canonical fixture**: an `.xscn` or `.xres` under `tests/fixtures/xscn/canonical/` that the writer must reproduce byte for byte.
 - **Case tables**: Godot's lower-to-upper and upper-to-lower code point tables from `core/string/ucaps.h`, written as C# by `tools/case-tables/` into `GodotCaseTables.g.cs` and used by `GodotCase` for the case of a C# name.
+- **Click-to-select**: clicking a node in the preview pane's image selects its element in the text, from the rectangles and source spans the preview server returns.
 - **Compat mode**: the writer flag Godot uses to write a file as format 3: byte arrays as number lists and negative infinity as `inf_neg`; off, it writes base64 and `-inf`. `ValueWriteOptions.Compat`, on by default.
 - **Creating key**: the one key on which Godot creates an entry of a dynamic family (`type` of an Animation track, `name` of a Skeleton3D bone, `path` of a replication property); the way back writes it first in its entry.
 - **Diagnostic code**: the stable code naming one kind of problem: `GX` plus four digits for the parser (`XscnCodes`), `GXC` for the conversion (`ConversionCodes`), `GXP` and `GXT` for the CLI (`CliCodes`). Each has a heading in [`format/diagnostics.md`](format/diagnostics.md).
@@ -51,6 +52,7 @@
 - **NeedsProp**: the result (`XscnNeedsProp`) of writing a value that does not fit its type's compact form; the value is then written as an `<x:Prop>` element with Godot value text.
 - **Notarisation**: Apple's scan of a signed macOS executable, which leaves a ticket Gatekeeper finds online; a bare executable cannot be stapled, so a Mac's first launch of the language server checks it online (`tools/sign-macos.ps1 -Step Notarise`).
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
+- **Preview server**: the listener in the open Godot editor's addon that renders the `.xscn` text a client sends and returns an image and each node's rectangle; off unless `godot_xaml/preview_server/enabled` is set.
 - **Previous document**: the file a save replaces, parsed before the save (`ConversionOptions.Previous`); its keys and comments carry onto the new document.
 - **Project root**: the folder holding the nearest `project.godot` above a file; `res://` paths are relative to it, and `convert` rewrites references only within one project root (`ProjectRoot`).
 - **Property element**: an element named `<Owner.Property>` that holds one inline resource as a property's value (`<Button.Theme><Theme … /></Button.Theme>`), where `Owner` is the parent element's own tag.

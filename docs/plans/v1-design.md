@@ -27,4 +27,4 @@ How godot-xaml version 1 is built and in what order. The settled choices are in 
 
 Each is settled with the recommended answer unless the work shows otherwise; the answer goes into `DECISIONS.md`. The format's questions (signals, scripts, overrides, inherited scenes, groups and metadata) are settled there.
 
-- **Preview transport.** Recommended: the Visual Studio pane talks to the open Godot editor's addon over a local socket, which renders the text into a `SubViewport` and sends back an image and each node's rectangle (for click-to-select), and falls back to a headless-window Godot run, as godot-mcp's `preview_scene` does, when no editor is open.
+- **Preview transport.** Settled in [`DECISIONS.md`](../DECISIONS.md), "The preview server": the Visual Studio pane talks to the open Godot editor's addon over loopback TCP, which renders the text into a `SubViewport` and sends back an image and each node's rectangle (for click-to-select). When no editor is open (a stale or missing discovery file), the pane falls back to a headless-window Godot run, as godot-mcp's `preview_scene` does.

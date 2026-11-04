@@ -384,6 +384,36 @@ Rejected: a shutdown hook that forces a GC and waits for the finalizers. It woul
 
 Rejected: failing on `ERROR: ` alone. A script or shader error is as much a defect in the addon's editor behaviour as an engine error, and Godot prints it under its own prefix.
 
+## The preview server
+
+The open Godot editor's addon can listen on a local socket, render the `.xscn` text a client sends into a `SubViewport`, and send back an image and each node's rectangle, so the Visual Studio preview pane shows a scene as Godot draws it and a click in the image selects the element in the text. The text need not be saved: the server never touches the user's `.xscn`, and a request is rendered from the text it carries, with relative references resolved against the document's `res://` path.
+
+**Lifetime.** The server is off until a project turns it on with the project setting `godot_xaml/preview_server/enabled`, default off, so no editor listens for a feature its user did not enable. The plugin starts the listener in `_EnterTree` and stops it in `_ExitTree`, and it must survive the C# assembly reload the plugin already survives (`XscnEditorPlugin`).
+
+**Transport.** Loopback TCP. Each editor binds `127.0.0.1` on a free port, never all interfaces (`TCPServer.listen` in `doc/classes/TCPServer.xml` defaults to `*`), and writes `{port, token, pid, project}` to a discovery file under `%LOCALAPPDATA%\godot-xaml\editors\` (the platform's per-user local data folder elsewhere). The client picks the file for its project and sends the token; a connection without the token is refused. A stale file (pid gone, connect refused) means no editor is open. The file is removed when the server stops.
+
+The listener uses the .NET runtime (`System.Net.Sockets`) on its own thread, since Godot has no named-pipe or Unix-socket class; every Godot call (scene, `SubViewport`, `ResourceLoader`) runs on the main thread.
+
+**One server per editor.** Every request names its project, and a request for another project than the editor's is refused with a named error, so a second editor never answers for the first one's project.
+
+**Protocol.** JSON-RPC 2.0 over a `Content-Length`-framed stream, as LSP frames it, written by hand with `System.Text.Json`. The image is a base64 PNG in the result. A superseded request is cancelled by a notification. Requests are latest-wins: the server keeps one pending request per document and drops older ones, so a keystroke stream never queues stale renders.
+
+**Dependencies.** The addon takes no new NuGet dependency (no StreamJsonRpc): the codec and the server use only the .NET runtime (`System.Net.Sockets`, `System.Text.Json`), because the addon is copied beside one `PackageReference` and a new package would land in every user's game project.
+
+**Image.** PNG. The request carries `width`, `height` and `scale`; the server clamps each side to 4096 pixels, so a client cannot ask for unbounded memory in the editor. Rectangles are in image pixels.
+
+Godot facts (4.7.2): a `SubViewport` that is not on screen is not visible, so its `render_target_update_mode` is set to once rather than the default when visible; the texture is only right after `RenderingServer.frame_post_draw` (`doc/classes/Viewport.xml`), and `Image.save_png_to_buffer` encodes without a file. Headless Godot cannot produce an image: the dummy renderer's `render_target_get_texture` returns an empty RID (`servers/rendering/dummy/storage/texture_storage.h`), so only a windowed editor renders pixels.
+
+**Scripts.** Scripts are stripped from the previewed scene, with the exported property values kept where the node class has them, unless the request asks for scripts and the project setting allows it; the default is off. A socket that hands text to an in-editor instantiate would otherwise run any `[Tool]` script class of the project, with the text choosing which and with which properties (a C# class without `[Tool]` is a placeholder in the editor; `modules/mono/csharp_script.h`, `is_tool`).
+
+**Errors.** When the text does not parse or convert, the server returns the last good image for that document, marked stale, with the new diagnostics. It holds the last good rendering per document, and returns diagnostics in the response rather than pushing them to Godot's log, which a keystroke stream would flood. A document with no good rendering yet returns the diagnostics and no image.
+
+**Rectangles and spans.** Rectangles are for Controls in the first version (`Control.get_global_rect`), each entry carrying a `kind` field (`control`), so 2D and 3D entries can follow without a protocol break. The server parses the received text with the core, tags each instantiated node with its element's `XscnElement.Span` (UTF-16 offsets), and returns `{path, class, kind, rect, spanStart, spanLength}` per node, back to front, so the client picks the topmost hit. `path` is relative to the scene root.
+
+A node inside an instanced scene has no element of its own, so it selects the instance's element. Each response carries the text version it rendered, and a client ignores a click on a rendering older than its text. A rotated or skewed Control has a `get_global_rect` that Godot calls not meaningful (`doc/classes/Control.xml`).
+
+**Tests.** The codec, token check, project refusal, text-to-scene instantiation and rectangle structure (containment, ordering, entry count, paths and classes, never values: headless text metrics are not real) run headless in `godot/checks.ps1`, in plain C# in the addon folder. Pixels, the discovery file's life, a request's PNG size and a hit-test run in `godot/editor-checks.ps1`, on a desktop.
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.
