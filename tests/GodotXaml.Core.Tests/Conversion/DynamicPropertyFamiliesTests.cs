@@ -15,8 +15,99 @@ public sealed class DynamicPropertyFamiliesTests
     [Fact]
     public void EveryFamilyPatternIsAnchored() => Assert.Empty(Offenders(row => !row.Family.Pattern.ToString().StartsWith('^')));
 
+    // An index is ASCII digits only: \d would also match another script's digits, which Godot never writes.
     [Fact]
-    public void EveryFamilyClassIsAGodotClass() => Assert.Empty(Offenders(row => Metadata.FindClass(row.Class) is null));
+    public void NoFamilyPatternUsesDigitClass() =>
+        Assert.Empty(Offenders(row => row.Family.Pattern.ToString().Contains(@"\d", StringComparison.Ordinal)));
+
+    // The table is written once for every bundled version, so each of its class names must exist in each of them.
+    [Fact]
+    public void EveryFamilyClassIsAGodotClass()
+    {
+        List<string> offenders = [];
+        foreach (string version in GodotMetadata.BundledVersions)
+        {
+            var metadata = GodotMetadata.LoadBundled(version);
+            offenders.AddRange(Offenders(row => metadata.FindClass(row.Class) is null).Select(row => $"Godot {version} {row}"));
+        }
+
+        Assert.Empty(offenders);
+    }
+
+    // A class-list name ranks by the class list before any family, so a row over one would be shadowed; no row names one.
+    [Fact]
+    public void NoFamilyPatternMatchesAClassListName()
+    {
+        List<string> offenders = [];
+        foreach (string version in GodotMetadata.BundledVersions)
+        {
+            var metadata = GodotMetadata.LoadBundled(version);
+            foreach (GodotClassInfo cls in metadata.Classes)
+            {
+                List<(string Class, DynamicFamily Family)> families =
+                [
+                    .. metadata.ChainOf(cls).SelectMany(declaring => Of(declaring.Name).Select(family => (declaring.Name, family))),
+                ];
+                foreach (string name in cls.ListOrder)
+                {
+                    offenders.AddRange(
+                        families
+                            .Where(row => row.Family.Pattern.IsMatch(name))
+                            .Select(row => $"Godot {version} {cls.Name} {name} {row.Class} {row.Family.Pattern}")
+                    );
+                }
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
+    // Godot writes an index in ASCII digits; \d would also match a non-ASCII digit, such as an Arabic-Indic three.
+    [Fact]
+    public void AFamilyIndexMatchesAsciiDigitsOnly()
+    {
+        (string Class, string Ascii, string NonAscii)[] cases =
+        [
+            ("TileMap", "layer_3/name", "layer_٣/name"),
+            ("Animation", "tracks/3/type", "tracks/٣/type"),
+            ("AudioEffectEQ", "band_db/3_hz", "band_db/٣_hz"),
+            ("TileSetAtlasSource", "0:3/size_in_atlas", "0:٣/size_in_atlas"),
+            ("Skeleton3D", "bones/3/name", "bones/٣/name"),
+        ];
+        foreach ((string cls, string ascii, string nonAscii) in cases)
+        {
+            DynamicFamily family = Assert.Single(Of(cls), row => row.Pattern.IsMatch(ascii));
+            Assert.False(family.Pattern.IsMatch(nonAscii), $"{cls} matched {nonAscii}");
+        }
+    }
+
+    // A family with a literal is matched by an ordinal comparison in the ranker, so that comparison and its pattern must agree.
+    [Fact]
+    public void ALiteralFamilyMatchesAsItsPatternDoes()
+    {
+        Assert.Contains(All, row => row.Family.Literal is not null);
+        List<string> offenders = [];
+        foreach ((string cls, DynamicFamily family) in All)
+        {
+            if (family.Literal is not { } literal)
+            {
+                continue;
+            }
+
+            string text = literal.Text;
+            string different = text[..^1] + (text[^1] == 'x' ? 'y' : 'x');
+            string[] names = [text, text + "x", different, string.Empty, text + "\n"];
+            foreach (string name in names)
+            {
+                if (PropertyOrder.MatchesLiteral(literal, name) != family.Pattern.IsMatch(name))
+                {
+                    offenders.Add($"{cls} {family.Pattern} {name}");
+                }
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
 
     [Fact]
     public void AnOnKeyFamilyNamesItsEntryAndKeyOrder()

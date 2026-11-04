@@ -7,16 +7,13 @@ using GodotXaml.Core.Tests.Values;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
+using static GodotXaml.Core.Tests.Conversion.BackHelpers;
 
 namespace GodotXaml.Core.Tests.Conversion;
 
 // .xscn scenes to TscnDocument, written with TscnWriter and compared with what Godot 4.7.2 wrote.
 public sealed partial class SceneBackTests
 {
-    private static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
-
-    private static readonly ConversionOptions Options = new() { Seed = 7 };
-
     public static TheoryData<string> Fixtures =>
         new(
             "animation_player_library",
@@ -59,7 +56,7 @@ public sealed partial class SceneBackTests
         // A generated fixture with no Inputs entry is read from its golden.
         string input = Inputs.TryGetValue(fixture, out string? inline) ? inline : ResourceForwardTests.ReadFixture("converted", fixture + ".xscn");
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse(input), Metadata, options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse(input), TestMetadata, options);
 
         Assert.Empty(back.Issues);
         Assert.Equal(TscnTestNormalizer.Comparable(expected), TscnTestNormalizer.Comparable(back.Document));
@@ -191,7 +188,7 @@ public sealed partial class SceneBackTests
         TscnDocument scene = Back($$"""<Sprite2D {{X}} Name="S" Script="res://s.gd" Texture="res://t.png" />""");
 
         AssertExtOrder(scene, "res://t.png", "res://s.gd");
-        Assert.Equal(["texture", "script"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["texture", "script"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // Control's theme overrides sit at Control's depth, before Button's own icon.
@@ -201,7 +198,7 @@ public sealed partial class SceneBackTests
         TscnDocument scene = Back($$"""<Button {{X}} Name="B" Icon="res://i.png" ThemeOverrideFonts.font="res://f.ttf" />""");
 
         AssertExtOrder(scene, "res://f.ttf", "res://i.png");
-        Assert.Equal(["theme_override_fonts/font", "icon"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["theme_override_fonts/font", "icon"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // The class list, then script, then metadata (object.cpp:518-537).
@@ -211,7 +208,7 @@ public sealed partial class SceneBackTests
         TscnDocument scene = Back($$"""<Sprite2D {{X}} Name="S" Script="res://s.gd" Metadata.m='Resource("res://m.png")' Texture="res://t.png" />""");
 
         AssertExtOrder(scene, "res://t.png", "res://s.gd", "res://m.png");
-        Assert.Equal(["texture", "script", "metadata/m"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["texture", "script", "metadata/m"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // The instanced root is a Sprite2D: its own texture comes before script in Godot's list, though script sorts first.
@@ -227,7 +224,7 @@ public sealed partial class SceneBackTests
 
         Assert.Empty(back.Issues);
         AssertExtOrder(back.Document, "res://c.tscn", "res://t.png", "res://s.gd");
-        Assert.Equal(["texture", "script"], Names(back.Document.Nodes[1].Properties));
+        Assert.Equal(["texture", "script"], PropertyNames(back.Document.Nodes[1].Properties));
     }
 
     // Both sections instance one scene, so its uid is looked up for each; the disagreeing entries are warned about once.
@@ -272,7 +269,7 @@ public sealed partial class SceneBackTests
         );
 
         AssertExtOrder(scene, "res://e.png", "res://r.png");
-        Assert.Equal(["roughness_texture", "emission_texture"], Names(Assert.Single(scene.SubResources).Properties));
+        Assert.Equal(["roughness_texture", "emission_texture"], PropertyNames(Assert.Single(scene.SubResources).Properties));
     }
 
     // With no class to order by (an unknown type, an instance with no lookup), the files follow the written order, as the
@@ -282,7 +279,7 @@ public sealed partial class SceneBackTests
     {
         XscnNode root = new()
         {
-            Type = new XscnClassType(Metadata.FindClass("Node")!),
+            Type = new XscnClassType(TestMetadata.FindClass("Node")!),
             Name = "Root",
             Children =
             [
@@ -301,11 +298,11 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), Metadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
 
         AssertExtOrder(back.Document, "res://u.gd", "res://u.png", "res://c.tscn", "res://i.png", "res://i.gd");
-        Assert.Equal(["script", "texture"], Names(back.Document.Nodes[1].Properties));
-        Assert.Equal(["texture", "script"], Names(back.Document.Nodes[2].Properties));
+        Assert.Equal(["script", "texture"], PropertyNames(back.Document.Nodes[1].Properties));
+        Assert.Equal(["texture", "script"], PropertyNames(back.Document.Nodes[2].Properties));
     }
 
     // A script export has no declared type, so only the extension says what the file holds.
@@ -339,7 +336,7 @@ public sealed partial class SceneBackTests
     {
         ConversionResult<TscnDocument> back = XscnToTscn.Convert(
             Parse($$"""<Node {{X}} Name="Root" />"""),
-            Metadata,
+            TestMetadata,
             Options with
             {
                 Uid = "uid://b1x2y3",
@@ -371,7 +368,7 @@ public sealed partial class SceneBackTests
             new Dictionary<XscnResource, string>(ReferenceEqualityComparer.Instance) { [material] = "CanvasItemMaterial_keep1" }
         );
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, Metadata, Options with { KeepIds = ids });
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, TestMetadata, Options with { KeepIds = ids });
 
         Assert.Empty(back.Issues);
         Assert.Equal("1_keep1", Assert.Single(back.Document.ExtResources).Id);
@@ -388,10 +385,10 @@ public sealed partial class SceneBackTests
             [],
             [],
             [],
-            new XscnResource { Type = new XscnClassType(Metadata.FindClass("Gradient")!) }
+            new XscnResource { Type = new XscnClassType(TestMetadata.FindClass("Gradient")!) }
         );
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, Metadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, TestMetadata, Options);
 
         AssertIssue(back.Issues, ConversionCodes.SceneRootNotANode, ConversionSeverity.Error);
         Assert.Empty(back.Document.Nodes);
@@ -405,7 +402,7 @@ public sealed partial class SceneBackTests
         XscnOverride outer = new() { Path = "B", Children = [inner] };
         XscnNode root = new()
         {
-            Type = new XscnClassType(Metadata.FindClass("Node")!),
+            Type = new XscnClassType(TestMetadata.FindClass("Node")!),
             Name = "Root",
             Children =
             [
@@ -419,7 +416,7 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), Metadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
 
         Assert.Equal(
             2,
@@ -433,7 +430,7 @@ public sealed partial class SceneBackTests
     {
         XscnNode root = new()
         {
-            Type = new XscnClassType(Metadata.FindClass("Node")!),
+            Type = new XscnClassType(TestMetadata.FindClass("Node")!),
             Name = "Root",
             Children =
             [
@@ -446,14 +443,14 @@ public sealed partial class SceneBackTests
                         new XscnOverride
                         {
                             Path = "",
-                            Children = [new XscnNode { Type = new XscnClassType(Metadata.FindClass("Node")!), Name = "Lost" }],
+                            Children = [new XscnNode { Type = new XscnClassType(TestMetadata.FindClass("Node")!), Name = "Lost" }],
                         },
                     ],
                 },
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), Metadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
 
         AssertIssue(back.Issues, ConversionCodes.OverrideWithoutPath, ConversionSeverity.Error);
         Assert.Equal(["Root", "Inst"], back.Document.Nodes.Select(node => node.Name));
@@ -476,7 +473,7 @@ public sealed partial class SceneBackTests
                 </Node>
                 """
             ),
-            Metadata,
+            TestMetadata,
             Options
         );
 
@@ -497,7 +494,7 @@ public sealed partial class SceneBackTests
     {
         ConversionResult<TscnDocument> back = XscnToTscn.Convert(
             Parse($$"""<Node {{X}} Name="Root"><Node Name="%Child" UniqueNameInOwner="False" /></Node>"""),
-            Metadata,
+            TestMetadata,
             Options
         );
 
@@ -511,7 +508,7 @@ public sealed partial class SceneBackTests
     [InlineData("""<x:Instance Name="P" Scene="res://b.tscn" x:InstancePlaceholder="res://a.tscn" />""")]
     public void PlaceholderWithAnotherTagWarns(string element)
     {
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse($$"""<Node {{X}} Name="Root">{{element}}</Node>"""), Metadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse($$"""<Node {{X}} Name="Root">{{element}}</Node>"""), TestMetadata, Options);
 
         AssertIssue(back.Issues, ConversionCodes.PlaceholderTypeDropped, ConversionSeverity.Warning);
         TscnNode node = back.Document.Nodes[1];
@@ -531,8 +528,8 @@ public sealed partial class SceneBackTests
             """
         );
 
-        Assert.Equal(["layout_mode", "anchors_preset", "anchor_right", "anchor_bottom"], Names(scene.Nodes[1].Properties));
-        Assert.Equal(["toggle_mode", "button_pressed"], Names(scene.Nodes[2].Properties));
+        Assert.Equal(["layout_mode", "anchors_preset", "anchor_right", "anchor_bottom"], PropertyNames(scene.Nodes[1].Properties));
+        Assert.Equal(["toggle_mode", "button_pressed"], PropertyNames(scene.Nodes[2].Properties));
     }
 
     [Fact]
@@ -540,7 +537,7 @@ public sealed partial class SceneBackTests
     {
         TscnDocument scene = Back($$"""<Label {{X}} Name="Root" Text="Hi" Visible="False" LayoutMode="Position" />""");
 
-        Assert.Equal(["visible", "layout_mode", "text"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["visible", "layout_mode", "text"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     [Fact]
@@ -548,7 +545,7 @@ public sealed partial class SceneBackTests
     {
         TscnDocument scene = Back($$"""<Label {{X}} Name="Root" Text="Hi" ThemeOverrideColors.font_color="1, 0, 0, 1" LayoutMode="Position" />""");
 
-        Assert.Equal(["layout_mode", "theme_override_colors/font_color", "text"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["layout_mode", "theme_override_colors/font_color", "text"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // Label's list puts font_size before font_color, against the alphabetical order of their families.
@@ -559,7 +556,7 @@ public sealed partial class SceneBackTests
             $$"""<Label {{X}} Name="Root" ThemeOverrideColors.font_color="1, 0, 0, 1" ThemeOverrideFontSizes.font_size="20" />"""
         );
 
-        Assert.Equal(["theme_override_font_sizes/font_size", "theme_override_colors/font_color"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["theme_override_font_sizes/font_size", "theme_override_colors/font_color"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     [Fact]
@@ -567,22 +564,7 @@ public sealed partial class SceneBackTests
     {
         TscnDocument scene = Back($$"""<Node2D {{X}} Name="Root" Metadata.m="1" alpha="2" Script="res://s.gd" Position="1, 2" />""");
 
-        Assert.Equal(["position", "script", "alpha", "metadata/m"], Names(scene.Nodes[0].Properties));
-    }
-
-    [Fact]
-    public void ADynamicNameComesAfterTheClassList()
-    {
-        TscnDocument scene = Back(
-            $$"""
-            <PopupMenu {{X}} Name="Root">
-              <x:Prop Name="item_0/text" Value='"One"' />
-              <x:Prop Name="item_count" Value="1" />
-            </PopupMenu>
-            """
-        );
-
-        Assert.Equal(["item_count", "item_0/text"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["position", "script", "alpha", "metadata/m"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // The script's own _get_property_list gives such a name, and the node has no script until the script line is set.
@@ -597,7 +579,7 @@ public sealed partial class SceneBackTests
             """
         );
 
-        Assert.Equal(["script", "settings/speed"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["script", "settings/speed"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     [Fact]
@@ -613,7 +595,7 @@ public sealed partial class SceneBackTests
             """
         );
 
-        Assert.Equal(["content_margin_left", "bg_color"], Names(Assert.Single(scene.SubResources).Properties));
+        Assert.Equal(["content_margin_left", "bg_color"], PropertyNames(Assert.Single(scene.SubResources).Properties));
     }
 
     [Fact]
@@ -622,14 +604,14 @@ public sealed partial class SceneBackTests
         XscnParseResult parsed = XscnParser.Parse(
             $$"""<StyleBoxFlat {{X}} BgColor="1, 0, 0, 1" ContentMarginLeft="4" />""",
             XscnDocumentKind.Resource,
-            Metadata
+            TestMetadata
         );
         Assert.Empty(parsed.Diagnostics);
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, Metadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, TestMetadata, Options);
 
         Assert.Empty(back.Issues);
-        Assert.Equal(["content_margin_left", "bg_color"], Names(back.Document.ResourceProperties));
+        Assert.Equal(["content_margin_left", "bg_color"], PropertyNames(back.Document.ResourceProperties));
     }
 
     [Fact]
@@ -642,7 +624,7 @@ public sealed partial class SceneBackTests
         ];
         XscnNode root = new()
         {
-            Type = new XscnClassType(Metadata.FindClass("Node")!),
+            Type = new XscnClassType(TestMetadata.FindClass("Node")!),
             Name = "Root",
             Children =
             [
@@ -662,11 +644,11 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), Metadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
 
         Assert.Empty(back.Issues);
         Assert.Equal(["Inst", "A", "Unknown"], back.Document.Nodes.Skip(1).Select(node => node.Name));
-        Assert.All(back.Document.Nodes.Skip(1), node => Assert.Equal(["button_pressed", "toggle_mode"], Names(node.Properties)));
+        Assert.All(back.Document.Nodes.Skip(1), node => Assert.Equal(["button_pressed", "toggle_mode"], PropertyNames(node.Properties)));
     }
 
     // With no lookup the placeholder's scene cannot be read, so its stored values keep source order: Node lists
@@ -682,7 +664,7 @@ public sealed partial class SceneBackTests
             """
         );
 
-        Assert.Equal(["editor_description", "process_mode"], Names(scene.Nodes[1].Properties));
+        Assert.Equal(["editor_description", "process_mode"], PropertyNames(scene.Nodes[1].Properties));
     }
 
     // A placeholder replays its values in file order on the instanced root (instance_placeholder.cpp:37-43, 100-102), so
@@ -695,7 +677,7 @@ public sealed partial class SceneBackTests
         ConversionResult<TscnDocument> back = BackWith(Placeholder("grow_vertical=\"0\" layout_mode=\"1\""), files);
 
         Assert.Empty(back.Issues);
-        Assert.Equal(["layout_mode", "grow_vertical"], Names(back.Document.Nodes[1].Properties));
+        Assert.Equal(["layout_mode", "grow_vertical"], PropertyNames(back.Document.Nodes[1].Properties));
     }
 
     [Fact]
@@ -703,7 +685,7 @@ public sealed partial class SceneBackTests
     {
         TscnDocument scene = Back(Placeholder("grow_vertical=\"0\" layout_mode=\"1\""));
 
-        Assert.Equal(["grow_vertical", "layout_mode"], Names(scene.Nodes[1].Properties));
+        Assert.Equal(["grow_vertical", "layout_mode"], PropertyNames(scene.Nodes[1].Properties));
     }
 
     [Fact]
@@ -718,7 +700,7 @@ public sealed partial class SceneBackTests
             (ConversionCodes.InstancedClassUnreadable, ConversionSeverity.Warning, "node \"P\""),
             (issue.Code, issue.Severity, issue.Location)
         );
-        Assert.Equal(["grow_vertical", "layout_mode"], Names(back.Document.Nodes[1].Properties));
+        Assert.Equal(["grow_vertical", "layout_mode"], PropertyNames(back.Document.Nodes[1].Properties));
     }
 
     // Node lists process_mode before editor_description.
@@ -730,7 +712,7 @@ public sealed partial class SceneBackTests
         ConversionResult<TscnDocument> back = BackWith(Placeholder("EditorDescription=\"note\" ProcessMode=\"Always\""), files);
 
         Assert.Empty(back.Issues);
-        Assert.Equal(["process_mode", "editor_description"], Names(back.Document.Nodes[1].Properties));
+        Assert.Equal(["process_mode", "editor_description"], PropertyNames(back.Document.Nodes[1].Properties));
     }
 
     [Fact]
@@ -749,7 +731,7 @@ public sealed partial class SceneBackTests
     {
         XscnNode root = new()
         {
-            Type = new XscnClassType(Metadata.FindClass("Node")!),
+            Type = new XscnClassType(TestMetadata.FindClass("Node")!),
             Name = "Root",
             Properties =
             [
@@ -759,7 +741,7 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), Metadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
 
         Assert.Empty(back.Issues);
         Assert.Equal(
@@ -772,26 +754,16 @@ public sealed partial class SceneBackTests
         );
     }
 
-    private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
-
     private static XscnDocument Parse(string text)
     {
-        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, Metadata);
+        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, TestMetadata);
         Assert.Empty(parsed.Diagnostics);
         return parsed.Document;
     }
 
-    // Parses and converts with no issue.
-    private static TscnDocument Back(string text)
-    {
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parse(text), Metadata, Options);
-        Assert.Empty(back.Issues);
-        return back.Document;
-    }
-
     // Parses and converts with a scene lookup, keeping the issues for the caller.
     private static ConversionResult<TscnDocument> BackWith(string text, ISceneFiles files) =>
-        XscnToTscn.Convert(Parse(text), Metadata, Options with { SceneFiles = files, SourceKey = "res://main.xscn" });
+        XscnToTscn.Convert(Parse(text), TestMetadata, Options with { SceneFiles = files, SourceKey = "res://main.xscn" });
 
     private static string Placeholder(string properties) =>
         $$"""<Node {{X}} Name="Root"><InstancePlaceholder Name="P" x:InstancePlaceholder="res://c.tscn" {{properties}} /></Node>""";

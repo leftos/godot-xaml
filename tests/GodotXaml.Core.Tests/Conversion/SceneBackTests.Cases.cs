@@ -1,11 +1,11 @@
+using static GodotXaml.Core.Tests.Conversion.BackHelpers;
+
 namespace GodotXaml.Core.Tests.Conversion;
 
 // The .xscn each scene fixture converts to by the format's rules (docs/DECISIONS.md, "The core's implementation choices"). A scene
 // instanced or inherited by a .tscn path without a uid is <x:Instance Scene="…">, since a tag would read as .xscn.
 public sealed partial class SceneBackTests
 {
-    private const string X = "xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\"";
-
     private static readonly Dictionary<string, string> Inputs = new(StringComparer.Ordinal)
     {
         ["bone_chain_settings"] = $$"""

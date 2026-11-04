@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Converting back to `.tscn`, a Skeleton3D bone's Godot 3 keys come after its other keys, `pose` before `bound_children`, as Godot reads them.
+
 ## 0.3.0 - 2026-11-03
 
 ### Added

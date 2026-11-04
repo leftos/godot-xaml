@@ -1,21 +1,11 @@
-using System.Collections.Immutable;
-using GodotXaml.Core.Conversion;
-using GodotXaml.Core.Metadata;
-using GodotXaml.Core.Tests.Values;
 using GodotXaml.Core.Tscn;
-using GodotXaml.Core.Xscn;
+using static GodotXaml.Core.Tests.Conversion.BackHelpers;
 
 namespace GodotXaml.Core.Tests.Conversion;
 
 // A dynamic name (one a class adds in _get_property_list, which ClassDB does not list) goes in its declaring class's place.
 public sealed class PropertyOrderTests
 {
-    private const string X = "xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\"";
-
-    private static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
-
-    private static readonly ConversionOptions Options = new() { Seed = 7 };
-
     // AnimationMixer declares libraries/, so a library exists before AnimationPlayer's current_animation plays it.
     [Fact]
     public void ABaseClassFamilyComesBeforeTheLeafClassList()
@@ -28,7 +18,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["libraries/lib", "current_animation"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["libraries/lib", "current_animation"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     [Fact]
@@ -42,7 +32,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["speed_scale", "blend_times", "script"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["speed_scale", "blend_times", "script"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     [Fact]
@@ -56,7 +46,22 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["current", "script"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["current", "script"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    [Fact]
+    public void ADynamicNameComesAfterTheClassList()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <PopupMenu {{X}} Name="Root">
+              <x:Prop Name="item_0/text" Value='"One"' />
+              <x:Prop Name="item_count" Value="1" />
+            </PopupMenu>
+            """
+        );
+
+        Assert.Equal(["item_count", "item_0/text"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // GeometryInstance3D, a base of MeshInstance3D, declares instance_shader_parameters/, so it precedes mesh.
@@ -72,7 +77,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["instance_shader_parameters/p", "mesh", "surface_material_override/0"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["instance_shader_parameters/p", "mesh", "surface_material_override/0"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     [Fact]
@@ -86,7 +91,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["instance_shader_parameters/p", "texture"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["instance_shader_parameters/p", "texture"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // Node2D does not inherit AnimationMixer, so libraries/ there is a script's own name.
@@ -101,7 +106,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["script", "libraries/x"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["script", "libraries/x"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // Material lists render_priority, ShaderMaterial lists shader, then ShaderMaterial adds shader_parameter/.
@@ -120,7 +125,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["render_priority", "shader", "shader_parameter/c", "script"], Names(Assert.Single(scene.SubResources).Properties));
+        Assert.Equal(["render_priority", "shader", "shader_parameter/c", "script"], PropertyNames(Assert.Single(scene.SubResources).Properties));
     }
 
     [Fact]
@@ -134,7 +139,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["current", "script", "alpha", "metadata/m"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["current", "script", "alpha", "metadata/m"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // Animation::_set creates a track only on tracks/<count>/type, so each track's type comes first, tracks in numeric order.
@@ -153,7 +158,10 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["tracks/0/type", "tracks/0/path", "tracks/0/interp", "tracks/2/type", "tracks/10/type"], Names(resource.ResourceProperties));
+        Assert.Equal(
+            ["tracks/0/type", "tracks/0/path", "tracks/0/interp", "tracks/2/type", "tracks/10/type"],
+            PropertyNames(resource.ResourceProperties)
+        );
     }
 
     // Skeleton3D::_set adds a bone only on bones/<count>/name and rejects any other key of a bone that does not exist yet.
@@ -172,7 +180,10 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["bones/0/name", "bones/0/parent", "bones/0/enabled", "bones/2/name", "bones/10/name"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(
+            ["bones/0/name", "bones/0/parent", "bones/0/enabled", "bones/2/name", "bones/10/name"],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
     }
 
     // AnimationNodeBlendSpace2D::_set adds a point only on blend_point_<count>/node.
@@ -193,7 +204,7 @@ public sealed class PropertyOrderTests
 
         Assert.Equal(
             ["blend_point_0/node", "blend_point_0/pos", "blend_point_0/name", "blend_point_2/node", "blend_point_10/node"],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -211,7 +222,24 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["bones/0/name", "bones/0/rest", "bones/0/bone_meta/tag"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(["bones/0/name", "bones/0/rest", "bones/0/bone_meta/tag"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // Skeleton3D::_set reads the 3.x pose before bound_children, after every 4.x key of the bone (skeleton_3d.cpp:110-135).
+    [Fact]
+    public void ASkeletonBonesDeprecatedKeysComeAfterItsOwn()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Skeleton3D {{X}} Name="Root">
+              <x:Prop Name="bones/0/bound_children" Value="PackedInt32Array(1, 2)" />
+              <x:Prop Name="bones/0/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)" />
+              <x:Prop Name="bones/0/rest" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)" />
+            </Skeleton3D>
+            """
+        );
+
+        Assert.Equal(["bones/0/rest", "bones/0/pose", "bones/0/bound_children"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // VisualShader::_set creates a node only on nodes/<type>/<id>/node and casts the node unchecked for expression and
@@ -250,7 +278,7 @@ public sealed class PropertyOrderTests
                 "nodes/fragment/10/expression",
                 "nodes/fragment/connections",
             ],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -274,7 +302,7 @@ public sealed class PropertyOrderTests
 
         Assert.Equal(
             ["modes/blend", "modes/depth_draw", "modes/depth_test", "modes/cull", "modes/diffuse", "modes/specular"],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -309,7 +337,7 @@ public sealed class PropertyOrderTests
                 "flags/fog_disabled",
                 "flags/specular_occlusion_disabled",
             ],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -327,7 +355,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["nodes/other/3/node", "nodes/other/3/position", "nodes/other/3/expression"], Names(resource.ResourceProperties));
+        Assert.Equal(["nodes/other/3/node", "nodes/other/3/position", "nodes/other/3/expression"], PropertyNames(resource.ResourceProperties));
     }
 
     // SceneReplicationConfig::_set creates an entry only on properties/<count>/path.
@@ -368,7 +396,7 @@ public sealed class PropertyOrderTests
                 "properties/10/spawn",
                 "properties/10/replication_mode",
             ],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -418,7 +446,7 @@ public sealed class PropertyOrderTests
                 "input_10/break_loop_at_end",
                 "input_10/reset",
             ],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -437,7 +465,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["pattern_0", "pattern_1", "pattern_2", "pattern_10"], Names(resource.ResourceProperties));
+        Assert.Equal(["pattern_0", "pattern_1", "pattern_2", "pattern_10"], PropertyNames(resource.ResourceProperties));
     }
 
     // TileSet::_get_property_list lists each layer kind's layers in numeric order, each layer's keys in a fixed order, and each
@@ -485,7 +513,7 @@ public sealed class PropertyOrderTests
                 "custom_data_layer_2/type",
                 "custom_data_layer_10/name",
             ],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -506,7 +534,7 @@ public sealed class PropertyOrderTests
 
         Assert.Equal(
             ["sources/0", "tile_proxies/source_level", "tile_proxies/coords_level", "tile_proxies/alternative_level"],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -529,7 +557,7 @@ public sealed class PropertyOrderTests
 
         Assert.Equal(
             ["scenes/1/scene", "scenes/2/scene", "scenes/2/display_placeholder", "scenes/10/scene", "scenes/10/display_placeholder"],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -555,7 +583,7 @@ public sealed class PropertyOrderTests
 
         Assert.Equal(
             ["0:0/0", "0:0/0/terrain_set", "1:0/0", "1:0/0/terrain_set", "0:0/0/terrain", "1:0/0/terrain", "0:0/0/terrains_peering_bit/right_side"],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -618,7 +646,7 @@ public sealed class PropertyOrderTests
                 "settings/1/collisions/1",
                 "settings/1/collisions/10",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -657,7 +685,7 @@ public sealed class PropertyOrderTests
                 "settings/0/collision_count",
                 "settings/0/collisions/0",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -708,7 +736,7 @@ public sealed class PropertyOrderTests
                 "settings/1/joints/1/rotation_axis",
                 "settings/1/joints/1/limitation/right_axis",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -742,7 +770,7 @@ public sealed class PropertyOrderTests
                 "settings/1/root_bone",
                 "settings/1/joint_count",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -792,7 +820,7 @@ public sealed class PropertyOrderTests
                 "settings/10/use_virtual_end",
                 "settings/10/extend_end_bone",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -826,7 +854,7 @@ public sealed class PropertyOrderTests
                 "chains/10/end_bone_name",
                 "chains/10/end_bone",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -871,7 +899,7 @@ public sealed class PropertyOrderTests
                 "settings/10/forward_axis",
                 "settings/10/use_euler",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -914,7 +942,7 @@ public sealed class PropertyOrderTests
                 "settings/0/additive",
                 "settings/10/copy",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -961,7 +989,7 @@ public sealed class PropertyOrderTests
                 "settings/0/additive",
                 "settings/10/apply/axis",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -1016,7 +1044,7 @@ public sealed class PropertyOrderTests
                 "settings/10/joint_count",
                 "settings/10/joints/0/twist_amount",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -1061,7 +1089,7 @@ public sealed class PropertyOrderTests
                 "joint_data/10/rotate_from_joint",
                 "joint_data/10/enable_constraint",
             ],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -1096,7 +1124,7 @@ public sealed class PropertyOrderTests
                 "joint_data/10/magnet_position",
                 "joint_data/10/use_target_rotation",
             ],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -1140,7 +1168,7 @@ public sealed class PropertyOrderTests
                 "joint_data/2/bone_index",
                 "joint_data/10/bone_index",
             ],
-            Names(resource.ResourceProperties)
+            PropertyNames(resource.ResourceProperties)
         );
     }
 
@@ -1158,7 +1186,10 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["physical_bone_chain_length", "joint_0_nodepath", "joint_2_nodepath", "joint_10_nodepath"], Names(resource.ResourceProperties));
+        Assert.Equal(
+            ["physical_bone_chain_length", "joint_0_nodepath", "joint_2_nodepath", "joint_10_nodepath"],
+            PropertyNames(resource.ResourceProperties)
+        );
     }
 
     // SkeletonModificationStack2D::_get_property_list lists the modifications in numeric order.
@@ -1175,7 +1206,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["modification_count", "modifications/0", "modifications/2", "modifications/10"], Names(resource.ResourceProperties));
+        Assert.Equal(["modification_count", "modifications/0", "modifications/2", "modifications/10"], PropertyNames(resource.ResourceProperties));
     }
 
     // PhysicalBone3D::_get_property_list lists its JointData's keys after bone_name, each joint type's keys in a fixed order
@@ -1214,7 +1245,7 @@ public sealed class PropertyOrderTests
                 "joint_constraints/softness",
                 "joint_constraints/relaxation",
             ],
-            Names(scene.Nodes[1].Properties)
+            PropertyNames(scene.Nodes[1].Properties)
         );
         Assert.Equal(
             [
@@ -1226,7 +1257,7 @@ public sealed class PropertyOrderTests
                 "joint_constraints/angular_limit_lower",
                 "joint_constraints/angular_limit_damping",
             ],
-            Names(scene.Nodes[2].Properties)
+            PropertyNames(scene.Nodes[2].Properties)
         );
     }
 
@@ -1257,7 +1288,7 @@ public sealed class PropertyOrderTests
                 "joint_constraints/z/linear_limit_upper",
                 "joint_constraints/z/angular_equilibrium_point",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -1289,7 +1320,7 @@ public sealed class PropertyOrderTests
                 "attachments/10/point_index",
                 "attachments/10/offset",
             ],
-            Names(scene.Nodes[0].Properties)
+            PropertyNames(scene.Nodes[0].Properties)
         );
     }
 
@@ -1305,7 +1336,7 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["glow_enabled", "glow_levels/1", "glow_normalized", "glow_intensity"], Names(resource.ResourceProperties));
+        Assert.Equal(["glow_enabled", "glow_levels/1", "glow_normalized", "glow_intensity"], PropertyNames(resource.ResourceProperties));
     }
 
     // hinge_joint_3d.cpp registers params/bias, then angular_limit/..., then motor/..., all after Joint3D's own list.
@@ -1323,28 +1354,152 @@ public sealed class PropertyOrderTests
             """
         );
 
-        Assert.Equal(["node_a", "params/bias", "angular_limit/enable", "angular_limit/upper", "motor/enable"], Names(scene.Nodes[0].Properties));
+        Assert.Equal(
+            ["node_a", "params/bias", "angular_limit/enable", "angular_limit/upper", "motor/enable"],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
     }
 
-    private static IEnumerable<string> Names(ImmutableArray<TscnProperty> properties) => properties.Select(property => property.Name);
-
-    // Parses a resource document and converts it with no issue.
-    private static TscnDocument BackResource(string text)
+    // AnimationPlayer::_get_property_list adds next/ before blend_times, so the first family's names come first.
+    [Fact]
+    public void TwoFamiliesOfOneClassKeepTheTablesOrder()
     {
-        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Resource, Metadata);
-        Assert.Empty(parsed.Diagnostics);
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, Metadata, Options);
-        Assert.Empty(back.Issues);
-        return back.Document;
+        TscnDocument scene = Back(
+            $$"""
+            <AnimationPlayer {{X}} Name="Root">
+              <x:Prop Name="blend_times" Value="[]" />
+              <x:Prop Name="next/idle" Value='"walk"' />
+            </AnimationPlayer>
+            """
+        );
+
+        Assert.Equal(["next/idle", "blend_times"], PropertyNames(scene.Nodes[0].Properties));
     }
 
-    // Parses and converts with no issue.
-    private static TscnDocument Back(string text)
+    // Control's theme overrides rank at Control's place in the chain, before a family a deeper class adds.
+    [Fact]
+    public void ThemeOverridesComeBeforeADeeperClassesDynamicPropertyNames()
     {
-        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, Metadata);
-        Assert.Empty(parsed.Diagnostics);
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, Metadata, Options);
-        Assert.Empty(back.Issues);
-        return back.Document;
+        TscnDocument scene = Back(
+            $$"""
+            <GraphNode {{X}} Name="Root" ThemeOverrideColors.resizer_color="1, 0, 0, 1">
+              <x:Prop Name="slot/0/left_icon" Value='Resource("res://i.png")' />
+            </GraphNode>
+            """
+        );
+
+        Assert.Equal(["theme_override_colors/resizer_color", "slot/0/left_icon"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // Theme::_get_property_list names a data type's base_type and its type-keyed values after Theme's own list, before the
+    // script; a name no family names is a script's own, ranked after every class-list name however early it stands.
+    [Fact]
+    public void AThemesTypeKeysComeAfterItsListAndBeforeTheScript()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Label {{X}} Name="Root">
+              <Label.Theme>
+                <Theme Script="res://t.gd" DefaultFontSize="20">
+                  <x:Prop Name="other/x" Value="1" />
+                  <x:Prop Name="Label/base_type" Value='&amp;"Label"' />
+                  <x:Prop Name="Label/colors/font_color" Value="Color(1, 0, 0, 1)" />
+                </Theme>
+              </Label.Theme>
+            </Label>
+            """
+        );
+
+        Assert.Equal(
+            ["default_font_size", "Label/base_type", "Label/colors/font_color", "script", "other/x"],
+            PropertyNames(Assert.Single(scene.SubResources).Properties)
+        );
+    }
+
+    // TileSetAtlasSource::_get_property_list names a tile <x>:<y>/..., in its family's place rather than a slash-named tail.
+    [Fact]
+    public void AnAtlasTileNameMatchesItsFamily()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="other/x" Value="1" />
+              <x:Prop Name="0:0/size_in_atlas" Value="Vector2i(1, 1)" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:0/size_in_atlas", "other/x"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // AudioEffectEQ::_get_property_list names a band band_db/<frequency>_hz.
+    [Fact]
+    public void AnEqBandNameMatchesItsFamily()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <AudioEffectEQ {{X}}>
+              <x:Prop Name="other/x" Value="1" />
+              <x:Prop Name="band_db/32_hz" Value="1.0" />
+            </AudioEffectEQ>
+            """
+        );
+
+        Assert.Equal(["band_db/32_hz", "other/x"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // A key the family's key order lacks goes after every listed key of its entry, in source order.
+    [Fact]
+    public void AnUnknownKeyGoesAfterTheListedKeysOfItsEntry()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <Animation {{X}}>
+              <x:Prop Name="tracks/0/zzz" Value="1" />
+              <x:Prop Name="tracks/0/type" Value='"value"' />
+              <x:Prop Name="tracks/0/aaa" Value="1" />
+              <x:Prop Name="tracks/0/use_blend" Value="true" />
+            </Animation>
+            """
+        );
+
+        Assert.Equal(["tracks/0/type", "tracks/0/use_blend", "tracks/0/zzz", "tracks/0/aaa"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // AnimationNodeBlendSpace1D::_set adds a point only on blend_point_<count>/node.
+    [Fact]
+    public void ABlendSpace1DPointStartsWithItsNode()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <AnimationNodeBlendSpace1D {{X}}>
+              <x:Prop Name="blend_point_1/name" Value='&amp;"b"' />
+              <x:Prop Name="blend_point_0/pos" Value="1.0" />
+              <x:Prop Name="blend_point_1/node" Value='Resource("res://b.tres")' />
+              <x:Prop Name="blend_point_0/node" Value='Resource("res://a.tres")' />
+            </AnimationNodeBlendSpace1D>
+            """
+        );
+
+        Assert.Equal(
+            ["blend_point_0/node", "blend_point_0/pos", "blend_point_1/node", "blend_point_1/name"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // An index past int's range ranks last in its family, after every index Godot could hold.
+    [Fact]
+    public void AnIndexPastIntsRangeRanksLastInItsFamily()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <Animation {{X}}>
+              <x:Prop Name="tracks/99999999999999999999/type" Value='"value"' />
+              <x:Prop Name="tracks/5/type" Value='"value"' />
+            </Animation>
+            """
+        );
+
+        Assert.Equal(["tracks/5/type", "tracks/99999999999999999999/type"], PropertyNames(resource.ResourceProperties));
     }
 }

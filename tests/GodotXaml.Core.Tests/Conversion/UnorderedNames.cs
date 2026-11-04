@@ -132,7 +132,7 @@ internal static partial class UnorderedNames
     }
 
     // A TileSetAtlasSource tile's name: <x>:<y>/ and any key.
-    [GeneratedRegex(@"^\d+:\d+/")]
+    [GeneratedRegex(@"^[0-9]+:[0-9]+/")]
     private static partial Regex TileKey();
 
     /// <summary>One section of a fixture: its class, and whether it is the [resource] section.</summary>

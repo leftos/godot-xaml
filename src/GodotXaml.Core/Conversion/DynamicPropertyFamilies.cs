@@ -37,8 +37,20 @@ internal static class DynamicPropertyFamilies
     ];
 
     // scene/3d/skeleton_3d.cpp, Skeleton3D::_get_property_list (bone_meta/<name> after these); Skeleton3D::_set adds a bone
-    // only on its name.
-    private static readonly string[] BoneKeys = ["name", "parent", "rest", "enabled", "position", "rotation", "scale", "bone_meta"];
+    // only on its name, and reads the 3.x pose and bound_children it kept for compatibility after bone_meta, pose first.
+    private static readonly string[] BoneKeys =
+    [
+        "name",
+        "parent",
+        "rest",
+        "enabled",
+        "position",
+        "rotation",
+        "scale",
+        "bone_meta",
+        "pose",
+        "bound_children",
+    ];
 
     // scene/animation/animation_blend_space_1d.cpp and animation_blend_space_2d.cpp, _get_property_list; each _set adds a
     // point only on its node.
@@ -313,7 +325,7 @@ internal static class DynamicPropertyFamilies
         "reference_node",
     ];
 
-    private static readonly string ConstraintPattern = $@"^settings/(?<index>\d+)/(?<key>{string.Join("|", ConstraintKeys)})$";
+    private static readonly string ConstraintPattern = $@"^settings/(?<index>[0-9]+)/(?<key>{string.Join("|", ConstraintKeys)})\z";
 
     // scene/3d/aim_modifier_3d.cpp, AimModifier3D::_get_property_list: one setting's own keys.
     private static readonly string[] AimKeys = ["forward_axis", "use_euler", "primary_rotation_axis", "use_secondary_rotation", "relative"];
@@ -365,13 +377,13 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("AnimationMixer", @"^libraries/"),
         // scene/animation/animation_player.cpp, AnimationPlayer::_get_property_list
         Row.AnyOrder("AnimationPlayer", @"^next/"),
-        Row.AnyOrder("AnimationPlayer", @"^blend_times$"),
+        Row.AnyOrder("AnimationPlayer", @"^blend_times\z"),
         // scene/animation/animation_tree.cpp, AnimationTree::_get_property_list (AnimationTree::_update_properties)
         Row.AnyOrder("AnimationTree", @"^parameters/"),
         // scene/2d/audio_listener_2d.cpp, AudioListener2D::_get_property_list
-        Row.AnyOrder("AudioListener2D", @"^current$"),
+        Row.AnyOrder("AudioListener2D", @"^current\z"),
         // scene/3d/audio_listener_3d.cpp, AudioListener3D::_get_property_list
-        Row.AnyOrder("AudioListener3D", @"^current$"),
+        Row.AnyOrder("AudioListener3D", @"^current\z"),
         // scene/audio/audio_stream_player.cpp, AudioStreamPlayer::_get_property_list (AudioStreamPlayerInternal::get_property_list)
         Row.AnyOrder("AudioStreamPlayer", @"^parameters/"),
         // scene/2d/audio_stream_player_2d.cpp, AudioStreamPlayer2D::_get_property_list (AudioStreamPlayerInternal::get_property_list)
@@ -384,48 +396,48 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("GeometryInstance3D", @"^instance_shader_parameters/"),
         // scene/3d/mesh_instance_3d.cpp, MeshInstance3D::_get_property_list
         Row.AnyOrder("MeshInstance3D", @"^blend_shapes/"),
-        Row.SizedFirst("MeshInstance3D", @"^surface_material_override/\d+$", "mesh"),
+        Row.SizedFirst("MeshInstance3D", @"^surface_material_override/[0-9]+\z", "mesh"),
         // scene/gui/graph_node.cpp, GraphNode::_get_property_list
-        Row.AnyOrder("GraphNode", @"^slot/\d+/"),
+        Row.AnyOrder("GraphNode", @"^slot/[0-9]+/"),
         // scene/gui/tab_container.cpp, TabContainer::_get_property_list (PropertyListHelper)
-        Row.AnyOrder("TabContainer", @"^tab_\d+/"),
+        Row.AnyOrder("TabContainer", @"^tab_[0-9]+/"),
         // scene/gui/tab_bar.h, TabBar::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("TabBar", @"^tab_\d+/", "tab_count"),
+        Row.SizedFirst("TabBar", @"^tab_[0-9]+/", "tab_count"),
         // scene/gui/popup_menu.h, PopupMenu::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("PopupMenu", @"^item_\d+/", "item_count"),
+        Row.SizedFirst("PopupMenu", @"^item_[0-9]+/", "item_count"),
         // scene/gui/item_list.h, ItemList::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("ItemList", @"^item_\d+/", "item_count"),
+        Row.SizedFirst("ItemList", @"^item_[0-9]+/", "item_count"),
         // scene/gui/option_button.h, OptionButton::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("OptionButton", @"^popup/item_\d+/", "item_count"),
+        Row.SizedFirst("OptionButton", @"^popup/item_[0-9]+/", "item_count"),
         // scene/gui/menu_button.h, MenuButton::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("MenuButton", @"^popup/item_\d+/", "item_count"),
+        Row.SizedFirst("MenuButton", @"^popup/item_[0-9]+/", "item_count"),
         // scene/gui/file_dialog.h, FileDialog::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("FileDialog", @"^option_\d+/", "option_count"),
+        Row.SizedFirst("FileDialog", @"^option_[0-9]+/", "option_count"),
         // scene/main/shader_globals_override.cpp, ShaderGlobalsOverride::_get_property_list
         Row.AnyOrder("ShaderGlobalsOverride", @"^params/"),
         // scene/2d/skeleton_2d.cpp, Skeleton2D::_get_property_list
-        Row.AnyOrder("Skeleton2D", @"^modification_stack$"),
+        Row.AnyOrder("Skeleton2D", @"^modification_stack\z"),
         // scene/2d/skeleton_2d.cpp, Bone2D::_get_property_list
-        Row.AnyOrder("Bone2D", @"^auto_calculate_length_and_angle$"),
-        Row.AnyOrder("Bone2D", @"^length$"),
-        Row.AnyOrder("Bone2D", @"^bone_angle$"),
-        Row.AnyOrder("Bone2D", @"^editor_settings/show_bone_gizmo$"),
+        Row.AnyOrder("Bone2D", @"^auto_calculate_length_and_angle\z"),
+        Row.AnyOrder("Bone2D", @"^length\z"),
+        Row.AnyOrder("Bone2D", @"^bone_angle\z"),
+        Row.AnyOrder("Bone2D", @"^editor_settings/show_bone_gizmo\z"),
         // scene/2d/tile_map.cpp, TileMap::_get_property_list (PropertyListHelper)
-        Row.AnyOrder("TileMap", @"^format$"),
-        Row.AnyOrder("TileMap", @"^layer_\d+/"),
+        Row.AnyOrder("TileMap", @"^format\z"),
+        Row.AnyOrder("TileMap", @"^layer_[0-9]+/"),
         // scene/3d/skeleton_3d.cpp, Skeleton3D::_get_property_list
-        Row.OnKey("Skeleton3D", @"^bones/(?<index>\d+)/(?<key>[^/]*)", BoneKeys),
+        Row.OnKey("Skeleton3D", @"^bones/(?<index>[0-9]+)/(?<key>[^/]*)", BoneKeys),
         // scene/3d/physics/physical_bone_3d.cpp, PhysicalBone3D::_get_property_list (and its JointData kinds)
-        Row.AnyOrder("PhysicalBone3D", @"^bone_name$"),
+        Row.AnyOrder("PhysicalBone3D", @"^bone_name\z"),
         .. JointConstraintRows(),
         // scene/3d/physics/soft_body_3d.cpp, SoftBody3D::_get_property_list: the attachments in numeric order.
-        Row.AnyOrder("SoftBody3D", @"^pinned_points$"),
-        Row.SizedFirst("SoftBody3D", @"^attachments/(?<index>\d+)/(?<key>.*)", "pinned_points", SoftBodyAttachmentKeys, []),
+        Row.AnyOrder("SoftBody3D", @"^pinned_points\z"),
+        Row.SizedFirst("SoftBody3D", @"^attachments/(?<index>[0-9]+)/(?<key>.*)", "pinned_points", SoftBodyAttachmentKeys, []),
         // scene/3d/bone_twist_disperser_3d.cpp, BoneTwistDisperser3D::_get_property_list: setting by setting, each joint in
         // numeric order.
         Row.SizedFirst(
             "BoneTwistDisperser3D",
-            @"^settings/(?<index>\d+)/(?:(?<key>joints)/(?<subindex>\d+)/(?<subkey>[^/]*)$|(?<key>.*))",
+            @"^settings/(?<index>[0-9]+)/(?:(?<key>joints)/(?<subindex>[0-9]+)/(?<subkey>[^/]*)$|(?<key>.*))",
             "setting_count",
             DisperserSettingKeys,
             DisperserJointKeys
@@ -436,112 +448,112 @@ internal static class DynamicPropertyFamilies
         .. BoneConstraintRows("CopyTransformModifier3D", CopyKeys),
         .. BoneConstraintRows("ConvertTransformModifier3D", ConvertKeys),
         // scene/3d/limit_angular_velocity_modifier_3d.cpp, LimitAngularVelocityModifier3D::_get_property_list
-        Row.SizedFirst("LimitAngularVelocityModifier3D", @"^chains/(?<index>\d+)/(?<key>.*)", "chain_count", LimitChainKeys, []),
-        Row.SizedFirst("LimitAngularVelocityModifier3D", @"^joints/\d+/", "joint_count"),
+        Row.SizedFirst("LimitAngularVelocityModifier3D", @"^chains/(?<index>[0-9]+)/(?<key>.*)", "chain_count", LimitChainKeys, []),
+        Row.SizedFirst("LimitAngularVelocityModifier3D", @"^joints/[0-9]+/", "joint_count"),
         // scene/3d/iterate_ik_3d.cpp, IterateIK3D::_get_property_list (ChainIK3D::get_property_list): every setting's
         // target_node, then each setting's chain keys, then every setting's joint keys.
-        Row.SizedFirst("IterateIK3D", @"^settings/(?<index>\d+)/(?<key>target_node)$", "setting_count", ["target_node"], []),
-        Row.SizedFirst("IterateIK3D", @"^settings/(?<index>\d+)/(?!joints/)(?<key>.*)", "setting_count", ChainKeys, []),
+        Row.SizedFirst("IterateIK3D", @"^settings/(?<index>[0-9]+)/(?<key>target_node)\z", "setting_count", ["target_node"], []),
+        Row.SizedFirst("IterateIK3D", @"^settings/(?<index>[0-9]+)/(?!joints/)(?<key>.*)", "setting_count", ChainKeys, []),
         Row.SizedFirst(
             "IterateIK3D",
-            @"^settings/(?<index>\d+)/(?<key>joints)/(?<subindex>\d+)/(?<subkey>.*)",
+            @"^settings/(?<index>[0-9]+)/(?<key>joints)/(?<subindex>[0-9]+)/(?<subkey>.*)",
             "setting_count",
             ["joints"],
             IterateJointKeys
         ),
-        Row.SizedFirst("IterateIK3D", @"^settings/\d+/", "setting_count"),
+        Row.SizedFirst("IterateIK3D", @"^settings/[0-9]+/", "setting_count"),
         // scene/3d/two_bone_ik_3d.cpp, TwoBoneIK3D::_get_property_list
-        Row.SizedFirst("TwoBoneIK3D", @"^settings/(?<index>\d+)/(?<key>.*)", "setting_count", TwoBoneSettingKeys, []),
+        Row.SizedFirst("TwoBoneIK3D", @"^settings/(?<index>[0-9]+)/(?<key>.*)", "setting_count", TwoBoneSettingKeys, []),
         // scene/3d/spline_ik_3d.cpp, SplineIK3D::_get_property_list (ChainIK3D::get_property_list): every setting's path
         // and tilt keys, then each setting's chain keys.
         Row.SizedFirst(
             "SplineIK3D",
-            @"^settings/(?<index>\d+)/(?<key>path_3d|tilt_enabled|tilt_fade_in|tilt_fade_out)$",
+            @"^settings/(?<index>[0-9]+)/(?<key>path_3d|tilt_enabled|tilt_fade_in|tilt_fade_out)\z",
             "setting_count",
             ["path_3d", "tilt_enabled", "tilt_fade_in", "tilt_fade_out"],
             []
         ),
-        Row.SizedFirst("SplineIK3D", @"^settings/(?<index>\d+)/(?<key>.*)", "setting_count", ChainKeys, []),
+        Row.SizedFirst("SplineIK3D", @"^settings/(?<index>[0-9]+)/(?<key>.*)", "setting_count", ChainKeys, []),
         // scene/3d/spring_bone_simulator_3d.cpp, SpringBoneSimulator3D::_get_property_list: setting by setting, each joint
         // and collision in numeric order.
         Row.SizedFirst(
             "SpringBoneSimulator3D",
-            @"^settings/(?<index>\d+)/(?:(?<key>joints|exclude_collisions|collisions)/(?<subindex>\d+)(?:/(?<subkey>[^/]*))?$|(?<key>.*))",
+            @"^settings/(?<index>[0-9]+)/(?:(?<key>joints|exclude_collisions|collisions)/(?<subindex>[0-9]+)(?:/(?<subkey>[^/]*))?$|(?<key>.*))",
             "setting_count",
             SpringSettingKeys,
             SpringJointKeys
         ),
         // modules/multiplayer/multiplayer_spawner.cpp, MultiplayerSpawner::_get_property_list (editor-only: never stored)
-        Row.AnyOrder("MultiplayerSpawner", @"^_spawnable_scene_count$"),
-        Row.SizedFirst("MultiplayerSpawner", @"^scenes/\d+$", "_spawnable_scene_count"),
+        Row.AnyOrder("MultiplayerSpawner", @"^_spawnable_scene_count\z"),
+        Row.SizedFirst("MultiplayerSpawner", @"^scenes/[0-9]+\z", "_spawnable_scene_count"),
         // modules/gridmap/grid_map.cpp, GridMap::_get_property_list
-        Row.AnyOrder("GridMap", @"^baked_meshes$"),
-        Row.AnyOrder("GridMap", @"^data$"),
+        Row.AnyOrder("GridMap", @"^baked_meshes\z"),
+        Row.AnyOrder("GridMap", @"^data\z"),
         // scene/resources/theme.cpp, Theme::_get_property_list (one list, sorted by name)
         Row.AnyOrder("Theme", @"^[^/]+/(?:base_type$|(?:icons|styles|fonts|font_sizes|colors|constants)/)"),
         // scene/resources/2d/tile_set.cpp, TileSet::_get_property_list
         // Each layer kind's layers in numeric order, each layer's keys in a fixed order; TileSet::_set adds layers up to the
         // index on any key, so any order loads.
-        Row.OnKey("TileSet", @"^occlusion_layer_(?<index>\d+)/(?<key>.*)", ["light_mask", "sdf_collision"]),
+        Row.OnKey("TileSet", @"^occlusion_layer_(?<index>[0-9]+)/(?<key>.*)", ["light_mask", "sdf_collision"]),
         Row.OnKey(
             "TileSet",
-            @"^physics_layer_(?<index>\d+)/(?<key>.*)",
+            @"^physics_layer_(?<index>[0-9]+)/(?<key>.*)",
             ["collision_layer", "collision_mask", "collision_priority", "physics_material"]
         ),
-        Row.OnKey("TileSet", @"^terrain_set_(?<index>\d+)/(?<key>.*)", TerrainSetKeys),
-        Row.OnKey("TileSet", @"^navigation_layer_(?<index>\d+)/(?<key>.*)", ["layers"]),
-        Row.OnKey("TileSet", @"^custom_data_layer_(?<index>\d+)/(?<key>.*)", ["name", "type"]),
-        Row.AnyOrder("TileSet", @"^sources/\d+$"),
+        Row.OnKey("TileSet", @"^terrain_set_(?<index>[0-9]+)/(?<key>.*)", TerrainSetKeys),
+        Row.OnKey("TileSet", @"^navigation_layer_(?<index>[0-9]+)/(?<key>.*)", ["layers"]),
+        Row.OnKey("TileSet", @"^custom_data_layer_(?<index>[0-9]+)/(?<key>.*)", ["name", "type"]),
+        Row.AnyOrder("TileSet", @"^sources/[0-9]+\z"),
         // The proxies after the sources, source level, coords level, then alternative level.
-        Row.AnyOrder("TileSet", @"^tile_proxies/source_level$"),
-        Row.AnyOrder("TileSet", @"^tile_proxies/coords_level$"),
-        Row.AnyOrder("TileSet", @"^tile_proxies/alternative_level$"),
+        Row.AnyOrder("TileSet", @"^tile_proxies/source_level\z"),
+        Row.AnyOrder("TileSet", @"^tile_proxies/coords_level\z"),
+        Row.AnyOrder("TileSet", @"^tile_proxies/alternative_level\z"),
         // TileSet::_set appends at most one pattern per name (its loop calls add_pattern, which refuses a pattern it holds).
-        Row.OnKey("TileSet", @"^pattern_(?<index>\d+)$", []),
+        Row.OnKey("TileSet", @"^pattern_(?<index>[0-9]+)\z", []),
         // scene/resources/2d/tile_set.cpp, TileSetAtlasSource::_get_property_list
         // TileData::set_terrain and set_terrain_peering_bit fail while terrain_set is unset, and _set creates a tile and an
         // alternative on any of its keys, so every terrain key follows every other tile key.
-        Row.AnyOrder("TileSetAtlasSource", @"^\d+:\d+/(?!\d+/(?:terrain$|terrains_peering_bit/))"),
-        Row.AnyOrder("TileSetAtlasSource", @"^\d+:\d+/\d+/terrain$"),
-        Row.AnyOrder("TileSetAtlasSource", @"^\d+:\d+/\d+/terrains_peering_bit/"),
+        Row.AnyOrder("TileSetAtlasSource", @"^[0-9]+:[0-9]+/(?![0-9]+/(?:terrain$|terrains_peering_bit/))"),
+        Row.AnyOrder("TileSetAtlasSource", @"^[0-9]+:[0-9]+/[0-9]+/terrain\z"),
+        Row.AnyOrder("TileSetAtlasSource", @"^[0-9]+:[0-9]+/[0-9]+/terrains_peering_bit/"),
         // scene/resources/2d/tile_set.cpp, TileSetScenesCollectionSource::_get_property_list
         // Scene tiles by id (create_scene_tile sorts scenes_ids), each tile's scene first; _set creates a tile on either key.
-        Row.OnKey("TileSetScenesCollectionSource", @"^scenes/(?<index>\d+)/(?<key>[^/]*)", ["scene", "display_placeholder"]),
+        Row.OnKey("TileSetScenesCollectionSource", @"^scenes/(?<index>[0-9]+)/(?<key>[^/]*)", ["scene", "display_placeholder"]),
         // scene/resources/2d/tile_set.cpp, TileMapPattern::_get_property_list
-        Row.AnyOrder("TileMapPattern", @"^tile_data$"),
+        Row.AnyOrder("TileMapPattern", @"^tile_data\z"),
         // scene/resources/2d/tile_set.cpp, TileData::_get_property_list
-        Row.AnyOrder("TileData", @"^occlusion_layer_\d+/"),
-        Row.AnyOrder("TileData", @"^physics_layer_\d+/"),
+        Row.AnyOrder("TileData", @"^occlusion_layer_[0-9]+/"),
+        Row.AnyOrder("TileData", @"^physics_layer_[0-9]+/"),
         Row.AnyOrder("TileData", @"^terrains_peering_bit/"),
-        Row.AnyOrder("TileData", @"^navigation_layer_\d+/"),
-        Row.AnyOrder("TileData", @"^custom_data_\d+$"),
+        Row.AnyOrder("TileData", @"^navigation_layer_[0-9]+/"),
+        Row.AnyOrder("TileData", @"^custom_data_[0-9]+\z"),
         // scene/resources/mesh.cpp, ArrayMesh::_get_property_list (editor-only: never stored)
-        Row.AnyOrder("ArrayMesh", @"^surface_\d+/"),
+        Row.AnyOrder("ArrayMesh", @"^surface_[0-9]+/"),
         // scene/resources/font.cpp, FontFile::_get_property_list
         Row.AnyOrder("FontFile", @"^language_support_override/"),
         Row.AnyOrder("FontFile", @"^script_support_override/"),
-        Row.AnyOrder("FontFile", @"^cache/\d+/"),
+        Row.AnyOrder("FontFile", @"^cache/[0-9]+/"),
         // scene/resources/3d/skin.cpp, Skin::_get_property_list
-        Row.AnyOrder("Skin", @"^bind_count$"),
-        Row.SizedFirst("Skin", @"^bind/\d+/", "bind_count"),
+        Row.AnyOrder("Skin", @"^bind_count\z"),
+        Row.SizedFirst("Skin", @"^bind/[0-9]+/", "bind_count"),
         // scene/resources/3d/mesh_library.cpp, MeshLibrary::_get_property_list
-        Row.AnyOrder("MeshLibrary", @"^item/\d+/"),
+        Row.AnyOrder("MeshLibrary", @"^item/[0-9]+/"),
         // scene/resources/skeleton_profile.cpp, SkeletonProfile::_get_property_list
-        Row.SizedFirst("SkeletonProfile", @"^groups/\d+/", "group_size"),
-        Row.SizedFirst("SkeletonProfile", @"^bones/\d+/", "bone_size"),
+        Row.SizedFirst("SkeletonProfile", @"^groups/[0-9]+/", "group_size"),
+        Row.SizedFirst("SkeletonProfile", @"^bones/[0-9]+/", "bone_size"),
         // scene/resources/bone_map.cpp, BoneMap::_get_property_list
         Row.AnyOrder("BoneMap", @"^bone_map/"),
         // servers/audio/audio_server.cpp, AudioBusLayout::_get_property_list
-        Row.AnyOrder("AudioBusLayout", @"^bus/\d+/"),
+        Row.AnyOrder("AudioBusLayout", @"^bus/[0-9]+/"),
         // servers/audio/effects/audio_effect_eq.cpp, AudioEffectEQ::_get_property_list
-        Row.AnyOrder("AudioEffectEQ", @"^band_db/\d+_hz$"),
+        Row.AnyOrder("AudioEffectEQ", @"^band_db/[0-9]+_hz\z"),
         // modules/visual_shader/visual_shader.cpp, VisualShader::_get_property_list
-        Row.AnyOrder("VisualShader", @"^mode$"),
-        .. VisualShaderModes.Select(mode => Row.AnyOrder("VisualShader", $"^modes/{mode}$")),
+        Row.AnyOrder("VisualShader", @"^mode\z"),
+        .. VisualShaderModes.Select(mode => Row.AnyOrder("VisualShader", $@"^modes/{mode}\z")),
         Row.AnyOrder("VisualShader", @"^modes/"),
-        .. VisualShaderFlags.Select(flag => Row.AnyOrder("VisualShader", $"^flags/{flag}$")),
+        .. VisualShaderFlags.Select(flag => Row.AnyOrder("VisualShader", $@"^flags/{flag}\z")),
         Row.AnyOrder("VisualShader", @"^flags/"),
-        Row.AnyOrder("VisualShader", @"^stencil/(?:enabled|reference)$"),
+        Row.AnyOrder("VisualShader", @"^stencil/(?:enabled|reference)\z"),
         Row.AnyOrder("VisualShader", @"^stencil_modes/"),
         Row.AnyOrder("VisualShader", @"^stencil_flags/"),
         Row.AnyOrder("VisualShader", @"^varyings/"),
@@ -550,98 +562,137 @@ internal static class DynamicPropertyFamilies
         // VisualShader::_set connects with connect_nodes_forced, which needs the nodes and their ports.
         .. VisualShaderNodeRows(),
         // A graph type the list does not name (VisualShader::_set reads it as vertex) still needs its node first.
-        Row.OnKey("VisualShader", @"^nodes/[^/]+/(?<index>\d+)/(?<key>[^/]*)", VisualShaderNodeKeys),
+        Row.OnKey("VisualShader", @"^nodes/[^/]+/(?<index>[0-9]+)/(?<key>[^/]*)", VisualShaderNodeKeys),
         Row.AnyOrder("VisualShader", @"^nodes/"),
         // modules/multiplayer/scene_replication_config.cpp, SceneReplicationConfig::_get_property_list
-        Row.OnKey("SceneReplicationConfig", @"^properties/(?<index>\d+)/(?<key>[^/]*)", ReplicationPropertyKeys),
+        Row.OnKey("SceneReplicationConfig", @"^properties/(?<index>[0-9]+)/(?<key>[^/]*)", ReplicationPropertyKeys),
         // scene/animation/animation_blend_tree.cpp, AnimationNodeBlendTree::_get_property_list
         Row.AnyOrder("AnimationNodeBlendTree", @"^nodes/"),
-        Row.AnyOrder("AnimationNodeBlendTree", @"^node_connections$"),
+        Row.AnyOrder("AnimationNodeBlendTree", @"^node_connections\z"),
         // scene/animation/animation_node_state_machine.cpp, AnimationNodeStateMachine::_get_property_list
         Row.AnyOrder("AnimationNodeStateMachine", @"^states/"),
-        Row.AnyOrder("AnimationNodeStateMachine", @"^transitions$"),
-        Row.AnyOrder("AnimationNodeStateMachine", @"^graph_offset$"),
+        Row.AnyOrder("AnimationNodeStateMachine", @"^transitions\z"),
+        Row.AnyOrder("AnimationNodeStateMachine", @"^graph_offset\z"),
         // scene/animation/animation_blend_space_1d.cpp, AnimationNodeBlendSpace1D::_get_property_list
-        Row.OnKey("AnimationNodeBlendSpace1D", @"^blend_point_(?<index>\d+)/(?<key>[^/]*)", BlendPointKeys),
+        Row.OnKey("AnimationNodeBlendSpace1D", @"^blend_point_(?<index>[0-9]+)/(?<key>[^/]*)", BlendPointKeys),
         // scene/animation/animation_blend_space_2d.cpp, AnimationNodeBlendSpace2D::_get_property_list
-        Row.OnKey("AnimationNodeBlendSpace2D", @"^blend_point_(?<index>\d+)/(?<key>[^/]*)", BlendPointKeys),
+        Row.OnKey("AnimationNodeBlendSpace2D", @"^blend_point_(?<index>[0-9]+)/(?<key>[^/]*)", BlendPointKeys),
         // scene/animation/animation_blend_tree.cpp, AnimationNodeTransition::_get_property_list; _set adds an input only on
         // input_<count>/name, and input_count is an editor-only property the file never holds.
-        Row.OnKey("AnimationNodeTransition", @"^input_(?<index>\d+)/(?<key>[^/]*)", TransitionInputKeys),
+        Row.OnKey("AnimationNodeTransition", @"^input_(?<index>[0-9]+)/(?<key>[^/]*)", TransitionInputKeys),
         // scene/resources/2d/skeleton/skeleton_modification_2d_ccdik.cpp, SkeletonModification2DCCDIK::_get_property_list
-        Row.SizedFirst("SkeletonModification2DCCDIK", @"^joint_data/(?<index>\d+)/(?<key>.*)", "ccdik_data_chain_length", CcdikJointKeys, []),
-        Row.AnyOrder("SkeletonModification2DCCDIK", @"^editor/draw_gizmo$"),
+        Row.SizedFirst("SkeletonModification2DCCDIK", @"^joint_data/(?<index>[0-9]+)/(?<key>.*)", "ccdik_data_chain_length", CcdikJointKeys, []),
+        Row.AnyOrder("SkeletonModification2DCCDIK", @"^editor/draw_gizmo\z"),
         // scene/resources/2d/skeleton/skeleton_modification_2d_fabrik.cpp, SkeletonModification2DFABRIK::_get_property_list
-        Row.SizedFirst("SkeletonModification2DFABRIK", @"^joint_data/(?<index>\d+)/(?<key>.*)", "fabrik_data_chain_length", FabrikJointKeys, []),
+        Row.SizedFirst("SkeletonModification2DFABRIK", @"^joint_data/(?<index>[0-9]+)/(?<key>.*)", "fabrik_data_chain_length", FabrikJointKeys, []),
         // scene/resources/2d/skeleton/skeleton_modification_2d_jiggle.cpp, SkeletonModification2DJiggle::_get_property_list
-        Row.AnyOrder("SkeletonModification2DJiggle", @"^use_colliders$"),
-        Row.AnyOrder("SkeletonModification2DJiggle", @"^collision_mask$"),
-        Row.SizedFirst("SkeletonModification2DJiggle", @"^joint_data/(?<index>\d+)/(?<key>.*)", "jiggle_data_chain_length", JiggleJointKeys, []),
+        Row.AnyOrder("SkeletonModification2DJiggle", @"^use_colliders\z"),
+        Row.AnyOrder("SkeletonModification2DJiggle", @"^collision_mask\z"),
+        Row.SizedFirst("SkeletonModification2DJiggle", @"^joint_data/(?<index>[0-9]+)/(?<key>.*)", "jiggle_data_chain_length", JiggleJointKeys, []),
         // scene/resources/2d/skeleton/skeleton_modification_2d_lookat.cpp, SkeletonModification2DLookAt::_get_property_list
-        Row.AnyOrder("SkeletonModification2DLookAt", @"^enable_constraint$"),
-        Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_angle_min$"),
-        Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_angle_max$"),
-        Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_angle_invert$"),
-        Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_in_localspace$"),
-        Row.AnyOrder("SkeletonModification2DLookAt", @"^additional_rotation$"),
-        Row.AnyOrder("SkeletonModification2DLookAt", @"^editor/draw_gizmo$"),
+        Row.AnyOrder("SkeletonModification2DLookAt", @"^enable_constraint\z"),
+        Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_angle_min\z"),
+        Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_angle_max\z"),
+        Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_angle_invert\z"),
+        Row.AnyOrder("SkeletonModification2DLookAt", @"^constraint_in_localspace\z"),
+        Row.AnyOrder("SkeletonModification2DLookAt", @"^additional_rotation\z"),
+        Row.AnyOrder("SkeletonModification2DLookAt", @"^editor/draw_gizmo\z"),
         // scene/resources/2d/skeleton/skeleton_modification_2d_physicalbones.cpp, SkeletonModification2DPhysicalBones::_get_property_list
-        Row.AnyOrder("SkeletonModification2DPhysicalBones", @"^fetch_bones$"),
+        Row.AnyOrder("SkeletonModification2DPhysicalBones", @"^fetch_bones\z"),
         // Each joint's one key, the joints in numeric order.
         Row.SizedFirst(
             "SkeletonModification2DPhysicalBones",
-            @"^joint_(?<index>\d+)_(?<key>nodepath)$",
+            @"^joint_(?<index>[0-9]+)_(?<key>nodepath)\z",
             "physical_bone_chain_length",
             ["nodepath"],
             []
         ),
         // scene/resources/2d/skeleton/skeleton_modification_2d_stackholder.cpp, SkeletonModification2DStackHolder::_get_property_list
-        Row.AnyOrder("SkeletonModification2DStackHolder", @"^held_modification_stack$"),
-        Row.AnyOrder("SkeletonModification2DStackHolder", @"^editor/draw_gizmo$"),
+        Row.AnyOrder("SkeletonModification2DStackHolder", @"^held_modification_stack\z"),
+        Row.AnyOrder("SkeletonModification2DStackHolder", @"^editor/draw_gizmo\z"),
         // scene/resources/2d/skeleton/skeleton_modification_2d_twoboneik.cpp, SkeletonModification2DTwoBoneIK::_get_property_list
-        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^joint_one_bone_idx$"),
-        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^joint_one_bone2d_node$"),
-        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^joint_two_bone_idx$"),
-        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^joint_two_bone2d_node$"),
-        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^editor/draw_gizmo$"),
-        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^editor/draw_min_max$"),
+        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^joint_one_bone_idx\z"),
+        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^joint_one_bone2d_node\z"),
+        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^joint_two_bone_idx\z"),
+        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^joint_two_bone2d_node\z"),
+        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^editor/draw_gizmo\z"),
+        Row.AnyOrder("SkeletonModification2DTwoBoneIK", @"^editor/draw_min_max\z"),
         // scene/resources/2d/skeleton/skeleton_modification_stack_2d.cpp, SkeletonModificationStack2D::_get_property_list
         // Each entry is one modification, the entries in numeric order.
-        Row.SizedFirst("SkeletonModificationStack2D", @"^(?<key>modifications)/(?<index>\d+)$", "modification_count", ["modifications"], []),
+        Row.SizedFirst("SkeletonModificationStack2D", @"^(?<key>modifications)/(?<index>[0-9]+)\z", "modification_count", ["modifications"], []),
         // scene/resources/material.cpp, ShaderMaterial::_get_property_list
         Row.AnyOrder("ShaderMaterial", @"^shader_parameter/"),
         // scene/resources/animation.cpp, Animation::_get_property_list
-        Row.AnyOrder("Animation", @"^_compression$"),
-        Row.AnyOrder("Animation", @"^markers$"),
-        Row.OnKey("Animation", @"^tracks/(?<index>\d+)/(?<key>[^/]*)", TrackKeys),
+        Row.AnyOrder("Animation", @"^_compression\z"),
+        Row.AnyOrder("Animation", @"^markers\z"),
+        Row.OnKey("Animation", @"^tracks/(?<index>[0-9]+)/(?<key>[^/]*)", TrackKeys),
         // scene/resources/curve.h, Curve::_get_property_list (PropertyListHelper; editor-only: never stored)
-        Row.SizedFirst("Curve", @"^point_\d+/", "point_count"),
+        Row.SizedFirst("Curve", @"^point_[0-9]+/", "point_count"),
         // scene/resources/curve.h, Curve2D::_get_property_list (PropertyListHelper; editor-only: never stored)
-        Row.SizedFirst("Curve2D", @"^point_\d+/", "point_count"),
+        Row.SizedFirst("Curve2D", @"^point_[0-9]+/", "point_count"),
         // scene/resources/curve.h, Curve3D::_get_property_list (PropertyListHelper; editor-only: never stored)
-        Row.SizedFirst("Curve3D", @"^point_\d+/", "point_count"),
+        Row.SizedFirst("Curve3D", @"^point_[0-9]+/", "point_count"),
         // scene/resources/label_settings.h, LabelSettings::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("LabelSettings", @"^stacked_outline_\d+/", "stacked_outline_count"),
-        Row.SizedFirst("LabelSettings", @"^stacked_shadow_\d+/", "stacked_shadow_count"),
+        Row.SizedFirst("LabelSettings", @"^stacked_outline_[0-9]+/", "stacked_outline_count"),
+        Row.SizedFirst("LabelSettings", @"^stacked_shadow_[0-9]+/", "stacked_shadow_count"),
         // servers/audio/audio_stream.h, AudioStreamRandomizer::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("AudioStreamRandomizer", @"^stream_\d+/", "streams_count"),
+        Row.SizedFirst("AudioStreamRandomizer", @"^stream_[0-9]+/", "streams_count"),
     ];
 
     private static readonly ImmutableArray<(string Class, DynamicFamily Family)> Families =
     [
-        .. Entries.Select(entry =>
-            (
-                entry.Class,
-                new DynamicFamily(
-                    new Regex(entry.Pattern, RegexOptions.CultureInvariant),
-                    entry.Creation,
-                    entry.SizedBy,
-                    [.. entry.KeyOrder],
-                    [.. entry.SubKeyOrder]
-                )
-            )
-        ),
+        .. Entries.Select(entry => (entry.Class, FamilyOf(entry))),
     ];
+
+    // A row's family: its compiled pattern, the key orders it declares with their span-searched lookups, and the literal its
+    // ranker compares instead of the pattern where the pattern is one.
+    private static DynamicFamily FamilyOf(Row entry)
+    {
+        return new DynamicFamily(
+            new Regex(entry.Pattern, RegexOptions.CultureInvariant),
+            entry.Creation,
+            entry.SizedBy,
+            [.. entry.KeyOrder],
+            [.. entry.SubKeyOrder],
+            KeyLookup(entry.KeyOrder),
+            KeyLookup(entry.SubKeyOrder),
+            LiteralOf(entry)
+        );
+    }
+
+    // The end anchor every exact row carries: \z, which matches only at the end of the name, where a $ would also match before a
+    // final newline the ranker's ordinal comparison rejects.
+    private const string EndAnchor = @"\z";
+
+    // A row's pattern is its own literal when it is a prefix (^literal) or an exact name (^literal\z) and holds no pattern
+    // syntax, so an ordinal comparison agrees with the pattern without running it. A row with a key order keeps its pattern,
+    // since a literal cannot place a key.
+    private static (string Text, LiteralMatch Kind)? LiteralOf(Row entry)
+    {
+        if (entry.KeyOrder.Length > 0 || entry.SubKeyOrder.Length > 0 || LiteralBody(entry.Pattern) is not { } body)
+        {
+            return null;
+        }
+
+        return (body, entry.Pattern.EndsWith(EndAnchor, StringComparison.Ordinal) ? LiteralMatch.Exact : LiteralMatch.Prefix);
+    }
+
+    // The part of ^literal or ^literal\z that holds no pattern syntax, else null.
+    private static string? LiteralBody(string pattern)
+    {
+        if (pattern.Length < 2 || !pattern.StartsWith('^'))
+        {
+            return null;
+        }
+
+        string body = pattern.EndsWith(EndAnchor, StringComparison.Ordinal) ? pattern[1..^2] : pattern[1..];
+        return body.Length > 0 && Regex.Escape(body) == body ? body : null;
+    }
+
+    // Each key's declaring place, sorted by key with the ordinal comparison, so a probe compares the key group's span and
+    // allocates nothing.
+    private static ImmutableArray<(string Key, int Index)> KeyLookup(string[] keys) =>
+        [.. keys.Select((key, index) => (Key: key, Index: index)).OrderBy(entry => entry.Key, StringComparer.Ordinal)];
 
     private static readonly FrozenDictionary<string, ImmutableArray<DynamicFamily>> ByClass = Families
         .GroupBy(row => row.Class, StringComparer.Ordinal)
@@ -652,15 +703,15 @@ internal static class DynamicPropertyFamilies
     private static Row[] BoneConstraintRows(string cls, string[] ownKeys) =>
         [
             Row.SizedFirst(cls, ConstraintPattern, "setting_count", ConstraintKeys, []),
-            Row.SizedFirst(cls, @"^settings/(?<index>\d+)/(?<key>.*)", "setting_count", ownKeys, []),
+            Row.SizedFirst(cls, @"^settings/(?<index>[0-9]+)/(?<key>.*)", "setting_count", ownKeys, []),
         ];
 
     // One PhysicalBone3D row per joint_constraints/ key, in each JointData's order: the Pin, Cone, Hinge and Slider keys, then
     // the 6DOF keys axis by axis. An any-order row carries no key order, so each key is its own row.
     private static IEnumerable<Row> JointConstraintRows() =>
         [
-            .. JointConstraintKeys.Select(key => Row.AnyOrder("PhysicalBone3D", $"^joint_constraints/{key}$")),
-            .. SixDofAxes.SelectMany(axis => SixDofAxisKeys.Select(key => Row.AnyOrder("PhysicalBone3D", $"^joint_constraints/{axis}/{key}$"))),
+            .. JointConstraintKeys.Select(key => Row.AnyOrder("PhysicalBone3D", $@"^joint_constraints/{key}\z")),
+            .. SixDofAxes.SelectMany(axis => SixDofAxisKeys.Select(key => Row.AnyOrder("PhysicalBone3D", $@"^joint_constraints/{axis}/{key}\z"))),
         ];
 
     // Two VisualShader rows per graph type, in type_string order: the type's nodes, then its connections.
@@ -668,8 +719,8 @@ internal static class DynamicPropertyFamilies
         VisualShaderTypes.SelectMany(type =>
             new[]
             {
-                Row.OnKey("VisualShader", $@"^nodes/{type}/(?<index>\d+)/(?<key>[^/]*)", VisualShaderNodeKeys),
-                Row.AnyOrder("VisualShader", $@"^nodes/{type}/connections$"),
+                Row.OnKey("VisualShader", $@"^nodes/{type}/(?<index>[0-9]+)/(?<key>[^/]*)", VisualShaderNodeKeys),
+                Row.AnyOrder("VisualShader", $@"^nodes/{type}/connections\z"),
             }
         );
 
@@ -694,6 +745,16 @@ internal static class DynamicPropertyFamilies
         OnKey,
     }
 
+    /// <summary>How a family's literal names a property, for a row the pattern alone names by one literal.</summary>
+    internal enum LiteralMatch
+    {
+        /// <summary>The literal is a prefix of the name (<c>^literal</c>), which matches any name it starts.</summary>
+        Prefix,
+
+        /// <summary>The literal is the whole name (<c>^literal\z</c>).</summary>
+        Exact,
+    }
+
     /// <summary>Every row of the table, in table order.</summary>
     internal static IEnumerable<(string Class, DynamicFamily Family)> All => Families;
 
@@ -715,12 +776,21 @@ internal static class DynamicPropertyFamilies
     /// <param name="SubKeyOrder">
     /// The keys of one nested entry in the declaring class's order; empty for a family without nested keys.
     /// </param>
+    /// <param name="KeyLookup">Each key of <paramref name="KeyOrder"/> with its place there, sorted by key.</param>
+    /// <param name="SubKeyLookup">Each key of <paramref name="SubKeyOrder"/> with its place there, sorted by key.</param>
+    /// <param name="Literal">
+    /// The pattern's whole literal when the pattern is a prefix or an exact name, with how it names the property, which the
+    /// ranker compares ordinally instead of running the pattern; null for a family the pattern alone decides.
+    /// </param>
     internal readonly record struct DynamicFamily(
         Regex Pattern,
         EntryCreation Creation,
         string? SizedBy,
         ImmutableArray<string> KeyOrder,
-        ImmutableArray<string> SubKeyOrder
+        ImmutableArray<string> SubKeyOrder,
+        ImmutableArray<(string Key, int Index)> KeyLookup,
+        ImmutableArray<(string Key, int Index)> SubKeyLookup,
+        (string Text, LiteralMatch Kind)? Literal
     );
 
     // A table row: a class, its family's pattern and how Godot creates the family's entries. Only the factories make one, so

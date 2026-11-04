@@ -75,16 +75,9 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
 
         foreach ((DynamicPropertyFamilies.DynamicFamily family, Rank slot) in order.Families)
         {
-            Match match = family.Pattern.Match(name);
-            if (match.Success)
+            if (RankIn(family, slot, name) is { } matched)
             {
-                return slot with
-                {
-                    Entry = EntryOf(match, "index"),
-                    Key = KeyOf(family.KeyOrder, match, "key"),
-                    SubEntry = EntryOf(match, "subindex"),
-                    SubKey = KeyOf(family.SubKeyOrder, match, "subkey"),
-                };
+                return matched;
             }
         }
 
@@ -101,6 +94,33 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         return new Rank(name == ScriptProperty ? Tier.Script : Tier.Exports);
     }
 
+    // The family's rank for a name, or null when the family does not name it. A family the pattern alone names by one literal
+    // matches by an ordinal comparison, which costs less than its regex.
+    private static Rank? RankIn(DynamicPropertyFamilies.DynamicFamily family, Rank slot, string name)
+    {
+        if (family.Literal is { } literal)
+        {
+            return MatchesLiteral(literal, name) ? slot : null;
+        }
+
+        Match match = family.Pattern.Match(name);
+        return match.Success
+            ? slot with
+            {
+                Entry = EntryOf(match, "index"),
+                Key = KeyOf(family.KeyLookup, match, "key"),
+                SubEntry = EntryOf(match, "subindex"),
+                SubKey = SubKeyOf(family, match),
+            }
+            : null;
+    }
+
+    // Whether a family's literal names a property: its prefix, or exactly the whole name.
+    internal static bool MatchesLiteral((string Text, DynamicPropertyFamilies.LiteralMatch Kind) literal, string name) =>
+        literal.Kind == DynamicPropertyFamilies.LiteralMatch.Exact
+            ? name.Equals(literal.Text, StringComparison.Ordinal)
+            : name.StartsWith(literal.Text, StringComparison.Ordinal);
+
     // The entry's number from the named index group (index, or subindex for a nested entry); 0 for a family without one, so
     // its names keep source order. A number past int's range goes last.
     private static int EntryOf(Match match, string group)
@@ -116,12 +136,41 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
 
     // The place in the key order of the named key group (key, or subkey for a nested entry); a key the order lacks, or a
     // family with no order, takes the order's length, so it goes after the listed keys of its entry, in source order.
-    private static int KeyOf(ImmutableArray<string> keyOrder, Match match, string group)
+    private static int KeyOf(ImmutableArray<(string Key, int Index)> keyOrder, Match match, string group)
     {
         Group key = match.Groups[group];
-        int place = key.Success ? keyOrder.IndexOf(key.Value) : -1;
-        return place >= 0 ? place : keyOrder.Length;
+        return key.Success ? PlaceOf(keyOrder, key.ValueSpan) : keyOrder.Length;
     }
+
+    // The place a key holds in an order sorted by key, or the order's length for one it does not hold; the probe compares the
+    // group's span, so it allocates nothing.
+    private static int PlaceOf(ImmutableArray<(string Key, int Index)> order, ReadOnlySpan<char> key)
+    {
+        int low = 0;
+        int high = order.Length - 1;
+        while (low <= high)
+        {
+            int middle = low + ((high - low) / 2);
+            int comparison = key.SequenceCompareTo(order[middle].Key);
+            switch (comparison)
+            {
+                case 0:
+                    return order[middle].Index;
+                case < 0:
+                    high = middle - 1;
+                    break;
+                default:
+                    low = middle + 1;
+                    break;
+            }
+        }
+
+        return order.Length;
+    }
+
+    // A family with no nested key order has no keys below its entries' keys; otherwise the sub-key's place.
+    private static int SubKeyOf(DynamicPropertyFamilies.DynamicFamily family, Match match) =>
+        family.SubKeyOrder.IsEmpty ? 0 : KeyOf(family.SubKeyLookup, match, "subkey");
 
     // The depth of Control or Window in the chain, or -1 for a class with neither.
     private static int DeclaringDepth(ImmutableArray<GodotClassInfo> chain)
