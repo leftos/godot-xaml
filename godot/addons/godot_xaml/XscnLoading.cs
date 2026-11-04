@@ -29,6 +29,9 @@ internal static class XscnLoading
     // The id seed the loader and the saver share: a save pairs a sub_resource with its entry by the ids this seed mints.
     internal const ulong Seed = 0;
 
+    // Made once and still reachable at shutdown, when Godot's tracker disposes it (GXAML-81).
+    private static readonly StringName ResourceClassName = "Resource";
+
     private static readonly ConversionOptions Options = new()
     {
         Seed = Seed,
@@ -142,11 +145,7 @@ internal static class XscnLoading
         {
             using FileStream stream = File.OpenRead(ProjectSettings.GlobalizePath(path));
             using var reader = XmlReader.Create(stream, settings);
-            bool named =
-                reader.MoveToContent() == XmlNodeType.Element
-                && reader.Prefix.Length == 0
-                && ClassDB.ClassExists(reader.LocalName)
-                && ClassDB.IsParentClass(reader.LocalName, "Resource");
+            bool named = reader.MoveToContent() == XmlNodeType.Element && reader.Prefix.Length == 0 && IsResourceClass(reader.LocalName);
             return named ? reader.LocalName : "Resource";
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException)
@@ -253,9 +252,14 @@ internal static class XscnLoading
         }
 
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        // Each pair's Variants are copies this loop owns; the renames Dictionary is the caller's.
         foreach (KeyValuePair<Variant, Variant> pair in renames)
         {
-            map[pair.Key.AsString()] = pair.Value.AsString();
+            using (pair.Key)
+            using (pair.Value)
+            {
+                map[pair.Key.AsString()] = pair.Value.AsString();
+            }
         }
 
         var full = new Dictionary<string, string>(map, StringComparer.Ordinal);
@@ -430,8 +434,24 @@ internal static class XscnLoading
 
     // A GDExtension class can be registered in this engine and missing from the bundled metadata, and the file still loads
     // through it, so a GX0107 naming a class the running engine has is not a warning. The diagnostic's span is the element's tag.
-    private static bool KnownToEngine(XscnDiagnostic diagnostic, string text) =>
-        diagnostic.Code == XscnCodes.UnknownClass && ClassDB.ClassExists(text.Substring(diagnostic.Span.Start, diagnostic.Span.Length));
+    private static bool KnownToEngine(XscnDiagnostic diagnostic, string text)
+    {
+        if (diagnostic.Code != XscnCodes.UnknownClass)
+        {
+            return false;
+        }
+
+        using var name = new StringName(text.Substring(diagnostic.Span.Start, diagnostic.Span.Length));
+        return ClassDB.ClassExists(name);
+    }
+
+    // Each StringName made for ClassDB is disposed here, and the literal one is made once: one left to its finalizer can be
+    // destroyed after the engine has shut down (GXAML-81).
+    private static bool IsResourceClass(string className)
+    {
+        using var name = new StringName(className);
+        return ClassDB.ClassExists(name) && ClassDB.IsParentClass(name, ResourceClassName);
+    }
 
     /// <summary>Pushes each conversion error, and each warning when asked, to Godot's log, and tells whether any was an error.</summary>
     private static bool PushIssues(string path, ImmutableArray<ConversionIssue> issues, bool pushWarnings)

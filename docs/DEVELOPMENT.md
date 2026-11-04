@@ -71,6 +71,8 @@ When the gate reports STALLED:
 - To starve a short-lived Godot with the suspend rig, freeze `pwsh` too (`-Freeze pwsh,Godot,Godot_console`), so `Godot_console` and `Godot` are frozen from birth.
 - `compare.ps1` and `export.ps1` print each of Godot's lines as it arrives, like `checks.ps1`, so their gate logs show them live.
 
+A Godot disposable left to the finalizer can crash the process at exit: the run ends with 0xC0000005 or 0xC000001D, or even exit 0 with a `Fatal error.` line and a `*.Finalize()` stack on stderr. Counting the entries `Godot.DisposablesTracker.OtherInstances` gains across an operation, once a GC finds them unreachable, measures what it leaves to the finalizer, as C72 does.
+
 The checks also run on Linux under WSL, which proves the Unix temp folder rule. Use Godot 4.7.2 .NET for Linux x86_64 from the official release and a Linux SDK matching the feature band in `global.json`, or a scratch copy's `global.json` lowered to the installed SDK. Copy the tree into the Linux file system first: git in WSL cannot read a worktree's Windows `.git` path.
 
 ### Scene and resource comparison

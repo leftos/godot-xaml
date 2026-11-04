@@ -143,27 +143,41 @@ public partial class XscnExportPlugin : EditorExportPlugin
             return "the file did not load; the errors above say why.";
         }
 
-        // Where Godot saves its own export conversions (editor_export_platform.cpp:1090, 1481), not the shared OS temp folder. The
-        // saver gets the absolute path: for a res:// one the editor's save callback writes a folding file in .godot/editor/ that
-        // is never removed (resource_saver.cpp:146), and an absolute path is no resource file, so no uid is minted for it.
-        string tempPath = ProjectSettings.GlobalizePath($"{ExportFolder}{Guid.NewGuid():N}.{binaryExtension}");
-        Directory.CreateDirectory(ProjectSettings.GlobalizePath(ExportFolder));
         try
         {
-            Error saved = ResourceSaver.Save(resource, tempPath);
-            if (saved != Error.Ok)
+            // Where Godot saves its own export conversions (editor_export_platform.cpp:1090, 1481), not the shared OS temp folder.
+            // The saver gets the absolute path: for a res:// one the editor's save callback writes a folding file in .godot/editor/
+            // that is never removed (resource_saver.cpp:146), and an absolute path is no resource file, so no uid is minted for it.
+            string tempPath = ProjectSettings.GlobalizePath($"{ExportFolder}{Guid.NewGuid():N}.{binaryExtension}");
+            Directory.CreateDirectory(ProjectSettings.GlobalizePath(ExportFolder));
+            try
             {
-                return $"saving it as Godot binary failed: {saved}.";
-            }
+                Error saved = ResourceSaver.Save(resource, tempPath);
+                if (saved != Error.Ok)
+                {
+                    return $"saving it as Godot binary failed: {saved}.";
+                }
 
-            byte[] bytes = File.ReadAllBytes(tempPath);
-            // Named as Godot names its own .tscn conversions, so a project's a.scn beside a.xscn is not overwritten.
-            AddFile($"{ExportFolder}export-{path.Md5Text()}-{path.GetFile().GetBaseName()}.{binaryExtension}", bytes, remap: true);
-            return null;
+                byte[] bytes = File.ReadAllBytes(tempPath);
+                // Named as Godot names its own .tscn conversions, so a project's a.scn beside a.xscn is not overwritten.
+                AddFile($"{ExportFolder}export-{path.Md5Text()}-{path.GetFile().GetBaseName()}.{binaryExtension}", bytes, remap: true);
+                return null;
+            }
+            finally
+            {
+                File.Delete(tempPath);
+            }
         }
         finally
         {
-            File.Delete(tempPath);
+            // The ignored-cache load made this wrapper the only holder of a fresh resource; left to its finalizer, it can be
+            // released after the engine has shut down (GXAML-81). A script's code may have handed the wrapper out while the
+            // file loaded, so, as the load route does, it is released only for a resource with no script.
+            using Variant script = resource.GetScript();
+            if (script.VariantType == Variant.Type.Nil)
+            {
+                resource.Dispose();
+            }
         }
     }
 

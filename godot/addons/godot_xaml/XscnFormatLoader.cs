@@ -10,11 +10,15 @@ namespace GodotXaml.Addon;
 [Tool]
 public partial class XscnFormatLoader : ResourceFormatLoader
 {
+    // Made once: a StringName made per call from a literal is left to its finalizer, which can run after the engine has shut
+    // down (GXAML-81). A static one is still reachable at shutdown, when Godot's tracker disposes it.
+    private static readonly StringName PackedSceneClass = "PackedScene";
+
     /// <inheritdoc/>
     public override string[] _GetRecognizedExtensions() => [XscnLoading.SceneExtension];
 
     /// <inheritdoc/>
-    public override bool _HandlesType(StringName type) => ClassDB.IsParentClass("PackedScene", type);
+    public override bool _HandlesType(StringName type) => ClassDB.IsParentClass(PackedSceneClass, type);
 
     /// <inheritdoc/>
     public override string _GetResourceType(string path) => XscnLoading.IsScene(path) ? "PackedScene" : "";

@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Godot;
@@ -202,6 +205,8 @@ public partial class Checks : Node
             ("C69", HandlesGlobalResourceClasses),
             // A temp folder in the shared /tmp let another account block or read every conversion (GXAML-149).
             ("C71", TempFolderIsPerUser),
+            // A value a load left to its finalizer could be destroyed after the engine shut down (GXAML-81).
+            ("C72", LoadLeavesNothingToTheFinalizer),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -1149,6 +1154,86 @@ public partial class Checks : Node
             Directory.Delete(folder, recursive: true);
         }
     }
+
+    // GodotSharp registers each Variant, StringName, NodePath, Array and Dictionary it makes in DisposablesTracker under a
+    // short weak reference (modules/mono/glue/GodotSharp/GodotSharp/Core/DisposablesTracker.cs:65-80). One a GC finds
+    // unreachable is left to its finalizer, which may run while the engine shuts down and crash the process (GXAML-81),
+    // so a load must dispose everything it makes. Godot's own text loader, called the same way, leaves none.
+    private static string LoadLeavesNothingToTheFinalizer()
+    {
+        // An internal of GodotSharp: a Godot version that renames it fails here by name rather than counting nothing.
+        Type? tracker = typeof(Godot.GodotObject).Assembly.GetType("Godot.DisposablesTracker");
+        PropertyInfo? instances = tracker?.GetProperty("OtherInstances", BindingFlags.NonPublic | BindingFlags.Static);
+        if (instances?.GetValue(null) is not ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked)
+        {
+            return "Godot.DisposablesTracker.OtherInstances is missing or not a ConcurrentDictionary<WeakReference<IDisposable>, byte>";
+        }
+
+        List<string> failures = [.. new[] { ContainerPath, ContainedPath, ScriptedGdPath }.Select(path => LoadFailure(tracked, path))];
+        int classes = LeftToTheFinalizer(tracked, XresFormatLoader.RefreshGlobalClasses);
+        if (classes != 0)
+        {
+            failures.Add($"rebuilding the global class snapshot left {classes}");
+        }
+
+        failures.AddRange(HandlesTypeFailures(tracked));
+        return string.Join("; ", failures.Where(failure => failure.Length > 0));
+    }
+
+    // Each loader's _HandlesType is called directly: an engine call goes through the generated dispatch, whose own StringName
+    // parameter is Godot's to dispose, not the addon's. An engine class and a global class run both of its paths.
+    private static List<string> HandlesTypeFailures(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked)
+    {
+        using var xres = new XresFormatLoader();
+        using var xscn = new XscnFormatLoader();
+        using var type = new StringName("Resource");
+        using var global = new StringName("CheckedResource");
+        (string Loader, ResourceFormatLoader Instance)[] loaders = [(nameof(XresFormatLoader), xres), (nameof(XscnFormatLoader), xscn)];
+        var failures = new List<string>();
+        foreach ((string loader, ResourceFormatLoader instance) in loaders)
+        {
+            foreach (StringName asked in new[] { type, global })
+            {
+                int left = LeftToTheFinalizer(tracked, () => instance._HandlesType(asked));
+                if (left != 0)
+                {
+                    failures.Add($"{loader}._HandlesType(\"{asked}\") left {left}");
+                }
+            }
+        }
+
+        return failures;
+    }
+
+    private static string LoadFailure(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked, string path)
+    {
+        Resource? loaded = null;
+        int left = LeftToTheFinalizer(tracked, () => loaded = ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore));
+        string failure =
+            loaded is null ? $"{path} did not load"
+            : left != 0 ? $"loading {path} left {left} Godot disposables to the finalizer"
+            : "";
+        GC.KeepAlive(loaded);
+        return failure;
+    }
+
+    // How many of the tracked disposables the action made a GC finds unreachable. No target is read before the collect, so
+    // nothing on this stack keeps one alive.
+    private static int LeftToTheFinalizer(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked, Action action)
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        var before = new HashSet<WeakReference<IDisposable>>(tracked.Keys);
+        RunNotInlined(action);
+        List<WeakReference<IDisposable>> made = [.. tracked.Keys.Where(key => !before.Contains(key))];
+        GC.Collect();
+        int left = made.Count(key => !key.TryGetTarget(out _));
+        GC.WaitForPendingFinalizers();
+        return left;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RunNotInlined(Action action) => action();
 
     private static string SubResourcesNameTheXscn()
     {

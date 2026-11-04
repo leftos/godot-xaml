@@ -338,6 +338,14 @@ Rejected: the shared `/tmp`. Another account can create `/tmp/godot-xaml` first 
 
 The export plugin writes its temporary binaries in `res://.godot/exported/godot-xaml/`, where Godot saves its own export conversions, instead of the OS temp folder. The saver gets that file's absolute path: a `res://` path makes the editor's save callback write a folding file in `.godot/editor/` that is never removed, and a uid is minted for it.
 
+## The addon disposes what it makes, not at shutdown
+
+Every `Variant`, `StringName`, `NodePath` and Godot `Array` or `Dictionary` the addon makes is disposed in the call that made it, and a literal compared against as a `StringName` is a `static readonly` field. The addon installs no shutdown hook that disposes or collects them.
+
+Godot fact (4.7.2): GodotSharp registers each of these in `DisposablesTracker.OtherInstances` under a weak reference and disposes at shutdown only what is still reachable (`modules/mono/glue/GodotSharp/GodotSharp/Core/DisposablesTracker.cs`, `OnGodotShuttingDown`). One a GC has found unreachable is left to its finalizer, and nothing drains the finalizers before `Main::cleanup` (`main/main.cpp`) tears the engine down, so a finalizer that runs late calls into a freed engine and can crash the process, with a native access violation or a `Fatal error.` line and a `*.Finalize()` stack.
+
+Rejected: a shutdown hook that forces a GC and waits for the finalizers. It would add a full GC to every game's exit. Godot's generated dispatch leaves one `StringName` per C# loader per engine `_HandlesType` call, which is Godot's own code and outside the addon's reach; the check `LoadLeavesNothingToTheFinalizer` therefore calls each loader's `_HandlesType` directly.
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.

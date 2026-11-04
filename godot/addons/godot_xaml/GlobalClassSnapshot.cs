@@ -108,24 +108,29 @@ internal sealed class GlobalClassSnapshot
         return current;
     }
 
-    // The list holds one Godot Dictionary per class, owned by the caller, so each is disposed as it is read. The typed
-    // array wrapper itself has no Dispose: it owns an untyped Array it never releases, a known issue the Godot binding
-    // suppresses CA1001 for.
+    // The list, each of its items, each class's Godot Dictionary, the keys and the values are all owned by the caller, so
+    // each is disposed as it is read: one left to its finalizer can be destroyed after the engine has shut down (GXAML-81).
+    // The typed array wrapper has no Dispose of its own, but casting it to Godot.Collections.Array returns the untyped
+    // Array it wraps (modules/mono/glue/GodotSharp/GodotSharp/Core/Array.cs:1205-1208), so disposing the cast releases it.
     private static GlobalClassSnapshot Build()
     {
         var classOfPath = new Dictionary<string, string>(StringComparer.Ordinal);
         var baseOfClass = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (Godot.Collections.Dictionary entry in ProjectSettings.GetGlobalClassList())
+        using Variant classKey = "class";
+        using Variant pathKey = "path";
+        using Variant baseKey = "base";
+        using var list = (Godot.Collections.Array)ProjectSettings.GetGlobalClassList();
+        foreach (Variant item in list)
         {
-            try
+            using (item)
             {
-                string name = entry["class"].AsString();
-                classOfPath[entry["path"].AsString()] = name;
-                baseOfClass[name] = entry["base"].AsString();
-            }
-            finally
-            {
-                entry.Dispose();
+                using Godot.Collections.Dictionary entry = item.AsGodotDictionary();
+                using Variant className = entry[classKey];
+                using Variant path = entry[pathKey];
+                using Variant baseName = entry[baseKey];
+                string name = className.AsString();
+                classOfPath[path.AsString()] = name;
+                baseOfClass[name] = baseName.AsString();
             }
         }
 

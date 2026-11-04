@@ -10,6 +10,10 @@
 
 - On Linux and macOS, the addon's temporary converted files live in your own private cache folder instead of the temp folder every account shares.
 
+### Fixed
+
+- Loading and saving `.xscn` and `.xres` files no longer leaves engine values for .NET's garbage collector, which could crash Godot as it quits.
+
 ## 0.2.1 - 2026-11-03
 
 ### Changed

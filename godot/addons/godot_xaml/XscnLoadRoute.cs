@@ -261,6 +261,8 @@ internal static class XscnLoadRoute
     // A packed scene's values are walked through its state; its _bundled property holds the same values again. Only stored
     // properties are read, as Godot's text saver reads them (resource_format_text.cpp:1690): a script variable that is not
     // exported holds what another file owns.
+    // Every Godot value read here is disposed, the literal keys and the list itself included: one left to its finalizer can
+    // be destroyed after the engine has shut down (GXAML-81). The typed list's cast returns its untyped Array, which can be.
     private static void PushHeldValues(Resource resource, Stack<Variant> pending)
     {
         var scene = resource as PackedScene;
@@ -269,13 +271,23 @@ internal static class XscnLoadRoute
             PushSceneValues(scene.GetState(), pending);
         }
 
-        foreach (Dictionary property in resource.GetPropertyList())
+        using Variant nameKey = "name";
+        using Variant usageKey = "usage";
+        using var properties = (Godot.Collections.Array)resource.GetPropertyList();
+        foreach (Variant item in properties)
         {
-            StringName name = property["name"].AsStringName();
-            bool stored = (property["usage"].AsInt64() & (long)PropertyUsageFlags.Storage) != 0;
-            if (stored && (scene is null || name != "_bundled"))
+            using (item)
             {
-                pending.Push(resource.Get(name));
+                using Dictionary property = item.AsGodotDictionary();
+                using Variant nameValue = property[nameKey];
+                using Variant usage = property[usageKey];
+                string name = nameValue.AsString();
+                if ((usage.AsInt64() & (long)PropertyUsageFlags.Storage) != 0 && (scene is null || name != "_bundled"))
+                {
+                    using var key = new StringName(name);
+                    // The walk owns the pushed value and disposes it once read.
+                    pending.Push(resource.Get(key));
+                }
             }
         }
     }

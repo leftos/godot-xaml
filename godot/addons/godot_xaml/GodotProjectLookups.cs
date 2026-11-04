@@ -52,11 +52,22 @@ internal sealed class GodotProjectLookups : IExtResourceTypes
             return null;
         }
 
-        foreach (Dictionary entry in ProjectSettings.GetGlobalClassList())
+        // Each Godot value is disposed as it is read: one left to its finalizer can be destroyed after the engine has shut
+        // down (GXAML-81). The typed list's cast returns its untyped Array, which can be.
+        using Variant pathKey = "path";
+        using Variant classKey = "class";
+        using var list = (Godot.Collections.Array)ProjectSettings.GetGlobalClassList();
+        foreach (Variant item in list)
         {
-            if (entry["path"].AsString() == scriptPath)
+            using (item)
             {
-                return entry["class"].AsString();
+                using Dictionary entry = item.AsGodotDictionary();
+                using Variant path = entry[pathKey];
+                if (path.AsString() == scriptPath)
+                {
+                    using Variant name = entry[classKey];
+                    return name.AsString();
+                }
             }
         }
 

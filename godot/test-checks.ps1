@@ -242,9 +242,9 @@ function Test-LinesReachTheOutputWhileGodotRuns {
 }
 
 $checksTail = @'
-$ids = 2..70 | ForEach-Object { "C$_" }
+$ids = 2..71 | ForEach-Object { "C$_" }
 foreach ($id in $ids) { [Console]::Out.WriteLine("CHECK $id PASS") }
-[Console]::Out.WriteLine('DONE 70/70')
+[Console]::Out.WriteLine('DONE 71/71')
 '@
 
 $compareTail = @'

@@ -10,6 +10,12 @@ namespace GodotXaml.Addon;
 [Tool]
 public partial class XresFormatLoader : ResourceFormatLoader
 {
+    // Made once: a StringName made per call from a literal is left to its finalizer, which can run after the engine has shut
+    // down (GXAML-81). A static one is still reachable at shutdown, when Godot's tracker disposes it.
+    private static readonly StringName ResourceClass = "Resource";
+    private static readonly StringName PackedSceneClass = "PackedScene";
+    private static readonly StringName GDExtensionClass = "GDExtension";
+
     /// <summary>
     /// Rebuilds the global class snapshot, on the main thread only. Godot builds the loaders at startup from the previous
     /// session's class cache (<c>main/main.cpp:4494</c>) and re-creates them after each script-class update
@@ -46,13 +52,19 @@ public partial class XresFormatLoader : ResourceFormatLoader
     /// <returns>Whether an <c>.xres</c> can hold it.</returns>
     public override bool _HandlesType(StringName type)
     {
-        if (ClassDB.IsParentClass(type, "Resource") && type != "PackedScene" && type != "GDExtension")
+        if (ClassDB.IsParentClass(type, ResourceClass) && type != PackedSceneClass && type != GDExtensionClass)
         {
             return true;
         }
 
         string? native = GlobalClassSnapshot.Current.NativeBaseOf(type);
-        return native is not null && ClassDB.IsParentClass(native, "Resource") && native != "PackedScene" && native != "GDExtension";
+        if (native is null)
+        {
+            return false;
+        }
+
+        using var nativeName = new StringName(native);
+        return ClassDB.IsParentClass(nativeName, ResourceClass) && native != "PackedScene" && native != "GDExtension";
     }
 
     /// <inheritdoc/>
