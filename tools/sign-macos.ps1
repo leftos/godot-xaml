@@ -21,8 +21,8 @@ in two steps the release workflow runs with a smoke test of the signed executabl
    cleanup action that fails writes a warning, so it never hides the error that stopped the run.
 
 -Step Notarise -Exe <path> -Zip <path>:
-1. Zips the executable to -Zip with ditto -c -k --keepParent, the layout tools/publish-server.ps1's zip has: the
-   executable alone, with its mode.
+1. Zips the executable to -Zip with ditto -c -k, the layout tools/publish-server.ps1's zip has: the executable alone at
+   the zip's root, with its mode. (--keepParent would put it under its parent folder.)
 2. Submits the zip with xcrun notarytool submit --key <.p8> --key-id --issuer --wait --timeout 30m --output-format json.
    Any status but Accepted, or Accepted with a non-zero exit, fails the run, after printing Apple's log through
    notarytool log (a failing notarytool log writes a warning).
@@ -252,7 +252,7 @@ function Invoke-Notarise {
         if (Test-Path -LiteralPath $zipPath) {
             Remove-Item -LiteralPath $zipPath -Force
         }
-        Invoke-Tool 'ditto' 'ditto' @('-c', '-k', '--keepParent', $exePath, $zipPath) | Out-Null
+        Invoke-Tool 'ditto' 'ditto' @('-c', '-k', $exePath, $zipPath) | Out-Null
 
         Write-Host 'sign-macos: submitting to Apple for notarisation and waiting for the result'
         $notaryAuth = @(

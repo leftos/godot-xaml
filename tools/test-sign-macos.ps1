@@ -23,8 +23,8 @@ runs, so a step that reads the other step's secrets fails.
 The cases:
 - SignAllToolsSucceed: the Sign calls come in order; security import grants -T /usr/bin/codesign and not -A; codesign
   signs with the identity's SHA-1 and --keychain names the keychain the run created; the search list is restored.
-- NotariseAllToolsSucceed: ditto writes -Zip, notarytool submit sends that zip with --wait, --timeout 30m and
-  --output-format json, and the zip is left in place.
+- NotariseAllToolsSucceed: ditto -c -k zips the executable at the zip's root into -Zip, notarytool submit sends that
+  zip with --wait, --timeout 30m and --output-format json, and the zip is left in place.
 - SignMissingSecretFailsBeforeAnyTool: one Sign secret is empty, the script fails naming it and calls no tool.
 - NotariseTwoMissingSecretsBothNamed: two Notarise secrets are empty, the failure names both and no tool runs.
 - SignFailedVerifyFails: codesign --verify fails, the script fails.
@@ -373,11 +373,10 @@ $notariseAllSucceed = {
         return
     }
     $ditto = @($calls[0].args)
-    foreach ($w in @('-c', '-k', '--keepParent')) {
-        if ($ditto -notcontains $w) { $failures.Add("ditto lacks $w") }
+    $expectedDitto = @('-c', '-k', $paths.Exe, $paths.Zip)
+    if ($ditto.Count -ne $expectedDitto.Count -or ($ditto -join ' ') -ne ($expectedDitto -join ' ')) {
+        $failures.Add("ditto was called with [$($ditto -join ' ')] where [$($expectedDitto -join ' ')] zips the executable at the zip's root")
     }
-    if ($ditto[-2] -ne $paths.Exe) { $failures.Add("ditto zips $($ditto[-2]) where $($paths.Exe) is the executable") }
-    if ($ditto[-1] -ne $paths.Zip) { $failures.Add("ditto writes $($ditto[-1]) where -Zip is $($paths.Zip)") }
     $submit = @($calls[1].args)
     if ($submit[2] -ne $paths.Zip) { $failures.Add("notarytool submits $($submit[2]) where the zip is $($paths.Zip)") }
     foreach ($pair in @(@('--key-id', $secrets.MACOS_NOTARY_API_KEY_ID), @('--issuer', $secrets.MACOS_NOTARY_API_ISSUER_ID))) {

@@ -2,21 +2,23 @@ name: Build the language server
 
 # Builds the language server's six NativeAOT executables, one leg per runtime identifier on that platform's own runner
 # (NativeAOT does not cross-compile across operating systems), signs and notarises the two macOS ones in a job of their
-# own, and attaches the six zips to the GitHub release. It never touches nuget.org: publish-nuget.yml alone pushes
-# packages, and the nuget.org trusted-publishing policy names that file. A pull request builds win-x64 and linux-x64
-# unsigned, or all six unsigned when it changes this workflow, tools/publish-server.ps1 or tools/sign-macos.ps1, and
-# attaches nothing. The build legs hold no secret: the MACOS_* signing secrets live in the macos-signing environment,
-# which only the sign-macos job names, and that job never runs for a pull request. The signed executables are
-# smoke-tested in smoke-signed, a job with no secret, before attach runs. The macos-signing environment admits main and
-# any v* tag, so it relies on v* tags being creatable only by the owner (a tag ruleset).
+# own, and attaches the six zips to the GitHub release. A dispatch on main with no tag is a dry run: it builds all six
+# legs from main, signs, notarises and smoke-tests the macOS zips, and attaches nothing. It never touches nuget.org:
+# publish-nuget.yml alone pushes packages, and the nuget.org trusted-publishing policy names that file. A pull request
+# builds win-x64 and linux-x64 unsigned, or all six unsigned when it changes this workflow, tools/publish-server.ps1 or
+# tools/sign-macos.ps1, and attaches nothing. The build legs hold no secret: the MACOS_* signing secrets live in the
+# macos-signing environment, which only the sign-macos job names, and that job never runs for a pull request. The signed
+# executables are smoke-tested in smoke-signed, a job with no secret, before attach runs. The macos-signing environment
+# admits main and any v* tag, so it relies on v* tags being creatable only by the owner (a tag ruleset).
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: The release tag whose language server to build and attach, such as v0.1.0
-        required: true
+        description: The release tag whose language server to build and attach, such as v0.1.0; leave empty on main for a dry run that builds, signs and smoke-tests and attaches nothing
+        required: false
+        default: ''
         type: string
   pull_request:
     branches: [main]
@@ -34,7 +36,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: build-server-${{ github.event.release.tag_name || inputs.tag || github.event.pull_request.number }}
+  group: build-server-${{ github.event.release.tag_name || inputs.tag || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -71,16 +73,25 @@ jobs:
               fi
               ;;
             workflow_dispatch)
-              rule='^v[0-9A-Za-z.+-]+$'
-              if ! [[ "$TAG" =~ $rule ]]; then
-                echo '::error::The tag input must match ^v[0-9A-Za-z.+-]+$: a v, then only letters, digits, dots, plus and minus signs.'
-                exit 1
+              if [ -z "$TAG" ]; then
+                if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
+                  echo '::error::A dispatch with no tag is a dry run, which runs on main only: the macos-signing environment admits main and v* tags.'
+                  exit 1
+                fi
+                echo "A dry run: all six legs build from main; nothing is attached."
+                legs="$all"
+              else
+                rule='^v[0-9A-Za-z.+-]+$'
+                if ! [[ "$TAG" =~ $rule ]]; then
+                  echo '::error::The tag input must match ^v[0-9A-Za-z.+-]+$: a v, then only letters, digits, dots, plus and minus signs.'
+                  exit 1
+                fi
+                if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+                  echo "::error::$TAG has no GitHub release: create the release first, then dispatch this workflow again with tag $TAG."
+                  exit 1
+                fi
+                legs="$all"
               fi
-              if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-                echo "::error::$TAG has no GitHub release: create the release first, then dispatch this workflow again with tag $TAG."
-                exit 1
-              fi
-              legs="$all"
               ;;
             *)
               legs="$all"
@@ -104,7 +115,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Set up .NET from global.json
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
@@ -169,7 +180,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Download the unsigned executable
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -240,7 +251,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Download the signed zip
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -248,7 +259,7 @@ jobs:
           name: release-zip-${{ matrix.rid }}
           path: .tmp/signed/${{ matrix.rid }}
 
-      - name: Unzip it and check the executable bit
+      - name: Unzip it and check the executable is at its root with its executable bit
         shell: bash
         env:
           RID: ${{ matrix.rid }}
@@ -261,6 +272,10 @@ jobs:
             exit 1
           fi
           unzip -q "${zips[0]}" -d "$dir/unzipped"
+          if [ ! -f "$dir/unzipped/GodotXaml.LanguageServer" ]; then
+            echo "::error::The signed $RID zip has no GodotXaml.LanguageServer at its root; it holds: $(unzip -Z1 "${zips[0]}" | tr '\n' ' ')"
+            exit 1
+          fi
           if [ ! -x "$dir/unzipped/GodotXaml.LanguageServer" ]; then
             echo "::error::The signed $RID zip's GodotXaml.LanguageServer lost its executable bit."
             exit 1
@@ -275,7 +290,7 @@ jobs:
   attach:
     name: Attach the zips to the release
     needs: [build, sign-macos, smoke-signed]
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && !(github.event_name == 'workflow_dispatch' && inputs.tag == '')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
