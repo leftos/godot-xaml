@@ -6,23 +6,26 @@
 
 - [/] GXAML-114 Dynamic families: a compare fixture for every stored family, enforced by a coverage test · release vNext
   - [ ] GXAML-123 Fixture tile_map_grid_map.tscn: TileMap layers, GridMap and MeshLibrary · release vNext
-  - [ ] GXAML-126 Fixtures theme_font_resources.tres and audio_resources.tres · release vNext
   - [ ] GXAML-128 Coverage test: every dynamic-family row matched by a fixture or a reviewed exception · release vNext
   - [ ] GXAML-129 Fixture shader_parameters.tscn: instance shader parameters, ShaderMaterial and ShaderGlobalsOverride · release vNext
   - [ ] GXAML-170 Conversion back: shader uniforms and blend shapes in their source's order · release vNext
-- [ ] GXAML-131 Conversion back: VisualShader flags/ order follows the shader's mode · release vNext
-- [ ] GXAML-144 Conversion back: TileSetAtlasSource tiles in Godot's per-tile order · release vNext
 - [ ] GXAML-175 Core: one public writer-refusal predicate for the CLI, the core and the language server
+- [ ] GXAML-187 Conversion back: FontFile size textures, glyphs and kerning in Godot's order
+- [ ] GXAML-188 Core: trim and AOT analyzers on the core project
 
 ## Godot addon
 
 - [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext
-  - [ ] GXAML-165 Preview server: .xscn text to an instantiated scene, scripts stripped unless allowed · release vNext
   - [ ] GXAML-166 Preview server: Control rectangles with each node's source span · release vNext
   - [ ] GXAML-167 Preview server: loopback server, token, discovery file and plugin lifecycle · release vNext
   - [ ] GXAML-168 Preview server: SubViewport PNG render, size clamp and the last good image · release vNext
   - [ ] GXAML-169 Preview server: survive an assembly reload, and the user docs · release vNext
   - [ ] GXAML-171 Merge feat/preview-server to main (#2)
+  - [ ] GXAML-179 Preview server: the previewed root names the document as its scene file
+  - [ ] GXAML-181 Preview server: a connection to a stripped %Name target is dropped too
+  - [ ] GXAML-184 Preview server: strip scripts from referenced resources and path-typed containers · release vNext
+  - [ ] GXAML-189 Preview server: classify references by content, follow remaps, and refuse GDExtension libraries · release vNext
+  - [ ] GXAML-190 Preview server: preview imported models whose import attaches no script
 - [ ] GXAML-174 Godot harnesses: fail the import steps and editor runs on a Fatal error line too
 - [ ] GXAML-176 Addon: an export configuration build fails on a TOOLS-only cref in GlobalClassSnapshot
 
@@ -33,10 +36,12 @@
 ## Editor support
 
 - [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext
-  - [ ] GXAML-136 Language server: hover · release vNext
-  - [ ] GXAML-138 Language server: completions by context · release vNext
-  - [ ] GXAML-139 Language server: per-platform executables, CI matrix and release packaging · release vNext
   - [ ] GXAML-173 Merge feat/language-server to main (#3)
+  - [ ] GXAML-178 Language server: a {Key} hover reuses the document's parse
+  - [ ] GXAML-180 Language server: completion and hover read prefixes, the names index and the parent element from the core
+  - [ ] GXAML-183 Language server: completions of res:// paths, scene-instance tags and x:Connect values
+  - [ ] GXAML-185 Language server: theme-override values and hover, and zero-valued flags members
+  - [ ] GXAML-186 Language server: CI matrix for six platforms, macOS signing, release attachment and install docs · release vNext
 - [ ] GXAML-15 VS Code extension over the language server · release vNext+1
 - [ ] GXAML-16 Visual Studio extension over the language server · release vNext+1
 - [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+1
@@ -50,13 +55,11 @@
 ## Backlog
 
 - [ ] GXAML-84 Find the cause of two rare Godot crashes during first import
-- [ ] GXAML-100 ARCHITECTURE.md: the sub-resource check range and two missing Task Index rows · release vNext
-- [ ] GXAML-133 Docs: re-read DEVELOPMENT.md against the compare and harness changes since it was written · release vNext
 
 ## Design files
 
 - [dynamic-family-coverage-probe.md](dynamic-family-coverage-probe.md) — GXAML-129
-- [dynamic-family-coverage.md](dynamic-family-coverage.md) — GXAML-114, GXAML-123, GXAML-126, GXAML-128
+- [dynamic-family-coverage.md](dynamic-family-coverage.md) — GXAML-114, GXAML-123, GXAML-128
 - [language-server-libraries.md](language-server-libraries.md) — GXAML-14
-- [language-server.md](language-server.md) — GXAML-14, GXAML-136, GXAML-138, GXAML-139
-- [v1-design.md](v1-design.md) — GXAML-11, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, Agent tooling, Core format, Editor support, Godot addon
+- [language-server.md](language-server.md) — GXAML-14, GXAML-183
+- [v1-design.md](v1-design.md) — GXAML-11, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, GXAML-186, Agent tooling, Core format, Editor support, Godot addon
