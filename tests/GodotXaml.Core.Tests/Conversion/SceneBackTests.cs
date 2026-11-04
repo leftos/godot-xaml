@@ -21,6 +21,7 @@ public sealed partial class SceneBackTests
             "connections",
             "ext_resource",
             "groups",
+            "gui_item_arrays",
             "inherited",
             "instanced",
             "instanced_order",

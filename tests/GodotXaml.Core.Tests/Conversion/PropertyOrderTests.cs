@@ -1502,4 +1502,236 @@ public sealed class PropertyOrderTests
 
         Assert.Equal(["tracks/5/type", "tracks/99999999999999999999/type"], PropertyNames(resource.ResourceProperties));
     }
+
+    // TabBar::_get_property_list (PropertyListHelper, tab_bar.cpp) lists a tab's keys title, tooltip, icon and disabled,
+    // the tabs in numeric order past ten.
+    [Fact]
+    public void ATabBarTabListsItsTitleFirstAndTabsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <TabBar {{X}} Name="Root" tab_count="12">
+              <x:Prop Name="tab_10/disabled" Value="true" />
+              <x:Prop Name="tab_10/icon" Value='Resource("res://t.tres")' />
+              <x:Prop Name="tab_10/title" Value='"Ten"' />
+              <x:Prop Name="tab_10/tooltip" Value='"Tip"' />
+              <x:Prop Name="tab_2/disabled" Value="true" />
+              <x:Prop Name="tab_2/icon" Value='Resource("res://t.tres")' />
+              <x:Prop Name="tab_2/title" Value='"Two"' />
+              <x:Prop Name="tab_2/tooltip" Value='"Tip"' />
+            </TabBar>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "tab_count",
+                "tab_2/title",
+                "tab_2/tooltip",
+                "tab_2/icon",
+                "tab_2/disabled",
+                "tab_10/title",
+                "tab_10/tooltip",
+                "tab_10/icon",
+                "tab_10/disabled",
+            ],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
+
+    // PopupMenu::_get_property_list (PropertyListHelper, popup_menu.cpp) lists an item's keys text, icon, checkable,
+    // checked, id, disabled and separator, the items in numeric order past ten.
+    [Fact]
+    public void APopupMenuItemListsItsTextFirstAndItemsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <PopupMenu {{X}} Name="Root" item_count="12">
+              <x:Prop Name="item_10/checkable" Value="1" />
+              <x:Prop Name="item_10/checked" Value="true" />
+              <x:Prop Name="item_10/disabled" Value="true" />
+              <x:Prop Name="item_10/icon" Value='Resource("res://a.tres")' />
+              <x:Prop Name="item_10/id" Value="110" />
+              <x:Prop Name="item_10/separator" Value="false" />
+              <x:Prop Name="item_10/text" Value='"Ten"' />
+              <x:Prop Name="item_2/checkable" Value="1" />
+              <x:Prop Name="item_2/checked" Value="true" />
+              <x:Prop Name="item_2/disabled" Value="true" />
+              <x:Prop Name="item_2/icon" Value='Resource("res://a.tres")' />
+              <x:Prop Name="item_2/id" Value="102" />
+              <x:Prop Name="item_2/separator" Value="false" />
+              <x:Prop Name="item_2/text" Value='"Two"' />
+            </PopupMenu>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "item_count",
+                "item_2/text",
+                "item_2/icon",
+                "item_2/checkable",
+                "item_2/checked",
+                "item_2/id",
+                "item_2/disabled",
+                "item_2/separator",
+                "item_10/text",
+                "item_10/icon",
+                "item_10/checkable",
+                "item_10/checked",
+                "item_10/id",
+                "item_10/disabled",
+                "item_10/separator",
+            ],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
+
+    // ItemList::_get_property_list (PropertyListHelper, item_list.cpp) lists an item's keys text, icon, selectable and
+    // disabled, the items in numeric order past ten.
+    [Fact]
+    public void AnItemListItemListsItsTextFirstAndItemsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <ItemList {{X}} Name="Root" item_count="12">
+              <x:Prop Name="item_10/disabled" Value="true" />
+              <x:Prop Name="item_10/icon" Value='Resource("res://a.tres")' />
+              <x:Prop Name="item_10/selectable" Value="false" />
+              <x:Prop Name="item_10/text" Value='"Ten"' />
+              <x:Prop Name="item_2/disabled" Value="true" />
+              <x:Prop Name="item_2/icon" Value='Resource("res://a.tres")' />
+              <x:Prop Name="item_2/selectable" Value="false" />
+              <x:Prop Name="item_2/text" Value='"Two"' />
+            </ItemList>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "item_count",
+                "item_2/text",
+                "item_2/icon",
+                "item_2/selectable",
+                "item_2/disabled",
+                "item_10/text",
+                "item_10/icon",
+                "item_10/selectable",
+                "item_10/disabled",
+            ],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
+
+    // OptionButton::_get_property_list (PropertyListHelper, option_button.cpp) lists an item's keys text, icon, id,
+    // disabled and separator under popup/item_N/, the items in numeric order past ten.
+    [Fact]
+    public void AnOptionButtonItemListsItsTextFirstAndItemsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <OptionButton {{X}} Name="Root" item_count="12">
+              <x:Prop Name="popup/item_10/disabled" Value="true" />
+              <x:Prop Name="popup/item_10/icon" Value='Resource("res://a.tres")' />
+              <x:Prop Name="popup/item_10/id" Value="110" />
+              <x:Prop Name="popup/item_10/separator" Value="false" />
+              <x:Prop Name="popup/item_10/text" Value='"Ten"' />
+              <x:Prop Name="popup/item_2/disabled" Value="true" />
+              <x:Prop Name="popup/item_2/icon" Value='Resource("res://a.tres")' />
+              <x:Prop Name="popup/item_2/id" Value="102" />
+              <x:Prop Name="popup/item_2/separator" Value="false" />
+              <x:Prop Name="popup/item_2/text" Value='"Two"' />
+            </OptionButton>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "item_count",
+                "popup/item_2/text",
+                "popup/item_2/icon",
+                "popup/item_2/id",
+                "popup/item_2/disabled",
+                "popup/item_2/separator",
+                "popup/item_10/text",
+                "popup/item_10/icon",
+                "popup/item_10/id",
+                "popup/item_10/disabled",
+                "popup/item_10/separator",
+            ],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
+
+    // MenuButton::_get_property_list (PropertyListHelper, menu_button.cpp) lists an item's keys text, icon, checkable,
+    // checked, id, disabled and separator under popup/item_N/, the items in numeric order past ten.
+    [Fact]
+    public void AMenuButtonItemListsItsTextFirstAndItemsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MenuButton {{X}} Name="Root" item_count="12">
+              <x:Prop Name="popup/item_10/checkable" Value="1" />
+              <x:Prop Name="popup/item_10/checked" Value="true" />
+              <x:Prop Name="popup/item_10/disabled" Value="true" />
+              <x:Prop Name="popup/item_10/icon" Value='Resource("res://a.tres")' />
+              <x:Prop Name="popup/item_10/id" Value="310" />
+              <x:Prop Name="popup/item_10/separator" Value="false" />
+              <x:Prop Name="popup/item_10/text" Value='"Ten"' />
+              <x:Prop Name="popup/item_2/checkable" Value="1" />
+              <x:Prop Name="popup/item_2/checked" Value="true" />
+              <x:Prop Name="popup/item_2/disabled" Value="true" />
+              <x:Prop Name="popup/item_2/icon" Value='Resource("res://a.tres")' />
+              <x:Prop Name="popup/item_2/id" Value="302" />
+              <x:Prop Name="popup/item_2/separator" Value="false" />
+              <x:Prop Name="popup/item_2/text" Value='"Two"' />
+            </MenuButton>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "item_count",
+                "popup/item_2/text",
+                "popup/item_2/icon",
+                "popup/item_2/checkable",
+                "popup/item_2/checked",
+                "popup/item_2/id",
+                "popup/item_2/disabled",
+                "popup/item_2/separator",
+                "popup/item_10/text",
+                "popup/item_10/icon",
+                "popup/item_10/checkable",
+                "popup/item_10/checked",
+                "popup/item_10/id",
+                "popup/item_10/disabled",
+                "popup/item_10/separator",
+            ],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
+
+    // FileDialog::_get_property_list (PropertyListHelper, file_dialog.cpp) lists an option's keys name, values and
+    // default, the options in numeric order past ten.
+    [Fact]
+    public void AFileDialogOptionListsItsNameFirstAndOptionsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <FileDialog {{X}} Name="Root" option_count="12">
+              <x:Prop Name="option_10/default" Value="1" />
+              <x:Prop Name="option_10/name" Value='"Ten"' />
+              <x:Prop Name="option_10/values" Value='PackedStringArray("a", "b")' />
+              <x:Prop Name="option_2/default" Value="1" />
+              <x:Prop Name="option_2/name" Value='"Two"' />
+              <x:Prop Name="option_2/values" Value='PackedStringArray("a", "b")' />
+            </FileDialog>
+            """
+        );
+
+        Assert.Equal(
+            ["option_count", "option_2/name", "option_2/values", "option_2/default", "option_10/name", "option_10/values", "option_10/default"],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
 }

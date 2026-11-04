@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Converting back to `.tscn`, the items of a TabBar, PopupMenu, ItemList, OptionButton, MenuButton or FileDialog keep Godot's order past the tenth, each item's keys in the order Godot writes them.
 - A `.xscn` or `.xres` nested more than 512 elements deep reports `GX0120` instead of crashing whatever reads it.
 - A raw `.xres` inside a pack a game mounts reports its class and script class, as one on disk does.
 - The addon's temp folder no longer keeps the half-written files a save interrupted by a crash leaves behind.

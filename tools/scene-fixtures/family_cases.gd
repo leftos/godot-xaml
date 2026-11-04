@@ -172,6 +172,131 @@ static func tile_set_layers(generator) -> String:
 	return generator._save("tile_set_layers.tres", tile_set)
 
 
+## Six classes whose dynamic families a PropertyListHelper sizes by a count property, each node
+## with 12 entries so the entries past 9 sort against the single digits: a TabBar of 12 tabs, a
+## PopupMenu of 12 items (plain, check and radio ones, some separators, some checked, disabled or
+## numbered past the default id), an ItemList of 12 rows, an OptionButton and a MenuButton of 12
+## popup items, and a FileDialog of 12 options. Entries 0, 3, 6, 9, 10 and 11 of the five classes
+## that list an icon key carry one shared texture, its sub-resource id pinned, since the saver
+## strips a value equal to its default and the icon's place (second, or third in a tab) is
+## otherwise never written. Each class's keys in the order its _bind_methods PropertyListHelper
+## registration gives them: tab_bar.cpp (title, tooltip, icon, disabled), popup_menu.cpp and
+## menu_button.cpp (text, icon, checkable, checked, id, disabled, separator), item_list.cpp
+## (text, icon, selectable, disabled), option_button.cpp (text, icon, id, disabled, separator)
+## and file_dialog.cpp (name, values, default).
+static func gui_item_arrays(generator) -> String:
+	var root: Control = generator._root("Control")
+	var icon := _icon()
+	_gui_tab_bar(generator, root, icon)
+	_gui_popup_menu(generator, root, icon)
+	_gui_item_list(generator, root, icon)
+	_gui_option_button(generator, root, icon)
+	_gui_menu_button(generator, root, icon)
+	_gui_file_dialog(generator, root)
+	return generator._save_scene("gui_item_arrays", root)
+
+
+## The texture the cases' icons share, its own and its gradient's sub-resource ids pinned.
+static func _icon() -> GradientTexture2D:
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([Color.RED, Color.BLUE])
+	gradient.resource_scene_unique_id = "Gradient_1c0ns"
+	var icon := GradientTexture2D.new()
+	icon.width = 16
+	icon.height = 16
+	icon.gradient = gradient
+	icon.resource_scene_unique_id = "GradientTexture2D_1c0ns"
+	return icon
+
+
+## Whether an entry carries an icon: enough of them past 9 that the icon key's place is written.
+static func _carries_icon(index: int) -> bool:
+	return index % 3 == 0 or index >= 10
+
+
+## 12 tabs, each with a title, a tooltip and a disabled flag, some of them with an icon.
+static func _gui_tab_bar(generator, root: Node, icon: Texture2D) -> void:
+	var tab_bar: TabBar = generator._add(root, "TabBar", "TabBar")
+	for index in 12:
+		tab_bar.add_tab("Tab %d" % index)
+		tab_bar.set_tab_tooltip(index, "Tip %d" % index)
+		tab_bar.set_tab_disabled(index, index % 2 == 0)
+		if _carries_icon(index):
+			tab_bar.set_tab_icon(index, icon)
+
+
+## 12 items: plain, check and radio ones and separators, some checked, disabled or with an icon.
+static func _gui_popup_menu(generator, root: Node, icon: Texture2D) -> void:
+	var popup: PopupMenu = generator._add(root, "PopupMenu", "PopupMenu")
+	for index in 12:
+		var id := 100 + index
+		match index % 4:
+			0:
+				popup.add_item("Item %d" % index, id)
+			1:
+				popup.add_check_item("Check %d" % index, id)
+			2:
+				popup.add_radio_check_item("Radio %d" % index, id)
+			_:
+				popup.add_separator("Separator %d" % index, id)
+		if index % 4 != 3:
+			popup.set_item_checked(index, index % 3 == 0)
+		popup.set_item_disabled(index, index % 5 == 0)
+		if _carries_icon(index):
+			popup.set_item_icon(index, icon)
+
+
+## 12 rows, some not selectable, disabled or with an icon.
+static func _gui_item_list(generator, root: Node, icon: Texture2D) -> void:
+	var item_list: ItemList = generator._add(root, "ItemList", "ItemList")
+	for index in 12:
+		item_list.add_item("Entry %d" % index)
+		item_list.set_item_selectable(index, index % 3 != 0)
+		item_list.set_item_disabled(index, index % 4 == 0)
+		if _carries_icon(index):
+			item_list.set_item_icon(index, icon)
+
+
+## 12 popup items, some separators, disabled or with an icon.
+static func _gui_option_button(generator, root: Node, icon: Texture2D) -> void:
+	var option_button: OptionButton = generator._add(root, "OptionButton", "OptionButton")
+	for index in 12:
+		if index % 5 == 4:
+			option_button.add_separator("Separator %d" % index)
+		else:
+			option_button.add_item("Option %d" % index, 200 + index)
+		option_button.set_item_disabled(index, index % 6 == 0)
+		if _carries_icon(index):
+			option_button.set_item_icon(index, icon)
+
+
+## 12 popup items: plain, check ones and separators, some checked, disabled or with an icon.
+static func _gui_menu_button(generator, root: Node, icon: Texture2D) -> void:
+	var menu_button: MenuButton = generator._add(root, "MenuButton", "MenuButton")
+	var menu: PopupMenu = menu_button.get_popup()
+	for index in 12:
+		var id := 300 + index
+		match index % 3:
+			0:
+				menu.add_item("Item %d" % index, id)
+			1:
+				menu.add_check_item("Check %d" % index, id)
+			_:
+				menu.add_separator("Separator %d" % index, id)
+		if index % 3 != 2:
+			menu.set_item_checked(index, index % 4 == 0)
+		menu.set_item_disabled(index, index % 5 == 1)
+		if _carries_icon(index):
+			menu.set_item_icon(index, icon)
+
+
+## 12 options, each with its own values and default index.
+static func _gui_file_dialog(generator, root: Node) -> void:
+	var file_dialog: FileDialog = generator._add(root, "FileDialog", "FileDialog")
+	for index in 12:
+		file_dialog.add_option("Opt %d" % index, PackedStringArray(["fast", "slow"]), 1)
+
+
 ## A value off the default of a custom data layer of the given type.
 static func _custom_value(type: int, layer: int) -> Variant:
 	match type:

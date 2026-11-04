@@ -1,0 +1,250 @@
+<Control
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Name="Root"
+    AnchorsPreset="TopLeft"
+    LayoutMode="Uncontrolled"
+    x:UniqueId="259520983">
+  <x:Resources>
+    <GradientTexture2D x:Key="GradientTexture2D1" Height="16" Width="16">
+      <GradientTexture2D.Gradient>
+        <Gradient Colors="PackedColorArray(1, 0, 0, 1, 0, 0, 1, 1)" />
+      </GradientTexture2D.Gradient>
+    </GradientTexture2D>
+  </x:Resources>
+  <TabBar Name="TabBar" CurrentTab="0" LayoutMode="Position" TabCount="12" x:UniqueId="1340130930">
+    <x:Prop Name="tab_0/disabled" Value="true" />
+    <x:Prop Name="tab_0/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_0/title" Value='"Tab 0"' />
+    <x:Prop Name="tab_0/tooltip" Value='"Tip 0"' />
+    <x:Prop Name="tab_1/title" Value='"Tab 1"' />
+    <x:Prop Name="tab_1/tooltip" Value='"Tip 1"' />
+    <x:Prop Name="tab_10/disabled" Value="true" />
+    <x:Prop Name="tab_10/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_10/title" Value='"Tab 10"' />
+    <x:Prop Name="tab_10/tooltip" Value='"Tip 10"' />
+    <x:Prop Name="tab_11/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_11/title" Value='"Tab 11"' />
+    <x:Prop Name="tab_11/tooltip" Value='"Tip 11"' />
+    <x:Prop Name="tab_2/disabled" Value="true" />
+    <x:Prop Name="tab_2/title" Value='"Tab 2"' />
+    <x:Prop Name="tab_2/tooltip" Value='"Tip 2"' />
+    <x:Prop Name="tab_3/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_3/title" Value='"Tab 3"' />
+    <x:Prop Name="tab_3/tooltip" Value='"Tip 3"' />
+    <x:Prop Name="tab_4/disabled" Value="true" />
+    <x:Prop Name="tab_4/title" Value='"Tab 4"' />
+    <x:Prop Name="tab_4/tooltip" Value='"Tip 4"' />
+    <x:Prop Name="tab_5/title" Value='"Tab 5"' />
+    <x:Prop Name="tab_5/tooltip" Value='"Tip 5"' />
+    <x:Prop Name="tab_6/disabled" Value="true" />
+    <x:Prop Name="tab_6/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_6/title" Value='"Tab 6"' />
+    <x:Prop Name="tab_6/tooltip" Value='"Tip 6"' />
+    <x:Prop Name="tab_7/title" Value='"Tab 7"' />
+    <x:Prop Name="tab_7/tooltip" Value='"Tip 7"' />
+    <x:Prop Name="tab_8/disabled" Value="true" />
+    <x:Prop Name="tab_8/title" Value='"Tab 8"' />
+    <x:Prop Name="tab_8/tooltip" Value='"Tip 8"' />
+    <x:Prop Name="tab_9/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_9/title" Value='"Tab 9"' />
+    <x:Prop Name="tab_9/tooltip" Value='"Tip 9"' />
+  </TabBar>
+  <PopupMenu Name="PopupMenu" ItemCount="12" x:UniqueId="1064735352">
+    <x:Prop Name="item_0/checked" Value="true" />
+    <x:Prop Name="item_0/disabled" Value="true" />
+    <x:Prop Name="item_0/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_0/id" Value="100" />
+    <x:Prop Name="item_0/text" Value='"Item 0"' />
+    <x:Prop Name="item_1/checkable" Value="1" />
+    <x:Prop Name="item_1/id" Value="101" />
+    <x:Prop Name="item_1/text" Value='"Check 1"' />
+    <x:Prop Name="item_10/checkable" Value="2" />
+    <x:Prop Name="item_10/disabled" Value="true" />
+    <x:Prop Name="item_10/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_10/id" Value="110" />
+    <x:Prop Name="item_10/text" Value='"Radio 10"' />
+    <x:Prop Name="item_11/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_11/id" Value="111" />
+    <x:Prop Name="item_11/separator" Value="true" />
+    <x:Prop Name="item_11/text" Value='"Separator 11"' />
+    <x:Prop Name="item_2/checkable" Value="2" />
+    <x:Prop Name="item_2/id" Value="102" />
+    <x:Prop Name="item_2/text" Value='"Radio 2"' />
+    <x:Prop Name="item_3/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_3/id" Value="103" />
+    <x:Prop Name="item_3/separator" Value="true" />
+    <x:Prop Name="item_3/text" Value='"Separator 3"' />
+    <x:Prop Name="item_4/id" Value="104" />
+    <x:Prop Name="item_4/text" Value='"Item 4"' />
+    <x:Prop Name="item_5/checkable" Value="1" />
+    <x:Prop Name="item_5/disabled" Value="true" />
+    <x:Prop Name="item_5/id" Value="105" />
+    <x:Prop Name="item_5/text" Value='"Check 5"' />
+    <x:Prop Name="item_6/checkable" Value="2" />
+    <x:Prop Name="item_6/checked" Value="true" />
+    <x:Prop Name="item_6/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_6/id" Value="106" />
+    <x:Prop Name="item_6/text" Value='"Radio 6"' />
+    <x:Prop Name="item_7/id" Value="107" />
+    <x:Prop Name="item_7/separator" Value="true" />
+    <x:Prop Name="item_7/text" Value='"Separator 7"' />
+    <x:Prop Name="item_8/id" Value="108" />
+    <x:Prop Name="item_8/text" Value='"Item 8"' />
+    <x:Prop Name="item_9/checkable" Value="1" />
+    <x:Prop Name="item_9/checked" Value="true" />
+    <x:Prop Name="item_9/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_9/id" Value="109" />
+    <x:Prop Name="item_9/text" Value='"Check 9"' />
+  </PopupMenu>
+  <ItemList Name="ItemList" ItemCount="12" LayoutMode="Position" x:UniqueId="575641673">
+    <x:Prop Name="item_0/disabled" Value="true" />
+    <x:Prop Name="item_0/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_0/selectable" Value="false" />
+    <x:Prop Name="item_0/text" Value='"Entry 0"' />
+    <x:Prop Name="item_1/text" Value='"Entry 1"' />
+    <x:Prop Name="item_10/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_10/text" Value='"Entry 10"' />
+    <x:Prop Name="item_11/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_11/text" Value='"Entry 11"' />
+    <x:Prop Name="item_2/text" Value='"Entry 2"' />
+    <x:Prop Name="item_3/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_3/selectable" Value="false" />
+    <x:Prop Name="item_3/text" Value='"Entry 3"' />
+    <x:Prop Name="item_4/disabled" Value="true" />
+    <x:Prop Name="item_4/text" Value='"Entry 4"' />
+    <x:Prop Name="item_5/text" Value='"Entry 5"' />
+    <x:Prop Name="item_6/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_6/selectable" Value="false" />
+    <x:Prop Name="item_6/text" Value='"Entry 6"' />
+    <x:Prop Name="item_7/text" Value='"Entry 7"' />
+    <x:Prop Name="item_8/disabled" Value="true" />
+    <x:Prop Name="item_8/text" Value='"Entry 8"' />
+    <x:Prop Name="item_9/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="item_9/selectable" Value="false" />
+    <x:Prop Name="item_9/text" Value='"Entry 9"' />
+  </ItemList>
+  <OptionButton
+      Name="OptionButton"
+      ItemCount="12"
+      LayoutMode="Position"
+      Selected="1"
+      x:UniqueId="1521659988">
+    <x:Prop Name="popup/item_0/disabled" Value="true" />
+    <x:Prop Name="popup/item_0/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_0/id" Value="200" />
+    <x:Prop Name="popup/item_0/text" Value='"Option 0"' />
+    <x:Prop Name="popup/item_1/id" Value="201" />
+    <x:Prop Name="popup/item_1/text" Value='"Option 1"' />
+    <x:Prop Name="popup/item_10/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_10/id" Value="210" />
+    <x:Prop Name="popup/item_10/text" Value='"Option 10"' />
+    <x:Prop Name="popup/item_11/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_11/id" Value="211" />
+    <x:Prop Name="popup/item_11/text" Value='"Option 11"' />
+    <x:Prop Name="popup/item_2/id" Value="202" />
+    <x:Prop Name="popup/item_2/text" Value='"Option 2"' />
+    <x:Prop Name="popup/item_3/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_3/id" Value="203" />
+    <x:Prop Name="popup/item_3/text" Value='"Option 3"' />
+    <x:Prop Name="popup/item_4/id" Value="-1" />
+    <x:Prop Name="popup/item_4/separator" Value="true" />
+    <x:Prop Name="popup/item_4/text" Value='"Separator 4"' />
+    <x:Prop Name="popup/item_5/id" Value="205" />
+    <x:Prop Name="popup/item_5/text" Value='"Option 5"' />
+    <x:Prop Name="popup/item_6/disabled" Value="true" />
+    <x:Prop Name="popup/item_6/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_6/id" Value="206" />
+    <x:Prop Name="popup/item_6/text" Value='"Option 6"' />
+    <x:Prop Name="popup/item_7/id" Value="207" />
+    <x:Prop Name="popup/item_7/text" Value='"Option 7"' />
+    <x:Prop Name="popup/item_8/id" Value="208" />
+    <x:Prop Name="popup/item_8/text" Value='"Option 8"' />
+    <x:Prop Name="popup/item_9/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_9/id" Value="-1" />
+    <x:Prop Name="popup/item_9/separator" Value="true" />
+    <x:Prop Name="popup/item_9/text" Value='"Separator 9"' />
+  </OptionButton>
+  <MenuButton Name="MenuButton" ItemCount="12" LayoutMode="Position" x:UniqueId="786974048">
+    <x:Prop Name="popup/item_0/checked" Value="true" />
+    <x:Prop Name="popup/item_0/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_0/id" Value="300" />
+    <x:Prop Name="popup/item_0/text" Value='"Item 0"' />
+    <x:Prop Name="popup/item_1/checkable" Value="1" />
+    <x:Prop Name="popup/item_1/disabled" Value="true" />
+    <x:Prop Name="popup/item_1/id" Value="301" />
+    <x:Prop Name="popup/item_1/text" Value='"Check 1"' />
+    <x:Prop Name="popup/item_10/checkable" Value="1" />
+    <x:Prop Name="popup/item_10/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_10/id" Value="310" />
+    <x:Prop Name="popup/item_10/text" Value='"Check 10"' />
+    <x:Prop Name="popup/item_11/disabled" Value="true" />
+    <x:Prop Name="popup/item_11/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_11/id" Value="311" />
+    <x:Prop Name="popup/item_11/separator" Value="true" />
+    <x:Prop Name="popup/item_11/text" Value='"Separator 11"' />
+    <x:Prop Name="popup/item_2/id" Value="302" />
+    <x:Prop Name="popup/item_2/separator" Value="true" />
+    <x:Prop Name="popup/item_2/text" Value='"Separator 2"' />
+    <x:Prop Name="popup/item_3/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_3/id" Value="303" />
+    <x:Prop Name="popup/item_3/text" Value='"Item 3"' />
+    <x:Prop Name="popup/item_4/checkable" Value="1" />
+    <x:Prop Name="popup/item_4/checked" Value="true" />
+    <x:Prop Name="popup/item_4/id" Value="304" />
+    <x:Prop Name="popup/item_4/text" Value='"Check 4"' />
+    <x:Prop Name="popup/item_5/id" Value="305" />
+    <x:Prop Name="popup/item_5/separator" Value="true" />
+    <x:Prop Name="popup/item_5/text" Value='"Separator 5"' />
+    <x:Prop Name="popup/item_6/disabled" Value="true" />
+    <x:Prop Name="popup/item_6/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_6/id" Value="306" />
+    <x:Prop Name="popup/item_6/text" Value='"Item 6"' />
+    <x:Prop Name="popup/item_7/checkable" Value="1" />
+    <x:Prop Name="popup/item_7/id" Value="307" />
+    <x:Prop Name="popup/item_7/text" Value='"Check 7"' />
+    <x:Prop Name="popup/item_8/id" Value="308" />
+    <x:Prop Name="popup/item_8/separator" Value="true" />
+    <x:Prop Name="popup/item_8/text" Value='"Separator 8"' />
+    <x:Prop Name="popup/item_9/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="popup/item_9/id" Value="309" />
+    <x:Prop Name="popup/item_9/text" Value='"Item 9"' />
+  </MenuButton>
+  <FileDialog Name="FileDialog" OptionCount="12" x:UniqueId="1731912166">
+    <x:Prop Name="option_0/default" Value="1" />
+    <x:Prop Name="option_0/name" Value='"Opt 0"' />
+    <x:Prop Name="option_0/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_1/default" Value="1" />
+    <x:Prop Name="option_1/name" Value='"Opt 1"' />
+    <x:Prop Name="option_1/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_10/default" Value="1" />
+    <x:Prop Name="option_10/name" Value='"Opt 10"' />
+    <x:Prop Name="option_10/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_11/default" Value="1" />
+    <x:Prop Name="option_11/name" Value='"Opt 11"' />
+    <x:Prop Name="option_11/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_2/default" Value="1" />
+    <x:Prop Name="option_2/name" Value='"Opt 2"' />
+    <x:Prop Name="option_2/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_3/default" Value="1" />
+    <x:Prop Name="option_3/name" Value='"Opt 3"' />
+    <x:Prop Name="option_3/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_4/default" Value="1" />
+    <x:Prop Name="option_4/name" Value='"Opt 4"' />
+    <x:Prop Name="option_4/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_5/default" Value="1" />
+    <x:Prop Name="option_5/name" Value='"Opt 5"' />
+    <x:Prop Name="option_5/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_6/default" Value="1" />
+    <x:Prop Name="option_6/name" Value='"Opt 6"' />
+    <x:Prop Name="option_6/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_7/default" Value="1" />
+    <x:Prop Name="option_7/name" Value='"Opt 7"' />
+    <x:Prop Name="option_7/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_8/default" Value="1" />
+    <x:Prop Name="option_8/name" Value='"Opt 8"' />
+    <x:Prop Name="option_8/values" Value='PackedStringArray("fast", "slow")' />
+    <x:Prop Name="option_9/default" Value="1" />
+    <x:Prop Name="option_9/name" Value='"Opt 9"' />
+    <x:Prop Name="option_9/values" Value='PackedStringArray("fast", "slow")' />
+  </FileDialog>
+</Control>

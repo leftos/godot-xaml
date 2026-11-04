@@ -24,6 +24,7 @@ public sealed class SceneRoundTripTests
             "connections",
             "ext_resource",
             "groups",
+            "gui_item_arrays",
             "inherited",
             "instanced",
             "instanced_order",

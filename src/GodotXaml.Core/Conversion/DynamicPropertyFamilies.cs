@@ -371,6 +371,22 @@ internal static class DynamicPropertyFamilies
     // scene/3d/bone_twist_disperser_3d.cpp, BoneTwistDisperser3D::_get_property_list: one joint's keys.
     private static readonly string[] DisperserJointKeys = ["bone_name", "bone", "twist_amount"];
 
+    // scene/gui/tab_bar.cpp, TabBar::_bind_methods (PropertyListHelper registration): one tab's keys.
+    private static readonly string[] TabKeys = ["title", "tooltip", "icon", "disabled"];
+
+    // scene/gui/popup_menu.cpp and scene/gui/menu_button.cpp, PopupMenu::_bind_methods and MenuButton::_bind_methods
+    // (PropertyListHelper registrations): one item's keys, the same order in both classes.
+    private static readonly string[] PopupItemKeys = ["text", "icon", "checkable", "checked", "id", "disabled", "separator"];
+
+    // scene/gui/item_list.cpp, ItemList::_bind_methods (PropertyListHelper registration): one item's keys.
+    private static readonly string[] ListItemKeys = ["text", "icon", "selectable", "disabled"];
+
+    // scene/gui/option_button.cpp, OptionButton::_bind_methods (PropertyListHelper registration): one popup item's keys.
+    private static readonly string[] OptionItemKeys = ["text", "icon", "id", "disabled", "separator"];
+
+    // scene/gui/file_dialog.cpp, FileDialog::_bind_methods (PropertyListHelper registration): one option's keys.
+    private static readonly string[] DialogOptionKeys = ["name", "values", "default"];
+
     private static readonly Row[] Entries =
     [
         // scene/animation/animation_mixer.cpp, AnimationMixer::_get_property_list
@@ -401,18 +417,18 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("GraphNode", @"^slot/[0-9]+/"),
         // scene/gui/tab_container.cpp, TabContainer::_get_property_list (PropertyListHelper)
         Row.AnyOrder("TabContainer", @"^tab_[0-9]+/"),
-        // scene/gui/tab_bar.h, TabBar::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("TabBar", @"^tab_[0-9]+/", "tab_count"),
-        // scene/gui/popup_menu.h, PopupMenu::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("PopupMenu", @"^item_[0-9]+/", "item_count"),
-        // scene/gui/item_list.h, ItemList::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("ItemList", @"^item_[0-9]+/", "item_count"),
-        // scene/gui/option_button.h, OptionButton::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("OptionButton", @"^popup/item_[0-9]+/", "item_count"),
-        // scene/gui/menu_button.h, MenuButton::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("MenuButton", @"^popup/item_[0-9]+/", "item_count"),
-        // scene/gui/file_dialog.h, FileDialog::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("FileDialog", @"^option_[0-9]+/", "option_count"),
+        // scene/gui/tab_bar.cpp, TabBar::_bind_methods (PropertyListHelper registration)
+        Row.SizedFirst("TabBar", @"^tab_(?<index>[0-9]+)/(?<key>.*)\z", "tab_count", TabKeys, []),
+        // scene/gui/popup_menu.cpp, PopupMenu::_bind_methods (PropertyListHelper registration)
+        Row.SizedFirst("PopupMenu", @"^item_(?<index>[0-9]+)/(?<key>.*)\z", "item_count", PopupItemKeys, []),
+        // scene/gui/item_list.cpp, ItemList::_bind_methods (PropertyListHelper registration)
+        Row.SizedFirst("ItemList", @"^item_(?<index>[0-9]+)/(?<key>.*)\z", "item_count", ListItemKeys, []),
+        // scene/gui/option_button.cpp, OptionButton::_bind_methods (PropertyListHelper registration)
+        Row.SizedFirst("OptionButton", @"^popup/item_(?<index>[0-9]+)/(?<key>.*)\z", "item_count", OptionItemKeys, []),
+        // scene/gui/menu_button.cpp, MenuButton::_bind_methods (PropertyListHelper registration)
+        Row.SizedFirst("MenuButton", @"^popup/item_(?<index>[0-9]+)/(?<key>.*)\z", "item_count", PopupItemKeys, []),
+        // scene/gui/file_dialog.cpp, FileDialog::_bind_methods (PropertyListHelper registration)
+        Row.SizedFirst("FileDialog", @"^option_(?<index>[0-9]+)/(?<key>.*)\z", "option_count", DialogOptionKeys, []),
         // scene/main/shader_globals_override.cpp, ShaderGlobalsOverride::_get_property_list
         Row.AnyOrder("ShaderGlobalsOverride", @"^params/"),
         // scene/2d/skeleton_2d.cpp, Skeleton2D::_get_property_list
