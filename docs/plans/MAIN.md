@@ -19,13 +19,13 @@
 ## Godot addon
 
 - [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext
-- [ ] GXAML-156 Editor checks: decide whether SCRIPT ERROR and SHADER ERROR lines fail the run
-- [ ] GXAML-157 test-checks.ps1: run compare and export on a throwaway copy, not the repo's godot/ project
-- [ ] GXAML-158 Godot harness scripts: one module for Invoke-Step and the streaming Godot call
-- [ ] GXAML-160 Addon: the failed-load prune also removes Godot's backup-save leftovers
-- [ ] GXAML-161 Addon: reads of res:// files through System.IO miss files in a mounted .pck
-- [ ] GXAML-162 Godot harnesses: fail a run on a Fatal error line, whatever Godot's exit code
-- [ ] GXAML-163 Check C72: cover the rename, root-class, GX0107 and export disposals, and hold off GCs while measuring
+- [ ] GXAML-156 Editor checks: decide whether SCRIPT ERROR and SHADER ERROR lines fail the run · release vNext
+- [ ] GXAML-157 test-checks.ps1: run compare and export on a throwaway copy, not the repo's godot/ project · release vNext
+- [ ] GXAML-158 Godot harness scripts: one module for Invoke-Step and the streaming Godot call · release vNext
+- [ ] GXAML-160 Addon: the failed-load prune also removes Godot's backup-save leftovers · release vNext
+- [ ] GXAML-161 Addon: reads of res:// files through System.IO miss files in a mounted .pck · release vNext
+- [ ] GXAML-162 Godot harnesses: fail a run on a Fatal error line, whatever Godot's exit code · release vNext
+- [ ] GXAML-163 Check C72: cover the rename, root-class, GX0107 and export disposals, and hold off GCs while measuring · release vNext
 
 ## Agent tooling
 
@@ -40,21 +40,21 @@
   - [ ] GXAML-137 Hover descriptions: a docs file per Godot version from its class reference · release vNext
   - [ ] GXAML-138 Language server: completions by context · release vNext
   - [ ] GXAML-139 Language server: per-platform executables, CI matrix and release packaging · release vNext
-- [ ] GXAML-15 VS Code extension over the language server
-- [ ] GXAML-16 Visual Studio extension over the language server
-- [ ] GXAML-17 Visual Studio preview pane with click-to-select
+- [ ] GXAML-15 VS Code extension over the language server · release vNext+1
+- [ ] GXAML-16 Visual Studio extension over the language server · release vNext+1
+- [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+1
 
 ## Later
 
-- [ ] GXAML-18 Visual Studio: edit node properties from the Properties window
-- [ ] GXAML-19 Visual Studio: full visual designer for .xscn
+- [ ] GXAML-18 Visual Studio: edit node properties from the Properties window · release vNext+1
+- [ ] GXAML-19 Visual Studio: full visual designer for .xscn · release vNext+1
 - [ ] GXAML-159 Propose a scene-groups hook for custom loaders to Godot
 
 ## Backlog
 
 - [ ] GXAML-84 Find the cause of two rare Godot crashes during first import
-- [ ] GXAML-100 ARCHITECTURE.md: the sub-resource check range and two missing Task Index rows
-- [ ] GXAML-133 Docs: re-read DEVELOPMENT.md against the compare and harness changes since it was written
+- [ ] GXAML-100 ARCHITECTURE.md: the sub-resource check range and two missing Task Index rows · release vNext
+- [ ] GXAML-133 Docs: re-read DEVELOPMENT.md against the compare and harness changes since it was written · release vNext
 
 ## Design files
 
