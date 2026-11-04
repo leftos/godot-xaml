@@ -4,6 +4,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>GodotXaml.Core</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The trim and AOT analyzers in every build: the language server publishes the core with NativeAOT, so a reflection or
+         dynamic-code call here fails `run.ps1 build`, not only that publish. -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <!-- The NuGet package the addon's install brings in. The version comes from Directory.Build.props. -->

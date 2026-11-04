@@ -241,7 +241,7 @@ Each component gets an entry here in the commit that adds its project.
 
   The naming rules are `Names/GodotNames.cs`, a port of `modules/mono/utils/naming_utils.cpp` in the 4.7.2 source, with letter case from Godot's own tables (`GodotCase` over the generated `GodotCaseTables.g.cs`) and names handled as code points, so a character beyond U+FFFF counts once; enum members are in `Names/GodotEnumNames.cs`.
 
-  It is packed as the NuGet package `GodotXaml.Core` (package readme `src/GodotXaml.Core/README.md`), which a game project references beside the copied addon folder, and it carries the metadata files as embedded resources, read with `GodotMetadata.LoadBundled`, since inside Godot the assembly is loaded from a stream and has no file path.
+  It is packed as the NuGet package `GodotXaml.Core` (package readme `src/GodotXaml.Core/README.md`), which a game project references beside the copied addon folder, and it carries the metadata files as embedded resources, read with `GodotMetadata.LoadBundled`, since inside Godot the assembly is loaded from a stream and has no file path. Its csproj sets `IsAotCompatible`, so the trim and AOT analyzers run on it as on the language server, and a reflection or dynamic-code call added to the core fails the build.
 
   The canonical writer and the `.tscn` conversion (`Conversion/`) are built, the conversion proven in C# by the round-trip tests and in Godot by the scene comparison.
 
