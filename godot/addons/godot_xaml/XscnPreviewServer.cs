@@ -55,6 +55,12 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
     // Layout settles over two process frames: Container sorting is deferred (Container::queue_sort, scene/gui/container.cpp).
     private const ulong FramesToSettle = 2;
 
+    // A render whose SubViewport has not drawn this many frames after its start answers with no image.
+    private const ulong MaxImageFrames = 30;
+
+    // The last good images kept per connection, one per document; the oldest goes first.
+    private const int MaxStoredImages = 16;
+
     private static readonly TimeSpan AuthenticationDeadline = TimeSpan.FromSeconds(10);
 
     private static readonly TimeSpan WriteTimeout = TimeSpan.FromSeconds(5);
@@ -73,7 +79,14 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
 
     private readonly HashSet<Connection> connections = [];
 
+    // Each connection's last good images, oldest first, under the lock; dropped when the connection leaves and at the stop.
+    private readonly Dictionary<Connection, List<(string Document, string Image)>> lastImages = [];
+
     private readonly CancellationTokenSource stopSource = new();
+
+    private volatile Func<SubViewport, Image?>? imageSource;
+
+    private volatile Func<ulong>? framesDrawnSource;
 
     private TcpListener? listener;
 
@@ -101,6 +114,57 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
 
     /// <summary>The project the server serves, normalized (<see cref="NormalizeProject"/>).</summary>
     internal string Project { get; } = NormalizeProject(project);
+
+    /// <summary>
+    /// A test seam: when set, the render's image comes from it instead of the SubViewport's texture, headless included, and
+    /// no draw is asked for. The server calls it on the main thread and frees the image it returns; null or an empty image
+    /// is "not drawn yet". Null, the default, reads the texture, which headless has none of.
+    /// </summary>
+    internal Func<SubViewport, Image?>? ImageSource
+    {
+        get => imageSource;
+        set => imageSource = value;
+    }
+
+    /// <summary>
+    /// A test seam: when set, the count of drawn frames comes from it instead of <c>Engine.get_frames_drawn</c>. The image is
+    /// read only once the count has grown since the draw was asked for. Called on the main thread.
+    /// </summary>
+    internal Func<ulong>? FramesDrawnSource
+    {
+        get => framesDrawnSource;
+        set => framesDrawnSource = value;
+    }
+
+    /// <summary>The number of last good images kept for the connection whose client port is given; 0 when it has none.</summary>
+    /// <param name="clientPort">The client's own port: the server's remote port for the connection.</param>
+    /// <returns>The count, read under the server's lock.</returns>
+    internal int StoredImages(int clientPort)
+    {
+        lock (gate)
+        {
+            return lastImages.Where(entry => entry.Key.RemotePort == clientPort).Sum(entry => entry.Value.Count);
+        }
+    }
+
+    /// <summary>
+    /// The sizes of a render: the image's is each side times the scale, rounded and clamped to 1..<see cref="MaxSide"/>; the
+    /// layout's is the image's over the scale, rounded, at least 1, so the clamp shrinks the layout only when it bites.
+    /// </summary>
+    /// <param name="width">The requested layout width.</param>
+    /// <param name="height">The requested layout height.</param>
+    /// <param name="scale">The pixel density, finite and at least 1.</param>
+    /// <returns>The image's size and the layout's.</returns>
+    internal static (Vector2I Image, Vector2I Layout) SizesOf(int width, int height, double scale)
+    {
+        int imageWidth = ImageSide(width, scale);
+        int imageHeight = ImageSide(height, scale);
+        return (new Vector2I(imageWidth, imageHeight), new Vector2I(LayoutSide(imageWidth, scale), LayoutSide(imageHeight, scale)));
+    }
+
+    private static int ImageSide(int side, double scale) => (int)Math.Clamp(Math.Round(side * scale, MidpointRounding.AwayFromZero), 1, MaxSide);
+
+    private static int LayoutSide(int imageSide, double scale) => Math.Max(1, (int)Math.Round(imageSide / scale, MidpointRounding.AwayFromZero));
 
     /// <summary>A project folder as the server compares it: a full path, <c>/</c> separators, no trailing <c>/</c>.</summary>
     /// <param name="path">The folder.</param>
@@ -178,11 +242,7 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
     {
         if (active is not null)
         {
-            if (Engine.GetProcessFrames() >= active.StartFrame + FramesToSettle)
-            {
-                Finish(active);
-            }
-
+            Advance(active);
             return;
         }
 
@@ -211,6 +271,7 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
             stopping = true;
             failed = [.. pending.Values];
             pending.Clear();
+            lastImages.Clear();
             open = [.. connections];
         }
 
@@ -271,17 +332,20 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
         }
     }
 
-    private static PreviewRenderResult ResultOf(PreviewScene scene, ImmutableArray<PreviewRect> rects, bool loaded) =>
+    private static bool Headless() => DisplayServer.GetName() == "headless";
+
+    // The rects are the layout's, multiplied by the image's size over the layout's on each axis, so they are in image pixels.
+    private static PreviewRenderResult ResultOf(PreviewScene scene, ImmutableArray<PreviewRect> rects, Vector2 ratio, RenderOutcome outcome) =>
         new(
             [
                 .. rects.Select(rect => new PreviewRectInfo(
                     rect.Path,
                     rect.Class,
                     rect.Kind,
-                    rect.Rect.Position.X,
-                    rect.Rect.Position.Y,
-                    rect.Rect.Size.X,
-                    rect.Rect.Size.Y,
+                    rect.Rect.Position.X * ratio.X,
+                    rect.Rect.Position.Y * ratio.Y,
+                    rect.Rect.Size.X * ratio.X,
+                    rect.Rect.Size.Y * ratio.Y,
                     rect.SpanStart,
                     rect.SpanLength
                 )),
@@ -296,7 +360,9 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
                 )),
             ],
             [.. scene.Issues.Select(issue => new PreviewIssueInfo(issue.Code, issue.Severity.ToString(), issue.Message, issue.Location))],
-            loaded
+            outcome.Loaded,
+            outcome.Image,
+            outcome.Stale
         );
 
     private static byte[] RenderReply(JsonElement id, PreviewRenderResult result) =>
@@ -632,6 +698,7 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
             lock (gate)
             {
                 connections.Remove(connection);
+                lastImages.Remove(connection);
                 foreach ((Connection, string) key in pending.Keys.Where(key => key.Connection == connection).ToList())
                 {
                     pending.Remove(key);
@@ -665,7 +732,8 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
         }
     }
 
-    // Instantiates the text under a SubViewport of the clamped size; a preview without a root is answered at once.
+    // Instantiates the text under a SubViewport of the clamped image size, laid out at the layout size; a preview without a
+    // root is answered at once, with the document's last good image, stale, when the text did not parse or convert.
     private void Begin(PendingRender render)
     {
         PreviewRenderParams parameters = render.Parameters;
@@ -693,33 +761,156 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
         if (scene.Root is null || scene.Document is null)
         {
             scene.Root?.Free();
-            render.Complete(RenderReply(render.Id, ResultOf(scene, [], loaded: false)));
+            render.Complete(UnloadedReply(render, scene));
             return;
         }
 
-        var viewport = new SubViewport { Size = new Vector2I(Math.Clamp(parameters.Width, 1, MaxSide), Math.Clamp(parameters.Height, 1, MaxSide)) };
+        // The size is set first and already clamped: setting it allocates the render target.
+        (Vector2I imageSize, Vector2I layoutSize) = SizesOf(parameters.Width, parameters.Height, parameters.Scale);
+        var viewport = new SubViewport
+        {
+            Size = imageSize,
+            Size2DOverride = layoutSize,
+            Size2DOverrideStretch = true,
+            RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled,
+        };
         viewport.AddChild(scene.Root);
-        active = new ActiveRender(render, viewport, scene, scene.Root, scene.Document, Engine.GetProcessFrames());
+        var ratio = new Vector2((float)imageSize.X / layoutSize.X, (float)imageSize.Y / layoutSize.Y);
+        active = new ActiveRender(render, viewport, scene, scene.Root, scene.Document, Engine.GetProcessFrames(), ratio);
         host.AddChild(viewport);
     }
 
-    private void Finish(ActiveRender current)
+    // On the frame after the start, asks for one draw (update once: drawn in that frame's draw, then disabled,
+    // servers/rendering/renderer_viewport.cpp). From the start + FramesToSettle, on a later frame than the ask, collects the
+    // rects once and reads the image each frame until it is drawn, answering with no image at MaxImageFrames. Headless with
+    // no seam asks for no draw and reads no image. Nothing is awaited.
+    private void Advance(ActiveRender current)
     {
+        ulong frame = Engine.GetProcessFrames();
+        if (current.DrawFrame is not { } drawFrame)
+        {
+            if (frame > current.StartFrame)
+            {
+                AskDraw(current, frame);
+            }
+
+            return;
+        }
+
+        if (frame < current.StartFrame + FramesToSettle || frame <= drawFrame || ReplyOrWait(current, frame) is not { } reply)
+        {
+            return;
+        }
+
         active = null;
+        FreeIfValid(current.Viewport);
+        current.Render.Complete(reply);
+    }
+
+    // The reply once the image is drawn, or once there is none to wait for; null while the image is still to come.
+    private byte[]? ReplyOrWait(ActiveRender current, ulong frame)
+    {
         try
         {
-            ImmutableArray<PreviewRect> rects = XscnPreviewRects.Collect(current.Root, current.Document);
-            current.Render.Complete(RenderReply(current.Render.Id, ResultOf(current.Scene, rects, loaded: true)));
+            current.Rects ??= XscnPreviewRects.Collect(current.Root, current.Document);
+            if ((DrawnSinceAsked(current) ? ReadImage(current.Viewport) : null) is not { } image)
+            {
+                return current.Drawn && frame < current.StartFrame + MaxImageFrames ? null : LoadedReply(current, null);
+            }
+
+            Store(current.Render, image);
+            return LoadedReply(current, image);
         }
-#pragma warning disable CA1031 // A collect that throws answers an internal error; the server keeps serving.
+#pragma warning disable CA1031 // A collect or a read that throws answers an internal error; the server keeps serving.
         catch (Exception)
 #pragma warning restore CA1031
         {
-            current.Render.Complete(XscnPreviewProtocol.Error(current.Render.Id, XscnPreviewProtocol.InternalError));
+            return XscnPreviewProtocol.Error(current.Render.Id, XscnPreviewProtocol.InternalError);
         }
-        finally
+    }
+
+    private static byte[] LoadedReply(ActiveRender current, string? image) =>
+        RenderReply(current.Render.Id, ResultOf(current.Scene, current.Rects ?? [], current.Ratio, new RenderOutcome(true, image, false)));
+
+    // A preview with no root: when the text did not parse or convert, the document's last good image, stale, if one is kept.
+    private byte[] UnloadedReply(PendingRender render, PreviewScene scene)
+    {
+        string? last = scene.Diagnostics.Length > 0 || scene.Issues.Length > 0 ? LastImage(render) : null;
+        return RenderReply(render.Id, ResultOf(scene, [], Vector2.One, new RenderOutcome(false, last, last is not null)));
+    }
+
+    // Asks for one draw and records the drawn-frame count it is asked at; headless with no image seam asks for none.
+    private void AskDraw(ActiveRender current, ulong frame)
+    {
+        bool seam = imageSource is not null;
+        current.Drawn = seam || !Headless();
+        current.DrawFrame = frame;
+        if (!current.Drawn)
         {
-            FreeIfValid(current.Viewport);
+            return;
+        }
+
+        current.DrawnAtAsk = FramesDrawn();
+        if (!seam)
+        {
+            current.Viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
+        }
+    }
+
+    // A ViewportTexture's readback is never empty, drawn or not, so the image is read only once a frame was drawn since
+    // the ask: the engine counts a drawn frame after its draw (main/main.cpp), and update once draws in the next draw.
+    private bool DrawnSinceAsked(ActiveRender current) => current.Drawn && FramesDrawn() > current.DrawnAtAsk;
+
+    private ulong FramesDrawn() => framesDrawnSource is { } source ? source() : (ulong)Engine.GetFramesDrawn();
+
+    // The drawn image as a base64 PNG, or null when there is none: the seam's image, else the SubViewport's texture's.
+    private string? ReadImage(SubViewport viewport)
+    {
+        using Image? image = imageSource is { } source ? source(viewport) : TextureImage(viewport);
+        return image is null || image.IsEmpty() ? null : Convert.ToBase64String(image.SavePngToBuffer());
+    }
+
+    private static Image? TextureImage(SubViewport viewport)
+    {
+        using ViewportTexture texture = viewport.GetTexture();
+        return texture.GetImage();
+    }
+
+    // Keeps the image as the document's last good one on its connection, replacing the older; a connection that left, or
+    // a server that is stopping, keeps none.
+    private void Store(PendingRender render, string image)
+    {
+        string document = render.Parameters.Document;
+        lock (gate)
+        {
+            if (stopping || !connections.Contains(render.Connection))
+            {
+                return;
+            }
+
+            if (!lastImages.TryGetValue(render.Connection, out List<(string Document, string Image)>? kept))
+            {
+                kept = [];
+                lastImages[render.Connection] = kept;
+            }
+
+            kept.RemoveAll(entry => entry.Document == document);
+            kept.Add((document, image));
+            if (kept.Count > MaxStoredImages)
+            {
+                kept.RemoveAt(0);
+            }
+        }
+    }
+
+    private string? LastImage(PendingRender render)
+    {
+        string document = render.Parameters.Document;
+        lock (gate)
+        {
+            return lastImages.TryGetValue(render.Connection, out List<(string Document, string Image)>? kept)
+                ? kept.FindLast(entry => entry.Document == document).Image
+                : null;
         }
     }
 
@@ -778,15 +969,30 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
         GD.PushWarning($"godot-xaml: the preview server's connections did not end within {JoinBound.TotalSeconds} seconds of its stop.");
     }
 
-    // The render in flight: its nodes, freed on every path, and the frame it began on.
+    // The render in flight: its nodes, freed on every path, the frame it began on, the image's size over the layout's, and
+    // its progress: the frame the draw was asked on, whether an image is read, and the rects once collected.
     private sealed record ActiveRender(
         PendingRender Render,
         SubViewport Viewport,
         PreviewScene Scene,
         Node Root,
         XscnDocument Document,
-        ulong StartFrame
-    );
+        ulong StartFrame,
+        Vector2 Ratio
+    )
+    {
+        internal ulong? DrawFrame { get; set; }
+
+        internal bool Drawn { get; set; }
+
+        internal ulong DrawnAtAsk { get; set; }
+
+        internal ImmutableArray<PreviewRect>? Rects { get; set; }
+    }
+
+    // What a render result says of its scene and its image: loaded or not, the base64 PNG if any, and whether it is the
+    // last good one.
+    private sealed record RenderOutcome(bool Loaded, string? Image, bool Stale);
 
     // A queued render; its reply goes to its connection's outbox exactly once.
     private sealed class PendingRender(Connection connection, JsonElement id, PreviewRenderParams parameters)
@@ -826,6 +1032,9 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
         internal CancellationToken Token { get; } = source.Token;
 
         internal NetworkStream Stream { get; } = client.GetStream();
+
+        // The peer's port, read once at the accept: the client's own port.
+        internal int RemotePort { get; } = client.Client.RemoteEndPoint is IPEndPoint remote ? remote.Port : 0;
 
         // Read and written under the server's lock.
         internal bool Authenticated { get; set; }

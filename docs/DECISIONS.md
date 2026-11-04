@@ -400,9 +400,15 @@ The listener uses the .NET runtime (`System.Net.Sockets`) on its own thread, sin
 
 **Dependencies.** The addon takes no new NuGet dependency (no StreamJsonRpc): the codec and the server use only the .NET runtime (`System.Net.Sockets`, `System.Text.Json`), because the addon is copied beside one `PackageReference` and a new package would land in every user's game project.
 
-**Image.** PNG. The request carries `width`, `height` and `scale`; the server clamps each side to 4096 pixels, so a client cannot ask for unbounded memory in the editor. Rectangles are in image pixels.
+**Image.** PNG, a base64 string in the result's `image`, omitted when there is none: headless, no draw within 30 frames of the start, or broken text with no good image kept. The request carries `width`, `height` and an optional `scale`, a number defaulting to 1; a `scale` below 1, not finite or not a number is `-32602`.
 
-Godot facts (4.7.2): a `SubViewport` that is not on screen is not visible, so its `render_target_update_mode` is set to once rather than the default when visible; the texture is only right after `RenderingServer.frame_post_draw` (`doc/classes/Viewport.xml`), and `Image.save_png_to_buffer` encodes without a file. Headless Godot cannot produce an image: the dummy renderer's `render_target_get_texture` returns an empty RID (`servers/rendering/dummy/storage/texture_storage.h`), so only a windowed editor renders pixels.
+The owner's ruling (GXAML-168): scale is pixel density. The scene lays out at `width` x `height` and is drawn at `scale` times as many pixels, so the image is round(`width` x `scale`) x round(`height` x `scale`), each side clamped to 1..4096 so a client cannot ask for unbounded memory in the editor.
+
+The layout size is the image size over `scale` (at least 1), so the clamp shrinks the layout only when it bites. The `SubViewport`'s size is the image size and its 2D size override is the layout size, with the override stretching. Rectangles are in image pixels.
+
+Godot facts (4.7.2): a `SubViewport` that is not on screen is not visible, so its `render_target_update_mode` is set to once rather than the default when visible; the server does not await a signal for the texture: it sets the mode on the frame after the start and reads the image on a later frame, once a frame has been drawn since that ask (`Engine.get_frames_drawn`), up to 30 frames, and `Image.save_png_to_buffer` encodes without a file.
+
+Headless Godot cannot produce an image: the dummy renderer's `render_target_get_texture` returns an empty RID (`servers/rendering/dummy/storage/texture_storage.h`), so only a windowed editor renders pixels.
 
 **Scripts.** Scripts are stripped from the previewed scene, with the exported property values kept where the node class has them, unless the request asks for scripts and the project setting allows it; the default is off.
 
@@ -479,7 +485,9 @@ A connection from or to a node of an instanced scene that lost its script is dro
 
 A typed array or dictionary whose element, key or value type is a removed script is typed `Object` instead, its values kept, since the text loader loads every script a type names and a GDScript runs its static initializer as it loads.
 
-**Errors.** When the text does not parse or convert, the server returns the last good image for that document, marked stale, with the new diagnostics. It holds the last good rendering per document, and returns diagnostics in the response rather than pushing them to Godot's log, which a keystroke stream would flood. A document with no good rendering yet returns the diagnostics and no image.
+**Errors.** When the text does not parse or convert, the server returns the last good image for that document, with `stale` true, and the new diagnostics and issues. A fresh render, including one that loads with issues, has `stale` false. The last good image is kept per connection and document, at most 16 per connection, and dropped when the connection closes or the server stops.
+
+Diagnostics go in the response rather than to Godot's log, which a keystroke stream would flood. A document with no good image yet returns the diagnostics and no image. Booked, not done: a reply over the 16 MiB frame cap and a byte cap on the store (GXAML-208), and encoding the PNG off the main thread (GXAML-209).
 
 **Rectangles and spans.** Rectangles are for Controls in the first version (`Control.get_global_rect`), each entry carrying a `kind` field (`control`), so 2D and 3D entries can follow without a protocol break. The server parses the received text with the core, tags each instantiated node with its element's `XscnElement.Span` (UTF-16 offsets), and returns `{path, class, kind, rect, spanStart, spanLength}` per node, back to front, so the client picks the topmost hit. `path` is relative to the scene root.
 

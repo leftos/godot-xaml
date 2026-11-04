@@ -13,7 +13,10 @@ namespace GodotXaml.Addon;
 /// <param name="Project">The project the editor has open, as a normalized full path.</param>
 internal sealed record PreviewPingResult(int Protocol, int Pid, string Project);
 
-/// <summary>A Control's rectangle in a <c>render</c> result, in the SubViewport's pixels.</summary>
+/// <summary>
+/// A Control's rectangle in a <c>render</c> result, in image pixels: the layout's rectangle times the scale (the image's
+/// size over the layout's on each axis).
+/// </summary>
 /// <param name="Path">The node's path from the scene root.</param>
 /// <param name="Class">The node's engine class.</param>
 /// <param name="Kind">What the rectangle is of (<see cref="XscnPreviewRects.ControlKind"/>).</param>
@@ -55,11 +58,18 @@ internal sealed record PreviewIssueInfo(string Code, string Severity, string Mes
 /// <param name="Diagnostics">The parse's diagnostics.</param>
 /// <param name="Issues">The conversion's issues.</param>
 /// <param name="Loaded">Whether the scene was instantiated; false when the preview has no root.</param>
+/// <param name="Image">
+/// The rendering as a base64 PNG, of the clamped image size; null, and left out of the JSON, when there is none (headless,
+/// nothing drew in time, or a text that does not parse or convert with no good image kept).
+/// </param>
+/// <param name="Stale">Whether <paramref name="Image"/> is the last good image, kept from an earlier render of the document.</param>
 internal sealed record PreviewRenderResult(
     IReadOnlyList<PreviewRectInfo> Rects,
     IReadOnlyList<PreviewDiagnosticInfo> Diagnostics,
     IReadOnlyList<PreviewIssueInfo> Issues,
-    bool Loaded
+    bool Loaded,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Image,
+    bool Stale
 );
 
 /// <summary>The discovery file's content: what a client needs to reach this editor's server.</summary>
@@ -72,10 +82,11 @@ internal sealed record PreviewDiscoveryInfo(int Port, string Token, int Pid, str
 /// <summary>The parameters of <c>render</c>.</summary>
 /// <param name="Document">The document's <c>res://</c> <c>.xscn</c> path.</param>
 /// <param name="Text">The document's text.</param>
-/// <param name="Width">The SubViewport's width, before the clamp.</param>
-/// <param name="Height">The SubViewport's height, before the clamp.</param>
+/// <param name="Width">The layout's width, before the clamp.</param>
+/// <param name="Height">The layout's height, before the clamp.</param>
 /// <param name="Scripts">Whether the request asks for the scene's scripts.</param>
-internal sealed record PreviewRenderParams(string Document, string Text, int Width, int Height, bool Scripts);
+/// <param name="Scale">The pixel density: the image has this many pixels per layout pixel; finite and at least 1.</param>
+internal sealed record PreviewRenderParams(string Document, string Text, int Width, int Height, bool Scripts, double Scale);
 
 /// <summary>A JSON-RPC 2.0 request or notification.</summary>
 /// <param name="Id">The request's id, a string or a number; null for a notification.</param>
@@ -232,10 +243,17 @@ internal static class XscnPreviewProtocol
         int? width = IntParam(parameters, "width");
         int? height = IntParam(parameters, "height");
         bool? scripts = Param(parameters, "scripts") is { } value ? BoolOf(value) : false;
-        return document is null || text is null || width is null || height is null || scripts is null
+        double? scale = ScaleParam(parameters);
+        return document is null || text is null || width is null || height is null || scripts is null || scale is null
             ? null
-            : new PreviewRenderParams(document, text, width.Value, height.Value, scripts.Value);
+            : new PreviewRenderParams(document, text, width.Value, height.Value, scripts.Value, scale.Value);
     }
+
+    // The scale, 1 when absent; null when it is not a JSON number, finite and at least 1.
+    private static double? ScaleParam(JsonElement parameters) => Param(parameters, "scale") is { } given ? ScaleOf(given) : 1;
+
+    private static double? ScaleOf(JsonElement value) =>
+        value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out double scale) && double.IsFinite(scale) && scale >= 1 ? scale : null;
 
     /// <summary>The id a <c>$/cancelRequest</c> names.</summary>
     /// <param name="parameters">The notification's parameters.</param>

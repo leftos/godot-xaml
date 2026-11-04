@@ -6542,6 +6542,9 @@ public partial class Checks : Node
     // Two Controls: a VBoxContainer root and its Button.
     private const string PreviewServerScene = "<VBoxContainer Name=\"Root\">\n  <Button Name=\"Ok\" Text=\"Ok\" />\n</VBoxContainer>\n";
 
+    // The same scene without its end tag, which does not parse.
+    private const string PreviewBrokenScene = "<VBoxContainer Name=\"Root\">\n  <Button Name=\"Ok\" Text=\"Ok\" />\n";
+
     // Frames the server closes the connection on without a reply.
     private static readonly (string What, string Frame)[] PreviewMalformedFrames =
     [
@@ -6571,6 +6574,9 @@ public partial class Checks : Node
         // The size of each SubViewport seen under the checks node, read each frame on the main thread.
         internal List<Vector2I> ViewportSizes { get; } = [];
 
+        // The 2D size override of each SubViewport seen under the checks node, read with its size.
+        internal List<Vector2I> ViewportOverrides { get; } = [];
+
         // Holds the pump; the task completes once the frame loop has seen the hold, so nothing the client sends after it
         // can begin a render.
         internal Task PauseAsync()
@@ -6580,6 +6586,19 @@ public partial class Checks : Node
             paused = true;
             return acknowledged.Task;
         }
+
+        private TaskCompletionSource? frameWaiter;
+
+        // Completes once the frame loop has run one more frame; a client's event wait, never a timed one.
+        internal Task NextFrameAsync()
+        {
+            var waiter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            System.Threading.Volatile.Write(ref frameWaiter, waiter);
+            return waiter.Task;
+        }
+
+        // Called by the frame loop on the main thread after each pump, and once after the server is disposed.
+        internal void Tick() => System.Threading.Interlocked.Exchange(ref frameWaiter, null)?.TrySetResult();
 
         // Called by the frame loop on the main thread before it decides whether to pump.
         internal void AcknowledgePause()
@@ -6598,12 +6617,16 @@ public partial class Checks : Node
 
         private XscnPreviewFrameReader? reader;
 
+        // The client's own port, which is the server's remote port for this connection.
+        internal int LocalPort { get; private set; }
+
         internal static async Task<PreviewClient> ConnectAsync(int port)
         {
             var preview = new PreviewClient();
             try
             {
                 await preview.client.ConnectAsync(IPAddress.Loopback, port).ConfigureAwait(false);
+                preview.LocalPort = ((IPEndPoint)preview.client.Client.LocalEndPoint!).Port;
                 preview.reader = new XscnPreviewFrameReader(preview.client.GetStream());
                 return preview;
             }
@@ -6675,6 +6698,19 @@ public partial class Checks : Node
         $"{{\"jsonrpc\":\"2.0\",\"id\":{id},\"method\":\"render\",\"params\":{{\"document\":{PreviewJson(document)},"
         + $"\"text\":{PreviewJson(text)},\"width\":{width},\"height\":{height}}}}}";
 
+    // A render's parameters, its scale as raw JSON text.
+    private sealed record PreviewScaledRender(string Document, string Text, int Width, int Height, string Scale);
+
+    // The scene at 300x200 at scale 1.
+    private static readonly PreviewScaledRender PreviewLayoutRender = new(PreviewPath, PreviewServerScene, 300, 200, "1");
+
+    // The scene at 4x4 at scale 1, for the renders whose image comes from the seam.
+    private static readonly PreviewScaledRender PreviewTinyRender = new(PreviewPath, PreviewServerScene, 4, 4, "1");
+
+    private static string PreviewScaledRenderJson(int id, PreviewScaledRender render) =>
+        $"{{\"jsonrpc\":\"2.0\",\"id\":{id},\"method\":\"render\",\"params\":{{\"document\":{PreviewJson(render.Document)},"
+        + $"\"text\":{PreviewJson(render.Text)},\"width\":{render.Width},\"height\":{render.Height},\"scale\":{render.Scale}}}}}";
+
     private static string PreviewSceneRenderJson(int id) => PreviewRenderJson(id, PreviewPath, PreviewServerScene, 64, 64);
 
     private static string PreviewCancelJson(int id) => $"{{\"jsonrpc\":\"2.0\",\"method\":\"$/cancelRequest\",\"params\":{{\"id\":{id}}}}}";
@@ -6724,6 +6760,8 @@ public partial class Checks : Node
         finally
         {
             server.Dispose();
+            // A client waiting on a frame after the hang guard fired sees the stopped server's empty store and ends.
+            driver.Tick();
             DeleteFolder(PreviewDiscoveryFolder);
         }
     }
@@ -6751,6 +6789,8 @@ public partial class Checks : Node
             }
 
             driver.ViewportSizes.AddRange(GetChildren().OfType<SubViewport>().Select(viewport => viewport.Size));
+            driver.ViewportOverrides.AddRange(GetChildren().OfType<SubViewport>().Select(viewport => viewport.Size2DOverride));
+            driver.Tick();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
 
@@ -7042,7 +7082,7 @@ public partial class Checks : Node
         const string backslashPath = "res://checks\\cases/preview.xscn";
         const string nulPath = "res://checks/cases/pre\0view.xscn";
         return await WithPreviewServer(
-            async (server, _) =>
+            async (server, driver) =>
             {
                 using PreviewClient client = await OpenPreviewClientAsync(server, project).ConfigureAwait(false);
                 await client.SendAsync(PreviewRenderJson(2, PreviewPath, PreviewServerScene, 640, 480)).ConfigureAwait(false);
@@ -7058,14 +7098,209 @@ public partial class Checks : Node
                     PreviewErrorFailure(replies, 3, XscnPreviewProtocol.InvalidDocument, $"a render of {invalidPath}"),
                     PreviewErrorFailure(replies, 5, XscnPreviewProtocol.InvalidDocument, "a render of a path with a backslash"),
                     PreviewErrorFailure(replies, 6, XscnPreviewProtocol.InvalidDocument, "a render of a path with a NUL"),
-                    PreviewLoadedFailure(replies, 4, "the 10000x10000 render")
+                    PreviewLoadedFailure(replies, 4, "the 10000x10000 render"),
+                    await PreviewScaledFailure(client).ConfigureAwait(false),
+                    await PreviewUndrawnFailure(server, project).ConfigureAwait(false),
+                    await PreviewStoredImageFailure(server, driver, project).ConfigureAwait(false)
                 );
             },
             driver =>
-                driver.ViewportSizes.Contains(new Vector2I(XscnPreviewServer.MaxSide, XscnPreviewServer.MaxSide))
-                    ? ""
-                    : $"no SubViewport of 4096x4096 was seen, only [{string.Join(", ", driver.ViewportSizes.Distinct())}]"
+                Failures(
+                    driver.ViewportSizes.Contains(new Vector2I(XscnPreviewServer.MaxSide, XscnPreviewServer.MaxSide))
+                        ? ""
+                        : $"no SubViewport of 4096x4096 was seen, only [{string.Join(", ", driver.ViewportSizes.Distinct())}]",
+                    driver.ViewportSizes.Contains(new Vector2I(600, 400)) && driver.ViewportOverrides.Contains(new Vector2I(300, 200))
+                        ? ""
+                        : "no SubViewport of 600x400 with a 300x200 override was seen, only sizes "
+                            + $"[{string.Join(", ", driver.ViewportSizes.Distinct())}] and overrides "
+                            + $"[{string.Join(", ", driver.ViewportOverrides.Distinct())}]"
+                )
         );
+    }
+
+    // Sends one render and waits for its reply.
+    private static async Task<JsonElement?> PreviewRoundTripAsync(PreviewClient client, int id, string json)
+    {
+        await client.SendAsync(json).ConfigureAwait(false);
+        return PreviewReply(await client.ReceiveThroughAsync([id]).ConfigureAwait(false), id);
+    }
+
+    // C142, headless: the scene at 300x200 at scale 1 and at scale 2, one after the other so neither supersedes the other,
+    // then text that does not parse; a scale below 1 or not a number is refused. Headless draws nothing, so no reply has an
+    // image, and the broken text, with no image kept, is not stale.
+    private static async Task<string> PreviewScaledFailure(PreviewClient client)
+    {
+        PreviewScaledRender layout = PreviewLayoutRender;
+        JsonElement? one = await PreviewRoundTripAsync(client, 10, PreviewScaledRenderJson(10, layout)).ConfigureAwait(false);
+        JsonElement? two = await PreviewRoundTripAsync(client, 11, PreviewScaledRenderJson(11, layout with { Scale = "2" })).ConfigureAwait(false);
+        JsonElement? broken = await PreviewRoundTripAsync(
+                client,
+                12,
+                PreviewScaledRenderJson(12, layout with { Text = PreviewBrokenScene, Scale = "2" })
+            )
+            .ConfigureAwait(false);
+        await client.SendAsync(PreviewScaledRenderJson(13, layout with { Scale = "0.5" })).ConfigureAwait(false);
+        await client.SendAsync(PreviewScaledRenderJson(14, layout with { Scale = "\"x\"" })).ConfigureAwait(false);
+        Dictionary<string, JsonElement> refused = await client.ReceiveThroughAsync([13, 14]).ConfigureAwait(false);
+        return Failures(
+            PreviewDoubledFailure(one, two),
+            PreviewImageFailure(one, "the scale-1 render", expectImage: false, expectStale: false),
+            PreviewImageFailure(two, "the scale-2 render", expectImage: false, expectStale: false),
+            PreviewBrokenFailure(broken, "the broken render after a good one"),
+            PreviewImageFailure(broken, "the broken render after a good one", expectImage: false, expectStale: false),
+            PreviewErrorFailure(refused, 13, XscnPreviewProtocol.InvalidParams, "a render at scale 0.5"),
+            PreviewErrorFailure(refused, 14, XscnPreviewProtocol.InvalidParams, "a render at scale \"x\"")
+        );
+    }
+
+    private static JsonElement[] PreviewResultRects(JsonElement? reply) =>
+        reply is { } message && message.TryGetProperty("result", out JsonElement result) ? [.. result.GetProperty("rects").EnumerateArray()] : [];
+
+    // Each rect of the scale-2 reply is twice the same rect of the scale-1 reply.
+    private static string PreviewDoubledFailure(JsonElement? one, JsonElement? two)
+    {
+        JsonElement[] single = PreviewResultRects(one);
+        JsonElement[] doubled = PreviewResultRects(two);
+        bool same =
+            single.Length > 0
+            && single.Length == doubled.Length
+            && single
+                .Zip(doubled)
+                .All(pair =>
+                    pair.First.GetProperty("path").GetString() == pair.Second.GetProperty("path").GetString()
+                    && PreviewRectFields.All(name => pair.Second.GetProperty(name).GetSingle() == 2 * pair.First.GetProperty(name).GetSingle())
+                );
+        return same ? "" : $"the scale-2 render got {PreviewDescribe(two)}, not twice the rects of the scale-1 render's {PreviewDescribe(one)}";
+    }
+
+    // Whether the reply's result carries an image and is stale as expected.
+    private static string PreviewImageFailure(JsonElement? reply, string what, bool expectImage, bool expectStale)
+    {
+        if (reply is not { } message || !message.TryGetProperty("result", out JsonElement result))
+        {
+            return $"{what} got {PreviewDescribe(reply)}";
+        }
+
+        string found = $"{PreviewKindOf(result, "image")} {PreviewKindOf(result, "stale")}";
+        string expected =
+            $"{(expectImage ? JsonValueKind.String : JsonValueKind.Undefined)} {(expectStale ? JsonValueKind.True : JsonValueKind.False)}";
+        return found == expected ? "" : $"{what} got {result.GetRawText()}, expected image and stale of the kinds {expected}, not {found}";
+    }
+
+    private static JsonValueKind PreviewKindOf(JsonElement result, string name) =>
+        result.TryGetProperty(name, out JsonElement value) ? value.ValueKind : JsonValueKind.Undefined;
+
+    // A render whose text does not parse: not loaded, with the parse's diagnostics.
+    private static string PreviewBrokenFailure(JsonElement? reply, string what) =>
+        reply is { } message
+        && message.TryGetProperty("result", out JsonElement result)
+        && !result.GetProperty("loaded").GetBoolean()
+        && result.GetProperty("diagnostics").GetArrayLength() > 0
+            ? ""
+            : $"{what} got {PreviewDescribe(reply)}, not an unloaded result with diagnostics";
+
+    // C142, the last good image: with the image seam giving a 4x4 image headless, a good render followed by a broken one
+    // on one connection answers the good one's image again, stale; the store holds one entry for that connection until
+    // it closes, and a second connection's entry is gone once the server stops. The seam is restored after.
+    private static async Task<string> PreviewStoredImageFailure(XscnPreviewServer server, PreviewDriver driver, string project)
+    {
+        // Each read of the drawn-frame count is one more frame, so every draw asked for has run by the next frame.
+        ulong drawn = 0;
+        server.FramesDrawnSource = () => ++drawn;
+        server.ImageSource = _ => PreviewSeamImage();
+        try
+        {
+            string first;
+            using (PreviewClient one = await OpenPreviewClientAsync(server, project).ConfigureAwait(false))
+            {
+                JsonElement? good = await PreviewRoundTripAsync(one, 20, PreviewScaledRenderJson(20, PreviewTinyRender)).ConfigureAwait(false);
+                JsonElement? broken = await PreviewRoundTripAsync(
+                        one,
+                        21,
+                        PreviewScaledRenderJson(21, PreviewTinyRender with { Text = PreviewBrokenScene })
+                    )
+                    .ConfigureAwait(false);
+                int port = one.LocalPort;
+                int stored = server.StoredImages(port);
+                first = Failures(
+                    PreviewImageFailure(good, "the good render with the image seam", expectImage: true, expectStale: false),
+                    PreviewImageFailure(broken, "the broken render after a good one with the image seam", expectImage: true, expectStale: true),
+                    PreviewBrokenFailure(broken, "the broken render after a good one with the image seam"),
+                    PreviewImageText(good) is { } image && image == PreviewImageText(broken)
+                        ? ""
+                        : $"the stale image is not the good render's: {PreviewDescribe(broken)} after {PreviewDescribe(good)}",
+                    stored == 1 ? "" : $"the store holds {stored} images for the connection after its good render, not 1"
+                );
+                one.Dispose();
+                await PreviewStoreEmptiedAsync(server, driver, port).ConfigureAwait(false);
+            }
+
+            using PreviewClient two = await OpenPreviewClientAsync(server, project).ConfigureAwait(false);
+            JsonElement? kept = await PreviewRoundTripAsync(two, 22, PreviewScaledRenderJson(22, PreviewTinyRender)).ConfigureAwait(false);
+            int before = server.StoredImages(two.LocalPort);
+            // The frame loop stops the server on the main thread; the stop closes the connection.
+            driver.StopAsked = true;
+            JsonElement? closing = await two.ReceiveAsync().ConfigureAwait(false);
+            int after = server.StoredImages(two.LocalPort);
+            return Failures(
+                first,
+                PreviewImageFailure(kept, "the second connection's good render", expectImage: true, expectStale: false),
+                before == 1 ? "" : $"the store holds {before} images for the second connection, not 1",
+                closing is null ? "" : $"the second connection got {PreviewDescribe(closing)} rather than closing at the stop",
+                after == 0 ? "" : $"the store holds {after} images for the second connection after the stop, not 0"
+            );
+        }
+        finally
+        {
+            server.ImageSource = null;
+            server.FramesDrawnSource = null;
+        }
+    }
+
+    // C142, a draw that never runs: with the image seam set but the drawn-frame count never growing, the render waits out
+    // its cap and answers with no image, and nothing is kept for its connection. The seams are restored after.
+    private static async Task<string> PreviewUndrawnFailure(XscnPreviewServer server, string project)
+    {
+        server.FramesDrawnSource = () => 0;
+        server.ImageSource = _ => PreviewSeamImage();
+        try
+        {
+            using PreviewClient client = await OpenPreviewClientAsync(server, project).ConfigureAwait(false);
+            JsonElement? reply = await PreviewRoundTripAsync(client, 30, PreviewScaledRenderJson(30, PreviewTinyRender)).ConfigureAwait(false);
+            int stored = server.StoredImages(client.LocalPort);
+            return Failures(
+                PreviewImageFailure(reply, "a render whose draw never runs", expectImage: false, expectStale: false),
+                stored == 0 ? "" : $"the store holds {stored} images after a render whose draw never ran, not 0"
+            );
+        }
+        finally
+        {
+            server.ImageSource = null;
+            server.FramesDrawnSource = null;
+        }
+    }
+
+    private static string? PreviewImageText(JsonElement? reply) =>
+        reply is { } message && message.TryGetProperty("result", out JsonElement result) && result.TryGetProperty("image", out JsonElement image)
+            ? image.GetString()
+            : null;
+
+    // The connection leaves on the server's reader, so the store empties some frames after the client closes; waits frame
+    // by frame until it has, and the hang guard ends a wait that never does.
+    private static async Task PreviewStoreEmptiedAsync(XscnPreviewServer server, PreviewDriver driver, int port)
+    {
+        while (server.StoredImages(port) > 0)
+        {
+            await driver.NextFrameAsync().ConfigureAwait(false);
+        }
+    }
+
+    // A 4x4 red image; the server calls the seam on the main thread and frees what it returns.
+    private static Image PreviewSeamImage()
+    {
+        var image = Image.CreateEmpty(4, 4, false, Image.Format.Rgba8);
+        image.Fill(Colors.Red);
+        return image;
     }
 
     private static string PreviewRectText(string? path, string? engineClass, string? kind, float[] rect, int start, int length) =>

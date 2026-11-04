@@ -1,0 +1,14 @@
+<Control
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Name="E13"
+    OffsetBottom="240"
+    OffsetRight="320">
+  <ColorRect Name="Back" Color="1, 0, 0, 1" OffsetBottom="240" OffsetRight="320" />
+  <ColorRect
+      Name="Front"
+      Color="0, 0, 1, 1"
+      OffsetBottom="200"
+      OffsetLeft="160"
+      OffsetRight="300"
+      OffsetTop="60" />
+</Control>

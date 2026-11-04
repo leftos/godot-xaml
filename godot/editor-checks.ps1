@@ -50,7 +50,7 @@ $resultsFile = Join-Path $results 'results.txt'
 $runProject = Join-Path $run 'godot'
 $outArg = '--out=' + $results.Replace('\', '/') + '/'
 $sources = Join-Path $repo 'tools/editor-checks'
-$expectedChecks = 12
+$expectedChecks = 13
 $editorCeilingSeconds = @{ run = 600; reopen = 180 }
 
 function Copy-Tree {
