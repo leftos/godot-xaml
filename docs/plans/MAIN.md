@@ -10,22 +10,20 @@
 
 ## Godot addon
 
-- [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext
-  - [ ] GXAML-169 Preview server: survive an assembly reload, and the user docs · release vNext
-  - [ ] GXAML-171 Merge feat/preview-server to main (#2)
-  - [ ] GXAML-179 Preview server: the previewed root names the document as its scene file
-  - [ ] GXAML-181 Preview server: a connection to a stripped %Name target is dropped too
-  - [ ] GXAML-190 Preview server: preview imported models whose import attaches no script
-  - [ ] GXAML-196 Preview server: one GXC0121 issue per refused path, not per occurrence
-  - [ ] GXAML-201 Editor check: the preview loads an instance placeholder's stripped copy · release vNext
-  - [ ] GXAML-203 Preview server: a failed importer or built-in load falls through to project loaders
-  - [ ] GXAML-204 Preview server: preview a scene that uses a compressed imported font
-  - [ ] GXAML-206 Preview server: a check proves the pre-authentication deadline
-  - [ ] GXAML-208 Preview server: bound a render reply's size and the last-image store's bytes
-  - [ ] GXAML-209 Preview server: encode the PNG off the editor's main thread
+- [ ] GXAML-210 Preview server: register the allow_scripts project setting
+- [ ] GXAML-209 Preview server: encode the PNG off the editor's main thread
+- [ ] GXAML-208 Preview server: bound a render reply's size and the last-image store's bytes
+- [ ] GXAML-206 Preview server: a check proves the pre-authentication deadline
+- [ ] GXAML-204 Preview server: preview a scene that uses a compressed imported font
+- [ ] GXAML-203 Preview server: a failed importer or built-in load falls through to project loaders
+- [ ] GXAML-196 Preview server: one GXC0121 issue per refused path, not per occurrence
+- [ ] GXAML-190 Preview server: preview imported models whose import attaches no script
+- [ ] GXAML-181 Preview server: a connection to a stripped %Name target is dropped too
+- [ ] GXAML-179 Preview server: the previewed root names the document as its scene file
 - [ ] GXAML-174 Godot harnesses: fail the import steps and editor runs on a Fatal error line too
-- [ ] GXAML-176 Addon: an export configuration build fails on a TOOLS-only cref in GlobalClassSnapshot
 - [ ] GXAML-207 Godot checks: a hung frame check is reported by name, not cut off by the frame budget
+- [ ] GXAML-211 Preview server: a text file remapped to another text file previews the original's content
+- [ ] GXAML-212 Gates: build the addon in an export configuration before every push and in CI
 
 ## Agent tooling
 
@@ -56,4 +54,4 @@
 ## Design files
 
 - [language-server.md](language-server.md) — GXAML-183
-- [v1-design.md](v1-design.md) — GXAML-11, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, Agent tooling, Core format, Editor support, Godot addon
+- [v1-design.md](v1-design.md) — GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, Agent tooling, Core format, Editor support, Godot addon
