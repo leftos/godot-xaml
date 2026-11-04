@@ -27,21 +27,14 @@ $ErrorActionPreference = 'Stop'
 # A step's non-zero status is this script's to report, not a throw.
 $PSNativeCommandUseErrorActionPreference = $false
 
+Import-Module (Join-Path $PSScriptRoot 'Harness.psm1') -Force
+
 $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env:GODOT_BIN } else {
     throw 'checks.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary'
 }
 
 $project = $PSScriptRoot
 $expectedChecks = 71
-
-function Invoke-Step {
-    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][scriptblock] $Command)
-    [Console]::Out.WriteLine("STEP $Name")
-    & $Command | Out-Host
-    $code = $LASTEXITCODE
-    [Console]::Out.WriteLine("STEP $Name exit $code")
-    return $code -eq 0
-}
 
 $built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror --no-incremental }
 if (-not $built) {
@@ -60,15 +53,10 @@ if (-not $reimported) {
     exit 1
 }
 
-[Console]::Out.WriteLine('STEP checks')
-# Each line is printed as it arrives, so the gate's stall watchdog sees the checks progress.
-$lines = @(& $godot --headless --path $project --scene 'res://checks/Checks.tscn' --quit-after 600 2>&1 | ForEach-Object {
-        $line = "$_"
-        [Console]::Out.WriteLine($line)
-        $line
-    })
-$checksExit = $LASTEXITCODE
-[Console]::Out.WriteLine("STEP checks exit $checksExit")
+$run = Invoke-GodotStreaming -Godot $godot -Name checks -Arguments @(
+    '--headless', '--path', $project, '--scene', 'res://checks/Checks.tscn', '--quit-after', '600')
+$lines = $run.Lines
+$checksExit = $run.Exit
 
 $passes = @($lines | Where-Object { $_ -match '^CHECK \S+ PASS$' }).Count
 $fails = @($lines | Where-Object { $_ -match '^CHECK \S+ FAIL' }).Count

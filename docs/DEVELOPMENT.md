@@ -52,7 +52,7 @@ Call it bare, `./run.ps1 <verb>` or `pwsh -NoProfile -File run.ps1 <verb>`, neve
 
 ## Godot-side harnesses
 
-Each script builds the `godot/` project as a full rebuild (`--no-incremental`, so a source restored with an older write time is rebuilt), imports it headless, which registers the addon's global classes, then imports it again, then runs its scene or export, and exits 0 only when every step exited 0, nothing failed and every expected line passed. Each runs through the gate with `--no-markers`, as its help gives it; for the checks, because the expected load failure prints Godot's `ERROR:` line.
+Each script builds the `godot/` project as a full rebuild (`--no-incremental`, so a source restored with an older write time is rebuilt), imports it headless, which registers the addon's global classes, then imports it again, then runs its scene, export or editor check, and exits 0 only when every step exited 0, nothing failed and every expected line passed. `checks.ps1`, `compare.ps1`, `export.ps1` and `editor-checks.ps1` share `godot/Harness.psm1`: `Invoke-Step` and `Invoke-GodotStreaming`, which writes each Godot line as it is emitted and prints `STEP <name>` and `STEP <name> exit <code>` around it (`editor-checks.ps1` keeps its own process handling for the editor). Each runs through the gate with `--no-markers`, as its help gives it; for the checks, because the expected load failure prints Godot's `ERROR:` line.
 
 ### Headless addon checks
 
@@ -62,7 +62,7 @@ Each script builds the `godot/` project as a full rebuild (`--no-incremental`, s
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-checks.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/checks.ps1
 ```
 
-`--stall 600` because a run starved by outside load can go two minutes without enough CPU for the gate to count it as progress. `checks.ps1` writes each scene line as Godot emits it, so the gate's log shows the `CHECK` lines live. `pwsh -NoProfile -File godot/test-checks.ps1 [-HangGuardSeconds <n>]` tests that, and the same for `compare.ps1` and `export.ps1`, against a stub Godot (its gated command is in `docs/ARCHITECTURE.md`, Test locations).
+`--stall 600` because a run starved by outside load can go two minutes without enough CPU for the gate to count it as progress. The streaming means the gate's log shows the `CHECK` lines live. `pwsh -NoProfile -File godot/test-checks.ps1 [-HangGuardSeconds <n>]` tests that, and the same for `compare.ps1` and `export.ps1`, against a stub Godot, running each case from a throwaway copy of the project so the real `godot/cases/` and `.tmp/export/` stay untouched (a real compare or export run in the same checkout during the test fails a case; its gated command is in `docs/ARCHITECTURE.md`, Test locations).
 
 When the gate reports STALLED:
 

@@ -34,6 +34,8 @@ $ErrorActionPreference = 'Stop'
 # A step's non-zero status is this script's to report, not a throw.
 $PSNativeCommandUseErrorActionPreference = $false
 
+Import-Module (Join-Path $PSScriptRoot 'Harness.psm1') -Force
+
 $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env:GODOT_BIN } else {
     throw 'editor-checks.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary'
 }
@@ -49,15 +51,6 @@ $outArg = '--out=' + $results.Replace('\', '/') + '/'
 $sources = Join-Path $repo 'tools/editor-checks'
 $expectedChecks = 12
 $editorCeilingSeconds = @{ run = 600; reopen = 180 }
-
-function Invoke-Step {
-    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][scriptblock] $Command)
-    [Console]::Out.WriteLine("STEP $Name")
-    & $Command | Out-Host
-    $code = $LASTEXITCODE
-    [Console]::Out.WriteLine("STEP $Name exit $code")
-    return $code -eq 0
-}
 
 function Copy-Tree {
     param(

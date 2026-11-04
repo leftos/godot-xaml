@@ -34,6 +34,8 @@ $ErrorActionPreference = 'Stop'
 # A step's non-zero status is this script's to report, not a throw.
 $PSNativeCommandUseErrorActionPreference = $false
 
+Import-Module (Join-Path $PSScriptRoot 'Harness.psm1') -Force
+
 $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env:GODOT_BIN } else {
     throw 'compare.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary'
 }
@@ -52,15 +54,6 @@ if ($expectedFixtures -eq 0) {
 }
 # The scripts the fixtures name by res:// path, copied from the generator's project; .gitignore lists each copy.
 $fixtureScripts = @('holder.gd', 'quoted.gd', 'tagged.gd')
-
-function Invoke-Step {
-    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][scriptblock] $Command)
-    [Console]::Out.WriteLine("STEP $Name")
-    & $Command | Out-Host
-    $code = $LASTEXITCODE
-    [Console]::Out.WriteLine("STEP $Name exit $code")
-    return $code -eq 0
-}
 
 [Console]::Out.WriteLine('STEP copy')
 if (Test-Path $cases) {
@@ -98,18 +91,11 @@ if (-not $reimported) {
     exit 1
 }
 
-[Console]::Out.WriteLine('STEP compare')
-# Each line is printed as it arrives, so the gate's stall watchdog sees the comparison progress.
-$lines = @(
-    & $godot --headless --path $project --scene 'res://compare/Compare.tscn' --quit-after 600 `
-        -- "--expected-pairs=$expectedFixtures" 2>&1 | ForEach-Object {
-        $line = "$_"
-        [Console]::Out.WriteLine($line)
-        $line
-    }
-)
-$compareExit = $LASTEXITCODE
-[Console]::Out.WriteLine("STEP compare exit $compareExit")
+$run = Invoke-GodotStreaming -Godot $godot -Name compare -Arguments @(
+    '--headless', '--path', $project, '--scene', 'res://compare/Compare.tscn', '--quit-after', '600',
+    '--', "--expected-pairs=$expectedFixtures")
+$lines = $run.Lines
+$compareExit = $run.Exit
 
 $passes = @($lines | Where-Object { $_ -match '^COMPARE \S+ PASS$' }).Count
 $fails = @($lines | Where-Object { $_ -match '^COMPARE \S+ FAIL' }).Count

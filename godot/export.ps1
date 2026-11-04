@@ -46,6 +46,8 @@ $ErrorActionPreference = 'Stop'
 # A step's non-zero status is this script's to report, not a throw.
 $PSNativeCommandUseErrorActionPreference = $false
 
+Import-Module (Join-Path $PSScriptRoot 'Harness.psm1') -Force
+
 $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env:GODOT_BIN } else {
     throw 'export.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary'
 }
@@ -59,30 +61,6 @@ $pluginError = 'ERROR: godot-xaml:'
 $dropError = 'the export would drop the godot-xaml loaders'
 $includeAdvice = "add addons/godot_xaml/*.cs to the preset's include filter"
 $excludeAdvice = "from the preset's exclude filter"
-
-function Invoke-Step {
-    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][scriptblock] $Command)
-    [Console]::Out.WriteLine("STEP $Name")
-    & $Command | Out-Host
-    $code = $LASTEXITCODE
-    [Console]::Out.WriteLine("STEP $Name exit $code")
-    return $code -eq 0
-}
-
-# Runs Godot, echoes every line as Godot prints it, and returns the lines with its exit status.
-function Invoke-Godot {
-    param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][string[]] $Arguments)
-    [Console]::Out.WriteLine("STEP $Name")
-    # Each line is printed as it arrives, so the gate's stall watchdog sees the export progress.
-    $lines = @(& $godot @Arguments 2>&1 | ForEach-Object {
-            $line = "$_"
-            [Console]::Out.WriteLine($line)
-            $line
-        })
-    $code = $LASTEXITCODE
-    [Console]::Out.WriteLine("STEP $Name exit $code")
-    return [pscustomobject]@{ Lines = $lines; Exit = $code }
-}
 
 $results = [System.Collections.Generic.List[string]]::new()
 $expected = [System.Collections.Generic.List[string]]::new()
@@ -100,7 +78,8 @@ function Invoke-Export {
     if (Test-Path -LiteralPath $pack) {
         Remove-Item -LiteralPath $pack
     }
-    $run = Invoke-Godot "export $Id" @('--headless', '--path', $project, '--export-pack', $Preset, $pack)
+    $run = Invoke-GodotStreaming -Godot $godot -Name "export $Id" -Arguments @(
+        '--headless', '--path', $project, '--export-pack', $Preset, $pack)
     $errors = @($run.Lines | Where-Object { $_.Contains($pluginError) })
     return [pscustomobject]@{ Id = $Id; Pack = $pack; Errors = $errors; Exit = $run.Exit }
 }
@@ -138,7 +117,7 @@ function Test-Probe {
     # The probe also prints "Failed to add a custom resource loader/saver ... does not inherit" errors; they are
     # expected: the pack's global class list names the addon's C# classes, which a GDScript-only project cannot run.
     $arguments = @('--headless', '--path', $probe, '--script', 'res://probe.gd', '--', $Export.Pack, $Mode, $sceneUid)
-    $run = Invoke-Godot "probe $($Export.Id)" $arguments
+    $run = Invoke-GodotStreaming -Godot $godot -Name "probe $($Export.Id)" -Arguments $arguments
     foreach ($id in $Ids) {
         $line = $run.Lines | Where-Object { $_ -match "^PROBE $id (PASS|FAIL)" } | Select-Object -First 1
         Write-Result "PROBE $id" $(if ($line) { $line } else { "PROBE $id FAIL the probe printed no line for it" })
