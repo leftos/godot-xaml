@@ -5,7 +5,6 @@ using System.Linq;
 using Godot;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Diagnostics;
-using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
@@ -238,19 +237,13 @@ internal static class XscnPreviewScene
             Editables = [.. document.Editables.Select(editable => editable with { Extra = [] })],
         };
 
-    /// <summary>Whether the type is Script or a class that inherits it, by the addon's metadata.</summary>
+    /// <summary>
+    /// Whether the type is Script or a class that inherits it, asked of the running <c>ClassDB</c> first and of the addon's
+    /// metadata for a class <c>ClassDB</c> lacks (<see cref="XscnPreviewReferences.Inherits"/>).
+    /// </summary>
     /// <param name="type">A class name.</param>
-    /// <returns>True for a Script class.</returns>
-    internal static bool IsScriptClass(string type)
-    {
-        if (string.Equals(type, ScriptClass, StringComparison.Ordinal))
-        {
-            return true;
-        }
-
-        GodotMetadata metadata = XscnMetadata.Value;
-        return metadata.FindClass(type) is { } cls && metadata.Inherits(cls, ScriptClass);
-    }
+    /// <returns>True for a Script class; false for any other, and for a class neither knows.</returns>
+    internal static bool IsScriptClass(string type) => XscnPreviewReferences.Inherits(type, ScriptClass) == true;
 
     // Adds the resource each script reference names to the removed ones; true when the properties hold a script reference.
     private static bool AddScriptReferences(ImmutableArray<TscnProperty> properties, HashSet<string> removedExts, HashSet<string> removedSubs)

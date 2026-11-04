@@ -366,6 +366,30 @@ public partial class Checks : Node
             ("C119", PreviewCopiesAResourceForATypedProperty),
             ("C120", PreviewKeepsAPathValueToAnInertFile),
             ("C121", PreviewNullsAPathValueByItsUid),
+            // Classification by content, remaps, GDExtension and unknown extensions (GXAML-189).
+            ("C122", PreviewRefusesABinarySceneBehindABaseExtension),
+            ("C123", () => Failures(PreviewRefusesABinaryResourceBehindABaseExtension(), PreviewClassifiesABinaryScriptBehindABaseExtension())),
+            ("C124", PreviewStripsATextSceneInATres),
+            (
+                "C125",
+                () =>
+                    Failures(
+                        PreviewRefusesAnUnreadableHeader("compressed.theme", [.. "RSCC"u8, .. new byte[32]]),
+                        PreviewRefusesAnUnreadableHeader("truncated.mesh", [.. "RSRC"u8, .. new byte[8]])
+                    )
+            ),
+            ("C126", () => Failures(PreviewClassifiesByImportSidecar(), PreviewClassifiesByImportedTypeAndTarget())),
+            ("C127", () => Failures(PreviewFollowsRemaps(), PreviewRefusesUnsafeRemapsOfOtherFiles())),
+            ("C128", () => Failures(PreviewRefusesAGDExtensionLibrary(), PreviewRefusesADeclaredGDExtension())),
+            ("C129", PreviewAsksClassDBBeforeTheMetadata),
+            ("C130", PreviewRefusesAnUnknownExtension),
+            // GXAML-189 review round 1: Godot's sidecar reading, import targets, front loaders, missing files.
+            ("C131", () => Failures(PreviewReadsSidecarKeysAsGodotDoes(), PreviewRefusesSidecarTextGodotReadsOtherwise())),
+            ("C132", () => Failures(PreviewFindsLoadingValuesByToken(), PreviewFindsEveryLoadingValue())),
+            ("C133", PreviewLoadsThroughAnInvalidImport),
+            ("C134", () => Failures(PreviewClassifiesImportTargetsFully(), PreviewRefusesAnImportTargetThatLeavesTheImporterFolder())),
+            ("C135", () => Failures(PreviewClassifiesTheImporterBesideAFrontLoader(), PreviewClassifiesATypelessOrTiedImport())),
+            ("C136", PreviewRefusesAMissingUnknownExtension),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -3576,7 +3600,7 @@ public partial class Checks : Node
         const string scene = "user://gxaml-preview-uid-fallback.tscn";
         long unregistered = ResourceUid.CreateId();
         long missing = ResourceUid.CreateId();
-        ResourceUid.AddId(missing, CasesPath + "preview_missing_uid_target.png");
+        ResourceUid.AddId(missing, CasesPath + "preview_missing_uid_target.json");
         try
         {
             return Failures([
@@ -3640,16 +3664,901 @@ public partial class Checks : Node
     // A Resource() value naming a script by its uid alone is made null: the script neither runs nor loads.
     private static string PreviewNullsAPathValueByItsUid() => PreviewRunsNoPathValueScript("preview_path_uid.tscn");
 
-    // Keeps the preview setting as found and puts it back on dispose; a Nil value erases it, so a run that had none leaves none.
-    private sealed class PreviewSettingScope : IDisposable
+    private const string AllowScriptsHint = "turn on godot_xaml/preview_server/allow_scripts to preview it";
+
+    private static string Globalized(string path) => ProjectSettings.GlobalizePath(path);
+
+    private static void DeleteFiles(params string[] paths)
     {
-        private readonly Variant previous = ProjectSettings.HasSetting(PreviewScriptsSetting)
-            ? ProjectSettings.GetSetting(PreviewScriptsSetting)
-            : default;
+        foreach (string path in paths)
+        {
+            File.Delete(Globalized(path));
+        }
+    }
+
+    // A binary scene saved as .theme and as .material is refused as a binary scene: the binary loader claims every resource
+    // base extension (resource_format_binary.cpp:1216-1225), and the preview reads the class from the header.
+    private static string PreviewRefusesABinarySceneBehindABaseExtension() =>
+        PreviewRefusesBehindBaseExtensions(
+            "scene",
+            SaveTinyScene,
+            PreviewReferenceKind.BinaryScene,
+            path => $"{path}: a binary scene cannot be previewed with scripts off"
+        );
+
+    // A binary resource that is not a scene, saved as .theme and as .material, is refused as a binary resource.
+    private static string PreviewRefusesABinaryResourceBehindABaseExtension() =>
+        PreviewRefusesBehindBaseExtensions(
+            "resource",
+            path =>
+            {
+                using var box = new StyleBoxFlat();
+                return ResourceSaver.Save(box, path);
+            },
+            PreviewReferenceKind.BinaryResource,
+            path =>
+                $"{path} is a binary resource, which the preview cannot strip of scripts; save it as .tres or turn on "
+                + "godot_xaml/preview_server/allow_scripts"
+        );
+
+    // Two resource base extensions other than .res, which the binary loader claims.
+    private static readonly string[] BaseExtensions = ["theme", "material"];
+
+    // Saves a binary file as .res, copies it as .theme and as .material, and expects each copy classified and refused.
+    private static string PreviewRefusesBehindBaseExtensions(
+        string what,
+        Func<string, Error> save,
+        PreviewReferenceKind kind,
+        Func<string, string> message
+    )
+    {
+        string source = $"user://gxaml-preview-base-{what}.res";
+        Error saved = save(source);
+        if (saved != Error.Ok)
+        {
+            return $"setup: saving {source} gave {saved}";
+        }
+
+        try
+        {
+            return Failures([
+                .. BaseExtensions.Select(extension =>
+                {
+                    string path = $"user://gxaml-preview-base-{what}.{extension}";
+                    File.Copy(Globalized(source), Globalized(path), overwrite: true);
+                    try
+                    {
+                        return Failures(
+                            XscnPreviewReferences.ClassifyFile(path) == kind ? "" : $"{path} is not classified {kind}",
+                            RefusedWith(path, message(path))
+                        );
+                    }
+                    finally
+                    {
+                        DeleteFiles(path);
+                    }
+                }),
+            ]);
+        }
+        finally
+        {
+            DeleteFiles(source);
+        }
+    }
+
+    // A .tres whose body is a [gd_scene is a text scene, whatever its name: its copy is stripped of the built-in script,
+    // whose static initializer does not run, and the reference loads the stripped scene.
+    private static string PreviewStripsATextSceneInATres()
+    {
+        const string path = "user://gxaml-preview-scene-body.tres";
+        const string meta = "gx_preview_tres_scene";
+        string[] lines =
+        [
+            "[gd_scene format=3]",
+            "",
+            "[sub_resource type=\"GDScript\" id=\"GDScript_m\"]",
+            "script/source = \"@tool",
+            "extends Control",
+            "",
+            "",
+            "static func _static_init():",
+            $"\tEngine.set_meta(\\\"{meta}\\\", true)",
+            "\"",
+            "",
+            "[node name=\"Scene\" type=\"Control\"]",
+            "script = SubResource(\"GDScript_m\")",
+            "",
+        ];
+        File.WriteAllText(Globalized(path), string.Join("\n", lines));
+        try
+        {
+            return Failures(
+                XscnPreviewReferences.ClassifyFile(path) == PreviewReferenceKind.TextScene ? "" : $"{path} is not classified TextScene",
+                WithoutMarker(
+                    meta,
+                    $"{path}'s built-in script",
+                    () =>
+                        WithPreview(
+                            ReferencingResource(path),
+                            PreviewPath,
+                            scriptsRequested: false,
+                            root =>
+                            {
+                                using Variant value = root.GetMeta("r", default(Variant));
+                                return value.AsGodotObject() is PackedScene ? "" : $"metadata/r is a {value.VariantType}, not the stripped scene";
+                            }
+                        )
+                )
+            );
+        }
+        finally
+        {
+            DeleteFiles(path);
+        }
+    }
+
+    // The .import sidecar decides what a file is, read by a text scan that loads nothing: type="PackedScene" beside a file
+    // with an unknown extension is an imported scene; a sidecar holding a Resource() value, which Godot's own read of it
+    // would load (resource_importer.cpp:44-156, variant_parser.cpp), is refused and nothing loads; type="Texture2D" beside
+    // a missing source is kept.
+    private static string PreviewClassifiesByImportSidecar()
+    {
+        const string scene = "user://gxaml-preview-imported.model";
+        const string valued = "user://gxaml-preview-import-value.png";
+        const string missing = "user://gxaml-preview-import-missing.png";
+        const string script = CasesPath + "preview_path_value.gd";
+        File.WriteAllText(Globalized(scene), "not a model\n");
+        File.WriteAllText(
+            Globalized(scene + ".import"),
+            "[remap]\n\nimporter=\"scene\"\ntype=\"PackedScene\"\npath=\"user://gxaml-preview-imported.scn\"\n"
+        );
+        File.WriteAllText(Globalized(valued), "not an image\n");
+        File.WriteAllText(Globalized(valued + ".import"), $"[remap]\n\nimporter=\"texture\"\ntype=\"Texture2D\"\nmetadata=Resource(\"{script}\")\n");
+        DeleteFiles(missing);
+        File.WriteAllText(
+            Globalized(missing + ".import"),
+            "[remap]\n\nimporter=\"texture\"\ntype=\"Texture2D\"\npath=\"user://gxaml-preview-import-missing.ctex\"\n"
+        );
+        try
+        {
+            string valueFailure = WithoutMarker(
+                "gx_preview_path_value",
+                $"{valued}.import's {script}",
+                () =>
+                    Failures(
+                        XscnPreviewReferences.ClassifyFile(valued) == PreviewReferenceKind.UnsafeSidecar
+                            ? ""
+                            : $"{valued} is not classified UnsafeSidecar",
+                        RefusedWith(
+                            valued,
+                            $"{valued}'s .import sidecar holds a Resource() or Object() value, which Godot loads as it reads the sidecar; "
+                                + AllowScriptsHint
+                        )
+                    )
+            );
+            (string[] messages, bool kept) = StrippedReference(missing);
+            return Failures(
+                XscnPreviewReferences.ClassifyFile(scene) == PreviewReferenceKind.ImportedScene ? "" : $"{scene} is not classified ImportedScene",
+                RefusedWith(scene, $"{scene}: an imported scene cannot be previewed with scripts off; allow scripts to preview it"),
+                valueFailure,
+                ResourceLoader.HasCached(script) ? $"{script} is cached after classifying {valued}" : "",
+                XscnPreviewReferences.ClassifyFile(missing) == PreviewReferenceKind.Kept ? "" : $"{missing} is not classified Kept",
+                messages.Length == 0 ? "" : $"{missing}: issues: [{string.Join("; ", messages)}]",
+                kept ? "" : $"{missing}: the ext_resource was not kept as written"
+            );
+        }
+        finally
+        {
+            DeleteFiles(scene, scene + ".import", valued, valued + ".import", missing + ".import");
+        }
+    }
+
+    // The message for a reference whose remap target is a script.
+    private static string RemappedToScript(string path, string target) =>
+        $"{path} is remapped to {target}, which could carry a script: {target} is a script; {AllowScriptsHint}";
+
+    private static void WriteRemap(string path, string target) => File.WriteAllText(Globalized(path + ".remap"), $"[remap]\n\npath=\"{target}\"\n");
+
+    // A remap is followed, not refused (resource_loader.cpp:1442-1528): a .remap sidecar naming a script .tres is refused,
+    // naming the target, beside an existing file and beside a missing one; one naming an inert file previews; a
+    // translation_remaps entry with a script target is refused, and one whose targets are all inert previews.
+    private static string PreviewFollowsRemaps()
+    {
+        const string script = CasesPath + "preview_res_is_script.tres";
+        const string sided = "user://gxaml-preview-remapped.tres";
+        const string missing = "user://gxaml-preview-remapped-missing.tres";
+        const string translated = "user://gxaml-preview-translated.tres";
+        File.Copy(Globalized(PreviewPlainPath), Globalized(sided), overwrite: true);
+        File.Copy(Globalized(PreviewPlainPath), Globalized(translated), overwrite: true);
+        DeleteFiles(missing);
+        try
+        {
+            WriteRemap(sided, script);
+            string toScript = RefusedWith(sided, RemappedToScript(sided, script));
+            WriteRemap(sided, PreviewPlainPath);
+            string toInert = WithPreview(ReferencingResource(sided), PreviewPath, scriptsRequested: false, _ => "");
+            WriteRemap(missing, script);
+            string fromMissing = RefusedWith(missing, RemappedToScript(missing, script));
+            return Failures(
+                toScript.Length == 0 ? "" : $"a .remap to a script: {toScript}",
+                toInert.Length == 0 ? "" : $"a .remap to an inert file: {toInert}",
+                fromMissing.Length == 0 ? "" : $"a .remap beside a missing file: {fromMissing}",
+                PreviewFollowsTranslationRemaps(translated, script)
+            );
+        }
+        finally
+        {
+            DeleteFiles(sided, sided + ".remap", missing + ".remap", translated);
+        }
+    }
+
+    private static string PreviewFollowsTranslationRemaps(string path, string script)
+    {
+        const string setting = "internationalization/locale/translation_remaps";
+        using var previous = new PreviewSettingScope(setting);
+        using var scripted = new Godot.Collections.Dictionary { [path] = new[] { $"{script}:de", $"{PreviewPlainPath}:fr" } };
+        ProjectSettings.SetSetting(setting, scripted);
+        string refused = RefusedWith(path, RemappedToScript(path, script));
+        using var inert = new Godot.Collections.Dictionary { [path] = new[] { $"{PreviewPlainPath}:de", $"{PreviewPlainPath}:fr" } };
+        ProjectSettings.SetSetting(setting, inert);
+        string kept = WithPreview(ReferencingResource(path), PreviewPath, scriptsRequested: false, _ => "");
+        return Failures(
+            refused.Length == 0 ? "" : $"a translation remap to a script: {refused}",
+            kept.Length == 0 ? "" : $"translation remaps to inert files: {kept}"
+        );
+    }
+
+    // A .gdextension file is refused, since loading one opens a native library (gdextension_resource_format.cpp:36-53);
+    // no extension is loaded afterwards.
+    private static string PreviewRefusesAGDExtensionLibrary()
+    {
+        const string path = "user://gxaml-preview-library.gdextension";
+        File.WriteAllText(
+            Globalized(path),
+            "[configuration]\n\nentry_symbol = \"gxaml_preview_init\"\ncompatibility_minimum = \"4.1\"\n\n"
+                + "[libraries]\n\nwindows.x86_64 = \"user://gxaml-preview-missing.dll\"\n"
+        );
+        try
+        {
+            string expected = $"{path} is a GDExtension library, which loading opens as native code; {AllowScriptsHint}";
+            PreviewScene preview = XscnPreviewScene.Instantiate(ReferencingResource(path), PreviewPath, scriptsRequested: false);
+            bool named = preview.Issues.Any(issue => issue.Message == expected);
+            return Failures(
+                XscnPreviewReferences.ClassifyFile(path) == PreviewReferenceKind.NativeLibrary ? "" : $"{path} is not classified NativeLibrary",
+                named ? "" : $"the issues hold no [{expected}]: [{PreviewProblems(preview)}]",
+                RefusedFailure(preview),
+                GDExtensionManager.IsExtensionLoaded(path) ? $"{path} is loaded after the stripped preview" : ""
+            );
+        }
+        finally
+        {
+            DeleteFiles(path);
+        }
+    }
+
+    // Strips a document whose root's metadata/s names the path through an ext_resource of the type, and gives the issues'
+    // messages and the stripped document.
+    private static (string[] Messages, TscnDocument Stripped) StrippedTypedReference(string path, string type)
+    {
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            ExtResources =
+            [
+                new TscnExtResource
+                {
+                    Type = type,
+                    Path = path,
+                    Id = "1_ref",
+                },
+            ],
+            Nodes =
+            [
+                new TscnNode
+                {
+                    Name = "Root",
+                    Type = "Control",
+                    Properties = [new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "1_ref"))],
+                },
+            ],
+        };
+        using var instances = new XscnPreviewInstances();
+        TscnDocument stripped = instances.Stripped(document);
+        return ([.. instances.Issues.Select(issue => issue.Message)], stripped);
+    }
+
+    // "Is it a Script?" asks ClassDB, here through the seam, before the bundled metadata: an ext declared as a class only
+    // the seam knows, as a Script, is removed as a script; one declared as a class neither knows is refused.
+    private static string PreviewAsksClassDBBeforeTheMetadata()
+    {
+        const string probed = "GxPreviewProbedScript";
+        const string unknown = "GxPreviewUnknownClass";
+        XscnPreviewReferences.ClassProbe = (type, baseClass) =>
+            type == probed ? baseClass is "Script" or "Resource" or "RefCounted" or "Object" : null;
+        try
+        {
+            (string[] messages, TscnDocument stripped) = StrippedTypedReference(PreviewPlainPath, probed);
+            TscnProperty? meta = stripped.Nodes.Single().Properties.FirstOrDefault(property => property.Name == "metadata/s");
+            string[] refused = StrippedTypedReference(PreviewPlainPath, unknown).Messages;
+            string expected =
+                $"{PreviewPlainPath} is declared as {unknown}, a class neither Godot nor the addon's metadata knows, so it may be a script; "
+                + AllowScriptsHint;
+            return Failures(
+                messages.Length == 0 ? "" : $"{probed}: issues: [{string.Join("; ", messages)}]",
+                stripped.ExtResources.Length == 0 ? "" : $"the ext_resource declared {probed} was not removed as a script",
+                meta?.Value is GodotNull ? "" : $"metadata/s is {meta?.Value}, not null",
+                refused.SequenceEqual([expected], StringComparer.Ordinal)
+                    ? ""
+                    : $"{unknown}: the issues are [{string.Join("; ", refused)}], not [{expected}]"
+            );
+        }
+        finally
+        {
+            XscnPreviewReferences.ClassProbe = null;
+        }
+    }
+
+    // A file whose extension none of Godot's own loaders claims is refused, since a project loader script may claim it; a
+    // .gdshader, which the shader loader claims, stays kept.
+    private static string PreviewRefusesAnUnknownExtension()
+    {
+        const string path = "user://gxaml-preview-unclaimed.custom";
+        const string shader = CasesPath + "preview_path_inert.gdshader";
+        File.WriteAllText(Globalized(path), "claimed by no Godot loader\n");
+        DeleteFiles(path + ".import");
+        try
+        {
+            return Failures(
+                XscnPreviewReferences.ClassifyFile(path) == PreviewReferenceKind.UnknownExtension ? "" : $"{path} is not classified UnknownExtension",
+                RefusedWith(
+                    path,
+                    $"{path} has an extension no Godot loader claims, so a project loader script could run on load; " + AllowScriptsHint
+                ),
+                XscnPreviewReferences.ClassifyFile(shader) == PreviewReferenceKind.Kept ? "" : $"{shader} is not classified Kept",
+                PreviewKeepsAPathValueToAnInertFile()
+            );
+        }
+        finally
+        {
+            DeleteFiles(path);
+        }
+    }
+
+    // A GDScript saved by the binary saver and copied to a resource base extension is a script: the binary loader reads the
+    // class from the header (resource_format_binary.cpp:1056-1095), whatever the extension.
+    private static string PreviewClassifiesABinaryScriptBehindABaseExtension()
+    {
+        const string source = "user://gxaml-preview-base-script.res";
+        const string path = "user://gxaml-preview-base-script.theme";
+        using var script = new GDScript { SourceCode = "extends Node\n" };
+        Error saved = ResourceSaver.Save(script, source);
+        if (saved != Error.Ok)
+        {
+            return $"setup: saving a GDScript to {source} gave {saved}";
+        }
+
+        try
+        {
+            File.Copy(Globalized(source), Globalized(path), overwrite: true);
+            PreviewReferenceKind kind = XscnPreviewReferences.ClassifyFile(path);
+            return kind == PreviewReferenceKind.Script ? "" : $"{path} is classified {kind}, not Script";
+        }
+        finally
+        {
+            DeleteFiles(source, path);
+        }
+    }
+
+    // The importer's type and each file it loads decide (resource_importer.cpp:44-201): type="GDScript" is a script,
+    // type="GDExtension" a native library, a path= naming a text .tres is refused, a missing path= whose ".editor." variant
+    // is a text scene is an imported scene, and a type that is not a plain string is refused.
+    private static string PreviewClassifiesByImportedTypeAndTarget()
+    {
+        const string source = "user://gxaml-preview-import-kind.model";
+        const string missing = "user://gxaml-preview-import-kind.ctex";
+        const string editor = "user://gxaml-preview-import-kind.editor.ctex";
+        File.WriteAllText(Globalized(source), "not a model\n");
+        DeleteFiles(missing);
+        File.WriteAllText(Globalized(editor), "[gd_scene format=3]\n\n[node name=\"Scene\" type=\"Control\"]\n");
+        string Import(string body)
+        {
+            File.WriteAllText(Globalized(source + ".import"), "[remap]\n\nimporter=\"gxaml\"\n" + body);
+            return source;
+        }
+
+        try
+        {
+            PreviewReferenceKind script = XscnPreviewReferences.ClassifyFile(Import("type=\"GDScript\"\n"));
+            PreviewReferenceKind library = XscnPreviewReferences.ClassifyFile(Import("type=\"GDExtension\"\n"));
+            string libraryRefused = RefusedWith(source, $"{source} is a GDExtension library, which loading opens as native code; {AllowScriptsHint}");
+            string textTarget = RefusedWith(
+                Import($"type=\"Texture2D\"\npath=\"{PreviewPlainPath}\"\n"),
+                $"{source} is imported to {PreviewPlainPath}, a text resource the preview cannot strip in place; {AllowScriptsHint}"
+            );
+            string editorVariant = RefusedWith(
+                Import($"type=\"Texture2D\"\npath=\"{missing}\"\n"),
+                $"{source}: an imported scene cannot be previewed with scripts off; allow scripts to preview it"
+            );
+            string notAString = RefusedWith(
+                Import("type=123\n"),
+                $"{source}'s .import sidecar has a type that is not a plain string; {AllowScriptsHint}"
+            );
+            return Failures(
+                script == PreviewReferenceKind.Script ? "" : $"type=\"GDScript\": {source} is classified {script}, not Script",
+                library == PreviewReferenceKind.NativeLibrary ? "" : $"type=\"GDExtension\": {source} is classified {library}, not NativeLibrary",
+                libraryRefused.Length == 0 ? "" : $"type=\"GDExtension\": {libraryRefused}",
+                textTarget.Length == 0 ? "" : $"a text .tres target: {textTarget}",
+                editorVariant.Length == 0 ? "" : $"an .editor. variant: {editorVariant}",
+                notAString.Length == 0 ? "" : $"type=123: {notAString}"
+            );
+        }
+        finally
+        {
+            DeleteFiles(source, source + ".import", editor);
+        }
+    }
+
+    // A .json, which Godot's JSON loader keeps, remapped to a text .tres is refused, since the .tres loads unstripped in its
+    // place; a .remap whose path is a Resource() value is refused and loads nothing.
+    private static string PreviewRefusesUnsafeRemapsOfOtherFiles()
+    {
+        const string json = "user://gxaml-preview-remapped.json";
+        const string sided = "user://gxaml-preview-remap-value.tres";
+        const string script = CasesPath + "preview_path_value.gd";
+        File.WriteAllText(Globalized(json), "{}\n");
+        WriteRemap(json, PreviewPlainPath);
+        File.Copy(Globalized(PreviewPlainPath), Globalized(sided), overwrite: true);
+        File.WriteAllText(Globalized(sided + ".remap"), $"[remap]\n\npath=Resource(\"{script}\")\n");
+        try
+        {
+            string toText = RefusedWith(
+                json,
+                $"{json} is remapped to {PreviewPlainPath}, which could carry a script: {PreviewPlainPath} is a text file the preview "
+                    + $"cannot strip in place; {AllowScriptsHint}"
+            );
+            string valued = WithoutMarker(
+                "gx_preview_path_value",
+                $"{sided}.remap's {script}",
+                () =>
+                    RefusedWith(
+                        sided,
+                        $"{sided}'s .remap sidecar holds a Resource() or Object() value, which Godot loads as it reads the sidecar; "
+                            + AllowScriptsHint
+                    )
+            );
+            return Failures(
+                toText.Length == 0 ? "" : $"a .json remapped to a .tres: {toText}",
+                valued.Length == 0 ? "" : $"a .remap holding a Resource() path: {valued}",
+                ResourceLoader.HasCached(script) ? $"{script} is cached after classifying {sided}" : ""
+            );
+        }
+        finally
+        {
+            DeleteFiles(json, json + ".remap", sided, sided + ".remap");
+        }
+    }
+
+    // A file the shader loader keeps, declared GDExtension, is refused as a native library.
+    private static string PreviewRefusesADeclaredGDExtension()
+    {
+        const string shader = CasesPath + "preview_path_inert.gdshader";
+        string[] messages = StrippedTypedReference(shader, "GDExtension").Messages;
+        string expected = $"{shader} is a GDExtension library, which loading opens as native code; {AllowScriptsHint}";
+        return messages.SequenceEqual([expected], StringComparer.Ordinal)
+            ? ""
+            : $"declared GDExtension: the issues are [{string.Join("; ", messages)}], not [{expected}]";
+    }
+
+    // Sidecar keys are read as VariantParser::parse_tag_assign_eof reads them (variant_parser.cpp:1891-1960): a quoted key,
+    // whitespace or a newline inside a key, an assignment on the tag's line and a tag name with a space before it all name
+    // the path; a .remap's read ends at its first assignment (resource_loader.cpp:1504-1523), so a later path= is not
+    // followed; a quoted "type" key is the type; a sidecar that does not tokenize is refused.
+    private static string PreviewReadsSidecarKeysAsGodotDoes()
+    {
+        const string script = CasesPath + "preview_res_is_script.tres";
+        const string path = "user://gxaml-preview-keys.tres";
+        const string model = "user://gxaml-preview-keys.model";
+        File.Copy(Globalized(PreviewPlainPath), Globalized(path), overwrite: true);
+        File.WriteAllText(Globalized(model), "not a model\n");
+        (string Name, string Text)[] hidden =
+        [
+            ("a quoted key", $"[remap]\n\n\"path\"=\"{script}\"\n"),
+            ("a key with a space inside", $"[remap]\n\npa th=\"{script}\"\n"),
+            ("a key split by a newline", $"[remap]\n\npa\nth=\"{script}\"\n"),
+            ("an assignment on the tag's line", $"[remap] path=\"{script}\"\n"),
+            ("a tag name after a space", $"[ remap]\npath=\"{script}\"\n"),
+        ];
+        void Remap(string text) => File.WriteAllText(Globalized(path + ".remap"), text);
+        try
+        {
+            string[] refused =
+            [
+                .. hidden.Select(item =>
+                {
+                    Remap(item.Text);
+                    string failure = RefusedWith(path, RemappedToScript(path, script));
+                    return failure.Length == 0 ? "" : $"{item.Name}: {failure}";
+                }),
+            ];
+            Remap($"[remap]\n\nnote=\"x\"\npath=\"{script}\"\n");
+            string firstOnly = WithPreview(ReferencingResource(path), PreviewPath, scriptsRequested: false, _ => "");
+            Remap($"[remap]\n\npath=\"{script}\n");
+            string unterminated = RefusedWith(path, $"{path}'s .remap sidecar cannot be read as Godot reads it; {AllowScriptsHint}");
+            File.WriteAllText(Globalized(model + ".import"), "[remap]\n\nimporter=\"scene\"\n\"type\"=\"PackedScene\"\n");
+            string quotedType = RefusedWith(model, $"{model}: an imported scene cannot be previewed with scripts off; allow scripts to preview it");
+            return Failures([
+                .. refused,
+                firstOnly.Length == 0 ? "" : $"a path= after the first assignment: {firstOnly}",
+                unterminated.Length == 0 ? "" : $"an unterminated string: {unterminated}",
+                quotedType.Length == 0 ? "" : $"a quoted type key: {quotedType}",
+            ]);
+        }
+        finally
+        {
+            DeleteFiles(path, path + ".remap", model, model + ".import");
+        }
+    }
+
+    // A loading value is found by its identifier token, as VariantParser's tokenizer reads it, which skips whitespace and
+    // ';' comments before the '(' (variant_parser.cpp:215-227, :416-417): each such sidecar is refused and loads nothing.
+    // A string that only holds "Resource(" is no loading value, so a sidecar with one and an imported binary texture under
+    // res://.godot/imported/ is kept.
+    private static string PreviewFindsLoadingValuesByToken()
+    {
+        const string script = CasesPath + "preview_path_value.gd";
+        const string spaced = "user://gxaml-preview-token-spaced.png";
+        const string commented = "user://gxaml-preview-token-commented.png";
+        const string quoted = "user://gxaml-preview-token-quoted.png";
+        const string texture = "res://.godot/imported/gxaml-preview-token-quoted.res";
+        const string head = "[remap]\n\nimporter=\"texture\"\ntype=\"Texture2D\"\n";
+        foreach (string source in new[] { spaced, commented, quoted })
+        {
+            File.WriteAllText(Globalized(source), "not an image\n");
+        }
+
+        File.WriteAllText(Globalized(spaced + ".import"), $"{head}metadata=Resource (\"{script}\")\n");
+        File.WriteAllText(Globalized(commented + ".import"), $"{head}metadata=Resource ;c\n(\"{script}\")\n");
+        File.WriteAllText(Globalized(quoted + ".import"), $"[remap]\n\nimporter=\"Resource(x\"\ntype=\"Texture2D\"\npath=\"{texture}\"\n");
+        Directory.CreateDirectory(Globalized("res://.godot/imported"));
+        using var image = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+        using var saved = ImageTexture.CreateFromImage(image);
+        Error error = ResourceSaver.Save(saved, texture);
+        try
+        {
+            if (error != Error.Ok)
+            {
+                return $"setup: saving {texture} gave {error}";
+            }
+
+            string[] refused =
+            [
+                .. new[] { spaced, commented }.Select(source =>
+                    WithoutMarker(
+                        "gx_preview_path_value",
+                        $"{source}.import's {script}",
+                        () =>
+                            Failures(
+                                XscnPreviewReferences.ClassifyFile(source) == PreviewReferenceKind.UnsafeSidecar
+                                    ? ""
+                                    : $"{source} is not classified UnsafeSidecar",
+                                RefusedWith(
+                                    source,
+                                    $"{source}'s .import sidecar holds a Resource() or Object() value, which Godot loads as it reads the "
+                                        + $"sidecar; {AllowScriptsHint}"
+                                )
+                            )
+                    )
+                ),
+            ];
+            (string[] messages, bool kept) = StrippedReference(quoted);
+            return Failures([
+                .. refused,
+                ResourceLoader.HasCached(script) ? $"{script} is cached after classifying the sidecars" : "",
+                XscnPreviewReferences.ClassifyFile(quoted) == PreviewReferenceKind.Kept ? "" : $"{quoted} is not classified Kept",
+                messages.Length == 0 ? "" : $"{quoted}: issues: [{string.Join("; ", messages)}]",
+                kept ? "" : $"{quoted}: the ext_resource was not kept as written",
+            ]);
+        }
+        finally
+        {
+            DeleteFiles(spaced, spaced + ".import", commented, commented + ".import", quoted, quoted + ".import", texture);
+        }
+    }
+
+    // valid=false only sets r_valid, which load_internal does not pass (resource_importer.cpp:114-117, :174), so the
+    // importer still loads the file: a PackedScene type beside it is an imported scene.
+    private static string PreviewLoadsThroughAnInvalidImport()
+    {
+        const string source = "user://gxaml-preview-invalid.model";
+        File.WriteAllText(Globalized(source), "not a model\n");
+        File.WriteAllText(Globalized(source + ".import"), "[remap]\n\nvalid=false\nimporter=\"scene\"\ntype=\"PackedScene\"\n");
+        try
+        {
+            return Failures(
+                XscnPreviewReferences.ClassifyFile(source) == PreviewReferenceKind.ImportedScene ? "" : $"{source} is not classified ImportedScene",
+                RefusedWith(source, $"{source}: an imported scene cannot be previewed with scripts off; allow scripts to preview it")
+            );
+        }
+        finally
+        {
+            DeleteFiles(source, source + ".import");
+        }
+    }
+
+    // Each file the importer loads goes through the full classifier: an .xscn is an imported scene; a binary resource is
+    // kept only under res://.godot/imported/; an unclaimed extension is refused; a target with an .import of its own,
+    // which the importer would hand to the importer again (resource_importer.cpp:191), is refused.
+    private static string PreviewClassifiesImportTargetsFully()
+    {
+        const string source = "user://gxaml-preview-target.png";
+        const string scene = "user://gxaml-preview-target.xscn";
+        const string binary = "user://gxaml-preview-target.res";
+        const string custom = "user://gxaml-preview-target.custom";
+        const string imported = "res://.godot/imported/gxaml-preview-target.res";
+        const string chained = "user://gxaml-preview-target-chained.png";
+        File.WriteAllText(Globalized(source), "not an image\n");
+        File.WriteAllText(Globalized(custom), "claimed by no Godot loader\n");
+        File.WriteAllText(Globalized(chained + ".import"), "[remap]\n\nimporter=\"texture\"\ntype=\"Texture2D\"\n");
+        Directory.CreateDirectory(Globalized("res://.godot/imported"));
+        using var box = new StyleBoxFlat();
+        Error savedBinary = ResourceSaver.Save(box, binary);
+        Error savedImported = ResourceSaver.Save(box, imported);
+        string ImportedTo(string target)
+        {
+            File.WriteAllText(Globalized(source + ".import"), $"[remap]\n\nimporter=\"gxaml\"\ntype=\"Resource\"\npath=\"{target}\"\n");
+            return source;
+        }
+
+        try
+        {
+            if (savedBinary != Error.Ok || savedImported != Error.Ok)
+            {
+                return $"setup: saving {binary} gave {savedBinary}, {imported} gave {savedImported}";
+            }
+
+            string toScene = RefusedWith(
+                ImportedTo(scene),
+                $"{source}: an imported scene cannot be previewed with scripts off; allow scripts to preview it"
+            );
+            string toBinary = RefusedWith(
+                ImportedTo(binary),
+                $"{source} is imported to {binary}: {binary} is a binary resource, which the preview cannot strip of scripts; save it "
+                    + "as .tres or turn on godot_xaml/preview_server/allow_scripts"
+            );
+            string toCustom = RefusedWith(
+                ImportedTo(custom),
+                $"{source} is imported to {custom}: {custom} has an extension no Godot loader claims, so a project loader script could "
+                    + $"run on load; {AllowScriptsHint}"
+            );
+            (string[] messages, bool kept) = StrippedReference(ImportedTo(imported));
+            string toChained = RefusedWith(
+                ImportedTo(chained),
+                $"{source} is imported to {chained}, which has an .import sidecar of its own; {AllowScriptsHint}"
+            );
+            return Failures(
+                Labeled("an .xscn target", toScene),
+                Labeled("a binary target outside res://.godot/imported/", toBinary),
+                Labeled("a .custom target", toCustom),
+                Labeled("a binary target under res://.godot/imported/", KeptFailure(messages, kept)),
+                Labeled("a target with an .import", toChained)
+            );
+        }
+        finally
+        {
+            DeleteFiles(source, source + ".import", binary, custom, imported, chained + ".import");
+        }
+    }
+
+    // A sidecar Godot reads more of, or decodes otherwise, than a decoded string shows is refused: a NUL byte, which Godot's
+    // StreamFile reads past (variant_parser.cpp:74-89, :1933) where a decoded string stops (ustring.cpp:1782), and a byte
+    // order mark in a quoted key, a tag name or a path, which Godot's narrowing drops (ustring.cpp:1756-1766). An
+    // assignment with no key ends an .import's read (resource_importer.cpp:90, :120-121), so a type= after it is not read.
+    private static string PreviewRefusesSidecarTextGodotReadsOtherwise()
+    {
+        const string script = CasesPath + "preview_res_is_script.tres";
+        const string path = "user://gxaml-preview-unreadable.tres";
+        const string model = "user://gxaml-preview-unreadable.model";
+        File.Copy(Globalized(PreviewPlainPath), Globalized(path), overwrite: true);
+        File.WriteAllText(Globalized(model), "not a model\n");
+        File.WriteAllText(Globalized(model + ".import"), "[remap]\n\nimporter=\"scene\"\n=\"x\"\ntype=\"PackedScene\"\n");
+        (string Name, string Text)[] unreadable =
+        [
+            ("a NUL line before path=", $"[remap]\n\0\npath=\"{script}\"\n"),
+            ("a quoted key after a BOM", $"[remap]\n\n\"\uFEFFpath\"=\"{script}\"\n"),
+            ("a tag name after a BOM", $"[\uFEFFremap]\npath=\"{script}\"\n"),
+            ("a path after a BOM", $"[remap]\n\npath=\"\uFEFF{script}\"\n"),
+        ];
+        try
+        {
+            string[] refused =
+            [
+                .. unreadable.Select(item =>
+                {
+                    File.WriteAllText(Globalized(path + ".remap"), item.Text);
+                    return Labeled(item.Name, RefusedWith(path, $"{path}'s .remap sidecar cannot be read as Godot reads it; {AllowScriptsHint}"));
+                }),
+            ];
+            string keyless = RefusedWith(
+                model,
+                $"{model} has an extension no Godot loader claims, so a project loader script could run on load; {AllowScriptsHint}"
+            );
+            return Failures([.. refused, Labeled("an assignment with no key before type=", keyless)]);
+        }
+        finally
+        {
+            DeleteFiles(path, path + ".remap", model, model + ".import");
+        }
+    }
+
+    // Every loading value is found wherever it sits: a Resource() nested in a dictionary, an array or an Object(), an
+    // ExtResource(), a SubResource() or an Object() alone, and a Resource() past the [deps] tag, where Godot's load stops
+    // but the editor's reads go on; a NUL before one makes the sidecar unreadable. Each is refused and loads nothing.
+    private static string PreviewFindsEveryLoadingValue()
+    {
+        const string script = CasesPath + "preview_path_value.gd";
+        const string source = "user://gxaml-preview-token-every.png";
+        const string head = "[remap]\n\nimporter=\"texture\"\ntype=\"Texture2D\"\n";
+        const string holds = "sidecar holds a Resource() or Object() value, which Godot loads as it reads the sidecar";
+        const string unreadable = "sidecar cannot be read as Godot reads it";
+        (string Name, string Body, string Reason)[] cases =
+        [
+            ("a Resource() in a dictionary", $"metadata={{\"a\": Resource(\"{script}\")}}\n", holds),
+            ("a Resource() in an array", $"metadata=[Resource(\"{script}\")]\n", holds),
+            ("a Resource() inside Object()", $"metadata=Object(RefCounted, \"script\": Resource(\"{script}\"))\n", holds),
+            ("an ExtResource()", "metadata=ExtResource(\"1_a\")\n", holds),
+            ("a SubResource()", "metadata=SubResource(\"1_a\")\n", holds),
+            ("an Object()", "metadata=Object(RefCounted)\n", holds),
+            ("a Resource() after [deps]", $"\n[deps]\n\nsource=Resource(\"{script}\")\n", holds),
+            ("a NUL before a Resource()", $"\0\nmetadata=Resource(\"{script}\")\n", unreadable),
+        ];
+        File.WriteAllText(Globalized(source), "not an image\n");
+        try
+        {
+            string[] refused =
+            [
+                .. cases.Select(item =>
+                {
+                    File.WriteAllText(Globalized(source + ".import"), head + item.Body);
+                    return Labeled(
+                        item.Name,
+                        WithoutMarker(
+                            "gx_preview_path_value",
+                            $"{source}.import's {script}",
+                            () => RefusedWith(source, $"{source}'s .import {item.Reason}; {AllowScriptsHint}")
+                        )
+                    );
+                }),
+            ];
+            return Failures([.. refused, ResourceLoader.HasCached(script) ? $"{script} is cached after classifying the sidecars" : ""]);
+        }
+        finally
+        {
+            DeleteFiles(source, source + ".import");
+        }
+    }
+
+    // A target with a ".." segment walks out of res://.godot/imported/ (FileAccess::fix_path resolves none,
+    // file_access.cpp:254-277), so it is refused before it is classified, here naming a project binary resource.
+    private static string PreviewRefusesAnImportTargetThatLeavesTheImporterFolder()
+    {
+        const string source = "user://gxaml-preview-escape.png";
+        const string binary = "res://gxaml-preview-escape.res";
+        const string target = "res://.godot/imported/../../gxaml-preview-escape.res";
+        File.WriteAllText(Globalized(source), "not an image\n");
+        File.WriteAllText(Globalized(source + ".import"), $"[remap]\n\nimporter=\"gxaml\"\ntype=\"Resource\"\npath=\"{target}\"\n");
+        using var box = new StyleBoxFlat();
+        Error saved = ResourceSaver.Save(box, binary);
+        try
+        {
+            return saved != Error.Ok
+                ? $"setup: saving {binary} gave {saved}"
+                : RefusedWith(source, $"{source} is imported to {target}, a path that leaves Godot's importer folder; {AllowScriptsHint}");
+        }
+        finally
+        {
+            DeleteFiles(source, source + ".import", binary);
+        }
+    }
+
+    // An .import that names no type still loads through the importer when its read reaches the end
+    // (resource_importer.cpp:78-84, :191), so a .json beside one whose path= names a scene is refused; when the importer's
+    // view and the binary loader's are as restrictive, the importer's is the one reported.
+    private static string PreviewClassifiesATypelessOrTiedImport()
+    {
+        const string json = "user://gxaml-preview-typeless.json";
+        const string scene = CasesPath + "preview_inst_script.tscn";
+        const string tied = "user://gxaml-preview-tied.res";
+        File.WriteAllText(Globalized(json), "{}\n");
+        File.WriteAllText(Globalized(json + ".import"), $"path=\"{scene}\"\n");
+        Error saved = SaveTinyScene(tied);
+        File.WriteAllText(Globalized(tied + ".import"), "[remap]\n\nimporter=\"scene\"\ntype=\"PackedScene\"\n");
+        try
+        {
+            return saved != Error.Ok
+                ? $"setup: saving {tied} gave {saved}"
+                : Failures(
+                    Labeled(
+                        "a typeless .import beside a .json",
+                        RefusedWith(json, $"{json}: an imported scene cannot be previewed with scripts off; allow scripts to preview it")
+                    ),
+                    Labeled(
+                        "an imported scene beside a binary scene",
+                        RefusedWith(tied, $"{tied}: an imported scene cannot be previewed with scripts off; allow scripts to preview it")
+                    )
+                );
+        }
+        finally
+        {
+            DeleteFiles(json, json + ".import", tied, tied + ".import");
+        }
+    }
+
+    // The failure under a label, or none.
+    private static string Labeled(string label, string failure) => failure.Length == 0 ? "" : $"{label}: {failure}";
+
+    // A strip that kept the reference as written: no issues, and the ext_resource unchanged.
+    private static string KeptFailure(string[] messages, bool kept) =>
+        Failures(messages.Length == 0 ? "" : $"issues: [{string.Join("; ", messages)}]", kept ? "" : "the ext_resource was not kept as written");
+
+    // A front loader recognizes a file only for some type hints, and a failed load goes on to the importer
+    // (resource_loader.cpp:62-83, :135-139, :284-293): a .gdshader declared Theme, and a missing .tres, each with an .import
+    // of type PackedScene, are refused as imported scenes; a .gdshader with no sidecar stays kept.
+    private static string PreviewClassifiesTheImporterBesideAFrontLoader()
+    {
+        const string shader = "user://gxaml-preview-front.gdshader";
+        const string missing = "user://gxaml-preview-front-missing.tres";
+        const string inert = CasesPath + "preview_path_inert.gdshader";
+        const string sceneImport = "[remap]\n\nimporter=\"scene\"\ntype=\"PackedScene\"\n";
+        File.WriteAllText(Globalized(shader), "shader_type canvas_item;\n");
+        File.WriteAllText(Globalized(shader + ".import"), sceneImport);
+        DeleteFiles(missing);
+        File.WriteAllText(Globalized(missing + ".import"), sceneImport);
+        try
+        {
+            string[] messages = StrippedTypedReference(shader, "Theme").Messages;
+            string expected = $"{shader}: an imported scene cannot be previewed with scripts off; allow scripts to preview it";
+            return Failures(
+                messages.SequenceEqual([expected], StringComparer.Ordinal)
+                    ? ""
+                    : $"a .gdshader declared Theme: the issues are [{string.Join("; ", messages)}], not [{expected}]",
+                RefusedWith(missing, $"{missing}: an imported scene cannot be previewed with scripts off; allow scripts to preview it"),
+                XscnPreviewReferences.ClassifyFile(inert) == PreviewReferenceKind.Kept ? "" : $"{inert} is not classified Kept"
+            );
+        }
+        finally
+        {
+            DeleteFiles(shader, shader + ".import", missing + ".import");
+        }
+    }
+
+    // A missing file whose extension none of Godot's own loaders claims is refused: Godot asks every loader for it with no
+    // existence test (resource_loader.cpp:284-293). A missing .json, which the JSON loader claims, stays kept.
+    private static string PreviewRefusesAMissingUnknownExtension()
+    {
+        const string absent = "user://gxaml-preview-absent.custom";
+        const string json = "user://gxaml-preview-absent.json";
+        DeleteFiles(absent, absent + ".import", absent + ".remap", json, json + ".import", json + ".remap");
+        (string[] messages, bool kept) = StrippedReference(json);
+        return Failures(
+            XscnPreviewReferences.ClassifyFile(absent) == PreviewReferenceKind.UnknownExtension ? "" : $"{absent} is not classified UnknownExtension",
+            RefusedWith(
+                absent,
+                $"{absent} has an extension no Godot loader claims, so a project loader script could run on load; {AllowScriptsHint}"
+            ),
+            XscnPreviewReferences.ClassifyFile(json) == PreviewReferenceKind.Kept ? "" : $"{json} is not classified Kept",
+            messages.Length == 0 ? "" : $"{json}: issues: [{string.Join("; ", messages)}]",
+            kept ? "" : $"{json}: the ext_resource was not kept as written"
+        );
+    }
+
+    // Keeps a project setting as found and puts it back on dispose; a Nil value erases it, so a run that had none leaves none.
+    private sealed class PreviewSettingScope(string setting = PreviewScriptsSetting) : IDisposable
+    {
+        private readonly Variant previous = ProjectSettings.HasSetting(setting) ? ProjectSettings.GetSetting(setting) : default;
 
         public void Dispose()
         {
-            ProjectSettings.SetSetting(PreviewScriptsSetting, previous);
+            ProjectSettings.SetSetting(setting, previous);
             previous.Dispose();
         }
     }

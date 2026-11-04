@@ -23,14 +23,17 @@ namespace GodotXaml.Addon;
 /// </summary>
 internal sealed class XscnPreviewInstances : IDisposable
 {
+    private static readonly string AllowScriptsHint = $"turn on {XscnPreviewScene.AllowScriptsSetting} to preview it";
+
     private readonly string folder = AddonTempFolder.Get();
 
     // Each scene's or resource's res:// path to its copy, written before the files it references are read, so a cycle
     // points at it.
     private readonly Dictionary<string, string> copies = new(StringComparer.Ordinal);
 
-    // Each resolved path's kind, classified once per preview: the redirect, the refusal and the strip read the same answer.
-    private readonly Dictionary<string, PreviewReferenceKind> kinds = new(StringComparer.Ordinal);
+    // Each resolved path's classification, made once per preview: the redirect, the refusal and the strip read the same
+    // answer.
+    private readonly Dictionary<string, PreviewClassification> classifications = new(StringComparer.Ordinal);
 
     // Each copied scene's res:// path to the paths, from its root, of its nodes that lost their script.
     private readonly Dictionary<string, HashSet<string>> lostScripts = new(StringComparer.Ordinal);
@@ -74,15 +77,17 @@ internal sealed class XscnPreviewInstances : IDisposable
         return XscnPreviewScene.WithoutScripts(redirected, instanced, KindOf, RefusePathValue);
     }
 
-    private PreviewReferenceKind KindOf(string resolved)
+    private PreviewReferenceKind KindOf(string resolved) => Classified(resolved).Kind;
+
+    private PreviewClassification Classified(string resolved)
     {
-        if (!kinds.TryGetValue(resolved, out PreviewReferenceKind kind))
+        if (!classifications.TryGetValue(resolved, out PreviewClassification? classification))
         {
-            kind = XscnPreviewReferences.ClassifyFile(resolved);
-            kinds[resolved] = kind;
+            classification = XscnPreviewReferences.Classification(resolved);
+            classifications[resolved] = classification;
         }
 
-        return kind;
+        return classification;
     }
 
     // A Resource() value is loaded by its path as the text parses it (variant_parser.cpp:1124-1176), so it cannot point at
@@ -94,7 +99,8 @@ internal sealed class XscnPreviewInstances : IDisposable
         {
             Failed(
                 resolved,
-                Refusal(kind, resolved) ?? $"{resolved} is referenced by a Resource() value, which the preview cannot redirect to a stripped copy"
+                Refusal(kind, resolved, declaredType: null)
+                    ?? $"{resolved} is referenced by a Resource() value, which the preview cannot redirect to a stripped copy"
             );
         }
     }
@@ -146,7 +152,7 @@ internal sealed class XscnPreviewInstances : IDisposable
             return StrippedCopy(resolved, kind) is { } copy ? ext with { Path = copy, Uid = null } : ext;
         }
 
-        if (Refusal(kind, resolved) is { } message)
+        if (Refusal(kind, resolved, ext.Type) is { } message)
         {
             Failed(resolved, message);
         }
@@ -154,9 +160,26 @@ internal sealed class XscnPreviewInstances : IDisposable
         return ext;
     }
 
-    // Why a referenced file of this kind cannot be previewed with scripts off, or null when it can.
-    private static string? Refusal(PreviewReferenceKind kind, string resolved) =>
+    // Why a referenced file of this kind cannot be previewed with scripts off, or null when it can; the file's own
+    // classification names a remap's target and a sidecar's reason, and the declared type names the class.
+    private string? Refusal(PreviewReferenceKind kind, string resolved, string? declaredType) =>
         kind switch
+        {
+            PreviewReferenceKind.Remapped or PreviewReferenceKind.UnsafeSidecar => Refusal(Classified(resolved), resolved),
+            PreviewReferenceKind.UnknownClass => $"{resolved} is declared as {declaredType}, a class neither Godot nor the addon's metadata "
+                + $"knows, so it may be a script; {AllowScriptsHint}",
+            _ when Classified(resolved) is { ImportTarget: not null } imported && imported.Kind == kind => Refusal(imported, resolved),
+            _ => Refusal(new PreviewClassification(kind), resolved),
+        };
+
+    // A refusal of a file the importer loads names that file, as a remap target's does.
+    private static string? Refusal(PreviewClassification classification, string resolved) =>
+        classification is { ImportTarget: { } target, ImportTargetClassification: { } inner }
+            ? $"{resolved} is imported to {target}: {Refusal(inner, target)}"
+            : KindRefusal(classification, resolved);
+
+    private static string? KindRefusal(PreviewClassification classification, string resolved) =>
+        classification.Kind switch
         {
             PreviewReferenceKind.BinaryScene => $"{resolved}: a binary scene cannot be previewed with scripts off",
             PreviewReferenceKind.OtherScene => $"{resolved} is not a text scene",
@@ -164,7 +187,23 @@ internal sealed class XscnPreviewInstances : IDisposable
             PreviewReferenceKind.ImportedScene => $"{resolved}: an imported scene cannot be previewed with scripts off; allow scripts to preview it",
             PreviewReferenceKind.BinaryResource => $"{resolved} is a binary resource, which the preview cannot strip of scripts; "
                 + $"save it as .tres or turn on {XscnPreviewScene.AllowScriptsSetting}",
+            PreviewReferenceKind.NativeLibrary => $"{resolved} is a GDExtension library, which loading opens as native code; {AllowScriptsHint}",
+            PreviewReferenceKind.UnknownExtension =>
+                $"{resolved} has an extension no Godot loader claims, so a project loader script could run on load; {AllowScriptsHint}",
+            PreviewReferenceKind.UnsafeSidecar => $"{classification.Reason}; {AllowScriptsHint}",
+            PreviewReferenceKind.Remapped when classification is { RemapTarget: { } target, RemapTargetClassification: { } inner } =>
+                $"{resolved} is remapped to {target}, which could carry a script: {RemapTargetRefusal(inner, target)}",
             _ => null,
+        };
+
+    // Why the file a remap may load cannot be loaded in the original's place.
+    private static string RemapTargetRefusal(PreviewClassification target, string path) =>
+        target.Kind switch
+        {
+            PreviewReferenceKind.Script => $"{path} is a script; {AllowScriptsHint}",
+            PreviewReferenceKind.TextScene or PreviewReferenceKind.TextResource =>
+                $"{path} is a text file the preview cannot strip in place; {AllowScriptsHint}",
+            _ => Refusal(target, path) ?? $"{path} cannot be shown to hold no script; {AllowScriptsHint}",
         };
 
     // The stripped copy's absolute path, written once per file; null, with an issue, when the file cannot be read, and null
@@ -184,7 +223,7 @@ internal sealed class XscnPreviewInstances : IDisposable
         // reference to it, since the path's one answer now says so.
         if (document is { Kind: TscnKind.Resource, Header.Type: { } type } && XscnPreviewScene.IsScriptClass(type))
         {
-            kinds[resPath] = PreviewReferenceKind.Script;
+            classifications[resPath] = new PreviewClassification(PreviewReferenceKind.Script);
             return null;
         }
 

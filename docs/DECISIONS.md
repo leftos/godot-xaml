@@ -424,8 +424,32 @@ Every ext_resource, in the text and in each stripped copy, is classified by the 
 - An imported scene: an extension a scene importer claims (`glb`, `gltf`, `fbx`, `blend`, `dae`, `obj`), or a file whose editor class is a `PackedScene` beside a `.import` sidecar. It is refused for now, with GXC0121 "an imported scene cannot be previewed with scripts off; allow scripts to preview it"; the owner's ruling is to accept clean ones later.
 - Another file whose class is a `PackedScene`, or one declared a `PackedScene` that would otherwise be kept: GXC0121 "<path> is not a text scene".
 - A text resource (`tres`, `xres`): loaded from a stripped copy, like a text scene. One whose header type is a Script class counts as a script: no copy is made and the reference becomes null, and an ext_resource declared as a Script class is never copied.
-- A binary resource that is not a scene (`res`): refused with GXC0121 "<path> is a binary resource, which the preview cannot strip of scripts; save it as .tres or turn on godot_xaml/preview_server/allow_scripts". The owner's ruling: "With scripts off, a project-authored binary resource the previewed text reaches … is refused with GXC0121 naming the file … Turning on `godot_xaml/preview_server/allow_scripts` previews it. Imported assets are unaffected."
-- Anything else is kept. Telling a file's kind by its content for other extensions, remaps, `.import` sidecars, `.gdextension` and unknown extensions are open (GXAML-189).
+- A binary resource that is not a scene (`res`): refused with GXC0121 "<path> is a binary resource, which the preview cannot strip of scripts; save it as .tres or turn on godot_xaml/preview_server/allow_scripts".
+
+  The owner's ruling: "With scripts off, a project-authored binary resource the previewed text reaches … is refused with GXC0121 naming the file … Turning on `godot_xaml/preview_server/allow_scripts` previews it. Imported assets are unaffected." An imported binary resource under `res://.godot/imported/` is the exception the ruling names; one anywhere else is a project binary resource.
+- A `.gdextension` file: refused as a native library.
+- An extension none of Godot's own loaders claims, missing file or not: refused, since a project loader script may claim it (a script loader class is not consulted, GXAML-198). Godot's own loaders are the text and binary resource loaders, the importer through a `.import` sidecar and the addon's `.xscn` and `.xres` loaders. Such a file is called own-claimed.
+- Anything else is kept.
+
+The order of classification for a file is: the extension fast path (script, scene, `.gdextension`); remaps; the `.import` sidecar; the content head; then the editor's class and the declared type, which only add refusals.
+
+The content head is the first bytes: `RSRC` or `RSCC` magic means a binary resource whatever the extension, and a text file whose first tag is `[gd_scene` is a text scene even in a `.tres`. "Is it a Script, a PackedScene or a GDExtension" asks ClassDB first, then the bundled metadata; a type neither knows is refused.
+
+A remapped reference is followed. Every file Godot could load in its place is classified: each locale target in `internationalization/locale/translation_remaps` plus the original as the fallback, or the `path` of a `<path>.remap` sidecar. The reference is refused, naming the unsafe target, only when one of them could carry a script.
+
+An imported asset stays allowed only as a non-scene binary resource that a `.import` sidecar names inside `res://.godot/imported/`.
+
+An import target with its own `.import` (a chain) is refused, as is one holding `..` or `\`; a target that is a scene becomes an imported scene (refused), a text resource is refused, and a binary resource anywhere but `res://.godot/imported/` is refused like a project binary resource. Another refusal of a target is reported as "<source> is imported to <target>: <the target's own refusal>".
+
+An own-claimed file that also has a `.import` gets both views, the importer's and its own, and the more restrictive wins (refusal, then script, then text scene or resource, then kept; the importer's view on a tie). A `.import` beside an own-claimed file that names no type has its path targets classified. A file nothing of Godot's own claims, with a `.import`, gets the importer's view only, and is refused as unknown when the sidecar names no type.
+
+Sidecars (`.import`, `.remap`) are read by a tokenizer that follows Godot's `get_token` and `parse_tag_assign_eof` (`core/variant/variant_parser.cpp`), never by ConfigFile. Keys are built as Godot builds them (whitespace inside dropped, quoted keys, several assignments on a line, `[ remap]` the same as `[remap]`).
+
+A `.remap` names a target only when its first assignment is `path`; an `.import` is read up to the first tag not named `remap`, or an empty key; `valid=false` is ignored, as Godot's loaders do.
+
+A `Resource`, `ExtResource`, `SubResource` or `Object` identifier token anywhere outside a string or comment makes the sidecar unsafe, and so does a sidecar the tokenizer cannot read: an unterminated string or bracket, an unknown escape, `^"…"`, a 0 byte, a leading BOM, a `\u` or `\U` escape outside 0x01 to 0x7F, or U+FEFF or U+FFFD in a string, key or tag.
+
+Every one of these refusals is GXC0121, its message naming the path and the reason and ending "; turn on godot_xaml/preview_server/allow_scripts to preview it". A failed importer or built-in load falling through to a project loader (GXAML-203) and compressed imported fonts (GXAML-204) are booked, not handled.
 
 Each text scene or resource is read from its file (an `.xscn` or `.xres` converted, a `.tscn` or `.tres` read), stripped the same way, written to the addon's temp folder and loaded from there, recursively and with cycles handled (`XscnPreviewInstances`); the copy's extension comes from the document read (`.tres` for a `gd_resource`, `.tscn` for a `gd_scene`), and its ext_resource's uid is dropped since a registered uid wins over the path. The copies are deleted once the load is done, so a referenced resource has the copy's `ResourcePath`. That covers an instance, an inherited root, an exported scene or resource property and a `metadata/` value alike, and a node's `instance=` value, which goes through the same path-value walk. Each resolved path is classified once per preview.
 

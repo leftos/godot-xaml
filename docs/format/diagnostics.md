@@ -318,6 +318,10 @@ An imported model (`.glb`, `.gltf`, `.fbx`, `.blend`, `.dae`, `.obj`, or another
 
 A referenced `.tres` or `.xres` is stripped the same way, and one that cannot be read, does not parse or does not convert says so as a resource: `<path>: the resource cannot be read: …`, `… does not parse: …`, `… does not convert: …`. A binary resource that is not a scene (a `.res`) gives `<path> is a binary resource, which the preview cannot strip of scripts; save it as .tres or turn on godot_xaml/preview_server/allow_scripts`.
 
+A file whose kind the preview cannot prove inert is refused too, with a message naming the path and the reason and ending `; turn on godot_xaml/preview_server/allow_scripts to preview it`.
+
+Such a file is a file with an extension none of Godot's own loaders claims (missing or not, since a project loader script may claim it), a `.gdextension` native library, a remap with an unsafe target (the message names the target), a `.import` sidecar that names a script or cannot be read safely, and an imported asset that is not a binary resource under `res://.godot/imported/` (`<source> is imported to <target>: …`).
+
 A `Resource("…")` value in a referenced `.tscn` or `.tres`, or inside an `Object(...)` value, that names a file the preview cannot redirect to a stripped copy gives `<path> is referenced by a Resource() value, which the preview cannot redirect to a stripped copy`, or the message of the file's own kind.
 
 ### GXC0122 Source file unreadable

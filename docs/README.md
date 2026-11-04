@@ -57,7 +57,7 @@
 - **Project root**: the folder holding the nearest `project.godot` above a file; `res://` paths are relative to it, and `convert` rewrites references only within one project root (`ProjectRoot`).
 - **Property element**: an element named `<Owner.Property>` that holds one inline resource as a property's value (`<Button.Theme><Theme … /></Button.Theme>`), where `Owner` is the parent element's own tag.
 - **Rank**: the sort key `PropertyOrder` gives a property name (tier, declaring class, list position, then entry, key, sub-entry, sub-key, layer, leaf for a dynamic family); a rank may read a sibling property of the same section (`RankContext`), as `ByMode` does.
-- **Remap**: a `.remap` file Godot adds beside a path in an export, naming the file to load instead; the export plugin uses it to send an `.xscn`/`.xres` path to its binary copy.
+- **Remap**: a `.remap` sidecar or a `translation_remaps` entry that makes Godot load another file in a path's place; an export adds a `.remap` beside a path, and the export plugin uses it to send an `.xscn`/`.xres` path to its binary copy.
 - **`res://` path**: a path from a project root, written with each folder and file name in its on-disk casing.
 - **Round trip**: converting a `.tscn` to `.xscn` and back (or the reverse) and getting the same scene as Godot loads it.
 - **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn`, and each `.tres` fixture and its converted `.xres`, in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
