@@ -1,0 +1,336 @@
+<AudioBusLayout
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Metadata.extra='[SubResource("AudioStreamRandomizer1"), SubResource("LabelSettings1")]'>
+  <x:Resources>
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ61"
+        BandDb.10000_hz="-6.0"
+        BandDb.1000_hz="-4.0"
+        BandDb.100_hz="-2.0"
+        BandDb.3200_hz="-5.0"
+        BandDb.320_hz="-3.0"
+        BandDb.32_hz="-1.0" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ62"
+        BandDb.10000_hz="-6.5"
+        BandDb.1000_hz="-4.5"
+        BandDb.100_hz="-2.5"
+        BandDb.3200_hz="-5.5"
+        BandDb.320_hz="-3.5"
+        BandDb.32_hz="-1.5" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ63"
+        BandDb.10000_hz="-11.0"
+        BandDb.1000_hz="-9.0"
+        BandDb.100_hz="-7.0"
+        BandDb.3200_hz="-10.0"
+        BandDb.320_hz="-8.0"
+        BandDb.32_hz="-6.0" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ64"
+        BandDb.10000_hz="-11.5"
+        BandDb.1000_hz="-9.5"
+        BandDb.100_hz="-7.5"
+        BandDb.3200_hz="-10.5"
+        BandDb.320_hz="-8.5"
+        BandDb.32_hz="-6.5" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ65"
+        BandDb.10000_hz="-7.0"
+        BandDb.1000_hz="-5.0"
+        BandDb.100_hz="-3.0"
+        BandDb.3200_hz="-6.0"
+        BandDb.320_hz="-4.0"
+        BandDb.32_hz="-2.0" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ66"
+        BandDb.10000_hz="-7.5"
+        BandDb.1000_hz="-5.5"
+        BandDb.100_hz="-3.5"
+        BandDb.3200_hz="-6.5"
+        BandDb.320_hz="-4.5"
+        BandDb.32_hz="-2.5" />
+    <AudioEffectEQ10
+        x:Key="AudioEffectEQ101"
+        BandDb.1000_hz="-8.0"
+        BandDb.125_hz="-5.0"
+        BandDb.16000_hz="-12.0"
+        BandDb.2000_hz="-9.0"
+        BandDb.250_hz="-6.0"
+        BandDb.31_hz="-3.0"
+        BandDb.4000_hz="-10.0"
+        BandDb.500_hz="-7.0"
+        BandDb.62_hz="-4.0"
+        BandDb.8000_hz="-11.0" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ67"
+        BandDb.10000_hz="-8.5"
+        BandDb.1000_hz="-6.5"
+        BandDb.100_hz="-4.5"
+        BandDb.3200_hz="-7.5"
+        BandDb.320_hz="-5.5"
+        BandDb.32_hz="-3.5" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ68"
+        BandDb.10000_hz="-9.0"
+        BandDb.1000_hz="-7.0"
+        BandDb.100_hz="-5.0"
+        BandDb.3200_hz="-8.0"
+        BandDb.320_hz="-6.0"
+        BandDb.32_hz="-4.0" />
+    <AudioEffectEQ21
+        x:Key="AudioEffectEQ211"
+        BandDb.1000_hz="-15.5"
+        BandDb.11000_hz="-22.5"
+        BandDb.125_hz="-9.5"
+        BandDb.1400_hz="-16.5"
+        BandDb.16000_hz="-23.5"
+        BandDb.175_hz="-10.5"
+        BandDb.2000_hz="-17.5"
+        BandDb.22000_hz="-24.5"
+        BandDb.22_hz="-4.5"
+        BandDb.250_hz="-11.5"
+        BandDb.2800_hz="-18.5"
+        BandDb.32_hz="-5.5"
+        BandDb.350_hz="-12.5"
+        BandDb.4000_hz="-19.5"
+        BandDb.44_hz="-6.5"
+        BandDb.500_hz="-13.5"
+        BandDb.5600_hz="-20.5"
+        BandDb.63_hz="-7.5"
+        BandDb.700_hz="-14.5"
+        BandDb.8000_hz="-21.5"
+        BandDb.90_hz="-8.5" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ69"
+        BandDb.10000_hz="-10.0"
+        BandDb.1000_hz="-8.0"
+        BandDb.100_hz="-6.0"
+        BandDb.3200_hz="-9.0"
+        BandDb.320_hz="-7.0"
+        BandDb.32_hz="-5.0" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ610"
+        BandDb.10000_hz="-10.5"
+        BandDb.1000_hz="-8.5"
+        BandDb.100_hz="-6.5"
+        BandDb.3200_hz="-9.5"
+        BandDb.320_hz="-7.5"
+        BandDb.32_hz="-5.5" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ611"
+        BandDb.10000_hz="-16.5"
+        BandDb.1000_hz="-14.5"
+        BandDb.100_hz="-12.5"
+        BandDb.3200_hz="-15.5"
+        BandDb.320_hz="-13.5"
+        BandDb.32_hz="-11.5" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ612"
+        BandDb.10000_hz="-12.5"
+        BandDb.1000_hz="-10.5"
+        BandDb.100_hz="-8.5"
+        BandDb.3200_hz="-11.5"
+        BandDb.320_hz="-9.5"
+        BandDb.32_hz="-7.5" />
+    <AudioEffectEQ6
+        x:Key="AudioEffectEQ613"
+        BandDb.10000_hz="-14.5"
+        BandDb.1000_hz="-12.5"
+        BandDb.100_hz="-10.5"
+        BandDb.3200_hz="-13.5"
+        BandDb.320_hz="-11.5"
+        BandDb.32_hz="-9.5" />
+    <AudioStreamOggVorbis x:Key="AudioStreamOggVorbis1" />
+    <AudioStreamRandomizer x:Key="AudioStreamRandomizer1" StreamsCount="12">
+      <x:Prop Name="stream_0/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_0/weight" Value="0.5" />
+      <x:Prop Name="stream_1/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_1/weight" Value="1.5" />
+      <x:Prop Name="stream_10/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_10/weight" Value="10.5" />
+      <x:Prop Name="stream_11/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_11/weight" Value="11.5" />
+      <x:Prop Name="stream_2/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_2/weight" Value="2.5" />
+      <x:Prop Name="stream_3/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_3/weight" Value="3.5" />
+      <x:Prop Name="stream_4/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_4/weight" Value="4.5" />
+      <x:Prop Name="stream_5/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_5/weight" Value="5.5" />
+      <x:Prop Name="stream_6/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_6/weight" Value="6.5" />
+      <x:Prop Name="stream_7/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_7/weight" Value="7.5" />
+      <x:Prop Name="stream_8/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_8/weight" Value="8.5" />
+      <x:Prop Name="stream_9/stream" Value="{AudioStreamOggVorbis1}" />
+      <x:Prop Name="stream_9/weight" Value="9.5" />
+    </AudioStreamRandomizer>
+    <LabelSettings x:Key="LabelSettings1" StackedOutlineCount="12" StackedShadowCount="12">
+      <x:Prop Name="stacked_outline_0/color" Value="Color(0, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_0/size" Value="2" />
+      <x:Prop Name="stacked_outline_1/color" Value="Color(0.08, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_1/size" Value="3" />
+      <x:Prop Name="stacked_outline_10/color" Value="Color(0.8, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_10/size" Value="12" />
+      <x:Prop Name="stacked_outline_11/color" Value="Color(0.88, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_11/size" Value="13" />
+      <x:Prop Name="stacked_outline_2/color" Value="Color(0.16, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_2/size" Value="4" />
+      <x:Prop Name="stacked_outline_3/color" Value="Color(0.24, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_3/size" Value="5" />
+      <x:Prop Name="stacked_outline_4/color" Value="Color(0.32, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_4/size" Value="6" />
+      <x:Prop Name="stacked_outline_5/color" Value="Color(0.4, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_5/size" Value="7" />
+      <x:Prop Name="stacked_outline_6/color" Value="Color(0.48, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_6/size" Value="8" />
+      <x:Prop Name="stacked_outline_7/color" Value="Color(0.56, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_7/size" Value="9" />
+      <x:Prop Name="stacked_outline_8/color" Value="Color(0.64, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_8/size" Value="10" />
+      <x:Prop Name="stacked_outline_9/color" Value="Color(0.72, 0.5, 0.25, 0.75)" />
+      <x:Prop Name="stacked_outline_9/size" Value="11" />
+      <x:Prop Name="stacked_shadow_0/color" Value="Color(0.5, 0, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_0/offset" Value="Vector2(2, -1)" />
+      <x:Prop Name="stacked_shadow_0/outline_size" Value="1" />
+      <x:Prop Name="stacked_shadow_1/color" Value="Color(0.5, 0.08, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_1/offset" Value="Vector2(3, -2)" />
+      <x:Prop Name="stacked_shadow_1/outline_size" Value="2" />
+      <x:Prop Name="stacked_shadow_10/color" Value="Color(0.5, 0.8, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_10/offset" Value="Vector2(12, -11)" />
+      <x:Prop Name="stacked_shadow_10/outline_size" Value="11" />
+      <x:Prop Name="stacked_shadow_11/color" Value="Color(0.5, 0.88, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_11/offset" Value="Vector2(13, -12)" />
+      <x:Prop Name="stacked_shadow_11/outline_size" Value="12" />
+      <x:Prop Name="stacked_shadow_2/color" Value="Color(0.5, 0.16, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_2/offset" Value="Vector2(4, -3)" />
+      <x:Prop Name="stacked_shadow_2/outline_size" Value="3" />
+      <x:Prop Name="stacked_shadow_3/color" Value="Color(0.5, 0.24, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_3/offset" Value="Vector2(5, -4)" />
+      <x:Prop Name="stacked_shadow_3/outline_size" Value="4" />
+      <x:Prop Name="stacked_shadow_4/color" Value="Color(0.5, 0.32, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_4/offset" Value="Vector2(6, -5)" />
+      <x:Prop Name="stacked_shadow_4/outline_size" Value="5" />
+      <x:Prop Name="stacked_shadow_5/color" Value="Color(0.5, 0.4, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_5/offset" Value="Vector2(7, -6)" />
+      <x:Prop Name="stacked_shadow_5/outline_size" Value="6" />
+      <x:Prop Name="stacked_shadow_6/color" Value="Color(0.5, 0.48, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_6/offset" Value="Vector2(8, -7)" />
+      <x:Prop Name="stacked_shadow_6/outline_size" Value="7" />
+      <x:Prop Name="stacked_shadow_7/color" Value="Color(0.5, 0.56, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_7/offset" Value="Vector2(9, -8)" />
+      <x:Prop Name="stacked_shadow_7/outline_size" Value="8" />
+      <x:Prop Name="stacked_shadow_8/color" Value="Color(0.5, 0.64, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_8/offset" Value="Vector2(10, -9)" />
+      <x:Prop Name="stacked_shadow_8/outline_size" Value="9" />
+      <x:Prop Name="stacked_shadow_9/color" Value="Color(0.5, 0.72, 0.25, 0.5)" />
+      <x:Prop Name="stacked_shadow_9/offset" Value="Vector2(11, -10)" />
+      <x:Prop Name="stacked_shadow_9/outline_size" Value="10" />
+    </LabelSettings>
+  </x:Resources>
+  <x:Prop Name="bus/1/bypass_fx" Value="false" />
+  <x:Prop Name="bus/1/effect/0/effect" Value="{AudioEffectEQ61}" />
+  <x:Prop Name="bus/1/effect/0/enabled" Value="true" />
+  <x:Prop Name="bus/1/effect/1/effect" Value="{AudioEffectEQ62}" />
+  <x:Prop Name="bus/1/effect/1/enabled" Value="false" />
+  <x:Prop Name="bus/1/effect/10/effect" Value="{AudioEffectEQ63}" />
+  <x:Prop Name="bus/1/effect/10/enabled" Value="false" />
+  <x:Prop Name="bus/1/effect/11/effect" Value="{AudioEffectEQ64}" />
+  <x:Prop Name="bus/1/effect/11/enabled" Value="true" />
+  <x:Prop Name="bus/1/effect/2/effect" Value="{AudioEffectEQ65}" />
+  <x:Prop Name="bus/1/effect/2/enabled" Value="true" />
+  <x:Prop Name="bus/1/effect/3/effect" Value="{AudioEffectEQ66}" />
+  <x:Prop Name="bus/1/effect/3/enabled" Value="true" />
+  <x:Prop Name="bus/1/effect/4/effect" Value="{AudioEffectEQ101}" />
+  <x:Prop Name="bus/1/effect/4/enabled" Value="false" />
+  <x:Prop Name="bus/1/effect/5/effect" Value="{AudioEffectEQ67}" />
+  <x:Prop Name="bus/1/effect/5/enabled" Value="true" />
+  <x:Prop Name="bus/1/effect/6/effect" Value="{AudioEffectEQ68}" />
+  <x:Prop Name="bus/1/effect/6/enabled" Value="true" />
+  <x:Prop Name="bus/1/effect/7/effect" Value="{AudioEffectEQ211}" />
+  <x:Prop Name="bus/1/effect/7/enabled" Value="false" />
+  <x:Prop Name="bus/1/effect/8/effect" Value="{AudioEffectEQ69}" />
+  <x:Prop Name="bus/1/effect/8/enabled" Value="true" />
+  <x:Prop Name="bus/1/effect/9/effect" Value="{AudioEffectEQ610}" />
+  <x:Prop Name="bus/1/effect/9/enabled" Value="true" />
+  <x:Prop Name="bus/1/mute" Value="false" />
+  <x:Prop Name="bus/1/name" Value='&amp;"Bus0"' />
+  <x:Prop Name="bus/1/send" Value='&amp;"Master"' />
+  <x:Prop Name="bus/1/solo" Value="true" />
+  <x:Prop Name="bus/1/volume_db" Value="-1.5" />
+  <x:Prop Name="bus/10/bypass_fx" Value="false" />
+  <x:Prop Name="bus/10/effect/0/effect" Value="{AudioEffectEQ611}" />
+  <x:Prop Name="bus/10/effect/0/enabled" Value="true" />
+  <x:Prop Name="bus/10/mute" Value="true" />
+  <x:Prop Name="bus/10/name" Value='&amp;"Bus9"' />
+  <x:Prop Name="bus/10/send" Value='&amp;"Bus8"' />
+  <x:Prop Name="bus/10/solo" Value="true" />
+  <x:Prop Name="bus/10/volume_db" Value="-15.0" />
+  <x:Prop Name="bus/11/bypass_fx" Value="true" />
+  <x:Prop Name="bus/11/mute" Value="false" />
+  <x:Prop Name="bus/11/name" Value='&amp;"Bus10"' />
+  <x:Prop Name="bus/11/send" Value='&amp;"Bus9"' />
+  <x:Prop Name="bus/11/solo" Value="false" />
+  <x:Prop Name="bus/11/volume_db" Value="-16.5" />
+  <x:Prop Name="bus/12/bypass_fx" Value="false" />
+  <x:Prop Name="bus/12/mute" Value="true" />
+  <x:Prop Name="bus/12/name" Value='&amp;"Bus11"' />
+  <x:Prop Name="bus/12/send" Value='&amp;"Bus10"' />
+  <x:Prop Name="bus/12/solo" Value="false" />
+  <x:Prop Name="bus/12/volume_db" Value="-18.0" />
+  <x:Prop Name="bus/2/bypass_fx" Value="false" />
+  <x:Prop Name="bus/2/effect/0/effect" Value="{AudioEffectEQ612}" />
+  <x:Prop Name="bus/2/effect/0/enabled" Value="true" />
+  <x:Prop Name="bus/2/mute" Value="true" />
+  <x:Prop Name="bus/2/name" Value='&amp;"Bus1"' />
+  <x:Prop Name="bus/2/send" Value='&amp;"Bus0"' />
+  <x:Prop Name="bus/2/solo" Value="false" />
+  <x:Prop Name="bus/2/volume_db" Value="-3.0" />
+  <x:Prop Name="bus/3/bypass_fx" Value="true" />
+  <x:Prop Name="bus/3/mute" Value="false" />
+  <x:Prop Name="bus/3/name" Value='&amp;"Bus2"' />
+  <x:Prop Name="bus/3/send" Value='&amp;"Bus1"' />
+  <x:Prop Name="bus/3/solo" Value="false" />
+  <x:Prop Name="bus/3/volume_db" Value="-4.5" />
+  <x:Prop Name="bus/4/bypass_fx" Value="false" />
+  <x:Prop Name="bus/4/mute" Value="true" />
+  <x:Prop Name="bus/4/name" Value='&amp;"Bus3"' />
+  <x:Prop Name="bus/4/send" Value='&amp;"Bus2"' />
+  <x:Prop Name="bus/4/solo" Value="true" />
+  <x:Prop Name="bus/4/volume_db" Value="-6.0" />
+  <x:Prop Name="bus/5/bypass_fx" Value="false" />
+  <x:Prop Name="bus/5/mute" Value="false" />
+  <x:Prop Name="bus/5/name" Value='&amp;"Bus4"' />
+  <x:Prop Name="bus/5/send" Value='&amp;"Bus3"' />
+  <x:Prop Name="bus/5/solo" Value="false" />
+  <x:Prop Name="bus/5/volume_db" Value="-7.5" />
+  <x:Prop Name="bus/6/bypass_fx" Value="false" />
+  <x:Prop Name="bus/6/effect/0/effect" Value="{AudioEffectEQ613}" />
+  <x:Prop Name="bus/6/effect/0/enabled" Value="true" />
+  <x:Prop Name="bus/6/mute" Value="true" />
+  <x:Prop Name="bus/6/name" Value='&amp;"Bus5"' />
+  <x:Prop Name="bus/6/send" Value='&amp;"Bus4"' />
+  <x:Prop Name="bus/6/solo" Value="false" />
+  <x:Prop Name="bus/6/volume_db" Value="-9.0" />
+  <x:Prop Name="bus/7/bypass_fx" Value="true" />
+  <x:Prop Name="bus/7/mute" Value="false" />
+  <x:Prop Name="bus/7/name" Value='&amp;"Bus6"' />
+  <x:Prop Name="bus/7/send" Value='&amp;"Bus5"' />
+  <x:Prop Name="bus/7/solo" Value="true" />
+  <x:Prop Name="bus/7/volume_db" Value="-10.5" />
+  <x:Prop Name="bus/8/bypass_fx" Value="false" />
+  <x:Prop Name="bus/8/mute" Value="true" />
+  <x:Prop Name="bus/8/name" Value='&amp;"Bus7"' />
+  <x:Prop Name="bus/8/send" Value='&amp;"Bus6"' />
+  <x:Prop Name="bus/8/solo" Value="false" />
+  <x:Prop Name="bus/8/volume_db" Value="-12.0" />
+  <x:Prop Name="bus/9/bypass_fx" Value="false" />
+  <x:Prop Name="bus/9/mute" Value="false" />
+  <x:Prop Name="bus/9/name" Value='&amp;"Bus8"' />
+  <x:Prop Name="bus/9/send" Value='&amp;"Bus7"' />
+  <x:Prop Name="bus/9/solo" Value="false" />
+  <x:Prop Name="bus/9/volume_db" Value="-13.5" />
+</AudioBusLayout>

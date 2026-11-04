@@ -232,11 +232,10 @@ public sealed class DynamicPropertyFamiliesTests
         );
     }
 
-    // A ranker reading a Godot class, and no key order, nested order, count property or sibling.
+    // A ranker reading a Godot class when it reads a class list at all, and no key order, nested order, count property or sibling.
     private static bool IsRankedAlone(DynamicFamily family) =>
         family.Ranker is not null
-        && family.ListedBy is { } listedBy
-        && Metadata.FindClass(listedBy) is not null
+        && (family.ListedBy is not { } listedBy || Metadata.FindClass(listedBy) is not null)
         && family.KeyOrder.IsEmpty
         && family.SubKeyOrder.IsEmpty
         && family.SizedBy is null

@@ -182,6 +182,19 @@ internal static class DynamicPropertyFamilies
         "gravity_direction",
     ];
 
+    // scene/resources/skeleton_profile.cpp, SkeletonProfile::_get_property_list: one bone's keys.
+    private static readonly string[] ProfileBoneKeys =
+    [
+        "bone_name",
+        "bone_parent",
+        "tail_direction",
+        "bone_tail",
+        "reference_pose",
+        "handle_offset",
+        "group",
+        "require",
+    ];
+
     // scene/3d/chain_ik_3d.cpp, ChainIK3D::get_property_list: one setting's chain keys (its joints/<M>/bone_name and bone are
     // read-only and never stored). With no skeleton, set_root_bone and set_end_bone free the setting's joints.
     private static readonly string[] ChainKeys =
@@ -421,6 +434,14 @@ internal static class DynamicPropertyFamilies
     // scene/gui/file_dialog.cpp, FileDialog::_bind_methods (PropertyListHelper registration): one option's keys.
     private static readonly string[] DialogOptionKeys = ["name", "values", "default"];
 
+    // scene/resources/label_settings.cpp, LabelSettings::_bind_methods (PropertyListHelper registrations): one stacked
+    // outline's keys and one stacked shadow's keys.
+    private static readonly string[] StackedOutlineKeys = ["size", "color"];
+    private static readonly string[] StackedShadowKeys = ["offset", "color", "outline_size"];
+
+    // servers/audio/audio_stream.cpp, AudioStreamRandomizer::_bind_methods (PropertyListHelper registration): one stream's keys.
+    private static readonly string[] RandomizerStreamKeys = ["stream", "weight"];
+
     private static readonly Row[] Entries =
     [
         // scene/animation/animation_mixer.cpp, AnimationMixer::_get_property_list
@@ -580,21 +601,31 @@ internal static class DynamicPropertyFamilies
         // scene/resources/font.cpp, FontFile::_get_property_list
         Row.AnyOrder("FontFile", @"^language_support_override/"),
         Row.AnyOrder("FontFile", @"^script_support_override/"),
-        Row.AnyOrder("FontFile", @"^cache/[0-9]+/"),
+        // Cache entries in numeric order, each entry's keys, then its sizes by number (FontCacheRank); FontFile::_set grows the
+        // cache on any key, so any order loads.
+        Row.Ranked(
+            "FontFile",
+            @"^cache/(?<index>[0-9]+)/(?:(?<subindex>[0-9]+)/(?<outline>[0-9]+)/(?<subkey>[^/]*)(?:/[\s\S]*)?|(?<key>[^/]*))\z",
+            FontCacheRank,
+            null
+        ),
         // scene/resources/3d/skin.cpp, Skin::_get_property_list
         Row.AnyOrder("Skin", @"^bind_count\z"),
-        Row.SizedFirst("Skin", @"^bind/[0-9]+/", "bind_count"),
+        Row.SizedFirst("Skin", @"^bind/(?<index>[0-9]+)/(?<key>[^/]*)\z", "bind_count", ["name", "bone", "pose"], []),
         // scene/resources/3d/mesh_library.cpp, MeshLibrary::_get_property_list
         Row.AnyOrder("MeshLibrary", @"^item/[0-9]+/"),
         // scene/resources/skeleton_profile.cpp, SkeletonProfile::_get_property_list
-        Row.SizedFirst("SkeletonProfile", @"^groups/[0-9]+/", "group_size"),
-        Row.SizedFirst("SkeletonProfile", @"^bones/[0-9]+/", "bone_size"),
+        Row.SizedFirst("SkeletonProfile", @"^groups/(?<index>[0-9]+)/(?<key>[^/]*)\z", "group_size", ["group_name", "texture"], []),
+        Row.SizedFirst("SkeletonProfile", @"^bones/(?<index>[0-9]+)/(?<key>[^/]*)\z", "bone_size", ProfileBoneKeys, []),
         // scene/resources/bone_map.cpp, BoneMap::_get_property_list
         Row.AnyOrder("BoneMap", @"^bone_map/"),
-        // servers/audio/audio_server.cpp, AudioBusLayout::_get_property_list
-        Row.AnyOrder("AudioBusLayout", @"^bus/[0-9]+/"),
-        // servers/audio/effects/audio_effect_eq.cpp, AudioEffectEQ::_get_property_list
-        Row.AnyOrder("AudioEffectEQ", @"^band_db/[0-9]+_hz\z"),
+        // servers/audio/audio_server.cpp, AudioBusLayout::_get_property_list: bus by bus, each bus's keys, then its effects in
+        // numeric order (BusRank); AudioBusLayout::_set grows the buses and a bus's effects on any key, so any order loads.
+        Row.Ranked("AudioBusLayout", @"^bus/(?<index>[0-9]+)/(?:(?<key>effect)/(?<subindex>[0-9]+)/(?<subkey>[^/]*)|(?<key>[^/]*))\z", BusRank, null),
+        // servers/audio/effects/audio_effect_eq.cpp, AudioEffectEQ::_get_property_list: the bands in the preset's order
+        // (eq_filter.cpp, EQ::set_preset_band_mode), which rises by frequency, so the bands rank by frequency (BandRank);
+        // AudioEffectEQ::_set sets any band its constructor named in prop_band_map, so any order loads.
+        Row.Ranked("AudioEffectEQ", @"^band_db/(?<index>[0-9]+)_hz\z", BandRank, null),
         // modules/visual_shader/visual_shader.cpp, VisualShader::_get_property_list
         Row.AnyOrder("VisualShader", @"^mode\z"),
         .. VisualShaderModes.Select(mode => Row.AnyOrder("VisualShader", $@"^modes/{mode}\z")),
@@ -680,10 +711,10 @@ internal static class DynamicPropertyFamilies
         // scene/resources/curve.h, Curve3D::_get_property_list (PropertyListHelper; editor-only: never stored)
         Row.SizedFirst("Curve3D", @"^point_[0-9]+/", "point_count"),
         // scene/resources/label_settings.h, LabelSettings::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("LabelSettings", @"^stacked_outline_[0-9]+/", "stacked_outline_count"),
-        Row.SizedFirst("LabelSettings", @"^stacked_shadow_[0-9]+/", "stacked_shadow_count"),
+        Row.SizedFirst("LabelSettings", @"^stacked_outline_(?<index>[0-9]+)/(?<key>.*)\z", "stacked_outline_count", StackedOutlineKeys, []),
+        Row.SizedFirst("LabelSettings", @"^stacked_shadow_(?<index>[0-9]+)/(?<key>.*)\z", "stacked_shadow_count", StackedShadowKeys, []),
         // servers/audio/audio_stream.h, AudioStreamRandomizer::_get_property_list (PropertyListHelper)
-        Row.SizedFirst("AudioStreamRandomizer", @"^stream_[0-9]+/", "streams_count"),
+        Row.SizedFirst("AudioStreamRandomizer", @"^stream_(?<index>[0-9]+)/(?<key>.*)\z", "streams_count", RandomizerStreamKeys, []),
     ];
 
     private static readonly ImmutableArray<(string Class, DynamicFamily Family)> Families =
@@ -957,6 +988,103 @@ internal static class DynamicPropertyFamilies
     private static bool PolygonOf(ReadOnlySpan<char> inner, out int polygon, out ReadOnlySpan<char> key) =>
         LayerOf(inner, "polygon_", out polygon, out key);
 
+    // servers/audio/audio_server.cpp, AudioBusLayout::_get_property_list: one bus's keys, its effects last, and one effect's keys.
+    private static readonly ImmutableArray<(string Key, int Index)> BusKeys = KeyLookup([
+        "name",
+        "solo",
+        "mute",
+        "bypass_fx",
+        "volume_db",
+        "send",
+        "effect",
+    ]);
+
+    private static readonly ImmutableArray<(string Key, int Index)> BusEffectKeys = KeyLookup(["effect", "enabled"]);
+
+    /// <summary>
+    /// The rank levels of an AudioBusLayout bus name, in AudioBusLayout::_get_property_list's order: buses by number; in a
+    /// bus, its keys, then its effects by number, each effect's keys in order. A key Godot does not list goes after the
+    /// listed ones.
+    /// </summary>
+    /// <param name="match">The match of the row's pattern, with its <c>index</c> and <c>key</c> groups, and for an effect its
+    /// <c>subindex</c> and <c>subkey</c> groups.</param>
+    /// <param name="classKeys">Unused: the row reads no class list.</param>
+    /// <returns>Entry the bus, Key the bus key's place, SubEntry the effect, SubKey the effect key's place.</returns>
+    internal static RankLevels BusRank(Match match, ImmutableArray<(string Key, int Index)> classKeys)
+    {
+        Group effect = match.Groups["subindex"];
+        return new RankLevels(
+            Number(match.Groups["index"].ValueSpan) ?? int.MaxValue,
+            PropertyOrder.PlaceOf(BusKeys, match.Groups["key"].ValueSpan),
+            effect.Success ? Number(effect.ValueSpan) ?? int.MaxValue : 0,
+            effect.Success ? PropertyOrder.PlaceOf(BusEffectKeys, match.Groups["subkey"].ValueSpan) : 0,
+            0,
+            0
+        );
+    }
+
+    /// <summary>
+    /// The rank levels of an AudioEffectEQ band name, in AudioEffectEQ::_get_property_list's order: the bands by frequency,
+    /// the order every preset adds them in (eq_filter.cpp, EQ::set_preset_band_mode).
+    /// </summary>
+    /// <param name="match">The match of the row's pattern, with its <c>index</c> group, the band's frequency.</param>
+    /// <param name="classKeys">Unused: the row reads no class list.</param>
+    /// <returns>Entry the frequency.</returns>
+    internal static RankLevels BandRank(Match match, ImmutableArray<(string Key, int Index)> classKeys) =>
+        new(Number(match.Groups["index"].ValueSpan) ?? int.MaxValue, 0, 0, 0, 0, 0);
+
+    // scene/resources/font.cpp, FontFile::_get_property_list: one cache entry's keys, its sizes after them, and one size's keys.
+    private static readonly ImmutableArray<(string Key, int Index)> FontCacheKeys = KeyLookup([
+        "variation_coordinates",
+        "face_index",
+        "embolden",
+        "transform",
+        "spacing_top",
+        "spacing_bottom",
+        "spacing_space",
+        "spacing_glyph",
+        "baseline_offset",
+    ]);
+
+    private static readonly ImmutableArray<(string Key, int Index)> FontSizeKeys = KeyLookup([
+        "ascent",
+        "descent",
+        "underline_position",
+        "underline_thickness",
+        "scale",
+        "textures",
+        "glyphs",
+        "kerning_overrides",
+    ]);
+
+    /// <summary>
+    /// The rank levels of a FontFile cache name, in FontFile::_get_property_list's order: entries by number; in an entry, its
+    /// keys, then its sizes by size and outline size, each size's keys in order. Godot lists the sizes in the order the
+    /// text server's size cache (a HashMap) holds them, their creation order, which the text keeps no record of, so they
+    /// come by number. A key Godot does not list goes after the listed ones; the names under a size's textures, glyphs and
+    /// kerning_overrides keep their ordinal order inside that key.
+    /// </summary>
+    /// <param name="match">The match of the row's pattern, with its <c>index</c> group and either its <c>key</c> group or
+    /// its <c>subindex</c>, <c>outline</c> and <c>subkey</c> groups.</param>
+    /// <param name="classKeys">Unused: the row reads no class list.</param>
+    /// <returns>Entry the cache entry, Key the entry key's place (past them all for a size), SubEntry the size, SubKey its
+    /// outline size, Layer the size key's place.</returns>
+    internal static RankLevels FontCacheRank(Match match, ImmutableArray<(string Key, int Index)> classKeys)
+    {
+        Group size = match.Groups["subindex"];
+        int entry = Number(match.Groups["index"].ValueSpan) ?? int.MaxValue;
+        return size.Success
+            ? new RankLevels(
+                entry,
+                FontCacheKeys.Length + 1,
+                Number(size.ValueSpan) ?? int.MaxValue,
+                Number(match.Groups["outline"].ValueSpan) ?? int.MaxValue,
+                PropertyOrder.PlaceOf(FontSizeKeys, match.Groups["subkey"].ValueSpan),
+                0
+            )
+            : new RankLevels(entry, PropertyOrder.PlaceOf(FontCacheKeys, match.Groups["key"].ValueSpan), 0, 0, 0, 0);
+    }
+
     // A run of ASCII digits as a number, a number past int's range as int.MaxValue; null for anything else.
     private static int? Number(ReadOnlySpan<char> digits)
     {
@@ -1032,7 +1160,8 @@ internal static class DynamicPropertyFamilies
         /// <summary>
         /// Godot creates an entry on any of its keys, so any order loads, but lists its names in an order deeper than an
         /// entry's keys (a TileSetAtlasSource's tiles, each tile's alternatives and their TileData keys); the row's ranker
-        /// places each name from the pattern's groups and the class list of the class it names.
+        /// places each name from the pattern's groups, and from the class list of the class the row names in
+        /// <see cref="DynamicFamily.ListedBy"/>, which is null for a ranker that reads no class list.
         /// </summary>
         Ranked,
     }
@@ -1042,7 +1171,8 @@ internal static class DynamicPropertyFamilies
 
     /// <summary>Places a name a <see cref="EntryCreation.Ranked"/> family's pattern matched.</summary>
     /// <param name="match">The pattern's match over the name.</param>
-    /// <param name="classKeys">The class list of the row's <see cref="DynamicFamily.ListedBy"/> class, as a lookup sorted by key.</param>
+    /// <param name="classKeys">The class list of the row's <see cref="DynamicFamily.ListedBy"/> class, as a lookup sorted by key;
+    /// empty when the row names no class.</param>
     /// <returns>The name's levels.</returns>
     internal delegate RankLevels Ranker(Match match, ImmutableArray<(string Key, int Index)> classKeys);
 
@@ -1095,7 +1225,7 @@ internal static class DynamicPropertyFamilies
     /// <param name="Ranker">The ranker of a <see cref="EntryCreation.Ranked"/> family; null otherwise.</param>
     /// <param name="ListedBy">
     /// The class whose class list the <paramref name="Ranker"/> places keys by (TileData for an atlas tile's alternatives);
-    /// null for a family without a ranker.
+    /// null for a family without a ranker or whose ranker reads no class list.
     /// </param>
     internal readonly record struct DynamicFamily(
         Regex Pattern,
@@ -1184,8 +1314,8 @@ internal static class DynamicPropertyFamilies
             new(cls, pattern, EntryCreation.ByMode, null, [], [], modeBy, modeKeyOrders, null, null);
 
         // A family whose names Godot sets in any order but lists in an order its ranker computes from the pattern's groups and
-        // the class list of the named class.
-        public static Row Ranked(string cls, string pattern, Ranker ranker, string listedBy) =>
+        // the class list of the named class, or null for a ranker that reads no class list.
+        public static Row Ranked(string cls, string pattern, Ranker ranker, string? listedBy) =>
             new(cls, pattern, EntryCreation.Ranked, null, [], [], null, [], ranker, listedBy);
     }
 }

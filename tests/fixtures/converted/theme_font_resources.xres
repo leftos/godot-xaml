@@ -1,0 +1,511 @@
+<Theme
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Metadata.extra='[SubResource("FontFile1"), SubResource("Skin1"), SubResource("SkeletonProfile1"), SubResource("BoneMap1")]'>
+  <x:Resources>
+    <FontFile
+        x:Key="FontFile1"
+        LanguageSupportOverride.ar="true"
+        LanguageSupportOverride.de="true"
+        LanguageSupportOverride.el="true"
+        LanguageSupportOverride.en="false"
+        LanguageSupportOverride.fr="true"
+        LanguageSupportOverride.he="true"
+        LanguageSupportOverride.ja="false"
+        LanguageSupportOverride.ko="false"
+        LanguageSupportOverride.pt="true"
+        LanguageSupportOverride.ru="false"
+        LanguageSupportOverride.sr="true"
+        LanguageSupportOverride.zh="true"
+        ScriptSupportOverride.Arab="true"
+        ScriptSupportOverride.Armn="true"
+        ScriptSupportOverride.Cyrl="false"
+        ScriptSupportOverride.Deva="true"
+        ScriptSupportOverride.Geor="false"
+        ScriptSupportOverride.Grek="false"
+        ScriptSupportOverride.Hani="true"
+        ScriptSupportOverride.Hebr="false"
+        ScriptSupportOverride.Jpan="true"
+        ScriptSupportOverride.Kore="false"
+        ScriptSupportOverride.Latn="true"
+        ScriptSupportOverride.Thai="false">
+      <x:Prop Name="cache/0/16/0/ascent" Value="0.0" />
+      <x:Prop Name="cache/0/16/0/descent" Value="0.0" />
+      <x:Prop Name="cache/0/16/0/scale" Value="1.0" />
+      <x:Prop Name="cache/0/16/0/underline_position" Value="0.0" />
+      <x:Prop Name="cache/0/16/0/underline_thickness" Value="0.0" />
+      <x:Prop Name="cache/0/8/0/ascent" Value="10.0" />
+      <x:Prop Name="cache/0/8/0/descent" Value="3.0" />
+      <x:Prop Name="cache/0/8/0/scale" Value="1.25" />
+      <x:Prop Name="cache/0/8/0/underline_position" Value="1.5" />
+      <x:Prop Name="cache/0/8/0/underline_thickness" Value="0.5" />
+      <x:Prop Name="cache/0/baseline_offset" Value="0.05" />
+      <x:Prop Name="cache/0/embolden" Value="0.1" />
+      <x:Prop Name="cache/0/face_index" Value="1" />
+      <x:Prop Name="cache/0/spacing_bottom" Value="2" />
+      <x:Prop Name="cache/0/spacing_glyph" Value="4" />
+      <x:Prop Name="cache/0/spacing_space" Value="3" />
+      <x:Prop Name="cache/0/spacing_top" Value="1" />
+      <x:Prop
+          Name="cache/0/transform"
+          Value="Transform2D(0.99875027, 0.04997917, -0.04997917, 0.99875027, 0, 0)" />
+      <x:Prop Name="cache/0/variation_coordinates" Value='{&#10;"wght": 400&#10;}' />
+      <x:Prop Name="cache/1/16/0/ascent" Value="11.0" />
+      <x:Prop Name="cache/1/16/0/descent" Value="4.0" />
+      <x:Prop Name="cache/1/16/0/scale" Value="2.25" />
+      <x:Prop Name="cache/1/16/0/underline_position" Value="2.5" />
+      <x:Prop Name="cache/1/16/0/underline_thickness" Value="1.5" />
+      <x:Prop Name="cache/1/baseline_offset" Value="0.1" />
+      <x:Prop Name="cache/1/embolden" Value="0.2" />
+      <x:Prop Name="cache/1/face_index" Value="2" />
+      <x:Prop Name="cache/1/spacing_bottom" Value="3" />
+      <x:Prop Name="cache/1/spacing_glyph" Value="5" />
+      <x:Prop Name="cache/1/spacing_space" Value="4" />
+      <x:Prop Name="cache/1/spacing_top" Value="2" />
+      <x:Prop
+          Name="cache/1/transform"
+          Value="Transform2D(0.9950042, 0.09983342, -0.09983342, 0.9950042, 0, 0)" />
+      <x:Prop Name="cache/1/variation_coordinates" Value='{&#10;"wght": 450&#10;}' />
+      <x:Prop Name="cache/10/8/0/ascent" Value="20.0" />
+      <x:Prop Name="cache/10/8/0/descent" Value="13.0" />
+      <x:Prop Name="cache/10/8/0/scale" Value="11.25" />
+      <x:Prop Name="cache/10/8/0/underline_position" Value="11.5" />
+      <x:Prop Name="cache/10/8/0/underline_thickness" Value="10.5" />
+      <x:Prop Name="cache/10/baseline_offset" Value="0.55" />
+      <x:Prop Name="cache/10/embolden" Value="1.1" />
+      <x:Prop Name="cache/10/face_index" Value="11" />
+      <x:Prop Name="cache/10/spacing_bottom" Value="12" />
+      <x:Prop Name="cache/10/spacing_glyph" Value="14" />
+      <x:Prop Name="cache/10/spacing_space" Value="13" />
+      <x:Prop Name="cache/10/spacing_top" Value="11" />
+      <x:Prop
+          Name="cache/10/transform"
+          Value="Transform2D(0.8525245, 0.52268726, -0.52268726, 0.8525245, 0, 0)" />
+      <x:Prop Name="cache/10/variation_coordinates" Value='{&#10;"wght": 900&#10;}' />
+      <x:Prop Name="cache/11/16/0/ascent" Value="21.0" />
+      <x:Prop Name="cache/11/16/0/descent" Value="14.0" />
+      <x:Prop Name="cache/11/16/0/scale" Value="12.25" />
+      <x:Prop Name="cache/11/16/0/underline_position" Value="12.5" />
+      <x:Prop Name="cache/11/16/0/underline_thickness" Value="11.5" />
+      <x:Prop Name="cache/11/baseline_offset" Value="0.6" />
+      <x:Prop Name="cache/11/embolden" Value="1.2" />
+      <x:Prop Name="cache/11/face_index" Value="12" />
+      <x:Prop Name="cache/11/spacing_bottom" Value="13" />
+      <x:Prop Name="cache/11/spacing_glyph" Value="15" />
+      <x:Prop Name="cache/11/spacing_space" Value="14" />
+      <x:Prop Name="cache/11/spacing_top" Value="12" />
+      <x:Prop
+          Name="cache/11/transform"
+          Value="Transform2D(0.8253356, 0.5646425, -0.5646425, 0.8253356, 0, 0)" />
+      <x:Prop Name="cache/11/variation_coordinates" Value='{&#10;"wght": 950&#10;}' />
+      <x:Prop Name="cache/2/8/0/ascent" Value="12.0" />
+      <x:Prop Name="cache/2/8/0/descent" Value="5.0" />
+      <x:Prop Name="cache/2/8/0/scale" Value="3.25" />
+      <x:Prop Name="cache/2/8/0/underline_position" Value="3.5" />
+      <x:Prop Name="cache/2/8/0/underline_thickness" Value="2.5" />
+      <x:Prop Name="cache/2/baseline_offset" Value="0.15" />
+      <x:Prop Name="cache/2/embolden" Value="0.3" />
+      <x:Prop Name="cache/2/face_index" Value="3" />
+      <x:Prop Name="cache/2/spacing_bottom" Value="4" />
+      <x:Prop Name="cache/2/spacing_glyph" Value="6" />
+      <x:Prop Name="cache/2/spacing_space" Value="5" />
+      <x:Prop Name="cache/2/spacing_top" Value="3" />
+      <x:Prop
+          Name="cache/2/transform"
+          Value="Transform2D(0.9887711, 0.14943814, -0.14943814, 0.9887711, 0, 0)" />
+      <x:Prop Name="cache/2/variation_coordinates" Value='{&#10;"wght": 500&#10;}' />
+      <x:Prop Name="cache/3/16/0/ascent" Value="13.0" />
+      <x:Prop Name="cache/3/16/0/descent" Value="6.0" />
+      <x:Prop Name="cache/3/16/0/scale" Value="4.25" />
+      <x:Prop Name="cache/3/16/0/underline_position" Value="4.5" />
+      <x:Prop Name="cache/3/16/0/underline_thickness" Value="3.5" />
+      <x:Prop Name="cache/3/baseline_offset" Value="0.2" />
+      <x:Prop Name="cache/3/embolden" Value="0.4" />
+      <x:Prop Name="cache/3/face_index" Value="4" />
+      <x:Prop Name="cache/3/spacing_bottom" Value="5" />
+      <x:Prop Name="cache/3/spacing_glyph" Value="7" />
+      <x:Prop Name="cache/3/spacing_space" Value="6" />
+      <x:Prop Name="cache/3/spacing_top" Value="4" />
+      <x:Prop
+          Name="cache/3/transform"
+          Value="Transform2D(0.9800666, 0.19866933, -0.19866933, 0.9800666, 0, 0)" />
+      <x:Prop Name="cache/3/variation_coordinates" Value='{&#10;"wght": 550&#10;}' />
+      <x:Prop Name="cache/4/8/0/ascent" Value="14.0" />
+      <x:Prop Name="cache/4/8/0/descent" Value="7.0" />
+      <x:Prop Name="cache/4/8/0/scale" Value="5.25" />
+      <x:Prop Name="cache/4/8/0/underline_position" Value="5.5" />
+      <x:Prop Name="cache/4/8/0/underline_thickness" Value="4.5" />
+      <x:Prop Name="cache/4/baseline_offset" Value="0.25" />
+      <x:Prop Name="cache/4/embolden" Value="0.5" />
+      <x:Prop Name="cache/4/face_index" Value="5" />
+      <x:Prop Name="cache/4/spacing_bottom" Value="6" />
+      <x:Prop Name="cache/4/spacing_glyph" Value="8" />
+      <x:Prop Name="cache/4/spacing_space" Value="7" />
+      <x:Prop Name="cache/4/spacing_top" Value="5" />
+      <x:Prop
+          Name="cache/4/transform"
+          Value="Transform2D(0.9689124, 0.24740396, -0.24740396, 0.9689124, 0, 0)" />
+      <x:Prop Name="cache/4/variation_coordinates" Value='{&#10;"wght": 600&#10;}' />
+      <x:Prop Name="cache/5/16/0/ascent" Value="15.0" />
+      <x:Prop Name="cache/5/16/0/descent" Value="8.0" />
+      <x:Prop Name="cache/5/16/0/scale" Value="6.25" />
+      <x:Prop Name="cache/5/16/0/underline_position" Value="6.5" />
+      <x:Prop Name="cache/5/16/0/underline_thickness" Value="5.5" />
+      <x:Prop Name="cache/5/baseline_offset" Value="0.3" />
+      <x:Prop Name="cache/5/embolden" Value="0.6" />
+      <x:Prop Name="cache/5/face_index" Value="6" />
+      <x:Prop Name="cache/5/spacing_bottom" Value="7" />
+      <x:Prop Name="cache/5/spacing_glyph" Value="9" />
+      <x:Prop Name="cache/5/spacing_space" Value="8" />
+      <x:Prop Name="cache/5/spacing_top" Value="6" />
+      <x:Prop
+          Name="cache/5/transform"
+          Value="Transform2D(0.9553365, 0.29552022, -0.29552022, 0.9553365, 0, 0)" />
+      <x:Prop Name="cache/5/variation_coordinates" Value='{&#10;"wght": 650&#10;}' />
+      <x:Prop Name="cache/6/8/0/ascent" Value="16.0" />
+      <x:Prop Name="cache/6/8/0/descent" Value="9.0" />
+      <x:Prop Name="cache/6/8/0/scale" Value="7.25" />
+      <x:Prop Name="cache/6/8/0/underline_position" Value="7.5" />
+      <x:Prop Name="cache/6/8/0/underline_thickness" Value="6.5" />
+      <x:Prop Name="cache/6/baseline_offset" Value="0.35" />
+      <x:Prop Name="cache/6/embolden" Value="0.7" />
+      <x:Prop Name="cache/6/face_index" Value="7" />
+      <x:Prop Name="cache/6/spacing_bottom" Value="8" />
+      <x:Prop Name="cache/6/spacing_glyph" Value="10" />
+      <x:Prop Name="cache/6/spacing_space" Value="9" />
+      <x:Prop Name="cache/6/spacing_top" Value="7" />
+      <x:Prop
+          Name="cache/6/transform"
+          Value="Transform2D(0.9393727, 0.3428978, -0.3428978, 0.9393727, 0, 0)" />
+      <x:Prop Name="cache/6/variation_coordinates" Value='{&#10;"wght": 700&#10;}' />
+      <x:Prop Name="cache/7/16/0/ascent" Value="17.0" />
+      <x:Prop Name="cache/7/16/0/descent" Value="10.0" />
+      <x:Prop Name="cache/7/16/0/scale" Value="8.25" />
+      <x:Prop Name="cache/7/16/0/underline_position" Value="8.5" />
+      <x:Prop Name="cache/7/16/0/underline_thickness" Value="7.5" />
+      <x:Prop Name="cache/7/baseline_offset" Value="0.4" />
+      <x:Prop Name="cache/7/embolden" Value="0.8" />
+      <x:Prop Name="cache/7/face_index" Value="8" />
+      <x:Prop Name="cache/7/spacing_bottom" Value="9" />
+      <x:Prop Name="cache/7/spacing_glyph" Value="11" />
+      <x:Prop Name="cache/7/spacing_space" Value="10" />
+      <x:Prop Name="cache/7/spacing_top" Value="8" />
+      <x:Prop
+          Name="cache/7/transform"
+          Value="Transform2D(0.921061, 0.38941833, -0.38941833, 0.921061, 0, 0)" />
+      <x:Prop Name="cache/7/variation_coordinates" Value='{&#10;"wght": 750&#10;}' />
+      <x:Prop Name="cache/8/8/0/ascent" Value="18.0" />
+      <x:Prop Name="cache/8/8/0/descent" Value="11.0" />
+      <x:Prop Name="cache/8/8/0/scale" Value="9.25" />
+      <x:Prop Name="cache/8/8/0/underline_position" Value="9.5" />
+      <x:Prop Name="cache/8/8/0/underline_thickness" Value="8.5" />
+      <x:Prop Name="cache/8/baseline_offset" Value="0.45" />
+      <x:Prop Name="cache/8/embolden" Value="0.9" />
+      <x:Prop Name="cache/8/face_index" Value="9" />
+      <x:Prop Name="cache/8/spacing_bottom" Value="10" />
+      <x:Prop Name="cache/8/spacing_glyph" Value="12" />
+      <x:Prop Name="cache/8/spacing_space" Value="11" />
+      <x:Prop Name="cache/8/spacing_top" Value="9" />
+      <x:Prop
+          Name="cache/8/transform"
+          Value="Transform2D(0.90044713, 0.43496552, -0.43496552, 0.90044713, 0, 0)" />
+      <x:Prop Name="cache/8/variation_coordinates" Value='{&#10;"wght": 800&#10;}' />
+      <x:Prop Name="cache/9/16/0/ascent" Value="19.0" />
+      <x:Prop Name="cache/9/16/0/descent" Value="12.0" />
+      <x:Prop Name="cache/9/16/0/scale" Value="10.25" />
+      <x:Prop Name="cache/9/16/0/underline_position" Value="10.5" />
+      <x:Prop Name="cache/9/16/0/underline_thickness" Value="9.5" />
+      <x:Prop Name="cache/9/baseline_offset" Value="0.5" />
+      <x:Prop Name="cache/9/embolden" Value="1.0" />
+      <x:Prop Name="cache/9/face_index" Value="10" />
+      <x:Prop Name="cache/9/spacing_bottom" Value="11" />
+      <x:Prop Name="cache/9/spacing_glyph" Value="13" />
+      <x:Prop Name="cache/9/spacing_space" Value="12" />
+      <x:Prop Name="cache/9/spacing_top" Value="10" />
+      <x:Prop
+          Name="cache/9/transform"
+          Value="Transform2D(0.87758255, 0.47942555, -0.47942555, 0.87758255, 0, 0)" />
+      <x:Prop Name="cache/9/variation_coordinates" Value='{&#10;"wght": 850&#10;}' />
+    </FontFile>
+    <GradientTexture2D x:Key="GradientTexture2D1" Height="16" Width="16">
+      <GradientTexture2D.Gradient>
+        <Gradient Colors="PackedColorArray(1, 0, 0, 1, 0, 0, 1, 1)" />
+      </GradientTexture2D.Gradient>
+    </GradientTexture2D>
+    <StyleBoxFlat x:Key="StyleBoxFlat1" BgColor="0.2, 0.4, 0.6, 1" />
+    <Skin x:Key="Skin1" bind_count="12">
+      <x:Prop Name="bind/0/bone" Value="1" />
+      <x:Prop Name="bind/0/name" Value='&amp;"bone_0"' />
+      <x:Prop Name="bind/0/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.5, -0.25)" />
+      <x:Prop Name="bind/1/bone" Value="2" />
+      <x:Prop Name="bind/1/name" Value='&amp;"bone_1"' />
+      <x:Prop Name="bind/1/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.5, -0.25)" />
+      <x:Prop Name="bind/10/bone" Value="11" />
+      <x:Prop Name="bind/10/name" Value='&amp;"bone_10"' />
+      <x:Prop Name="bind/10/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0.5, -0.25)" />
+      <x:Prop Name="bind/11/bone" Value="12" />
+      <x:Prop Name="bind/11/name" Value='&amp;"bone_11"' />
+      <x:Prop Name="bind/11/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.5, -0.25)" />
+      <x:Prop Name="bind/2/bone" Value="3" />
+      <x:Prop Name="bind/2/name" Value='&amp;"bone_2"' />
+      <x:Prop Name="bind/2/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.5, -0.25)" />
+      <x:Prop Name="bind/3/bone" Value="4" />
+      <x:Prop Name="bind/3/name" Value='&amp;"bone_3"' />
+      <x:Prop Name="bind/3/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.5, -0.25)" />
+      <x:Prop Name="bind/4/bone" Value="5" />
+      <x:Prop Name="bind/4/name" Value='&amp;"bone_4"' />
+      <x:Prop Name="bind/4/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.5, -0.25)" />
+      <x:Prop Name="bind/5/bone" Value="6" />
+      <x:Prop Name="bind/5/name" Value='&amp;"bone_5"' />
+      <x:Prop Name="bind/5/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.5, -0.25)" />
+      <x:Prop Name="bind/6/bone" Value="7" />
+      <x:Prop Name="bind/6/name" Value='&amp;"bone_6"' />
+      <x:Prop Name="bind/6/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0.5, -0.25)" />
+      <x:Prop Name="bind/7/bone" Value="8" />
+      <x:Prop Name="bind/7/name" Value='&amp;"bone_7"' />
+      <x:Prop Name="bind/7/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.5, -0.25)" />
+      <x:Prop Name="bind/8/bone" Value="9" />
+      <x:Prop Name="bind/8/name" Value='&amp;"bone_8"' />
+      <x:Prop Name="bind/8/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.5, -0.25)" />
+      <x:Prop Name="bind/9/bone" Value="10" />
+      <x:Prop Name="bind/9/name" Value='&amp;"bone_9"' />
+      <x:Prop Name="bind/9/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.5, -0.25)" />
+    </Skin>
+    <SkeletonProfile x:Key="SkeletonProfile1" BoneSize="12" GroupSize="12">
+      <x:Prop Name="bones/0/bone_name" Value='&amp;"Bone0"' />
+      <x:Prop Name="bones/0/bone_parent" Value='&amp;""' />
+      <x:Prop Name="bones/0/bone_tail" Value='&amp;"Bone1"' />
+      <x:Prop Name="bones/0/group" Value='&amp;"Group0"' />
+      <x:Prop Name="bones/0/handle_offset" Value="Vector2(0, 0.1)" />
+      <x:Prop
+          Name="bones/0/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)" />
+      <x:Prop Name="bones/0/require" Value="true" />
+      <x:Prop Name="bones/0/tail_direction" Value="1" />
+      <x:Prop Name="bones/1/bone_name" Value='&amp;"Bone1"' />
+      <x:Prop Name="bones/1/bone_parent" Value='&amp;"Bone0"' />
+      <x:Prop Name="bones/1/group" Value='&amp;"Group1"' />
+      <x:Prop Name="bones/1/handle_offset" Value="Vector2(0.05, 0.1)" />
+      <x:Prop
+          Name="bones/1/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)" />
+      <x:Prop Name="bones/1/require" Value="false" />
+      <x:Prop Name="bones/1/tail_direction" Value="2" />
+      <x:Prop Name="bones/10/bone_name" Value='&amp;"Bone10"' />
+      <x:Prop Name="bones/10/bone_parent" Value='&amp;"Bone9"' />
+      <x:Prop Name="bones/10/group" Value='&amp;"Group10"' />
+      <x:Prop Name="bones/10/handle_offset" Value="Vector2(0.5, 0.1)" />
+      <x:Prop
+          Name="bones/10/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)" />
+      <x:Prop Name="bones/10/require" Value="true" />
+      <x:Prop Name="bones/10/tail_direction" Value="2" />
+      <x:Prop Name="bones/11/bone_name" Value='&amp;"Bone11"' />
+      <x:Prop Name="bones/11/bone_parent" Value='&amp;"Bone10"' />
+      <x:Prop Name="bones/11/group" Value='&amp;"Group11"' />
+      <x:Prop Name="bones/11/handle_offset" Value="Vector2(0.55, 0.1)" />
+      <x:Prop
+          Name="bones/11/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)" />
+      <x:Prop Name="bones/11/require" Value="false" />
+      <x:Prop Name="bones/11/tail_direction" Value="2" />
+      <x:Prop Name="bones/2/bone_name" Value='&amp;"Bone2"' />
+      <x:Prop Name="bones/2/bone_parent" Value='&amp;"Bone1"' />
+      <x:Prop Name="bones/2/group" Value='&amp;"Group2"' />
+      <x:Prop Name="bones/2/handle_offset" Value="Vector2(0.1, 0.1)" />
+      <x:Prop
+          Name="bones/2/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)" />
+      <x:Prop Name="bones/2/require" Value="true" />
+      <x:Prop Name="bones/2/tail_direction" Value="2" />
+      <x:Prop Name="bones/3/bone_name" Value='&amp;"Bone3"' />
+      <x:Prop Name="bones/3/bone_parent" Value='&amp;"Bone2"' />
+      <x:Prop Name="bones/3/bone_tail" Value='&amp;"Bone4"' />
+      <x:Prop Name="bones/3/group" Value='&amp;"Group3"' />
+      <x:Prop Name="bones/3/handle_offset" Value="Vector2(0.15, 0.1)" />
+      <x:Prop
+          Name="bones/3/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)" />
+      <x:Prop Name="bones/3/require" Value="false" />
+      <x:Prop Name="bones/3/tail_direction" Value="1" />
+      <x:Prop Name="bones/4/bone_name" Value='&amp;"Bone4"' />
+      <x:Prop Name="bones/4/bone_parent" Value='&amp;"Bone3"' />
+      <x:Prop Name="bones/4/group" Value='&amp;"Group4"' />
+      <x:Prop Name="bones/4/handle_offset" Value="Vector2(0.2, 0.1)" />
+      <x:Prop
+          Name="bones/4/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)" />
+      <x:Prop Name="bones/4/require" Value="true" />
+      <x:Prop Name="bones/4/tail_direction" Value="2" />
+      <x:Prop Name="bones/5/bone_name" Value='&amp;"Bone5"' />
+      <x:Prop Name="bones/5/bone_parent" Value='&amp;"Bone4"' />
+      <x:Prop Name="bones/5/group" Value='&amp;"Group5"' />
+      <x:Prop Name="bones/5/handle_offset" Value="Vector2(0.25, 0.1)" />
+      <x:Prop
+          Name="bones/5/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)" />
+      <x:Prop Name="bones/5/require" Value="false" />
+      <x:Prop Name="bones/5/tail_direction" Value="2" />
+      <x:Prop Name="bones/6/bone_name" Value='&amp;"Bone6"' />
+      <x:Prop Name="bones/6/bone_parent" Value='&amp;"Bone5"' />
+      <x:Prop Name="bones/6/bone_tail" Value='&amp;"Bone7"' />
+      <x:Prop Name="bones/6/group" Value='&amp;"Group6"' />
+      <x:Prop Name="bones/6/handle_offset" Value="Vector2(0.3, 0.1)" />
+      <x:Prop
+          Name="bones/6/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)" />
+      <x:Prop Name="bones/6/require" Value="true" />
+      <x:Prop Name="bones/6/tail_direction" Value="1" />
+      <x:Prop Name="bones/7/bone_name" Value='&amp;"Bone7"' />
+      <x:Prop Name="bones/7/bone_parent" Value='&amp;"Bone6"' />
+      <x:Prop Name="bones/7/group" Value='&amp;"Group7"' />
+      <x:Prop Name="bones/7/handle_offset" Value="Vector2(0.35, 0.1)" />
+      <x:Prop
+          Name="bones/7/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)" />
+      <x:Prop Name="bones/7/require" Value="false" />
+      <x:Prop Name="bones/7/tail_direction" Value="2" />
+      <x:Prop Name="bones/8/bone_name" Value='&amp;"Bone8"' />
+      <x:Prop Name="bones/8/bone_parent" Value='&amp;"Bone7"' />
+      <x:Prop Name="bones/8/group" Value='&amp;"Group8"' />
+      <x:Prop Name="bones/8/handle_offset" Value="Vector2(0.4, 0.1)" />
+      <x:Prop
+          Name="bones/8/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)" />
+      <x:Prop Name="bones/8/require" Value="true" />
+      <x:Prop Name="bones/8/tail_direction" Value="2" />
+      <x:Prop Name="bones/9/bone_name" Value='&amp;"Bone9"' />
+      <x:Prop Name="bones/9/bone_parent" Value='&amp;"Bone8"' />
+      <x:Prop Name="bones/9/bone_tail" Value='&amp;"Bone10"' />
+      <x:Prop Name="bones/9/group" Value='&amp;"Group9"' />
+      <x:Prop Name="bones/9/handle_offset" Value="Vector2(0.45, 0.1)" />
+      <x:Prop
+          Name="bones/9/reference_pose"
+          Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)" />
+      <x:Prop Name="bones/9/require" Value="false" />
+      <x:Prop Name="bones/9/tail_direction" Value="1" />
+      <x:Prop Name="groups/0/group_name" Value='&amp;"Group0"' />
+      <x:Prop Name="groups/0/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/1/group_name" Value='&amp;"Group1"' />
+      <x:Prop Name="groups/1/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/10/group_name" Value='&amp;"Group10"' />
+      <x:Prop Name="groups/10/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/11/group_name" Value='&amp;"Group11"' />
+      <x:Prop Name="groups/11/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/2/group_name" Value='&amp;"Group2"' />
+      <x:Prop Name="groups/2/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/3/group_name" Value='&amp;"Group3"' />
+      <x:Prop Name="groups/3/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/4/group_name" Value='&amp;"Group4"' />
+      <x:Prop Name="groups/4/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/5/group_name" Value='&amp;"Group5"' />
+      <x:Prop Name="groups/5/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/6/group_name" Value='&amp;"Group6"' />
+      <x:Prop Name="groups/6/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/7/group_name" Value='&amp;"Group7"' />
+      <x:Prop Name="groups/7/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/8/group_name" Value='&amp;"Group8"' />
+      <x:Prop Name="groups/8/texture" Value="{GradientTexture2D1}" />
+      <x:Prop Name="groups/9/group_name" Value='&amp;"Group9"' />
+      <x:Prop Name="groups/9/texture" Value="{GradientTexture2D1}" />
+    </SkeletonProfile>
+    <BoneMap
+        x:Key="BoneMap1"
+        BoneMap.Bone0='&amp;"skel_0"'
+        BoneMap.Bone1='&amp;"skel_1"'
+        BoneMap.Bone10='&amp;"skel_10"'
+        BoneMap.Bone11='&amp;"skel_11"'
+        BoneMap.Bone2='&amp;"skel_2"'
+        BoneMap.Bone3='&amp;"skel_3"'
+        BoneMap.Bone4='&amp;"skel_4"'
+        BoneMap.Bone5='&amp;"skel_5"'
+        BoneMap.Bone6='&amp;"skel_6"'
+        BoneMap.Bone7='&amp;"skel_7"'
+        BoneMap.Bone8='&amp;"skel_8"'
+        BoneMap.Bone9='&amp;"skel_9"'
+        Profile="{SkeletonProfile1}" />
+  </x:Resources>
+  <x:Prop Name="Type0/base_type" Value='&amp;"Label"' />
+  <x:Prop Name="Type0/colors/font_color" Value="Color(0, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type0/constants/separation" Value="1" />
+  <x:Prop Name="Type0/font_sizes/font_size" Value="10" />
+  <x:Prop Name="Type0/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type0/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type0/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type1/base_type" Value='&amp;"Button"' />
+  <x:Prop Name="Type1/colors/font_color" Value="Color(0.08, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type1/constants/separation" Value="2" />
+  <x:Prop Name="Type1/font_sizes/font_size" Value="11" />
+  <x:Prop Name="Type1/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type1/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type1/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type10/base_type" Value='&amp;"Label"' />
+  <x:Prop Name="Type10/colors/font_color" Value="Color(0.8, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type10/constants/separation" Value="11" />
+  <x:Prop Name="Type10/font_sizes/font_size" Value="20" />
+  <x:Prop Name="Type10/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type10/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type10/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type11/base_type" Value='&amp;"Button"' />
+  <x:Prop Name="Type11/colors/font_color" Value="Color(0.88, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type11/constants/separation" Value="12" />
+  <x:Prop Name="Type11/font_sizes/font_size" Value="21" />
+  <x:Prop Name="Type11/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type11/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type11/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type2/base_type" Value='&amp;"Label"' />
+  <x:Prop Name="Type2/colors/font_color" Value="Color(0.16, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type2/constants/separation" Value="3" />
+  <x:Prop Name="Type2/font_sizes/font_size" Value="12" />
+  <x:Prop Name="Type2/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type2/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type2/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type3/base_type" Value='&amp;"Button"' />
+  <x:Prop Name="Type3/colors/font_color" Value="Color(0.24, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type3/constants/separation" Value="4" />
+  <x:Prop Name="Type3/font_sizes/font_size" Value="13" />
+  <x:Prop Name="Type3/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type3/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type3/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type4/base_type" Value='&amp;"Label"' />
+  <x:Prop Name="Type4/colors/font_color" Value="Color(0.32, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type4/constants/separation" Value="5" />
+  <x:Prop Name="Type4/font_sizes/font_size" Value="14" />
+  <x:Prop Name="Type4/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type4/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type4/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type5/base_type" Value='&amp;"Button"' />
+  <x:Prop Name="Type5/colors/font_color" Value="Color(0.4, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type5/constants/separation" Value="6" />
+  <x:Prop Name="Type5/font_sizes/font_size" Value="15" />
+  <x:Prop Name="Type5/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type5/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type5/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type6/base_type" Value='&amp;"Label"' />
+  <x:Prop Name="Type6/colors/font_color" Value="Color(0.48, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type6/constants/separation" Value="7" />
+  <x:Prop Name="Type6/font_sizes/font_size" Value="16" />
+  <x:Prop Name="Type6/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type6/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type6/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type7/base_type" Value='&amp;"Button"' />
+  <x:Prop Name="Type7/colors/font_color" Value="Color(0.56, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type7/constants/separation" Value="8" />
+  <x:Prop Name="Type7/font_sizes/font_size" Value="17" />
+  <x:Prop Name="Type7/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type7/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type7/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type8/base_type" Value='&amp;"Label"' />
+  <x:Prop Name="Type8/colors/font_color" Value="Color(0.64, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type8/constants/separation" Value="9" />
+  <x:Prop Name="Type8/font_sizes/font_size" Value="18" />
+  <x:Prop Name="Type8/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type8/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type8/styles/normal" Value="{StyleBoxFlat1}" />
+  <x:Prop Name="Type9/base_type" Value='&amp;"Button"' />
+  <x:Prop Name="Type9/colors/font_color" Value="Color(0.72, 0.5, 0.25, 1)" />
+  <x:Prop Name="Type9/constants/separation" Value="10" />
+  <x:Prop Name="Type9/font_sizes/font_size" Value="19" />
+  <x:Prop Name="Type9/fonts/font" Value="{FontFile1}" />
+  <x:Prop Name="Type9/icons/icon" Value="{GradientTexture2D1}" />
+  <x:Prop Name="Type9/styles/normal" Value="{StyleBoxFlat1}" />
+</Theme>

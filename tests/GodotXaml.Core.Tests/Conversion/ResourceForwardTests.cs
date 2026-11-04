@@ -18,6 +18,7 @@ public sealed class ResourceForwardTests
         new(
             "animation_nodes",
             "animation_tracks",
+            "audio_resources",
             "gradient_texture",
             "material",
             "packed_bytes",
@@ -25,6 +26,7 @@ public sealed class ResourceForwardTests
             "replication_properties",
             "script_class",
             "skeleton_modification_singles",
+            "theme_font_resources",
             "tile_set_layers",
             "tile_set_patterns",
             "visual_shader_canvas_item",

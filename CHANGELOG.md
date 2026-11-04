@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Converting back to `.tres`, audio bus layouts, EQ bands, stream randomizers, label outlines, skins, skeleton profiles and font caches keep Godot's order past the tenth entry.
 - Converting back to `.tres`, a TileSetAtlasSource keeps each tile's keys together in Godot's order, tiles by coordinates and alternatives by id.
 - Converting back to `.tres`, a VisualShader's `flags/` keep the order Godot saves for its shader mode, not always Spatial's.
 - Converting back to `.tscn`, a Control inside a Container gets the `layout_mode` Godot saves for it, and a TabContainer's tabs and a GraphNode's slots keep Godot's order past the tenth.

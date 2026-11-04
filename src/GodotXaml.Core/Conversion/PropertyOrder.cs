@@ -23,7 +23,8 @@ namespace GodotXaml.Core.Conversion;
 /// whose key order depends on a sibling property (a VisualShader's flags/, listed in the order its mode registers them)
 /// reads that property from the section once per sort: the last one holding an integer, else 0; a value the family has no
 /// order for keeps source order. A family whose order runs deeper than that (a TileSetAtlasSource's tiles, alternatives and
-/// TileData keys) is placed by its row's ranker, which reads the class list of the class the row names.
+/// TileData keys, an AudioBusLayout's buses and effects) is placed by its row's ranker, which reads the class list of the
+/// class the row names when it names one; the metadata must hold that class only then.
 /// </summary>
 internal sealed class PropertyOrder(GodotMetadata metadata)
 {
@@ -255,8 +256,9 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         return families.ToImmutable();
     }
 
-    // The class list a ranked family places keys by, from the metadata in use; empty for a family that names none. A metadata
-    // without the named class cannot place the family's keys, which is an error in the metadata, not an order.
+    // The class list a ranked family places keys by, from the metadata in use; empty for a family whose ranker reads none
+    // (ListedBy null). Only a named class is required: a metadata without it cannot place the family's keys, which is an
+    // error in the metadata, not an order.
     private ImmutableArray<(string Key, int Index)> ClassKeysOf(string declaring, DynamicPropertyFamilies.DynamicFamily family)
     {
         if (family.ListedBy is not { } listedBy)

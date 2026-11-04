@@ -45,6 +45,26 @@ internal static partial class UnorderedNames
             ReorderTiles
         ),
         new(
+            "FontFile support overrides",
+            // FontFile::_get_property_list lists language_support_override/ and script_support_override/ from
+            // get_language_support_overrides and get_script_support_overrides, which walk their HashMaps (font.cpp) in the order
+            // the overrides were set, which the text keeps no record of.
+            (section, name) =>
+                section.Class == "FontFile"
+                && (
+                    name.StartsWith("language_support_override/", StringComparison.Ordinal)
+                    || name.StartsWith("script_support_override/", StringComparison.Ordinal)
+                ),
+            null
+        ),
+        new(
+            "BoneMap bone map",
+            // BoneMap::_get_property_list walks its bone_map (a HashMap, bone_map.cpp) in the order the profile's bones were
+            // added, which the text keeps no record of.
+            (section, name) => section.Class == "BoneMap" && name.StartsWith("bone_map/", StringComparison.Ordinal),
+            null
+        ),
+        new(
             "quoted_name script exports",
             // A script's own _get_property_list order; neither the class metadata nor a family row lists these names.
             (section, name) => section.Fixture == "quoted_name" && section.Root && IsScriptExport(section.Class, name),

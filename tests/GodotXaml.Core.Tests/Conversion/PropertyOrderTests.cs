@@ -2086,6 +2086,266 @@ public sealed class PropertyOrderTests
         Assert.Equal(["tracks/5/type", "tracks/99999999999999999999/type"], PropertyNames(resource.ResourceProperties));
     }
 
+    // AudioBusLayout::_get_property_list (audio_server.cpp) lists a bus's keys name, solo, mute, bypass_fx, volume_db and
+    // send, then each effect's effect and enabled, the buses and each bus's effects in numeric order past ten.
+    [Fact]
+    public void AnAudioBusListsItsNameFirstAndItsEffectsInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <AudioBusLayout {{X}}>
+              <x:Prop Name="bus/10/bypass_fx" Value="true" />
+              <x:Prop Name="bus/10/mute" Value="true" />
+              <x:Prop Name="bus/10/name" Value='&amp;"Ten"' />
+              <x:Prop Name="bus/10/send" Value='&amp;"Master"' />
+              <x:Prop Name="bus/10/solo" Value="true" />
+              <x:Prop Name="bus/10/volume_db" Value="-3.0" />
+              <x:Prop Name="bus/2/effect/0/effect" Value='Resource("res://a.tres")' />
+              <x:Prop Name="bus/2/effect/0/enabled" Value="false" />
+              <x:Prop Name="bus/2/effect/10/effect" Value='Resource("res://b.tres")' />
+              <x:Prop Name="bus/2/effect/10/enabled" Value="false" />
+              <x:Prop Name="bus/2/effect/2/effect" Value='Resource("res://c.tres")' />
+              <x:Prop Name="bus/2/effect/2/enabled" Value="false" />
+              <x:Prop Name="bus/2/mute" Value="true" />
+              <x:Prop Name="bus/2/name" Value='&amp;"Two"' />
+              <x:Prop Name="bus/2/send" Value='&amp;"Master"' />
+            </AudioBusLayout>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "bus/2/name",
+                "bus/2/mute",
+                "bus/2/send",
+                "bus/2/effect/0/effect",
+                "bus/2/effect/0/enabled",
+                "bus/2/effect/2/effect",
+                "bus/2/effect/2/enabled",
+                "bus/2/effect/10/effect",
+                "bus/2/effect/10/enabled",
+                "bus/10/name",
+                "bus/10/solo",
+                "bus/10/mute",
+                "bus/10/bypass_fx",
+                "bus/10/volume_db",
+                "bus/10/send",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // AudioEffectEQ::_get_property_list (audio_effect_eq.cpp) lists its bands in the band list's order, which every preset
+    // (eq_filter.cpp, EQ::set_preset_band_mode) gives by rising frequency.
+    [Fact]
+    public void AnEqualizerListsItsBandsByFrequency()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <AudioEffectEQ6 {{X}}>
+              <x:Prop Name="band_db/10000_hz" Value="-6.0" />
+              <x:Prop Name="band_db/1000_hz" Value="-4.0" />
+              <x:Prop Name="band_db/100_hz" Value="-2.0" />
+              <x:Prop Name="band_db/3200_hz" Value="-5.0" />
+              <x:Prop Name="band_db/320_hz" Value="-3.0" />
+              <x:Prop Name="band_db/32_hz" Value="-1.0" />
+            </AudioEffectEQ6>
+            """
+        );
+
+        Assert.Equal(
+            ["band_db/32_hz", "band_db/100_hz", "band_db/320_hz", "band_db/1000_hz", "band_db/3200_hz", "band_db/10000_hz"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // AudioStreamRandomizer::_get_property_list (PropertyListHelper, audio_stream.cpp) lists a stream's keys stream and
+    // weight, the streams in numeric order past ten.
+    [Fact]
+    public void ARandomizerListsItsStreamsInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <AudioStreamRandomizer {{X}} StreamsCount="12">
+              <x:Prop Name="stream_10/weight" Value="2.0" />
+              <x:Prop Name="stream_10/stream" Value='Resource("res://a.tres")' />
+              <x:Prop Name="stream_2/weight" Value="3.0" />
+              <x:Prop Name="stream_2/stream" Value='Resource("res://a.tres")' />
+            </AudioStreamRandomizer>
+            """
+        );
+
+        Assert.Equal(
+            ["streams_count", "stream_2/stream", "stream_2/weight", "stream_10/stream", "stream_10/weight"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // LabelSettings::_get_property_list (PropertyListHelper, label_settings.cpp) lists a stacked outline's keys size and
+    // color and a stacked shadow's keys offset, color and outline_size, each family's entries in numeric order past ten.
+    [Fact]
+    public void LabelSettingsListStackedOutlinesAndShadowsInTheirKeyOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <LabelSettings {{X}} StackedOutlineCount="12" StackedShadowCount="12">
+              <x:Prop Name="stacked_outline_10/color" Value="Color(1, 0, 0, 1)" />
+              <x:Prop Name="stacked_outline_10/size" Value="3" />
+              <x:Prop Name="stacked_outline_2/color" Value="Color(1, 0, 0, 1)" />
+              <x:Prop Name="stacked_outline_2/size" Value="4" />
+              <x:Prop Name="stacked_shadow_10/color" Value="Color(1, 0, 0, 1)" />
+              <x:Prop Name="stacked_shadow_10/offset" Value="Vector2(2, 2)" />
+              <x:Prop Name="stacked_shadow_10/outline_size" Value="5" />
+              <x:Prop Name="stacked_shadow_2/color" Value="Color(1, 0, 0, 1)" />
+              <x:Prop Name="stacked_shadow_2/offset" Value="Vector2(2, 2)" />
+              <x:Prop Name="stacked_shadow_2/outline_size" Value="6" />
+            </LabelSettings>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "stacked_outline_count",
+                "stacked_shadow_count",
+                "stacked_outline_2/size",
+                "stacked_outline_2/color",
+                "stacked_outline_10/size",
+                "stacked_outline_10/color",
+                "stacked_shadow_2/offset",
+                "stacked_shadow_2/color",
+                "stacked_shadow_2/outline_size",
+                "stacked_shadow_10/offset",
+                "stacked_shadow_10/color",
+                "stacked_shadow_10/outline_size",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // FontFile::_get_property_list (font.cpp) lists a cache entry's keys variation_coordinates, face_index, embolden,
+    // transform, spacing_top, spacing_bottom, spacing_space, spacing_glyph and baseline_offset, then each size's ascent,
+    // descent, underline_position, underline_thickness and scale; the entries in numeric order past ten, the sizes by number.
+    [Fact]
+    public void AFontCacheEntryListsItsKeysThenEachSizesMetrics()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <FontFile {{X}}>
+              <x:Prop Name="cache/10/16/0/ascent" Value="1.0" />
+              <x:Prop Name="cache/10/face_index" Value="2" />
+              <x:Prop Name="cache/10/spacing_top" Value="3" />
+              <x:Prop Name="cache/2/16/0/ascent" Value="4.0" />
+              <x:Prop Name="cache/2/16/0/scale" Value="2.0" />
+              <x:Prop Name="cache/2/8/0/descent" Value="5.0" />
+              <x:Prop Name="cache/2/8/0/scale" Value="3.0" />
+              <x:Prop Name="cache/2/8/0/underline_thickness" Value="0.5" />
+              <x:Prop Name="cache/2/8/2/ascent" Value="6.0" />
+              <x:Prop Name="cache/2/baseline_offset" Value="0.1" />
+              <x:Prop Name="cache/2/embolden" Value="0.2" />
+              <x:Prop Name="cache/2/face_index" Value="1" />
+              <x:Prop Name="cache/2/spacing_glyph" Value="4" />
+              <x:Prop Name="cache/2/spacing_top" Value="1" />
+              <x:Prop Name="cache/2/transform" Value="Transform2D(1, 0, 0, 1, 2, 0)" />
+              <x:Prop Name="cache/2/variation_coordinates" Value="{}" />
+            </FontFile>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "cache/2/variation_coordinates",
+                "cache/2/face_index",
+                "cache/2/embolden",
+                "cache/2/transform",
+                "cache/2/spacing_top",
+                "cache/2/spacing_glyph",
+                "cache/2/baseline_offset",
+                "cache/2/8/0/descent",
+                "cache/2/8/0/underline_thickness",
+                "cache/2/8/0/scale",
+                "cache/2/8/2/ascent",
+                "cache/2/16/0/ascent",
+                "cache/2/16/0/scale",
+                "cache/10/face_index",
+                "cache/10/spacing_top",
+                "cache/10/16/0/ascent",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // Skin::_get_property_list (skin.cpp) lists bind_count, then a bind's keys name, bone and pose, the binds in numeric
+    // order past ten.
+    [Fact]
+    public void ASkinListsItsBindsNameFirstInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <Skin {{X}} bind_count="12">
+              <x:Prop Name="bind/10/bone" Value="3" />
+              <x:Prop Name="bind/10/name" Value='&amp;"ten"' />
+              <x:Prop Name="bind/10/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)" />
+              <x:Prop Name="bind/2/bone" Value="4" />
+              <x:Prop Name="bind/2/name" Value='&amp;"two"' />
+              <x:Prop Name="bind/2/pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)" />
+            </Skin>
+            """
+        );
+
+        Assert.Equal(
+            ["bind_count", "bind/2/name", "bind/2/bone", "bind/2/pose", "bind/10/name", "bind/10/bone", "bind/10/pose"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // SkeletonProfile::_get_property_list (skeleton_profile.cpp) lists a group's keys group_name and texture, then a bone's
+    // keys bone_name, bone_parent, tail_direction, bone_tail, reference_pose, handle_offset, group and require, the groups
+    // and the bones in numeric order past ten.
+    [Fact]
+    public void ASkeletonProfileListsItsGroupsAndBonesInTheirKeyOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <SkeletonProfile {{X}} BoneSize="12" GroupSize="12">
+              <x:Prop Name="bones/10/bone_name" Value='&amp;"Ten"' />
+              <x:Prop Name="bones/10/bone_parent" Value='&amp;"Two"' />
+              <x:Prop Name="bones/10/bone_tail" Value='&amp;"Two"' />
+              <x:Prop Name="bones/10/group" Value='&amp;"Body"' />
+              <x:Prop Name="bones/10/handle_offset" Value="Vector2(0.5, 0.5)" />
+              <x:Prop Name="bones/10/reference_pose" Value="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)" />
+              <x:Prop Name="bones/10/require" Value="true" />
+              <x:Prop Name="bones/10/tail_direction" Value="1" />
+              <x:Prop Name="bones/2/bone_name" Value='&amp;"Two"' />
+              <x:Prop Name="bones/2/tail_direction" Value="2" />
+              <x:Prop Name="groups/10/group_name" Value='&amp;"Body"' />
+              <x:Prop Name="groups/10/texture" Value='Resource("res://a.tres")' />
+              <x:Prop Name="groups/2/group_name" Value='&amp;"Face"' />
+            </SkeletonProfile>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "group_size",
+                "bone_size",
+                "groups/2/group_name",
+                "groups/10/group_name",
+                "groups/10/texture",
+                "bones/2/bone_name",
+                "bones/2/tail_direction",
+                "bones/10/bone_name",
+                "bones/10/bone_parent",
+                "bones/10/tail_direction",
+                "bones/10/bone_tail",
+                "bones/10/reference_pose",
+                "bones/10/handle_offset",
+                "bones/10/group",
+                "bones/10/require",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
     // TabBar::_get_property_list (PropertyListHelper, tab_bar.cpp) lists a tab's keys title, tooltip, icon and disabled,
     // the tabs in numeric order past ten.
     [Fact]

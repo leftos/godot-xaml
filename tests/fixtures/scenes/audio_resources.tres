@@ -1,0 +1,338 @@
+[gd_resource type="AudioBusLayout" format=3]
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq000"]
+band_db/32_hz = -1.0
+band_db/100_hz = -2.0
+band_db/320_hz = -3.0
+band_db/1000_hz = -4.0
+band_db/3200_hz = -5.0
+band_db/10000_hz = -6.0
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq001"]
+band_db/32_hz = -1.5
+band_db/100_hz = -2.5
+band_db/320_hz = -3.5
+band_db/1000_hz = -4.5
+band_db/3200_hz = -5.5
+band_db/10000_hz = -6.5
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq010"]
+band_db/32_hz = -6.0
+band_db/100_hz = -7.0
+band_db/320_hz = -8.0
+band_db/1000_hz = -9.0
+band_db/3200_hz = -10.0
+band_db/10000_hz = -11.0
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq011"]
+band_db/32_hz = -6.5
+band_db/100_hz = -7.5
+band_db/320_hz = -8.5
+band_db/1000_hz = -9.5
+band_db/3200_hz = -10.5
+band_db/10000_hz = -11.5
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq002"]
+band_db/32_hz = -2.0
+band_db/100_hz = -3.0
+band_db/320_hz = -4.0
+band_db/1000_hz = -5.0
+band_db/3200_hz = -6.0
+band_db/10000_hz = -7.0
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq003"]
+band_db/32_hz = -2.5
+band_db/100_hz = -3.5
+band_db/320_hz = -4.5
+band_db/1000_hz = -5.5
+band_db/3200_hz = -6.5
+band_db/10000_hz = -7.5
+
+[sub_resource type="AudioEffectEQ10" id="AudioEffectEQ10_eq004"]
+band_db/31_hz = -3.0
+band_db/62_hz = -4.0
+band_db/125_hz = -5.0
+band_db/250_hz = -6.0
+band_db/500_hz = -7.0
+band_db/1000_hz = -8.0
+band_db/2000_hz = -9.0
+band_db/4000_hz = -10.0
+band_db/8000_hz = -11.0
+band_db/16000_hz = -12.0
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq005"]
+band_db/32_hz = -3.5
+band_db/100_hz = -4.5
+band_db/320_hz = -5.5
+band_db/1000_hz = -6.5
+band_db/3200_hz = -7.5
+band_db/10000_hz = -8.5
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq006"]
+band_db/32_hz = -4.0
+band_db/100_hz = -5.0
+band_db/320_hz = -6.0
+band_db/1000_hz = -7.0
+band_db/3200_hz = -8.0
+band_db/10000_hz = -9.0
+
+[sub_resource type="AudioEffectEQ21" id="AudioEffectEQ21_eq007"]
+band_db/22_hz = -4.5
+band_db/32_hz = -5.5
+band_db/44_hz = -6.5
+band_db/63_hz = -7.5
+band_db/90_hz = -8.5
+band_db/125_hz = -9.5
+band_db/175_hz = -10.5
+band_db/250_hz = -11.5
+band_db/350_hz = -12.5
+band_db/500_hz = -13.5
+band_db/700_hz = -14.5
+band_db/1000_hz = -15.5
+band_db/1400_hz = -16.5
+band_db/2000_hz = -17.5
+band_db/2800_hz = -18.5
+band_db/4000_hz = -19.5
+band_db/5600_hz = -20.5
+band_db/8000_hz = -21.5
+band_db/11000_hz = -22.5
+band_db/16000_hz = -23.5
+band_db/22000_hz = -24.5
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq008"]
+band_db/32_hz = -5.0
+band_db/100_hz = -6.0
+band_db/320_hz = -7.0
+band_db/1000_hz = -8.0
+band_db/3200_hz = -9.0
+band_db/10000_hz = -10.0
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq009"]
+band_db/32_hz = -5.5
+band_db/100_hz = -6.5
+band_db/320_hz = -7.5
+band_db/1000_hz = -8.5
+band_db/3200_hz = -9.5
+band_db/10000_hz = -10.5
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq021"]
+band_db/32_hz = -11.5
+band_db/100_hz = -12.5
+band_db/320_hz = -13.5
+band_db/1000_hz = -14.5
+band_db/3200_hz = -15.5
+band_db/10000_hz = -16.5
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq013"]
+band_db/32_hz = -7.5
+band_db/100_hz = -8.5
+band_db/320_hz = -9.5
+band_db/1000_hz = -10.5
+band_db/3200_hz = -11.5
+band_db/10000_hz = -12.5
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_eq017"]
+band_db/32_hz = -9.5
+band_db/100_hz = -10.5
+band_db/320_hz = -11.5
+band_db/1000_hz = -12.5
+band_db/3200_hz = -13.5
+band_db/10000_hz = -14.5
+
+[sub_resource type="AudioStreamOggVorbis" id="AudioStreamOggVorbis_r4nd0"]
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_r4nd0"]
+streams_count = 12
+stream_0/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_0/weight = 0.5
+stream_1/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_1/weight = 1.5
+stream_2/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_2/weight = 2.5
+stream_3/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_3/weight = 3.5
+stream_4/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_4/weight = 4.5
+stream_5/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_5/weight = 5.5
+stream_6/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_6/weight = 6.5
+stream_7/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_7/weight = 7.5
+stream_8/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_8/weight = 8.5
+stream_9/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_9/weight = 9.5
+stream_10/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_10/weight = 10.5
+stream_11/stream = SubResource("AudioStreamOggVorbis_r4nd0")
+stream_11/weight = 11.5
+
+[sub_resource type="LabelSettings" id="LabelSettings_l4b3l"]
+stacked_outline_count = 12
+stacked_shadow_count = 12
+stacked_outline_0/size = 2
+stacked_outline_0/color = Color(0, 0.5, 0.25, 0.75)
+stacked_outline_1/size = 3
+stacked_outline_1/color = Color(0.08, 0.5, 0.25, 0.75)
+stacked_outline_2/size = 4
+stacked_outline_2/color = Color(0.16, 0.5, 0.25, 0.75)
+stacked_outline_3/size = 5
+stacked_outline_3/color = Color(0.24, 0.5, 0.25, 0.75)
+stacked_outline_4/size = 6
+stacked_outline_4/color = Color(0.32, 0.5, 0.25, 0.75)
+stacked_outline_5/size = 7
+stacked_outline_5/color = Color(0.4, 0.5, 0.25, 0.75)
+stacked_outline_6/size = 8
+stacked_outline_6/color = Color(0.48, 0.5, 0.25, 0.75)
+stacked_outline_7/size = 9
+stacked_outline_7/color = Color(0.56, 0.5, 0.25, 0.75)
+stacked_outline_8/size = 10
+stacked_outline_8/color = Color(0.64, 0.5, 0.25, 0.75)
+stacked_outline_9/size = 11
+stacked_outline_9/color = Color(0.72, 0.5, 0.25, 0.75)
+stacked_outline_10/size = 12
+stacked_outline_10/color = Color(0.8, 0.5, 0.25, 0.75)
+stacked_outline_11/size = 13
+stacked_outline_11/color = Color(0.88, 0.5, 0.25, 0.75)
+stacked_shadow_0/offset = Vector2(2, -1)
+stacked_shadow_0/color = Color(0.5, 0, 0.25, 0.5)
+stacked_shadow_0/outline_size = 1
+stacked_shadow_1/offset = Vector2(3, -2)
+stacked_shadow_1/color = Color(0.5, 0.08, 0.25, 0.5)
+stacked_shadow_1/outline_size = 2
+stacked_shadow_2/offset = Vector2(4, -3)
+stacked_shadow_2/color = Color(0.5, 0.16, 0.25, 0.5)
+stacked_shadow_2/outline_size = 3
+stacked_shadow_3/offset = Vector2(5, -4)
+stacked_shadow_3/color = Color(0.5, 0.24, 0.25, 0.5)
+stacked_shadow_3/outline_size = 4
+stacked_shadow_4/offset = Vector2(6, -5)
+stacked_shadow_4/color = Color(0.5, 0.32, 0.25, 0.5)
+stacked_shadow_4/outline_size = 5
+stacked_shadow_5/offset = Vector2(7, -6)
+stacked_shadow_5/color = Color(0.5, 0.4, 0.25, 0.5)
+stacked_shadow_5/outline_size = 6
+stacked_shadow_6/offset = Vector2(8, -7)
+stacked_shadow_6/color = Color(0.5, 0.48, 0.25, 0.5)
+stacked_shadow_6/outline_size = 7
+stacked_shadow_7/offset = Vector2(9, -8)
+stacked_shadow_7/color = Color(0.5, 0.56, 0.25, 0.5)
+stacked_shadow_7/outline_size = 8
+stacked_shadow_8/offset = Vector2(10, -9)
+stacked_shadow_8/color = Color(0.5, 0.64, 0.25, 0.5)
+stacked_shadow_8/outline_size = 9
+stacked_shadow_9/offset = Vector2(11, -10)
+stacked_shadow_9/color = Color(0.5, 0.72, 0.25, 0.5)
+stacked_shadow_9/outline_size = 10
+stacked_shadow_10/offset = Vector2(12, -11)
+stacked_shadow_10/color = Color(0.5, 0.8, 0.25, 0.5)
+stacked_shadow_10/outline_size = 11
+stacked_shadow_11/offset = Vector2(13, -12)
+stacked_shadow_11/color = Color(0.5, 0.88, 0.25, 0.5)
+stacked_shadow_11/outline_size = 12
+
+[resource]
+bus/1/name = &"Bus0"
+bus/1/solo = true
+bus/1/mute = false
+bus/1/bypass_fx = false
+bus/1/volume_db = -1.5
+bus/1/send = &"Master"
+bus/1/effect/0/effect = SubResource("AudioEffectEQ6_eq000")
+bus/1/effect/0/enabled = true
+bus/1/effect/1/effect = SubResource("AudioEffectEQ6_eq001")
+bus/1/effect/1/enabled = false
+bus/1/effect/2/effect = SubResource("AudioEffectEQ6_eq002")
+bus/1/effect/2/enabled = true
+bus/1/effect/3/effect = SubResource("AudioEffectEQ6_eq003")
+bus/1/effect/3/enabled = true
+bus/1/effect/4/effect = SubResource("AudioEffectEQ10_eq004")
+bus/1/effect/4/enabled = false
+bus/1/effect/5/effect = SubResource("AudioEffectEQ6_eq005")
+bus/1/effect/5/enabled = true
+bus/1/effect/6/effect = SubResource("AudioEffectEQ6_eq006")
+bus/1/effect/6/enabled = true
+bus/1/effect/7/effect = SubResource("AudioEffectEQ21_eq007")
+bus/1/effect/7/enabled = false
+bus/1/effect/8/effect = SubResource("AudioEffectEQ6_eq008")
+bus/1/effect/8/enabled = true
+bus/1/effect/9/effect = SubResource("AudioEffectEQ6_eq009")
+bus/1/effect/9/enabled = true
+bus/1/effect/10/effect = SubResource("AudioEffectEQ6_eq010")
+bus/1/effect/10/enabled = false
+bus/1/effect/11/effect = SubResource("AudioEffectEQ6_eq011")
+bus/1/effect/11/enabled = true
+bus/2/name = &"Bus1"
+bus/2/solo = false
+bus/2/mute = true
+bus/2/bypass_fx = false
+bus/2/volume_db = -3.0
+bus/2/send = &"Bus0"
+bus/2/effect/0/effect = SubResource("AudioEffectEQ6_eq013")
+bus/2/effect/0/enabled = true
+bus/3/name = &"Bus2"
+bus/3/solo = false
+bus/3/mute = false
+bus/3/bypass_fx = true
+bus/3/volume_db = -4.5
+bus/3/send = &"Bus1"
+bus/4/name = &"Bus3"
+bus/4/solo = true
+bus/4/mute = true
+bus/4/bypass_fx = false
+bus/4/volume_db = -6.0
+bus/4/send = &"Bus2"
+bus/5/name = &"Bus4"
+bus/5/solo = false
+bus/5/mute = false
+bus/5/bypass_fx = false
+bus/5/volume_db = -7.5
+bus/5/send = &"Bus3"
+bus/6/name = &"Bus5"
+bus/6/solo = false
+bus/6/mute = true
+bus/6/bypass_fx = false
+bus/6/volume_db = -9.0
+bus/6/send = &"Bus4"
+bus/6/effect/0/effect = SubResource("AudioEffectEQ6_eq017")
+bus/6/effect/0/enabled = true
+bus/7/name = &"Bus6"
+bus/7/solo = true
+bus/7/mute = false
+bus/7/bypass_fx = true
+bus/7/volume_db = -10.5
+bus/7/send = &"Bus5"
+bus/8/name = &"Bus7"
+bus/8/solo = false
+bus/8/mute = true
+bus/8/bypass_fx = false
+bus/8/volume_db = -12.0
+bus/8/send = &"Bus6"
+bus/9/name = &"Bus8"
+bus/9/solo = false
+bus/9/mute = false
+bus/9/bypass_fx = false
+bus/9/volume_db = -13.5
+bus/9/send = &"Bus7"
+bus/10/name = &"Bus9"
+bus/10/solo = true
+bus/10/mute = true
+bus/10/bypass_fx = false
+bus/10/volume_db = -15.0
+bus/10/send = &"Bus8"
+bus/10/effect/0/effect = SubResource("AudioEffectEQ6_eq021")
+bus/10/effect/0/enabled = true
+bus/11/name = &"Bus10"
+bus/11/solo = false
+bus/11/mute = false
+bus/11/bypass_fx = true
+bus/11/volume_db = -16.5
+bus/11/send = &"Bus9"
+bus/12/name = &"Bus11"
+bus/12/solo = false
+bus/12/mute = true
+bus/12/bypass_fx = false
+bus/12/volume_db = -18.0
+bus/12/send = &"Bus10"
+metadata/extra = [SubResource("AudioStreamRandomizer_r4nd0"), SubResource("LabelSettings_l4b3l")]

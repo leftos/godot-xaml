@@ -255,6 +255,187 @@ static func visual_shader_modes(generator) -> String:
 	return ""
 
 
+## An AudioBusLayout of the Master bus and 12 more, each with its name, solo, mute, bypass_fx,
+## volume_db and send off their defaults, the first holding 12 EQ effects (EQ6s, an EQ10 and an
+## EQ21, every band's gain set, some disabled) and every fourth one an EQ6; its metadata/extra
+## holds an AudioStreamRandomizer of 12 weighted streams and a LabelSettings of 12 stacked
+## outlines and 12 stacked shadows, every key off its default. Every sub-resource id is pinned.
+## The layout is AudioServer.generate_bus_layout's, so the buses are added to the global server
+## and removed again before the case returns; the server must hold only the Master bus at the
+## start (a project's default_bus_layout would shift every bus), else the case fails. Key names:
+## AudioBusLayout::_get_property_list (audio_server.cpp: name, solo, mute, bypass_fx, volume_db,
+## send, then effect/M/effect and effect/M/enabled), AudioEffectEQ (audio_effect_eq.cpp,
+## band_db/<frequency>_hz by frequency), AudioStreamRandomizer (audio_stream.cpp: stream, weight)
+## and LabelSettings (label_settings.cpp: size, color; offset, color, outline_size).
+static func audio_resources(generator) -> String:
+	if AudioServer.bus_count != 1:
+		var message := (
+			"audio_resources needs an AudioServer with only the Master bus, found %d buses"
+			% AudioServer.bus_count
+		)
+		push_error(message)
+		return message
+	var first := AudioServer.bus_count
+	for index in 12:
+		var bus := first + index
+		AudioServer.add_bus(-1)
+		AudioServer.set_bus_name(bus, "Bus%d" % index)
+		AudioServer.set_bus_solo(bus, index % 3 == 0)
+		AudioServer.set_bus_mute(bus, index % 2 == 1)
+		AudioServer.set_bus_bypass_effects(bus, index % 4 == 2)
+		AudioServer.set_bus_volume_db(bus, -1.5 * (index + 1))
+		AudioServer.set_bus_send(bus, "Master" if index == 0 else "Bus%d" % (index - 1))
+		if index == 0:
+			for slot in 12:
+				AudioServer.add_bus_effect(bus, _equalizer(slot))
+				AudioServer.set_bus_effect_enabled(bus, slot, slot % 3 != 1)
+		elif index % 4 == 1:
+			AudioServer.add_bus_effect(bus, _equalizer(12 + index))
+	var layout := AudioServer.generate_bus_layout()
+	for index in 12:
+		AudioServer.remove_bus(AudioServer.bus_count - 1)
+
+	var stream := AudioStreamOggVorbis.new()
+	stream.resource_scene_unique_id = "AudioStreamOggVorbis_r4nd0"
+	var randomizer := AudioStreamRandomizer.new()
+	randomizer.resource_scene_unique_id = "AudioStreamRandomizer_r4nd0"
+	for index in 12:
+		randomizer.add_stream(index, stream, 0.5 + index)
+
+	var label := LabelSettings.new()
+	label.resource_scene_unique_id = "LabelSettings_l4b3l"
+	label.stacked_outline_count = 12
+	label.stacked_shadow_count = 12
+	for index in 12:
+		label.set_stacked_outline_size(index, index + 2)
+		label.set_stacked_outline_color(index, Color(0.08 * index, 0.5, 0.25, 0.75))
+		label.set_stacked_shadow_offset(index, Vector2(index + 2, -index - 1))
+		label.set_stacked_shadow_color(index, Color(0.5, 0.08 * index, 0.25, 0.5))
+		label.set_stacked_shadow_outline_size(index, index + 1)
+
+	layout.set_meta("extra", [randomizer, label])
+	return generator._save("audio_resources.tres", layout)
+
+
+## A Theme of 12 types, each with one value of every kind (a base type, an icon, a stylebox, a
+## font, a font size, a colour and a constant); its metadata/extra holds a FontFile with 12
+## language and 12 script support overrides and 12 cache entries (each off its defaults, with one
+## size's metrics), a Skin of 12 binds, a SkeletonProfile of 12 groups and 12 bones and a BoneMap
+## on that profile with all 12 bones mapped. Every sub-resource id is pinned. Key names:
+## Theme::_get_property_list (theme.cpp, one list sorted by name), FontFile (font.cpp: the
+## overrides, then per cache variation_coordinates to baseline_offset and per size ascent to
+## scale), Skin (skin.cpp: name, bone, pose), SkeletonProfile (skeleton_profile.cpp: group_name,
+## texture; bone_name to require) and BoneMap (bone_map.cpp, the profile's bones).
+static func theme_font_resources(generator) -> String:
+	var icon := _icon()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.2, 0.4, 0.6)
+	style.resource_scene_unique_id = "StyleBoxFlat_th3m3"
+	var font := _font_file()
+
+	var theme := Theme.new()
+	for index in 12:
+		var type := "Type%d" % index
+		theme.set_type_variation(type, "Label" if index % 2 == 0 else "Button")
+		theme.set_icon("icon", type, icon)
+		theme.set_stylebox("normal", type, style)
+		theme.set_font("font", type, font)
+		theme.set_font_size("font_size", type, 10 + index)
+		theme.set_color("font_color", type, Color(0.08 * index, 0.5, 0.25))
+		theme.set_constant("separation", type, index + 1)
+
+	var skin := Skin.new()
+	skin.resource_scene_unique_id = "Skin_sk1n5"
+	skin.set_bind_count(12)
+	for index in 12:
+		skin.set_bind_name(index, "bone_%d" % index)
+		skin.set_bind_bone(index, index + 1)
+		skin.set_bind_pose(index, Transform3D(Basis(), Vector3(index + 1, 0.5, -0.25)))
+
+	var profile := _skeleton_profile(icon)
+	var bone_map := BoneMap.new()
+	bone_map.resource_scene_unique_id = "BoneMap_b0n3m"
+	bone_map.profile = profile
+	for index in 12:
+		bone_map.set_skeleton_bone_name("Bone%d" % index, "skel_%d" % index)
+
+	theme.set_meta("extra", [font, skin, profile, bone_map])
+	return generator._save("theme_font_resources.tres", theme)
+
+
+## A FontFile, its id pinned: 12 language and 12 script support overrides, added out of name
+## order, and 12 cache entries, each off its defaults with one size's metrics (8 or 16).
+static func _font_file() -> FontFile:
+	var font := FontFile.new()
+	font.resource_scene_unique_id = "FontFile_f0nt5"
+	var languages := ["sr", "en", "de", "fr", "ja", "ar", "zh", "ru", "el", "he", "ko", "pt"]
+	var scripts := ["Latn", "Cyrl", "Arab", "Grek", "Hani", "Hebr", "Jpan", "Kore", "Deva", "Thai"]
+	scripts.append_array(["Armn", "Geor"])
+	for index in 12:
+		font.set_language_support_override(languages[index], index % 3 != 1)
+		font.set_script_support_override(scripts[index], index % 2 == 0)
+	for index in 12:
+		var size := 8 if index % 2 == 0 else 16
+		font.set_variation_coordinates(index, {"wght": 400 + 50 * index})
+		font.set_face_index(index, index + 1)
+		font.set_embolden(index, 0.1 * (index + 1))
+		font.set_transform(index, Transform2D(0.05 * (index + 1), Vector2.ZERO))
+		font.set_extra_spacing(index, TextServer.SPACING_TOP, index + 1)
+		font.set_extra_spacing(index, TextServer.SPACING_BOTTOM, index + 2)
+		font.set_extra_spacing(index, TextServer.SPACING_SPACE, index + 3)
+		font.set_extra_spacing(index, TextServer.SPACING_GLYPH, index + 4)
+		font.set_extra_baseline_offset(index, 0.05 * (index + 1))
+		font.set_cache_ascent(index, size, 10.0 + index)
+		font.set_cache_descent(index, size, 3.0 + index)
+		font.set_cache_underline_position(index, size, 1.5 + index)
+		font.set_cache_underline_thickness(index, size, 0.5 + index)
+		font.set_cache_scale(index, size, 1.25 + index)
+	return font
+
+
+## A plain SkeletonProfile, its id pinned: 12 groups with a name and the icon, 12 bones in a
+## chain, each key off its default (some tails a specific child, every other bone required).
+static func _skeleton_profile(icon: Texture2D) -> SkeletonProfile:
+	var profile := SkeletonProfile.new()
+	profile.resource_scene_unique_id = "SkeletonProfile_pr0f1"
+	profile.group_size = 12
+	profile.bone_size = 12
+	for index in 12:
+		profile.set_group_name(index, "Group%d" % index)
+		profile.set_texture(index, icon)
+	for index in 12:
+		profile.set_bone_name(index, "Bone%d" % index)
+		if index > 0:
+			profile.set_bone_parent(index, "Bone%d" % (index - 1))
+		if index % 3 == 0 and index < 11:
+			profile.set_tail_direction(index, SkeletonProfile.TAIL_DIRECTION_SPECIFIC_CHILD)
+			profile.set_bone_tail(index, "Bone%d" % (index + 1))
+		else:
+			profile.set_tail_direction(index, SkeletonProfile.TAIL_DIRECTION_END)
+		profile.set_reference_pose(index, Transform3D(Basis(), Vector3(0, 0.1 * (index + 1), 0)))
+		profile.set_handle_offset(index, Vector2(0.05 * index, 0.1))
+		profile.set_group(index, "Group%d" % index)
+		profile.set_required(index, index % 2 == 0)
+	return profile
+
+
+## The EQ effect of the given number, its id pinned and every band's gain off its default: an
+## EQ10 at 4, an EQ21 at 7, an EQ6 otherwise.
+static func _equalizer(number: int) -> AudioEffectEQ:
+	var effect: AudioEffectEQ
+	match number:
+		4:
+			effect = AudioEffectEQ10.new()
+		7:
+			effect = AudioEffectEQ21.new()
+		_:
+			effect = AudioEffectEQ6.new()
+	effect.resource_scene_unique_id = "%s_eq%03d" % [effect.get_class(), number]
+	for band in effect.get_band_count():
+		effect.set_band_gain_db(band, -1.0 - band - 0.5 * number)
+	return effect
+
+
 ## The texture the cases' icons share, its own and its gradient's sub-resource ids pinned.
 static func _icon() -> GradientTexture2D:
 	var gradient := Gradient.new()

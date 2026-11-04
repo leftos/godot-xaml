@@ -114,6 +114,10 @@ Resource fixtures are `.tres` (one main resource, extra classes as sub_resources
 11. `gui_tabs_graph.tscn` (scene): TabContainer (12 children), GraphNode (12 slots), AudioListener2D/3D (`current`), AudioStreamPlayer/2D/3D with an Ogg stream. Rows: TabContainer, GraphNode, AudioListener x2, AudioStreamPlayer x3 (the last three may move to the exception list if the probe fails).
 12. `theme_font_resources.tres` (resource): Theme main (one value per kind, 12 types) with a FontFile sub resource (support overrides, cache entries), a Skin, a SkeletonProfile, a BoneMap and a LabelSettings in `metadata/extra`, AudioStreamRandomizer, AudioBusLayout is separate: if the file passes 100 lines split it as `audio_resources.tres` (AudioBusLayout with EQ6 effect, AudioStreamRandomizer, LabelSettings) and `theme_font_skin.tres` (Theme, FontFile, Skin, SkeletonProfile, BoneMap, MeshInstance3D `blend_shapes/` row moves to fixture 9 as an ArrayMesh). That makes 13.
 
+    GXAML-126 landed the fixtures `audio_resources.tres` and `theme_font_resources.tres`, and with them Godot's order for their families: AudioBusLayout `bus/N/` (a bus's keys, then its effects), AudioEffectEQ `band_db/<freq>_hz` by frequency, AudioStreamRandomizer `stream_N/`, LabelSettings `stacked_outline_N/` and `stacked_shadow_N/`, Skin `bind/N/`, SkeletonProfile `groups/N/` and `bones/N/`, and FontFile `cache/N/`.
+
+    Exceptions: several sizes in one FontFile cache entry come back by number while Godot writes creation order, and FontFile `language_support_override/` and `script_support_override/` and BoneMap `bone_map/` are in `UnorderedNames` because Godot walks a HashMap.
+
 Also needing a place: MeshInstance3D `blend_shapes/` and `surface_material_override/N` (fixture 9, ArrayMesh with blend shapes and 12 surfaces, if the dummy renderer allows).
 
 # 5. The coverage test's shape
