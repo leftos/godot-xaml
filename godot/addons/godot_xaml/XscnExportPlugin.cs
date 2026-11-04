@@ -135,7 +135,7 @@ public partial class XscnExportPlugin : EditorExportPlugin
 
     /// <summary>Loads the file through the registered loader, saves it as binary and adds it in its place.</summary>
     /// <returns>Why the file could not be exported, or <see langword="null"/> once it was added.</returns>
-    private string? ExportBinary(string path, string binaryExtension)
+    internal string? ExportBinary(string path, string binaryExtension)
     {
         Resource? resource = ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore);
         if (resource is null)

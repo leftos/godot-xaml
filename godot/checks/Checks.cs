@@ -49,6 +49,9 @@ public partial class Checks : Node
         + "    </CollisionShape2D.Shape>\n"
         + "  </CollisionShape2D>\n";
 
+    // The managed budget of one no-GC region around a measured action; an action that spends it fails C72 by name.
+    private const int NoGcRegionBytes = 32 * 1024 * 1024;
+
     // Two users of one material, so the conversion keeps it in x:Resources rather than inlining it.
     private const string KeysScene =
         "<Node2D xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
@@ -480,14 +483,7 @@ public partial class Checks : Node
     private static string KnownEngineClassIsNotWarned()
     {
         const string path = OutFolder + "known.xscn";
-        var metadata = GodotMetadata.LoadBundled("4.7");
-        string? engineClass = ClassDB
-            .GetClassList()
-            .OrderBy(name => name, StringComparer.Ordinal)
-            .FirstOrDefault(name =>
-                metadata.FindClassByCSharpName(name) is null
-                && XscnParser.Parse(KnownScene(name), XscnDocumentKind.Scene, metadata).Diagnostics.Any(d => d.Code == XscnCodes.UnknownClass)
-            );
+        string? engineClass = EngineOnlyClass();
         if (engineClass is null)
         {
             return "setup: every ClassDB class is in the bundled metadata";
@@ -510,6 +506,19 @@ public partial class Checks : Node
             DeleteKeptTempFiles(tempPathsBeforeLoad);
             DeleteFolder(OutFolder);
         }
+    }
+
+    // A class the running engine has and the bundled metadata lacks, whose node the parser therefore flags GX0107.
+    private static string? EngineOnlyClass()
+    {
+        var metadata = GodotMetadata.LoadBundled("4.7");
+        return ClassDB
+            .GetClassList()
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .FirstOrDefault(name =>
+                metadata.FindClassByCSharpName(name) is null
+                && XscnParser.Parse(KnownScene(name), XscnDocumentKind.Scene, metadata).Diagnostics.Any(d => d.Code == XscnCodes.UnknownClass)
+            );
     }
 
     // The scene C66 loads: a root node holding one child of the named class.
@@ -1244,80 +1253,235 @@ public partial class Checks : Node
     }
 
     // GodotSharp registers each Variant, StringName, NodePath, Array and Dictionary it makes in DisposablesTracker under a
-    // short weak reference (modules/mono/glue/GodotSharp/GodotSharp/Core/DisposablesTracker.cs:65-80). One a GC finds
-    // unreachable is left to its finalizer, which may run while the engine shuts down and crash the process (GXAML-81),
-    // so a load must dispose everything it makes. Godot's own text loader, called the same way, leaves none.
+    // short weak reference (modules/mono/glue/GodotSharp/GodotSharp/Core/DisposablesTracker.cs:65-80), and each GodotObject
+    // wrapper under the table beside it (DisposablesTracker.cs:62). One a GC finds unreachable is left to its finalizer,
+    // which may run while the engine shuts down and crash the process (GXAML-81), so a load must dispose everything it
+    // makes. Godot's own text loader, called the same way, leaves none.
     private static string LoadLeavesNothingToTheFinalizer()
     {
-        // An internal of GodotSharp: a Godot version that renames it fails here by name rather than counting nothing.
+        // Internals of GodotSharp: a Godot version that renames them fails here by name rather than counting nothing.
         Type? tracker = typeof(Godot.GodotObject).Assembly.GetType("Godot.DisposablesTracker");
-        PropertyInfo? instances = tracker?.GetProperty("OtherInstances", BindingFlags.NonPublic | BindingFlags.Static);
-        if (instances?.GetValue(null) is not ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked)
+        if (
+            tracker?.GetProperty("OtherInstances", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null)
+            is not ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked
+        )
         {
             return "Godot.DisposablesTracker.OtherInstances is missing or not a ConcurrentDictionary<WeakReference<IDisposable>, byte>";
         }
 
-        List<string> failures = [.. new[] { ContainerPath, ContainedPath, ScriptedGdPath }.Select(path => LoadFailure(tracked, path))];
-        int classes = LeftToTheFinalizer(tracked, XresFormatLoader.RefreshGlobalClasses);
-        if (classes != 0)
+#if TOOLS
+        if (
+            tracker.GetProperty("GodotObjectInstances", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null)
+            is not ConcurrentDictionary<WeakReference<Godot.GodotObject>, byte> objects
+        )
         {
-            failures.Add($"rebuilding the global class snapshot left {classes}");
+            return "Godot.DisposablesTracker.GodotObjectInstances is missing or not a ConcurrentDictionary<WeakReference<GodotObject>, byte>";
         }
+#endif
 
-        failures.AddRange(HandlesTypeFailures(tracked));
+        using var xres = new XresFormatLoader();
+        List<string> failures = [.. new[] { ContainerPath, ContainedPath, ScriptedGdPath }.Select(path => LoadFailure(tracked, path))];
+        failures.Add(LeftToTheFinalizer(tracked, "rebuilding the global class snapshot", XresFormatLoader.RefreshGlobalClasses).Failure());
+        failures.AddRange(HandlesTypeFailures(tracked, xres));
+        failures.Add(RootClassFailure(tracked, xres));
+        failures.Add(RenameFailure(tracked));
+        failures.Add(KnownToEngineFailure(tracked));
+#if TOOLS
+        failures.Add(ExportFailure(objects));
+#endif
         return string.Join("; ", failures.Where(failure => failure.Length > 0));
     }
 
     // Each loader's _HandlesType is called directly: an engine call goes through the generated dispatch, whose own StringName
     // parameter is Godot's to dispose, not the addon's. An engine class and a global class run both of its paths.
-    private static List<string> HandlesTypeFailures(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked)
+    private static List<string> HandlesTypeFailures(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked, XresFormatLoader xres)
     {
-        using var xres = new XresFormatLoader();
         using var xscn = new XscnFormatLoader();
         using var type = new StringName("Resource");
         using var global = new StringName("CheckedResource");
         (string Loader, ResourceFormatLoader Instance)[] loaders = [(nameof(XresFormatLoader), xres), (nameof(XscnFormatLoader), xscn)];
-        var failures = new List<string>();
+        var failures = new List<string>(4);
         foreach ((string loader, ResourceFormatLoader instance) in loaders)
         {
             foreach (StringName asked in new[] { type, global })
             {
-                int left = LeftToTheFinalizer(tracked, () => instance._HandlesType(asked));
-                if (left != 0)
-                {
-                    failures.Add($"{loader}._HandlesType(\"{asked}\") left {left}");
-                }
+                string askedText = $"{loader}._HandlesType(\"{asked}\")";
+                failures.Add(LeftToTheFinalizer(tracked, askedText, () => instance._HandlesType(asked)).Failure());
             }
         }
 
-        return failures;
+        return [.. failures.Where(failure => failure.Length > 0)];
     }
 
     private static string LoadFailure(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked, string path)
     {
         Resource? loaded = null;
-        int left = LeftToTheFinalizer(tracked, () => loaded = ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore));
-        string failure =
-            loaded is null ? $"{path} did not load"
-            : left != 0 ? $"loading {path} left {left} Godot disposables to the finalizer"
-            : "";
+        Measurement measured = LeftToTheFinalizer(
+            tracked,
+            $"loading {path}",
+            () => loaded = ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore)
+        );
         GC.KeepAlive(loaded);
-        return failure;
+        return loaded is null ? $"{path} did not load" : measured.Failure();
     }
 
-    // How many of the tracked disposables the action made a GC finds unreachable. No target is read before the collect, so
-    // nothing on this stack keeps one alive.
-    private static int LeftToTheFinalizer(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked, Action action)
+    // The root class read through ClassDB, which the loader asks for before it parses: a read that never runs answers
+    // "Resource" on an unreadable root, so only the fixture's own root class proves the tag was read.
+    private static string RootClassFailure(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked, XresFormatLoader xres)
+    {
+        const string expected = "Theme";
+        string answer = "";
+        string action = $"reading {ContainerPath}'s root class";
+        Measurement measured = LeftToTheFinalizer(tracked, action, () => answer = xres._GetResourceType(ContainerPath));
+        return measured.Failure() + (answer == expected ? "" : $"{ContainerPath}'s root class is \"{answer}\", not \"{expected}\"");
+    }
+
+    // A rename copies each pair's Variants out of the caller's dictionary, and the copies are the addon's to dispose
+    // (GXAML-81). The caller's dictionary is made before the measurement, so only the copies can be counted.
+    private static string RenameFailure(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked)
+    {
+        const string path = OutFolder + "renamed.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), File.ReadAllText(ProjectSettings.GlobalizePath(HolderPath)));
+            using var loader = new XscnFormatLoader();
+            using var renames = new Godot.Collections.Dictionary { [ThemePath] = CasesPath + "moved.xres" };
+            Error error = Error.Ok;
+            string action = $"renaming {path}";
+            Measurement measured = LeftToTheFinalizer(tracked, action, () => error = loader._RenameDependencies(path, renames));
+            return measured.Failure() + (error == Error.Ok ? "" : $"renaming {path} returned {error}");
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A GX0107 names a class the bundled metadata lacks; loading it is the only route to the check that the running engine
+    // has it, which is where the load makes a StringName of the tag (GXAML-81).
+    private static string KnownToEngineFailure(ConcurrentDictionary<WeakReference<IDisposable>, byte> tracked)
+    {
+        string? engineClass = EngineOnlyClass();
+        if (engineClass is null)
+        {
+            return "setup: every ClassDB class is in the bundled metadata";
+        }
+
+        string path = OutFolder + "known.xscn";
+        string action = $"loading a scene naming {engineClass}";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), KnownScene(engineClass));
+            Resource? loaded = null;
+            Measurement measured = LeftToTheFinalizer(tracked, action, () => loaded = ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore));
+            GC.KeepAlive(loaded);
+            return measured.Failure() + (loaded is null ? $"{path} did not load" : "");
+        }
+        finally
+        {
+            DeleteKeptTempFiles(tempPathsBeforeLoad);
+            DeleteFolder(OutFolder);
+        }
+    }
+
+#if TOOLS
+    // The ignored-cache load's resource wrapper is released in the export's own finally (GXAML-81), so it is counted in the
+    // GodotObject table. The walk keeps the wrappers of a file's sub-resources by design, so the measured file has none.
+    // The first export is unmeasured: wrappers it registers are meant to live (an engine singleton's, for one), and a wrapper
+    // this check never disposes would otherwise read as the export's leak. Only the second export is counted.
+    private static string ExportFailure(ConcurrentDictionary<WeakReference<Godot.GodotObject>, byte> objects)
+    {
+        using var plugin = new XscnExportPlugin();
+        string? warmUp = plugin.ExportBinary(BoxPath, "res");
+        string? reason = "";
+        string action = $"exporting {BoxPath} as Godot binary";
+        Measurement measured = StillRegistered(objects, action, () => reason = plugin.ExportBinary(BoxPath, "res"));
+        return measured.Failure() + (warmUp is null && reason is null ? "" : $"the export of {BoxPath} failed: {warmUp ?? reason}");
+    }
+#endif
+
+    // What one measured action left the finalizer, or why the no-GC region that keeps the count honest could not be held.
+    private readonly record struct Measurement(int Left, string Action, string RegionFailure)
+    {
+        // The failure line for the measured action, or "" when it held its region and left nothing.
+        public string Failure() =>
+            RegionFailure.Length > 0 ? RegionFailure
+            : Left != 0 ? $"{Action} left {Left} Godot disposables to the finalizer"
+            : "";
+    }
+
+    // The tracked entries the action added that one GC finds unreachable: a Variant, StringName, NodePath, Array or
+    // Dictionary is tracked while it lives and untracked when disposed, so a dead target is one nobody disposed. No target
+    // is read before the collect, so nothing on this stack keeps one alive.
+    private static Measurement LeftToTheFinalizer<T>(ConcurrentDictionary<WeakReference<T>, byte> tracked, string action, Action run)
+        where T : class =>
+        Measured(
+            tracked,
+            action,
+            run,
+            made =>
+            {
+                GC.Collect();
+                int left = made.Count(key => !key.TryGetTarget(out _));
+                GC.WaitForPendingFinalizers();
+                return left;
+            }
+        );
+
+#if TOOLS
+    // The tracked entries the action added and did not untrack: a GodotObject wrapper is untracked by its Dispose, so an
+    // entry it leaves is a wrapper it did not dispose. The rule does not rest on the native side keeping the wrapper alive:
+    // Godot swaps the strong handle for a weak one once only the managed side holds an object
+    // (modules/mono/csharp_script.cpp:1300-1320). A wrapper meant to live is untracked only by a Dispose the action never
+    // makes, which is why the export measurement is warmed up before it counts.
+    private static Measurement StillRegistered<T>(ConcurrentDictionary<WeakReference<T>, byte> tracked, string action, Action run)
+        where T : class => Measured(tracked, action, run, made => made.Count);
+#endif
+
+    // Runs the action inside a no-GC region: a GC during it could finalize a leaked entry, whose disposal untracks it before
+    // the count, so an action that spends the region's budget fails instead of under-counting.
+    private static Measurement Measured<T>(
+        ConcurrentDictionary<WeakReference<T>, byte> tracked,
+        string action,
+        Action run,
+        Func<List<WeakReference<T>>, int> count
+    )
+        where T : class
     {
         GC.Collect();
         GC.WaitForPendingFinalizers();
-        var before = new HashSet<WeakReference<IDisposable>>(tracked.Keys);
-        RunNotInlined(action);
-        List<WeakReference<IDisposable>> made = [.. tracked.Keys.Where(key => !before.Contains(key))];
-        GC.Collect();
-        int left = made.Count(key => !key.TryGetTarget(out _));
-        GC.WaitForPendingFinalizers();
-        return left;
+        var before = new HashSet<WeakReference<T>>(tracked.Keys);
+        if (!GC.TryStartNoGCRegion(NoGcRegionBytes))
+        {
+            return new Measurement(0, action, $"{action}: no no-GC region of {NoGcRegionBytes / (1024 * 1024)} MB could be started");
+        }
+
+        List<WeakReference<T>> made = [];
+        string regionFailure = "";
+        try
+        {
+            RunNotInlined(run);
+            // Read inside the region: an entry the action untracked is already gone, and a leak cannot be finalized away.
+            made = [.. tracked.Keys.Where(key => !before.Contains(key))];
+        }
+        finally
+        {
+            try
+            {
+                GC.EndNoGCRegion();
+            }
+            catch (InvalidOperationException exception)
+            {
+                regionFailure = $"{action}: a GC ran inside its no-GC region of {NoGcRegionBytes / (1024 * 1024)} MB: {exception.Message}";
+            }
+        }
+
+        return new Measurement(regionFailure.Length > 0 ? 0 : count(made), action, regionFailure);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
