@@ -49,7 +49,8 @@ internal static class LanguageServerHost
             client,
             publisher,
             new FormattingHandler(store, projects, client, seams.Parse),
-            new HoverHandler(store, projects, seams.Parse, seams.LoadDocs)
+            new HoverHandler(store, projects, seams.Parse, seams.LoadDocs),
+            new CompletionHandler(store, projects)
         );
 
         // The transport's own warnings and errors (a message it could not read or answer) go to stderr.
@@ -176,8 +177,17 @@ internal sealed class ClientChannel(JsonRpc rpc, TextWriter stderr) : IClientMes
 }
 
 /// <summary>The RPC methods: the lifecycle and its order rules, then the document notifications and requests.</summary>
-internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPublisher publisher, FormattingHandler formatting, HoverHandler hover)
+internal sealed class LanguageServerTarget(
+    IClientMessages client,
+    DiagnosticsPublisher publisher,
+    FormattingHandler formatting,
+    HoverHandler hover,
+    CompletionHandler completion
+)
 {
+    // The characters that open a tag, a prefix's name, a property element's name and an attribute.
+    private static readonly string[] CompletionTriggers = ["<", ":", ".", " "];
+
     private readonly Lock gate = new();
     private readonly TaskCompletionSource exited = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool initialized;
@@ -219,7 +229,8 @@ internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPu
             new ServerCapabilities(
                 new TextDocumentSyncOptions(OpenClose: true, Change: TextDocumentSyncKind.Full),
                 DocumentFormattingProvider: true,
-                HoverProvider: true
+                HoverProvider: true,
+                CompletionProvider: new CompletionOptions(CompletionTriggers)
             ),
             new ServerInfo(LanguageServerHost.ServerName, LanguageServerHost.Version)
         );
@@ -333,6 +344,21 @@ internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPu
             EnsureServing();
         }
         return hover.HoverAsync(parameters.TextDocument.Uri, parameters.Position, cancellation);
+    }
+
+    /// <summary>Completes the element or attribute name at a position.</summary>
+    /// <param name="parameters">The document and the cursor.</param>
+    /// <param name="cancellation">The request's cancellation.</param>
+    /// <returns>The completions, or null where the server completes nothing.</returns>
+    [JsonRpcMethod("textDocument/completion")]
+    public Task<CompletionList?> CompletionAsync(CompletionParams parameters, CancellationToken cancellation)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        lock (gate)
+        {
+            EnsureServing();
+        }
+        return completion.CompleteAsync(parameters.TextDocument.Uri, parameters.Position, cancellation);
     }
 
     // A notification is dropped before initialize and after shutdown.

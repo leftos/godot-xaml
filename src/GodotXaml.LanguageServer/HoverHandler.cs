@@ -142,10 +142,6 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
     [GeneratedRegex("""^\s*\{([^\s{}:,"]+)\}\s*$""", RegexOptions.CultureInvariant)]
     private static partial Regex KeyReference();
 
-    // The prefix the document binds to the format's namespace.
-    [GeneratedRegex("""xmlns:([^\s=:"']+)\s*=\s*["']https://github\.com/leftos/godot-xaml/format/1["']""", RegexOptions.CultureInvariant)]
-    private static partial Regex FormatDeclaration();
-
     // A fenced signature and the paragraphs after it, and the span it describes.
     private sealed record Found(string Signature, IReadOnlyList<string?> Paragraphs, TextSpan Span)
     {
@@ -367,22 +363,11 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
         private static GodotClassInfo? ClassOf(XscnCursorContext context) =>
             context.ElementPrefix is null && context.ElementName is { } name && !name.Contains('.', StringComparison.Ordinal) ? context.Class : null;
 
-        // An Object's class by its C# name, Variant for a Nil, else the Variant type's name.
-        private string TypeName(string variantType, string className) =>
-            variantType switch
-            {
-                "Object" when FirstClass(className) is { } first => CSharpClassName(first),
-                "Nil" => "Variant",
-                _ => variantType,
-            };
+        private string TypeName(string variantType, string className) => NameRules.TypeName(metadata, variantType, className);
 
-        // A class name, or a hint's list of them with exclusions marked '-' (Texture2D,-AnimatedTexture): the first one allowed.
-        private static string? FirstClass(string className) =>
-            className.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(c => !c.StartsWith('-'));
+        private string CSharpClassName(string godotName) => NameRules.CSharpClassName(metadata, godotName);
 
-        private string CSharpClassName(string godotName) => metadata.FindClass(godotName)?.CSharpName ?? godotName;
-
-        private string? FormatPrefix() => FormatDeclaration().Match(text) is { Success: true } match ? match.Groups[1].Value : null;
+        private string? FormatPrefix() => NameRules.FormatPrefix(text);
 
         // A Godot snake_case argument name as the C# API names it (toggled_on, toggledOn; event, @event).
         private static string CamelCase(string snake)

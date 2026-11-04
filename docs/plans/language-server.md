@@ -12,7 +12,7 @@ Anchor: git root X:/dev/godot-xaml (main checkout). Line numbers below are again
 
 ## 0. Short answer
 
-- Step 5 is built: `src/GodotXaml.LanguageServer` and `tests/GodotXaml.LanguageServer.Tests` exist, with text sync and diagnostics, and `docs/ARCHITECTURE.md` has its Task Index row and Layers entry. Hover (step 7) is built; completion is not. The rest of this map describes the code before step 5.
+- Step 5 is built: `src/GodotXaml.LanguageServer` and `tests/GodotXaml.LanguageServer.Tests` exist, with text sync and diagnostics, and `docs/ARCHITECTURE.md` has its Task Index row and Layers entry. Hover (step 7) is built; completion of element and attribute names (step 8, part 1) is built, completion of values is not. The rest of this map describes the code before step 5.
 - The core gives a server diagnostics (with spans) and formatting almost for free. It gives completions and hover only in part. The gaps are all in "where is the cursor": the model keeps spans for elements only, and the syntax tree is not exposed.
 - Metadata has no doc text, so hover shows signatures (type, enum, default, hint) from it and descriptions from the separate docs file (decision 9).
 - The CLI's helpers (MetadataFile, ProjectConfig, ProjectRoot, SceneFiles) are all `internal` to `GodotXaml.Cli`, a net10.0 Exe. A server cannot reuse them without moving them into a shared library, or copying them.
@@ -295,8 +295,8 @@ Branch `feat/language-server`. Steps 1-4 are core work with plain unit tests. St
 7. Hover. DONE (GXAML-136).
    - Files: `HoverHandler`, `ClassDocs`, `Protocol/Hover.cs`, tests (`HoverTests`, `ClassDocsTests`).
    - Proof: hover on a class tag, a property attribute (type, enum, default from `FindDefault`), a signal attribute, an enum value, a `{Key}` (shows the entry's class), an `x:` attribute; null result on whitespace and in an unknown prefix.
-8. Completion (split into two commits if large): element names and attribute names; then values (enums, flags, bool, `{Key}`, `res://` paths, x: directives).
-   - Files: `CompletionHandler` (+ providers), tests.
+8. Completion (split into two commits if large): element names and attribute names; then values (enums, flags, bool, `{Key}`, `res://` paths, x: directives). Part 1 (element and attribute names) DONE (GXAML-138); values are still to come.
+   - Files: `CompletionHandler` (+ providers: `TagCompletions`, `AttributeCompletions`, `NameRules`, `StartTags`), `Protocol/Completion.cs`, tests (`CompletionTests`).
    - Proof: table-driven: for a source with a cursor marker, the item labels equal the expected set (e.g. `<Button Mouse|` offers `MouseFilter`, `MouseDefaultCursorShape`, not `MouseFilter` twice if present; `MouseFilter="|"` offers `Stop, Pass, Ignore`; `Alignment="|"` for BoxContainer; `SizeFlagsHorizontal="Expand, |"` flags); the replacement range covers the typed prefix; no completions in comments or content text.
 9. Packaging, docs, and extension hand-off.
    - Files: pack-release.ps1 (+ expected files), publish workflow, README.md:73, docs/guide/limitations.md:27, docs/guide/getting-started.md, llms.txt, agents/skill docs, docs/plans/v1-design.md, ARCHITECTURE.md.

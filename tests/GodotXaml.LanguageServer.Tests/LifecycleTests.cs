@@ -13,7 +13,14 @@ public sealed class LifecycleTests
         JsonElement result = await server.InitializeRawAsync();
 
         JsonElement capabilities = result.GetProperty("capabilities");
-        Assert.Equal(["textDocumentSync", "documentFormattingProvider", "hoverProvider"], capabilities.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(
+            ["textDocumentSync", "documentFormattingProvider", "hoverProvider", "completionProvider"],
+            capabilities.EnumerateObject().Select(p => p.Name)
+        );
+        Assert.Equal(
+            ["<", ":", ".", " "],
+            capabilities.GetProperty("completionProvider").GetProperty("triggerCharacters").EnumerateArray().Select(c => c.GetString())
+        );
         JsonElement sync = capabilities.GetProperty("textDocumentSync");
         Assert.Equal(["change", "openClose"], sync.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
         Assert.True(sync.GetProperty("openClose").GetBoolean());
