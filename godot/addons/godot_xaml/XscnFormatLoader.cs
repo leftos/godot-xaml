@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Godot;
 
 namespace GodotXaml.Addon;
@@ -10,6 +11,16 @@ namespace GodotXaml.Addon;
 [Tool]
 public partial class XscnFormatLoader : ResourceFormatLoader
 {
+    /// <summary>
+    /// The loaders' scripts, which the exported game needs to register them (see the preset check), and which the preview's
+    /// loader-class refusal exempts.
+    /// </summary>
+    internal static readonly ImmutableArray<string> LoaderScripts =
+    [
+        "res://addons/godot_xaml/XscnFormatLoader.cs",
+        "res://addons/godot_xaml/XresFormatLoader.cs",
+    ];
+
     // Made once: a StringName made per call from a literal is left to its finalizer, which can run after the engine has shut
     // down (GXAML-81). A static one is still reachable at shutdown, when Godot's tracker disposes it.
     private static readonly StringName PackedSceneClass = "PackedScene";

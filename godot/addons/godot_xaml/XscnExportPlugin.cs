@@ -1,6 +1,5 @@
 #if TOOLS
 using System;
-using System.Collections.Immutable;
 using System.IO;
 using Godot;
 
@@ -24,16 +23,6 @@ public partial class XscnExportPlugin : EditorExportPlugin
     private const string ExportFolder = "res://.godot/exported/godot-xaml/";
     private const string DropError = "the export would drop the godot-xaml loaders";
 
-    /// <summary>
-    /// The loaders' scripts, which the exported game needs to register them (see the preset check), and which the preview's
-    /// loader-class refusal exempts.
-    /// </summary>
-    internal static readonly ImmutableArray<string> LoaderScripts =
-    [
-        "res://addons/godot_xaml/XscnFormatLoader.cs",
-        "res://addons/godot_xaml/XresFormatLoader.cs",
-    ];
-
     /// <inheritdoc/>
     public override string _GetName() => Category;
 
@@ -56,7 +45,7 @@ public partial class XscnExportPlugin : EditorExportPlugin
     private static string? LoaderDropProblem(EditorExportPreset preset)
     {
         string excludeFilter = preset.GetExcludeFilter();
-        foreach (string script in LoaderScripts)
+        foreach (string script in XscnFormatLoader.LoaderScripts)
         {
             string? pattern = MatchingPattern(excludeFilter, script);
             if (pattern is not null)
@@ -67,7 +56,7 @@ public partial class XscnExportPlugin : EditorExportPlugin
         }
 
         string includeFilter = preset.GetIncludeFilter();
-        foreach (string script in LoaderScripts)
+        foreach (string script in XscnFormatLoader.LoaderScripts)
         {
             if (!ExportedByMode(preset, script) && MatchingPattern(includeFilter, script) is null)
             {

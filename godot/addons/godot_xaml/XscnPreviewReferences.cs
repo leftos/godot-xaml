@@ -312,7 +312,7 @@ internal static partial class XscnPreviewReferences
     // The addon's own two loaders, which every project with the addon registers: exempt by class name and script path both,
     // so a project's class that merely shares a name is still refused.
     private static bool IsOwnLoader(string className, string path) =>
-        (className is nameof(XscnFormatLoader) or nameof(XresFormatLoader)) && XscnExportPlugin.LoaderScripts.Contains(path);
+        (className is nameof(XscnFormatLoader) or nameof(XresFormatLoader)) && XscnFormatLoader.LoaderScripts.Contains(path);
 
     /// <summary>
     /// The path the text loader loads an ext_resource from: its registered uid's, else its path, a uid:// path resolved. A

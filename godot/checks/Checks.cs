@@ -4651,7 +4651,7 @@ public partial class Checks : Node
 
     // The addon's own loader class as the class list records it: the class named by its script, at the script's path.
     private static (string Class, string Path, string Base) AddonLoader(string className) =>
-        (className, XscnExportPlugin.LoaderScripts.Single(script => Path.GetFileNameWithoutExtension(script) == className), "ResourceFormatLoader");
+        (className, XscnFormatLoader.LoaderScripts.Single(script => Path.GetFileNameWithoutExtension(script) == className), "ResourceFormatLoader");
 
     // The checks project's real class list holds the addon's loaders, each walking to ResourceFormatLoader, and
     // ProjectLoaderClasses refuses none of them.
