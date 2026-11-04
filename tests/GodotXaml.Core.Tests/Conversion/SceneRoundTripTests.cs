@@ -42,6 +42,7 @@ public sealed class SceneRoundTripTests
             "skeleton_bones",
             "skeleton_modification_chains",
             "sub_resources",
+            "tile_map_grid_map",
             "two_bone_ik_modifiers",
             "unique_name"
         );

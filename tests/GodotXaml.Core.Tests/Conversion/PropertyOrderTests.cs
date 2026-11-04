@@ -939,6 +939,87 @@ public sealed class PropertyOrderTests
         );
     }
 
+    // TileMap's PropertyListHelper (tile_map.cpp) lists the layers in numeric order, each layer's keys in registration order;
+    // TileMap::_set adds layers up to the index on any key.
+    [Fact]
+    public void TileMapLayersRunInNumericOrderWithTheirKeysInGodotsOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <TileMap {{X}} Name="Root">
+              <x:Prop Name="layer_0/tile_data" Value="PackedInt32Array(0, 0, 0)" />
+              <x:Prop Name="layer_0/enabled" Value="false" />
+              <x:Prop Name="layer_0/name" Value='"a"' />
+              <x:Prop Name="layer_0/navigation_enabled" Value="false" />
+              <x:Prop Name="layer_0/z_index" Value="1" />
+              <x:Prop Name="layer_10/name" Value='"k"' />
+              <x:Prop Name="layer_2/name" Value='"c"' />
+            </TileMap>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "layer_0/name",
+                "layer_0/enabled",
+                "layer_0/z_index",
+                "layer_0/navigation_enabled",
+                "layer_0/tile_data",
+                "layer_2/name",
+                "layer_10/name",
+            ],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
+
+    // MeshLibrary::_get_property_list (mesh_library.cpp) lists the items by id, each item's keys in a fixed order;
+    // MeshLibrary::_set creates an item on any key.
+    [Fact]
+    public void MeshLibraryItemsRunInIdOrderWithTheirKeysInGodotsOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <GridMap {{X}} Name="Root">
+              <GridMap.MeshLibrary>
+                <MeshLibrary>
+                  <x:Prop Name="item/0/mesh_cast_shadow" Value="0" />
+                  <x:Prop Name="item/0/name" Value='"a"' />
+                  <x:Prop Name="item/0/preview" Value='Resource("res://p.tres")' />
+                  <x:Prop Name="item/0/shapes" Value="[]" />
+                  <x:Prop Name="item/10/name" Value='"k"' />
+                  <x:Prop Name="item/2/name" Value='"c"' />
+                </MeshLibrary>
+              </GridMap.MeshLibrary>
+            </GridMap>
+            """
+        );
+
+        Assert.Equal(
+            ["item/0/name", "item/0/mesh_cast_shadow", "item/0/shapes", "item/0/preview", "item/2/name", "item/10/name"],
+            PropertyNames(SubResourceOf(scene, "MeshLibrary").Properties)
+        );
+    }
+
+    // MeshInstance3D::_get_property_list (mesh_instance_3d.cpp) lists the override materials by surface index.
+    [Fact]
+    public void SurfaceMaterialOverridesRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <x:Prop Name="surface_material_override/0" Value='Resource("res://a.tres")' />
+              <x:Prop Name="surface_material_override/10" Value='Resource("res://k.tres")' />
+              <x:Prop Name="surface_material_override/2" Value='Resource("res://c.tres")' />
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(
+            ["surface_material_override/0", "surface_material_override/2", "surface_material_override/10"],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
+
     // AnimationNodeBlendSpace2D::_set adds a point only on blend_point_<count>/node.
     [Fact]
     public void ABlendPointStartsWithItsNode()

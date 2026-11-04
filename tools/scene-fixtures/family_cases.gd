@@ -675,3 +675,124 @@ static func _shader_material(
 	material.set_shader_parameter("ta", 4.5)
 	material.set_shader_parameter("late", 5.5)
 	return material
+
+
+## A TileMap of 12 layers, a GridMap on a MeshLibrary of 12 items with its meshes baked, and a
+## MeshInstance3D on an ArrayMesh of 12 blend shapes named out of name order and 12 surfaces, each
+## surface with an override material. Every key is off its default, and every sub-resource id is
+## pinned (the baked ArrayMeshes too, which make_baked_meshes creates once the cells are set). Key
+## names: TileMap's PropertyListHelper registration (tile_map.cpp: name, enabled, modulate,
+## y_sort_enabled, y_sort_origin, z_index, navigation_enabled), MeshLibrary::_get_property_list
+## (mesh_library.cpp: name, mesh, mesh_transform, mesh_cast_shadow, shapes, navigation_mesh,
+## navigation_mesh_transform, navigation_layers, preview), GridMap (grid_map.cpp: baked_meshes,
+## data) and MeshInstance3D (mesh_instance_3d.cpp: blend_shapes/ in the mesh's blend shape order,
+## then surface_material_override/). ArrayMesh::add_blend_shape refuses once a surface exists, so
+## the shapes come first, and each surface carries one array per shape (mesh.cpp).
+static func tile_map_grid_map(generator) -> String:
+	var root: Node = generator._root("Node")
+	_tile_map(generator, root)
+	_grid_map(generator, root)
+	_blend_shape_instance(generator, root)
+	return generator._save_scene("tile_map_grid_map", root)
+
+
+## A TileMap of 12 layers: the one it starts with and 11 added, each named, modulated, y-sorted
+## from its own origin and z index, some disabled and some without navigation.
+static func _tile_map(generator, root: Node) -> void:
+	var tile_map: TileMap = generator._add(root, "TileMap", "TileMap")
+	for index in 11:
+		tile_map.add_layer(-1)
+	for index in 12:
+		tile_map.set_layer_name(index, "Layer %d" % index)
+		tile_map.set_layer_enabled(index, index % 3 != 1)
+		tile_map.set_layer_modulate(index, Color(0.08 * index, 0.5, 0.25))
+		tile_map.set_layer_y_sort_enabled(index, true)
+		tile_map.set_layer_y_sort_origin(index, index + 1)
+		tile_map.set_layer_z_index(index, index + 1)
+		tile_map.set_layer_navigation_enabled(index, index % 2 == 1)
+
+
+## A GridMap with one cell per item of its MeshLibrary, its meshes baked after the cells and each
+## baked ArrayMesh's id pinned.
+static func _grid_map(generator, root: Node) -> void:
+	var grid_map: GridMap = generator._add(root, "GridMap", "GridMap")
+	grid_map.mesh_library = _mesh_library()
+	for index in 12:
+		grid_map.set_cell_item(Vector3i(index, 0, index % 3), index)
+	grid_map.make_baked_meshes()
+	var baked: Array = grid_map.get_bake_meshes()
+	for index in range(0, baked.size(), 2):
+		var mesh: Resource = baked[index]
+		mesh.resource_scene_unique_id = "ArrayMesh_b4k%02d" % index
+
+
+## A MeshLibrary of 12 items at ids 0 to 11, each with its own BoxMesh and every key off its
+## default; the shape, navigation mesh and preview are shared, every id pinned.
+static func _mesh_library() -> MeshLibrary:
+	var library := MeshLibrary.new()
+	library.resource_scene_unique_id = "MeshLibrary_l1b12"
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(0.5, 0.5, 0.5)
+	shape.resource_scene_unique_id = "BoxShape3D_l1b12"
+	var navigation := NavigationMesh.new()
+	navigation.cell_size = 0.5
+	navigation.resource_scene_unique_id = "NavigationMesh_l1b12"
+	var preview := _icon()
+	var shadows := [
+		RenderingServer.SHADOW_CASTING_SETTING_OFF,
+		RenderingServer.SHADOW_CASTING_SETTING_DOUBLE_SIDED,
+		RenderingServer.SHADOW_CASTING_SETTING_SHADOWS_ONLY,
+	]
+	for index in 12:
+		library.create_item(index)
+		library.set_item_name(index, "Item %d" % index)
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(0.5 + 0.05 * index, 1.0, 1.0)
+		mesh.resource_scene_unique_id = "BoxMesh_1t3m%02d" % index
+		library.set_item_mesh(index, mesh)
+		library.set_item_mesh_transform(
+			index, Transform3D(Basis(), Vector3(0, 0.1 * index + 0.1, 0))
+		)
+		library.set_item_mesh_cast_shadow(index, shadows[index % 3])
+		library.set_item_shapes(index, [shape, Transform3D(Basis(), Vector3(index, 0, 0))])
+		library.set_item_navigation_mesh(index, navigation)
+		library.set_item_navigation_mesh_transform(
+			index, Transform3D(Basis(), Vector3(0, 0, 0.1 * index + 0.1))
+		)
+		library.set_item_navigation_layers(index, 2 << index)
+		library.set_item_preview(index, preview)
+	return library
+
+
+## A MeshInstance3D on an ArrayMesh of 12 blend shapes, added out of name order before its 12
+## one-triangle surfaces, every shape's value set and every surface's override material pinned.
+static func _blend_shape_instance(generator, root: Node) -> void:
+	var mesh := ArrayMesh.new()
+	mesh.resource_scene_unique_id = "ArrayMesh_bl3nd"
+	for index in [7, 11, 0, 3, 10, 1, 9, 2, 8, 5, 4, 6]:
+		mesh.add_blend_shape("shape_%d" % index)
+	for surface in 12:
+		var shapes: Array[Array] = []
+		for place in 12:
+			shapes.append(_triangle(surface, 0.1 * place + 0.1))
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _triangle(surface, 0.0), shapes)
+	var instance: MeshInstance3D = generator._add(root, "MeshInstance3D", "MeshInstance3D")
+	instance.mesh = mesh
+	for place in 12:
+		instance.set_blend_shape_value(place, 0.05 * place + 0.05)
+	for surface in 12:
+		var material := StandardMaterial3D.new()
+		material.albedo_color = Color(0.08 * surface, 0.5, 0.25)
+		material.resource_scene_unique_id = "StandardMaterial3D_5rf%02d" % surface
+		instance.set_surface_override_material(surface, material)
+
+
+## The arrays of one triangle beside the surface's place, raised by the given lift.
+static func _triangle(surface: int, lift: float) -> Array:
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	var x := float(surface)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(
+		[Vector3(x, lift, 0), Vector3(x + 1, lift, 0), Vector3(x, lift + 1, 0)]
+	)
+	return arrays

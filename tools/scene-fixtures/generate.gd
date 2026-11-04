@@ -82,6 +82,7 @@ func _run() -> String:
 		FamilyCases.audio_resources.bind(self),
 		FamilyCases.theme_font_resources.bind(self),
 		FamilyCases.shader_parameters.bind(self),
+		FamilyCases.tile_map_grid_map.bind(self),
 	]
 	for step in steps:
 		var error: String = step.call()

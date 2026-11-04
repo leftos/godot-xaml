@@ -13,11 +13,12 @@ namespace GodotXaml.Core.Conversion;
 /// <c>InstancePlaceholder</c> and the theme overrides of Control and Window are left out, and so is
 /// <c>OpenXRCompositionLayer</c>, which adds any slash name a GDExtension supplies (the engine ships none). Every row states
 /// how Godot creates its entries on load (<see cref="EntryCreation"/>): in any order; sized first by a count property ranked
-/// before the family, named on the row; on one key; or in any order but listed in a key order a sibling property's value
-/// chooses (a VisualShader's flags/ by its mode); or in any order but placed by the row's own ranker (a TileSetAtlasSource's
-/// tiles, alternatives and TileData keys). Godot creates an entry only on one key (the creating key), so each
-/// entry's names come creating key first, and entries in numeric order, which a family that appends at the next index
-/// (Animation tracks, replication properties, TileSet patterns) needs. Such a pattern names each entry's number in an
+/// before the family, named on the row; listed by number in a fixed key order; or in any order but listed in a key order a
+/// sibling property's value chooses (a VisualShader's flags/ by its mode); or in any order but placed by the row's own ranker
+/// (a TileSetAtlasSource's tiles, alternatives and TileData keys). A family listed by number in a fixed key order has its
+/// entries created either on one key (the creating key, which then comes first in the key order, with entries in numeric
+/// order, which a family that appends at the next index (Animation tracks, replication properties, TileSet patterns) needs)
+/// or on any key (TileMap layers, MeshLibrary items, TileSet layers). Such a pattern names each entry's number in an
 /// <c>index</c> group and any key after it in a <c>key</c> group, and the row carries the declaring class's key order. A
 /// sized-first row may carry the same groups and key order, and one nested level inside a key (a <c>subindex</c> group, a
 /// <c>subkey</c> group and the declaring class's nested key order), which keeps a round trip byte-identical, and which the
@@ -442,6 +443,33 @@ internal static class DynamicPropertyFamilies
     // servers/audio/audio_stream.cpp, AudioStreamRandomizer::_bind_methods (PropertyListHelper registration): one stream's keys.
     private static readonly string[] RandomizerStreamKeys = ["stream", "weight"];
 
+    // scene/2d/tile_map.cpp, TileMap::TileMap (PropertyListHelper registration): one layer's keys.
+    private static readonly string[] TileMapLayerKeys =
+    [
+        "name",
+        "enabled",
+        "modulate",
+        "y_sort_enabled",
+        "y_sort_origin",
+        "z_index",
+        "navigation_enabled",
+        "tile_data",
+    ];
+
+    // scene/resources/3d/mesh_library.cpp, MeshLibrary::_get_property_list: one item's keys.
+    private static readonly string[] MeshLibraryItemKeys =
+    [
+        "name",
+        "mesh",
+        "mesh_transform",
+        "mesh_cast_shadow",
+        "shapes",
+        "navigation_mesh",
+        "navigation_mesh_transform",
+        "navigation_layers",
+        "preview",
+    ];
+
     private static readonly Row[] Entries =
     [
         // scene/animation/animation_mixer.cpp, AnimationMixer::_get_property_list
@@ -470,7 +498,8 @@ internal static class DynamicPropertyFamilies
         // scene/3d/mesh_instance_3d.cpp, MeshInstance3D::_get_property_list
         // In the mesh's blend shape order, mesh->get_blend_shape_name(i), which an ArrayMesh stores as _blend_shape_names.
         Row.BySource("MeshInstance3D", @"^blend_shapes/", "mesh", SourceRead.BlendShapeNames),
-        Row.SizedFirst("MeshInstance3D", @"^surface_material_override/[0-9]+\z", "mesh"),
+        // The override materials by surface index.
+        Row.SizedFirst("MeshInstance3D", @"^(?<key>surface_material_override)/(?<index>[0-9]+)\z", "mesh", ["surface_material_override"], []),
         // scene/gui/graph_node.cpp, GraphNode::_get_property_list
         Row.OnKey("GraphNode", @"^slot/(?<index>[0-9]+)/(?<key>.*)\z", SlotKeys),
         // scene/gui/tab_container.cpp, TabContainer::_get_property_list (PropertyListHelper)
@@ -499,7 +528,9 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("Bone2D", @"^editor_settings/show_bone_gizmo\z"),
         // scene/2d/tile_map.cpp, TileMap::_get_property_list (PropertyListHelper)
         Row.AnyOrder("TileMap", @"^format\z"),
-        Row.AnyOrder("TileMap", @"^layer_[0-9]+/"),
+        // The layers in numeric order, each layer's keys in registration order; TileMap::_set adds layers up to the index on any
+        // key, so any order loads.
+        Row.OnKey("TileMap", @"^layer_(?<index>[0-9]+)/(?<key>[^/]*)\z", TileMapLayerKeys),
         // scene/3d/skeleton_3d.cpp, Skeleton3D::_get_property_list
         Row.OnKey("Skeleton3D", @"^bones/(?<index>[0-9]+)/(?<key>[^/]*)", BoneKeys),
         // scene/3d/physics/physical_bone_3d.cpp, PhysicalBone3D::_get_property_list (and its JointData kinds)
@@ -617,7 +648,9 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("Skin", @"^bind_count\z"),
         Row.SizedFirst("Skin", @"^bind/(?<index>[0-9]+)/(?<key>[^/]*)\z", "bind_count", ["name", "bone", "pose"], []),
         // scene/resources/3d/mesh_library.cpp, MeshLibrary::_get_property_list
-        Row.AnyOrder("MeshLibrary", @"^item/[0-9]+/"),
+        // The items by id (an RBMap), each item's keys in a fixed order; MeshLibrary::_set creates an item on any key, so any
+        // order loads.
+        Row.OnKey("MeshLibrary", @"^item/(?<index>[0-9]+)/(?<key>[^/]*)\z", MeshLibraryItemKeys),
         // scene/resources/skeleton_profile.cpp, SkeletonProfile::_get_property_list
         Row.SizedFirst("SkeletonProfile", @"^groups/(?<index>[0-9]+)/(?<key>[^/]*)\z", "group_size", ["group_name", "texture"], []),
         Row.SizedFirst("SkeletonProfile", @"^bones/(?<index>[0-9]+)/(?<key>[^/]*)\z", "bone_size", ProfileBoneKeys, []),
@@ -1139,7 +1172,10 @@ internal static class DynamicPropertyFamilies
     /// <summary>How Godot creates a dynamic family's entries when a scene or resource loads, which decides their order on the way back.</summary>
     internal enum EntryCreation
     {
-        /// <summary>Each name sets its value on its own, or any key of an entry creates it: the source order loads.</summary>
+        /// <summary>
+        /// Each name sets its value on its own, and the family has no index or key order to keep: the source order loads and
+        /// is kept.
+        /// </summary>
         AnyOrder,
 
         /// <summary>
@@ -1150,9 +1186,11 @@ internal static class DynamicPropertyFamilies
         SizedFirst,
 
         /// <summary>
-        /// Godot creates an entry only on one key (the creating key), so each entry's names come creating key first, and entries
-        /// in numeric order, which a family that appends at the next index (Animation tracks, replication properties, TileSet
-        /// patterns) needs.
+        /// Godot lists the family's entries by number, each entry's keys in a fixed order, and creates an entry either on one
+        /// key or on any key. On one key (the creating key), that key comes first in the key order and entries run in numeric
+        /// order, which a family that appends at the next index (Animation tracks, replication properties, TileSet patterns)
+        /// needs; on any key (TileMap layers, MeshLibrary items, TileSet layers), any order loads and the order keeps a round
+        /// trip byte-identical.
         /// </summary>
         OnKey,
 
