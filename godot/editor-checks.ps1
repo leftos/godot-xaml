@@ -15,13 +15,15 @@ The plugin writes its CHECK, NOTE and DONE lines to results/results.txt under th
 copies of the saved scenes. The script echoes results.txt and prints EDITOR-CHECKS passed <p>, failed <f>, expected <n>.
 
 Each editor's error output is echoed as it arrives and scanned: a line starting with ERROR, SCRIPT ERROR or SHADER ERROR
-followed by a colon and a space fails the run, and the script lists each one as ENGINE-ERROR editor-<mode> <kind> <line>
-after that editor exits, where <kind> is ERROR, SCRIPT-ERROR or SHADER-ERROR. Warnings stay informational. The exit
-errors come after the plugin's DONE, so only the script sees them.
+followed by a colon and a space, or a .NET crash's line starting with "Fatal error.", fails the run, and the script lists
+each one as ENGINE-ERROR editor-<mode> <kind> <line> after that editor exits, where <kind> is ERROR, SCRIPT-ERROR,
+SHADER-ERROR or FATAL (Get-EngineErrorKind in Harness.psm1). Warnings stay informational. The exit errors come after the
+plugin's DONE, so only the script sees them. An import or reimport whose output has a Fatal error. line fails the run too.
 
-Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script opens editor windows, so it runs through the gate, which routes it
-to a builder's hidden desktop. It exits 0 only when every step exited 0, neither editor printed an ERROR, SCRIPT ERROR or
-SHADER ERROR line, no check failed and every expected check passed.
+Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script opens editor windows, so it runs through the gate,
+which routes it to a builder's hidden desktop. It exits 0 only when every step exited 0, no import or reimport printed a
+Fatal error. line, neither editor printed an ERROR, SCRIPT ERROR, SHADER ERROR or Fatal error. line, no check failed
+and every expected check passed.
 
 .EXAMPLE
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/editor-checks.log --slot heavy --timeout 1200 --
@@ -86,16 +88,6 @@ function Set-RunProjectSettings {
     [IO.File]::WriteAllText($Path, $text)
 }
 
-# The kind a failing engine error line names, spelled as the ENGINE-ERROR line prints it.
-function Get-EditorErrorKind {
-    param([Parameter(Mandatory)][string] $Type)
-    switch ($Type) {
-        'SCRIPT ERROR' { return 'SCRIPT-ERROR' }
-        'SHADER ERROR' { return 'SHADER-ERROR' }
-        default { return 'ERROR' }
-    }
-}
-
 function Read-EditorErrors {
     param(
         [Parameter(Mandatory)][Diagnostics.Process] $Process,
@@ -128,10 +120,10 @@ function Read-EditorErrors {
         }
         $emptySliceAfterExit = $false
         [Console]::Error.WriteLine($line)
-        # Godot prints a line starting with ERROR:, SCRIPT ERROR: or SHADER ERROR: (core/io/logger.h,
-        # error_type_string), then a "   at:" line; a warning starts with WARNING: and stays informational.
-        if ($line -cmatch '^(ERROR|SCRIPT ERROR|SHADER ERROR): ') {
-            $errors.Add([pscustomobject]@{ Kind = Get-EditorErrorKind $Matches[1]; Line = $line })
+        # Get-EngineErrorKind (Harness.psm1) names the lines that fail the run.
+        $kind = Get-EngineErrorKind -Line $line
+        if ($null -ne $kind) {
+            $errors.Add([pscustomobject]@{ Kind = $kind; Line = $line })
         }
         $read = $Process.StandardError.ReadLineAsync()
     }
@@ -195,8 +187,8 @@ Set-RunProjectSettings (Join-Path $runProject 'project.godot')
 # The first scan of a fresh project runs before the C# global classes register, so .xscn and .xres files get no uid
 # (docs/DECISIONS.md, "The addon registers from C#, as global classes"); the second scan has the classes.
 $prepared = (Invoke-Step 'build' { dotnet build (Join-Path $runProject 'GodotXaml.Addon.csproj') -c Debug -warnaserror --no-incremental }) -and
-    (Invoke-Step 'import' { & $godot --headless --path $runProject --import }) -and
-    (Invoke-Step 'reimport' { & $godot --headless --path $runProject --import })
+    (Invoke-GodotStep -Godot $godot -Name import -Arguments @('--headless', '--path', $runProject, '--import')) -and
+    (Invoke-GodotStep -Godot $godot -Name reimport -Arguments @('--headless', '--path', $runProject, '--import'))
 
 $editorsPassed = $false
 if ($prepared) {

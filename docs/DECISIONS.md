@@ -513,7 +513,7 @@ Godot is called only on the main thread, from a pump the host node calls each fr
 
 The server does not prove itself to the client: the ping's token is the client's proof to the server only. The Visual Studio client (GXAML-17) checks the owning process of the discovery file's port against its pid before it sends any text.
 
-Booked, not done: a check of the pre-authentication deadline (GXAML-206) and a check that a hung frame is cut off by the frame budget (GXAML-207).
+The checks scene runs with no frame budget: it ends the run itself after its `DONE` line, so a hung frame check fails through its own hang guard and is named. Booked, not done: a check of the pre-authentication deadline (GXAML-206).
 
 ## Name
 

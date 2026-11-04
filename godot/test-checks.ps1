@@ -2,22 +2,26 @@
 <#
 .SYNOPSIS
 Tests godot/checks.ps1, godot/compare.ps1 and godot/export.ps1 against a stub Godot and a stub dotnet: a line the run
-writes reaches the script's own output while Godot is still running, so the gate's stall watchdog sees the run progress.
+writes reaches the script's own output while Godot is still running, so the gate's stall watchdog sees the run progress,
+and an import that prints the crash fails the run.
 
 .DESCRIPTION
-The stub Godot exits 0 for --import. For checks.ps1's scene run it prints CHECK C1 PASS, for compare.ps1's it prints
-COMPARE stub1 PASS, and for export.ps1's pack export it prints STUB export started. Each holds until the test writes
-its release file, then prints the rest of its run: checks and compare end with a passing verdict, export runs its whole
-preset list. The test waits for that first line on the script's stdout, fails at once if the script exits first, and
-only then releases the stub. The one bound is a hang guard: a passing run never waits it out. Export's exit code is not
-asserted, because a stub that omits the presets' expected errors leaves it exiting 1. A case whose stub Godot prints a
-Fatal error line after its verdicts expects the script to fail on it and to print a FATAL line naming the step and the
-line. Each case gets its own temp root and runs its script on a copy of the tree that script reads (godot/,
-tests/fixtures/ and the two tools/ projects, with the Godot cache and build output left out), then asserts the run left
-the repo's own godot/cases/, fixture scripts and .tmp/export/ exactly as they were. The assertion snapshots paths a real
-run also writes, so a real compare or export run in the same checkout while the test runs fails a case. A failing case
-does not stop the later ones; the test prints CASE <name> PASS|FAIL <detail> per case and exits 0 only when every case
-passed.
+The stub Godot exits 0 for --import, printing the crash when the case gives it -FatalOnImport. For checks.ps1's scene
+run it prints CHECK C1 PASS, for compare.ps1's it prints COMPARE stub1 PASS, and for export.ps1's pack export it prints
+STUB export started. Each holds until the test writes its release file, then prints the rest of its run: checks and
+compare end with a passing verdict, export runs its whole preset list. The test waits for that first line on the
+script's stdout, fails at once if the script exits first, and only then releases the stub. The one bound is a hang
+guard: a passing run never waits it out. Export's exit code is not asserted, because a stub that omits the presets'
+expected errors leaves it exiting 1. A case whose stub Godot prints a Fatal error line after its verdicts expects the
+script to fail on it and to print a FATAL line naming the step and the line. A stub that prints the crash on its import
+and exits 0 expects each script to stop at the import with a FATAL import line. A stub that ends any scene call carrying
+--quit-after expects a checks or compare run whose scene call has no frame budget. The last case checks Harness.psm1's
+Get-EngineErrorKind directly against a table of engine error lines and the lines it must leave alone. Each case gets its
+own temp root and runs its script on a copy of the tree that script reads (godot/, tests/fixtures/ and the two tools/
+projects, with the Godot cache and build output left out), then asserts the run left the repo's own godot/cases/,
+fixture scripts and .tmp/export/ exactly as they were. The assertion snapshots paths a real run also writes, so a real
+compare or export run in the same checkout while the test runs fails a case. A failing case does not stop the later
+ones; the test prints CASE <name> PASS|FAIL <detail> per case and exits 0 only when every case passed.
 
 .EXAMPLE
 pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/test-checks.log --slot light --timeout 900 --
@@ -31,22 +35,24 @@ $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path $PSScriptRoot -Parent
 
-# Builds the stub Godot: imports exit 0, -Only ends any other kind of call, the run prints its first line and flushes it,
-# holds until the test releases it, runs the tail, and then, on every call with -Fatal or only on the calls whose
-# arguments match -FatalWhen, prints the .NET finalizer crash Godot leaves on its error output before exiting 0. The
-# hold's own bound is past the test's hang guard, so only the test ends it.
+# Builds the stub Godot: imports exit 0 (with -FatalOnImport, an import prints the crash and still exits 0), -Only ends
+# any other kind of call, the run prints its first line and flushes it, holds until the test releases it, runs the
+# tail, and then, on every call with -Fatal or only on the calls whose arguments match -FatalWhen, prints the .NET
+# finalizer crash Godot leaves on its error output before exiting 0. The hold's bound is past the test's hang guard, so
+# only the test ends it.
 function New-StubGodot {
     param(
         [Parameter(Mandatory)][string] $FirstLine,
         [Parameter(Mandatory)][string] $Tail,
         [string] $Only = '',
         [switch] $Fatal,
-        [string] $FatalWhen = ''
+        [string] $FatalWhen = '',
+        [switch] $FatalOnImport
     )
     $template = @'
 param()
 $all = $args -join ' '
-if ($all -match '--import') { exit 0 }
+__IMPORT__
 __ONLY__
 [Console]::Out.WriteLine('__FIRST__')
 [Console]::Out.Flush()
@@ -57,16 +63,19 @@ __TAIL__
 __FATAL__
 exit 0
 '@
-    $template = $template.Replace('__ONLY__', $Only).Replace('__FIRST__', $FirstLine)
+    # The crash reaches the harness on Godot's error output, which each script merges with 2>&1.
+    $crashLines = "    [Console]::Error.WriteLine('Fatal error. 0xC0000005')`n" +
+        "    [Console]::Error.WriteLine('   at Godot.GodotObject.Finalize()')"
+    $importLine = "if (`$all -match '--import') { exit 0 }"
+    if ($FatalOnImport) {
+        $importLine = "if (`$all -match '--import') {`n" + $crashLines + "`n    exit 0`n}"
+    }
+    $template = $template.Replace('__ONLY__', $Only).Replace('__FIRST__', $FirstLine).Replace('__IMPORT__', $importLine)
     $fatalLines = ''
     if ($Fatal -or $FatalWhen) {
-        # The crash reaches the harness on Godot's error output, which each script merges with 2>&1.
         $when = '$true'
         if ($FatalWhen) { $when = "`$all -match '$FatalWhen'" }
-        $fatalLines = "if ($when) {`n" +
-            "    [Console]::Error.WriteLine('Fatal error. 0xC0000005')`n" +
-            "    [Console]::Error.WriteLine('   at Godot.GodotObject.Finalize()')`n" +
-            '}'
+        $fatalLines = "if ($when) {`n" + $crashLines + "`n}"
     }
     return $template.Replace('__TAIL__', $Tail).Replace('__FATAL__', $fatalLines)
 }
@@ -149,9 +158,15 @@ function Add-ExpectationFailures {
         [Parameter(Mandatory)] $Failures,
         [AllowEmptyCollection()][string[]] $FatalSteps = @(),
         [int] $PassExports = 0,
-        [AllowEmptyCollection()][string[]] $FatalVerdicts = @()
+        [AllowEmptyCollection()][string[]] $FatalVerdicts = @(),
+        [AllowEmptyCollection()][string[]] $AbsentLines = @()
     )
     $lines = @($Run.Text -split '\r?\n')
+    foreach ($absent in $AbsentLines) {
+        if ($lines -ccontains $absent) {
+            $Failures.Add("$Script printed '$absent' after the import's Fatal error line, where it must stop at import")
+        }
+    }
     if ($Expect -eq 'CleanExit') {
         if ($Run.Exit -ne 0) {
             $Failures.Add("$Script exited $($Run.Exit) for a stub run where every expected line passed: $Stderr")
@@ -356,7 +371,8 @@ function Test-LinesReachTheOutputWhileGodotRuns {
         [AllowEmptyCollection()][string[]] $FatalSteps = @(),
         [int] $PassExports = 0,
         [AllowEmptyCollection()][string[]] $FatalVerdicts = @(),
-        [switch] $ChecksCount
+        [switch] $ChecksCount,
+        [AllowEmptyCollection()][string[]] $AbsentLines = @()
     )
 
     $root = Join-Path ([System.IO.Path]::GetTempPath()) ("gx-test-checks-" + [guid]::NewGuid().ToString('N'))
@@ -427,7 +443,7 @@ function Test-LinesReachTheOutputWhileGodotRuns {
         if ($null -ne $wait.Detail) { $failures.Add($wait.Detail) }
         if ($run.Hung) { $failures.Add("hung: $Script had not ended $HangGuardSeconds s after the stub Godot was released") }
         Add-ExpectationFailures -Expect $Expect -Script $Script -Run $run -Stderr $stderrText -Failures $failures `
-            -FatalSteps $FatalSteps -PassExports $PassExports -FatalVerdicts $FatalVerdicts
+            -FatalSteps $FatalSteps -PassExports $PassExports -FatalVerdicts $FatalVerdicts -AbsentLines $AbsentLines
     }
     $note = if ($Expect -eq 'FullExport') {
         "$Script's exit code is not asserted: the stub Godot does not emulate every expected error, so the script " +
@@ -436,6 +452,42 @@ function Test-LinesReachTheOutputWhileGodotRuns {
         ''
     }
     return (Write-CaseResult -Case $Case -Failures $failures -Note $note)
+}
+
+# Checks Harness.psm1's line judgement against the engine error lines that fail an editor run and the lines that must
+# stay informational; a command that throws counts as a wrong row rather than ending the test.
+function Test-EngineErrorKinds {
+    $failures = [System.Collections.Generic.List[string]]::new()
+    Import-Module (Join-Path $repo 'godot/Harness.psm1') -Force
+    # A hash literal is case-insensitive, so the rows stay objects: two of the lines differ only by case.
+    $table = @(
+        [pscustomobject]@{ Line = 'ERROR: something broke'; Kind = 'ERROR' }
+        [pscustomobject]@{ Line = 'SCRIPT ERROR: Parse Error'; Kind = 'SCRIPT-ERROR' }
+        [pscustomobject]@{ Line = 'SHADER ERROR: bad uniform'; Kind = 'SHADER-ERROR' }
+        [pscustomobject]@{ Line = 'Fatal error. 0xC0000005'; Kind = 'FATAL' }
+        [pscustomobject]@{ Line = 'Fatal error. Internal CLR error.'; Kind = 'FATAL' }
+        [pscustomobject]@{ Line = 'WARNING: a warning'; Kind = $null }
+        [pscustomobject]@{ Line = ' Fatal error. 0xC0000005'; Kind = $null }
+        [pscustomobject]@{ Line = 'fatal error. 0xC0000005'; Kind = $null }
+        [pscustomobject]@{ Line = 'Fatal error 0xC0000005'; Kind = $null }
+        [pscustomobject]@{ Line = '   at: some_function (file.cpp:12)'; Kind = $null }
+    )
+    foreach ($row in $table) {
+        $line = $row.Line
+        $want = $row.Kind
+        try {
+            $got = Get-EngineErrorKind -Line $line
+        } catch {
+            # A call that throws fails its row instead of stopping the later ones.
+            $got = "<$($_.Exception.GetType().Name)>"
+        }
+        if ($got -cne $want) {
+            $shown = if ($null -eq $got) { '<none>' } else { $got }
+            $wanted = if ($null -eq $want) { '<none>' } else { $want }
+            $failures.Add("Get-EngineErrorKind '$line' gave '$shown' where '$wanted' is right")
+        }
+    }
+    return (Write-CaseResult -Case 'EngineErrorLinesAreJudged' -Failures $failures)
 }
 
 $checksTail = @'
@@ -501,6 +553,19 @@ $exportProbeFatalStub = New-StubGodot -FirstLine 'STUB export started' -Tail $pa
 $failedExportFatalStub = New-StubGodot -FirstLine 'STUB export started' -Tail $passingExportTail `
     -Only 'if ($all -notmatch ''--export-pack'' -and $all -notmatch ''res://probe.gd'') { exit 0 }' `
     -FatalWhen 'Windows Selected'
+# An import that prints the crash and still exits 0, with every other call ending at once so a run the crash should
+# have stopped finishes instead of holding the stub; and a scene call that must carry no frame budget, which ends at
+# once with a marker when it does.
+$checksImportFatalStub = New-StubGodot -FirstLine 'CHECK C1 PASS' -Tail $checksTail -FatalOnImport `
+    -Only 'if ($all -notmatch ''--import'') { exit 0 }'
+$compareImportFatalStub = New-StubGodot -FirstLine 'COMPARE stub1 PASS' -Tail $compareTail -FatalOnImport `
+    -Only 'if ($all -notmatch ''--import'') { exit 0 }'
+$exportImportFatalStub = New-StubGodot -FirstLine 'STUB export started' -Tail $exportTail -FatalOnImport `
+    -Only 'if ($all -notmatch ''--import'') { exit 0 }'
+$checksNoBudgetStub = New-StubGodot -FirstLine 'CHECK C1 PASS' -Tail $checksTail `
+    -Only 'if ($all -match ''--quit-after'') { [Console]::Out.WriteLine(''STUB the scene call has --quit-after''); exit 0 }'
+$compareNoBudgetStub = New-StubGodot -FirstLine 'COMPARE stub1 PASS' -Tail $compareTail `
+    -Only 'if ($all -match ''--quit-after'') { [Console]::Out.WriteLine(''STUB the scene call has --quit-after''); exit 0 }'
 
 $exportVerdicts = @(@('all', 'selected', 'exclude', 'resources', 'broken', 'dependencies', 'customized') |
         ForEach-Object { "EXPORT $_" })
@@ -527,5 +592,19 @@ $results = @(
     (Test-LinesReachTheOutputWhileGodotRuns -Case 'FailedExportFatalErrorFailsTheRun' -Repo $repo -Script 'export.ps1' `
         -StubGodot $failedExportFatalStub -FirstLine 'STUB export started' -Expect 'FatalExit' -FatalSteps 'export' `
         -PassExports 6 -FatalVerdicts @('EXPORT selected'))
+    (Test-LinesReachTheOutputWhileGodotRuns -Case 'ImportFatalErrorFailsTheChecksRun' -Repo $repo -Script 'checks.ps1' `
+        -StubGodot $checksImportFatalStub -FirstLine 'FATAL import Fatal error. 0xC0000005' -Expect 'FatalExit' `
+        -FatalSteps 'import' -ChecksCount -AbsentLines @('STEP reimport', 'STEP checks'))
+    (Test-LinesReachTheOutputWhileGodotRuns -Case 'ImportFatalErrorFailsTheCompareRun' -Repo $repo -Script 'compare.ps1' `
+        -StubGodot $compareImportFatalStub -FirstLine 'FATAL import Fatal error. 0xC0000005' -Expect 'FatalExit' `
+        -FatalSteps 'import' -AbsentLines @('STEP reimport', 'STEP compare'))
+    (Test-LinesReachTheOutputWhileGodotRuns -Case 'ImportFatalErrorFailsTheExportRun' -Repo $repo -Script 'export.ps1' `
+        -StubGodot $exportImportFatalStub -FirstLine 'FATAL import Fatal error. 0xC0000005' -Expect 'FatalExit' `
+        -FatalSteps 'import' -AbsentLines @('STEP reimport', 'STUB export started'))
+    (Test-LinesReachTheOutputWhileGodotRuns -Case 'ChecksSceneRunHasNoFrameBudget' -Repo $repo -Script 'checks.ps1' `
+        -StubGodot $checksNoBudgetStub -FirstLine 'CHECK C1 PASS' -Expect 'CleanExit' -ChecksCount)
+    (Test-LinesReachTheOutputWhileGodotRuns -Case 'CompareSceneRunHasNoFrameBudget' -Repo $repo -Script 'compare.ps1' `
+        -StubGodot $compareNoBudgetStub -FirstLine 'COMPARE stub1 PASS' -Expect 'CleanExit')
+    (Test-EngineErrorKinds)
 )
 exit $(if ($results -contains $false) { 1 } else { 0 })

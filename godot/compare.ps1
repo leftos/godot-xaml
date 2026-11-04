@@ -79,20 +79,20 @@ if (-not $built) {
     exit 1
 }
 
-$imported = Invoke-Step 'import' { & $godot --headless --path $project --import }
+$imported = Invoke-GodotStep -Godot $godot -Name import -Arguments @('--headless', '--path', $project, '--import')
 if (-not $imported) {
     exit 1
 }
 
 # The first scan of a fresh project runs before the C# global classes register, so .xscn and .xres files get no uid
 # (docs/DECISIONS.md, "The addon registers from C#, as global classes"); the second scan has the classes.
-$reimported = Invoke-Step 'reimport' { & $godot --headless --path $project --import }
+$reimported = Invoke-GodotStep -Godot $godot -Name reimport -Arguments @('--headless', '--path', $project, '--import')
 if (-not $reimported) {
     exit 1
 }
 
 $run = Invoke-GodotStreaming -Godot $godot -Name compare -Arguments @(
-    '--headless', '--path', $project, '--scene', 'res://compare/Compare.tscn', '--quit-after', '600',
+    '--headless', '--path', $project, '--scene', 'res://compare/Compare.tscn',
     '--', "--expected-pairs=$expectedFixtures")
 $lines = $run.Lines
 $compareExit = $run.Exit
