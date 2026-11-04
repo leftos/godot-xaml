@@ -22,7 +22,8 @@ namespace GodotXaml.Core.Conversion;
 /// same way: inside a key, its sub-entries in numeric order, each sub-entry's keys in the declaring class's order. A family
 /// whose key order depends on a sibling property (a VisualShader's flags/, listed in the order its mode registers them)
 /// reads that property from the section once per sort: the last one holding an integer, else 0; a value the family has no
-/// order for keeps source order.
+/// order for keeps source order. A family whose order runs deeper than that (a TileSetAtlasSource's tiles, alternatives and
+/// TileData keys) is placed by its row's ranker, which reads the class list of the class the row names.
 /// </summary>
 internal sealed class PropertyOrder(GodotMetadata metadata)
 {
@@ -78,9 +79,9 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
             return rank;
         }
 
-        foreach ((DynamicPropertyFamilies.DynamicFamily family, Rank slot) in order.Families)
+        foreach ((DynamicPropertyFamilies.DynamicFamily family, Rank slot, ImmutableArray<(string Key, int Index)> classKeys) in order.Families)
         {
-            if (RankIn(family, slot, name, context) is { } matched)
+            if (RankIn(family, slot, classKeys, name, context) is { } matched)
             {
                 return matched;
             }
@@ -100,8 +101,15 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
     }
 
     // The family's rank for a name, or null when the family does not name it. A family the pattern alone names by one literal
-    // matches by an ordinal comparison, which costs less than its regex.
-    private static Rank? RankIn(DynamicPropertyFamilies.DynamicFamily family, Rank slot, string name, RankContext context)
+    // matches by an ordinal comparison, which costs less than its regex. A ranked family's ranker places the name, from the
+    // match and its row's class list.
+    private static Rank? RankIn(
+        DynamicPropertyFamilies.DynamicFamily family,
+        Rank slot,
+        ImmutableArray<(string Key, int Index)> classKeys,
+        string name,
+        RankContext context
+    )
     {
         if (family.Literal is { } literal)
         {
@@ -109,6 +117,20 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         }
 
         Match match = family.Pattern.Match(name);
+        if (match.Success && family.Ranker is { } ranker)
+        {
+            DynamicPropertyFamilies.RankLevels levels = ranker(match, classKeys);
+            return slot with
+            {
+                Entry = levels.Entry,
+                Key = levels.Key,
+                SubEntry = levels.SubEntry,
+                SubKey = levels.SubKey,
+                Layer = levels.Layer,
+                Leaf = levels.Leaf,
+            };
+        }
+
         return match.Success
             ? slot with
             {
@@ -162,7 +184,7 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
 
     // The place a key holds in an order sorted by key, or the order's length for one it does not hold; the probe compares the
     // group's span, so it allocates nothing.
-    private static int PlaceOf(ImmutableArray<(string Key, int Index)> order, ReadOnlySpan<char> key)
+    internal static int PlaceOf(ImmutableArray<(string Key, int Index)> order, ReadOnlySpan<char> key)
     {
         int low = 0;
         int high = order.Length - 1;
@@ -204,23 +226,50 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         return -1;
     }
 
-    // Each chain class's dynamic families, base first, in the order the class adds them.
-    private static ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot)> FamiliesOf(ImmutableArray<GodotClassInfo> chain)
+    // Each chain class's dynamic families, base first, in the order the class adds them, each with the class list its ranker
+    // places keys by (empty for a family without one).
+    private ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot, ImmutableArray<(string Key, int Index)> ClassKeys)> FamiliesOf(
+        ImmutableArray<GodotClassInfo> chain
+    )
     {
-        ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot)>.Builder families = ImmutableArray.CreateBuilder<(
+        ImmutableArray<(
             DynamicPropertyFamilies.DynamicFamily Family,
-            Rank Slot
+            Rank Slot,
+            ImmutableArray<(string Key, int Index)> ClassKeys
+        )>.Builder families = ImmutableArray.CreateBuilder<(
+            DynamicPropertyFamilies.DynamicFamily Family,
+            Rank Slot,
+            ImmutableArray<(string Key, int Index)> ClassKeys
         )>();
         for (int depth = 0; depth < chain.Length; depth++)
         {
             ImmutableArray<DynamicPropertyFamilies.DynamicFamily> declared = DynamicPropertyFamilies.Of(chain[depth].Name);
             for (int index = 0; index < declared.Length; index++)
             {
-                families.Add((declared[index], new Rank(Tier.ClassList, depth, Family.Dynamic, index)));
+                families.Add(
+                    (declared[index], new Rank(Tier.ClassList, depth, Family.Dynamic, index), ClassKeysOf(chain[depth].Name, declared[index]))
+                );
             }
         }
 
         return families.ToImmutable();
+    }
+
+    // The class list a ranked family places keys by, from the metadata in use; empty for a family that names none. A metadata
+    // without the named class cannot place the family's keys, which is an error in the metadata, not an order.
+    private ImmutableArray<(string Key, int Index)> ClassKeysOf(string declaring, DynamicPropertyFamilies.DynamicFamily family)
+    {
+        if (family.ListedBy is not { } listedBy)
+        {
+            return [];
+        }
+
+        GodotClassInfo listed =
+            metadata.FindClass(listedBy)
+            ?? throw new InvalidDataException(
+                $"The metadata has no class {listedBy}, whose list the {declaring} family {family.Pattern} places keys by."
+            );
+        return DynamicPropertyFamilies.KeyLookup(listed.ListOrder);
     }
 
     private ClassOrder Build(GodotClassInfo cls)
@@ -253,7 +302,7 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
     // A class's exact names and its chain's dynamic families.
     private sealed record ClassOrder(
         Dictionary<string, Rank> Listed,
-        ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot)> Families
+        ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot, ImmutableArray<(string Key, int Index)> ClassKeys)> Families
     );
 
     // The section one sort ranks, for a family whose key order a sibling property chooses; the sibling is read on first need
@@ -292,7 +341,8 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
     }
 
     // Entry and Key order a dynamic family's names: entry by entry in numeric order, each entry's keys in the class's order.
-    // SubEntry and SubKey order one nested level inside a key the same way (a setting's joints, each joint's keys).
+    // SubEntry and SubKey order one nested level inside a key the same way (a setting's joints, each joint's keys). Layer and
+    // Leaf order two levels deeper, which only a ranked family sets (an atlas alternative's TileData keys); 0 for any other.
     private readonly record struct Rank(
         Tier Tier,
         int Depth = 0,
@@ -301,12 +351,14 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         int Entry = 0,
         int Key = 0,
         int SubEntry = 0,
-        int SubKey = 0
+        int SubKey = 0,
+        int Layer = 0,
+        int Leaf = 0
     ) : IComparable<Rank>
     {
         public int CompareTo(Rank other) =>
-            (Tier, Depth, Family, Index, Entry, Key, SubEntry, SubKey).CompareTo(
-                (other.Tier, other.Depth, other.Family, other.Index, other.Entry, other.Key, other.SubEntry, other.SubKey)
+            (Tier, Depth, Family, Index, Entry, Key, SubEntry, SubKey, Layer, Leaf).CompareTo(
+                (other.Tier, other.Depth, other.Family, other.Index, other.Entry, other.Key, other.SubEntry, other.SubKey, other.Layer, other.Leaf)
             );
     }
 }

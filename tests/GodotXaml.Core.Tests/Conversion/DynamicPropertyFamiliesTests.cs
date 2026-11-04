@@ -217,6 +217,33 @@ public sealed class DynamicPropertyFamiliesTests
         Assert.Empty(offenders);
     }
 
+    // A ranked family places each name by its own ranker over the pattern's groups and a Godot class's list, so it carries a
+    // ranker and the class it reads, and no key order, nested order, count property or sibling; no other row carries either.
+    [Fact]
+    public void ARankedFamilyHasARankerAndNoKeyOrders()
+    {
+        Assert.Contains(All, row => row.Family.Creation == EntryCreation.Ranked);
+        Assert.Empty(
+            Offenders(row =>
+                row.Family.Creation == EntryCreation.Ranked
+                    ? !IsRankedAlone(row.Family)
+                    : row.Family.Ranker is not null || row.Family.ListedBy is not null
+            )
+        );
+    }
+
+    // A ranker reading a Godot class, and no key order, nested order, count property or sibling.
+    private static bool IsRankedAlone(DynamicFamily family) =>
+        family.Ranker is not null
+        && family.ListedBy is { } listedBy
+        && Metadata.FindClass(listedBy) is not null
+        && family.KeyOrder.IsEmpty
+        && family.SubKeyOrder.IsEmpty
+        && family.SizedBy is null
+        && HasNoModeOrders(family);
+
+    private static bool HasNoModeOrders(DynamicFamily family) => family.ModeBy is null && family.ModeKeyOrders.IsEmpty;
+
     private static bool IsRankedBefore(List<(string Class, DynamicFamily Family)> rows, int index, string? property)
     {
         string cls = rows[index].Class;

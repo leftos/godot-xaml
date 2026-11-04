@@ -58,5 +58,23 @@ public sealed class ResourceBackTests
         Assert.Contains(runs, run => !run.SequenceEqual(run.Order(StringComparer.Ordinal)));
     }
 
+    // The atlas entry hides tile and alternative order only: whole tiles and whole alternatives move, nothing else.
+    [Fact]
+    public void TheAtlasEntryHidesTileAndAlternativeOrderOnly()
+    {
+        Assert.Equal(Atlas("1:0/0", "0:0/1", "0:0/0", "0:0/0/flip_h"), Atlas("0:0/0", "0:0/0/flip_h", "0:0/1", "1:0/0"));
+        Assert.NotEqual(Atlas("0:0/0", "1:0/0", "0:0/0/flip_h"), Atlas("0:0/0", "0:0/0/flip_h", "1:0/0"));
+        Assert.NotEqual(Atlas("0:0/0", "0:0/size_in_atlas"), Atlas("0:0/size_in_atlas", "0:0/0"));
+    }
+
+    // A TileSetAtlasSource resource holding the names in this order, as the round trips compare it.
+    private static string Atlas(params string[] names) =>
+        Comparable(
+            "atlas",
+            TscnReader.Read(
+                "[gd_resource type=\"TileSetAtlasSource\" format=3]\n\n[resource]\n" + string.Concat(names.Select(name => $"{name} = 0\n"))
+            )
+        );
+
     private static string Comparable(string fixture, TscnDocument document) => TscnTestNormalizer.Comparable(UnorderedNames.Sort(fixture, document));
 }

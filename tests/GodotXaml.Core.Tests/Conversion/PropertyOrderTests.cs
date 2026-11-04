@@ -1,3 +1,6 @@
+using System.Text;
+using GodotXaml.Core.Conversion;
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
@@ -720,9 +723,9 @@ public sealed class PropertyOrderTests
         );
     }
 
-    // TileData::set_terrain and set_terrain_peering_bit fail while the alternative's terrain_set is unset (tile_set.cpp), and
-    // TileSetAtlasSource::_set creates a tile and an alternative on any of its keys, so every terrain key comes after every
-    // other tile key.
+    // TileData::set_terrain and set_terrain_peering_bit fail while the alternative's terrain_set is unset (tile_set.cpp);
+    // TileSetAtlasSource::_get_property_list lists each tile's names together, and TileData lists terrain_set, then terrain,
+    // then the peering bits.
     [Fact]
     public void AnAtlasTileSetsItsTerrainSetBeforeItsTerrainAndPeeringBits()
     {
@@ -741,9 +744,430 @@ public sealed class PropertyOrderTests
         );
 
         Assert.Equal(
-            ["0:0/0", "0:0/0/terrain_set", "1:0/0", "1:0/0/terrain_set", "0:0/0/terrain", "1:0/0/terrain", "0:0/0/terrains_peering_bit/right_side"],
+            ["0:0/0", "0:0/0/terrain_set", "0:0/0/terrain", "0:0/0/terrains_peering_bit/right_side", "1:0/0", "1:0/0/terrain_set", "1:0/0/terrain"],
             PropertyNames(resource.ResourceProperties)
         );
+    }
+
+    // TileSetAtlasSource::_get_property_list lists a tile's size_in_atlas, then next_alternative_id, then its alternatives.
+    [Fact]
+    public void AnAtlasTileListsItsSizeAndNextAlternativeBeforeItsAlternatives()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0" Value="0" />
+              <x:Prop Name="0:0/next_alternative_id" Value="2" />
+              <x:Prop Name="0:0/size_in_atlas" Value="Vector2i(2, 1)" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:0/size_in_atlas", "0:0/next_alternative_id", "0:0/0"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // TileSetAtlasSource::_get_property_list lists animation_columns, animation_separation, animation_speed, animation_mode.
+    [Fact]
+    public void AnAtlasTileListsItsAnimationKeysInGodotsOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/animation_speed" Value="2.0" />
+              <x:Prop Name="0:0/animation_mode" Value="1" />
+              <x:Prop Name="0:0/animation_columns" Value="2" />
+              <x:Prop Name="0:0/animation_separation" Value="Vector2i(1, 1)" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            ["0:0/animation_columns", "0:0/animation_separation", "0:0/animation_speed", "0:0/animation_mode"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // TileSetAtlasSource::_get_property_list lists the animation frames by number, before the tile's alternatives.
+    [Fact]
+    public void AnAtlasTileListsItsAnimationFramesInNumericOrderBeforeItsAlternatives()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/animation_frame_10/duration" Value="1.0" />
+              <x:Prop Name="0:0/animation_frame_2/duration" Value="1.0" />
+              <x:Prop Name="0:0/animation_frame_1/duration" Value="1.0" />
+              <x:Prop Name="0:0/0" Value="0" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            ["0:0/animation_frame_1/duration", "0:0/animation_frame_2/duration", "0:0/animation_frame_10/duration", "0:0/0"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // TileSetAtlasSource::_get_property_list lists each tile's names together.
+    [Fact]
+    public void AtlasTilesKeepEachTilesNamesTogether()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="1:0/size_in_atlas" Value="Vector2i(1, 2)" />
+              <x:Prop Name="0:0/size_in_atlas" Value="Vector2i(1, 2)" />
+              <x:Prop Name="1:0/0" Value="0" />
+              <x:Prop Name="0:0/0" Value="0" />
+              <x:Prop Name="1:0/0/flip_h" Value="true" />
+              <x:Prop Name="0:0/0/flip_h" Value="true" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            ["0:0/size_in_atlas", "0:0/0", "0:0/0/flip_h", "1:0/size_in_atlas", "1:0/0", "1:0/0/flip_h"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // Tiles come back by their coordinates, x first and numerically, as Vector2i's operator< compares them.
+    [Fact]
+    public void AtlasTilesComeInCoordinateOrderXFirst()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="10:0/0" Value="0" />
+              <x:Prop Name="2:0/0" Value="0" />
+              <x:Prop Name="0:1/0" Value="0" />
+              <x:Prop Name="1:0/0" Value="0" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:1/0", "1:0/0", "2:0/0", "10:0/0"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // TileData lists its class properties in ClassDB's order: flip_h, then terrain_set, terrain and probability.
+    [Fact]
+    public void AnAtlasAlternativeListsItsClassPropertiesInTileDatasOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0/terrain" Value="0" />
+              <x:Prop Name="0:0/0/terrain_set" Value="0" />
+              <x:Prop Name="0:0/0/probability" Value="0.5" />
+              <x:Prop Name="0:0/0/flip_h" Value="true" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:0/0/flip_h", "0:0/0/terrain_set", "0:0/0/terrain", "0:0/0/probability"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // Alternatives come back by id numerically, each marker followed by its keys.
+    [Fact]
+    public void AtlasAlternativesComeInNumericIdOrderEachMarkerFirst()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0" Value="0" />
+              <x:Prop Name="0:0/0/flip_h" Value="true" />
+              <x:Prop Name="0:0/1" Value="0" />
+              <x:Prop Name="0:0/1/flip_h" Value="true" />
+              <x:Prop Name="0:0/10" Value="0" />
+              <x:Prop Name="0:0/10/flip_h" Value="true" />
+              <x:Prop Name="0:0/2" Value="0" />
+              <x:Prop Name="0:0/2/flip_h" Value="true" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            ["0:0/0", "0:0/0/flip_h", "0:0/1", "0:0/1/flip_h", "0:0/2", "0:0/2/flip_h", "0:0/10", "0:0/10/flip_h"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // TileData::_get_property_list lists occlusion, physics, navigation and custom data layers in that order, each by number.
+    [Fact]
+    public void AnAtlasAlternativeListsItsLayersByKindThenNumber()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0/occlusion_layer_10/polygon_0/polygon" Value='Resource("res://o.tres")' />
+              <x:Prop Name="0:0/0/occlusion_layer_2/polygon_0/polygon" Value='Resource("res://o.tres")' />
+              <x:Prop Name="0:0/0/physics_layer_0/polygon_0/points" Value="[]" />
+              <x:Prop Name="0:0/0/navigation_layer_0/polygon" Value='Resource("res://n.tres")' />
+              <x:Prop Name="0:0/0/custom_data_1" Value="1" />
+              <x:Prop Name="0:0/0/custom_data_0" Value="1" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "0:0/0/occlusion_layer_2/polygon_0/polygon",
+                "0:0/0/occlusion_layer_10/polygon_0/polygon",
+                "0:0/0/physics_layer_0/polygon_0/points",
+                "0:0/0/navigation_layer_0/polygon",
+                "0:0/0/custom_data_0",
+                "0:0/0/custom_data_1",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // TileData::_get_property_list lists a physics layer's velocities, then each polygon's points, one_way, one_way_margin.
+    [Fact]
+    public void AnAtlasPhysicsLayerListsItsVelocitiesThenItsPolygonKeys()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0/physics_layer_0/polygon_0/one_way_margin" Value="2.0" />
+              <x:Prop Name="0:0/0/physics_layer_0/polygon_0/one_way" Value="true" />
+              <x:Prop Name="0:0/0/physics_layer_0/polygon_0/points" Value="[]" />
+              <x:Prop Name="0:0/0/physics_layer_0/angular_velocity" Value="1.0" />
+              <x:Prop Name="0:0/0/physics_layer_0/linear_velocity" Value="Vector2(1, 0)" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "0:0/0/physics_layer_0/linear_velocity",
+                "0:0/0/physics_layer_0/angular_velocity",
+                "0:0/0/physics_layer_0/polygon_0/points",
+                "0:0/0/physics_layer_0/polygon_0/one_way",
+                "0:0/0/physics_layer_0/polygon_0/one_way_margin",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // A physics layer's polygons come by number.
+    [Fact]
+    public void AnAtlasPhysicsLayerListsItsPolygonsInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0/physics_layer_0/polygon_10/points" Value="[]" />
+              <x:Prop Name="0:0/0/physics_layer_0/polygon_2/points" Value="[]" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            ["0:0/0/physics_layer_0/polygon_2/points", "0:0/0/physics_layer_0/polygon_10/points"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // TileData::_get_property_list lists the peering bits in CELL_NEIGHBOR_ENUM_TO_TEXT order.
+    [Fact]
+    public void AnAtlasAlternativeListsItsPeeringBitsInCellNeighborOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0/terrains_peering_bit/top_side" Value="0" />
+              <x:Prop Name="0:0/0/terrains_peering_bit/right_side" Value="0" />
+              <x:Prop Name="0:0/0/terrains_peering_bit/bottom_left_corner" Value="0" />
+              <x:Prop Name="0:0/0/terrains_peering_bit/left_side" Value="0" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "0:0/0/terrains_peering_bit/right_side",
+                "0:0/0/terrains_peering_bit/bottom_left_corner",
+                "0:0/0/terrains_peering_bit/left_side",
+                "0:0/0/terrains_peering_bit/top_side",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // TileSetAtlasSource::_set rejects a tile name whose coordinates are not numbers, so it is no tile of the family and takes
+    // the ordinary slash-name rank, in source order with any other.
+    [Fact]
+    public void ANonNumericAtlasTileTakesTheSlashNameRank()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="other/x" Value="1" />
+              <x:Prop Name="a:b/size_in_atlas" Value="Vector2i(1, 1)" />
+              <x:Prop Name="0:0/size_in_atlas" Value="Vector2i(1, 1)" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:0/size_in_atlas", "other/x", "a:b/size_in_atlas"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // A tile with no alternative marker still ranks.
+    [Fact]
+    public void AnAtlasTileWithOnlyItsSizeRanks()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/size_in_atlas" Value="Vector2i(1, 1)" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:0/size_in_atlas"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // A tile key Godot does not list goes after the listed keys of its tile.
+    [Fact]
+    public void AnUnknownAtlasTileKeyComesAfterTheListedKeys()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/zzz" Value="1" />
+              <x:Prop Name="0:0/size_in_atlas" Value="Vector2i(1, 1)" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:0/size_in_atlas", "0:0/zzz"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // TileSetAtlasSource::set_tile_animation_frames_count checks for room with the tile's current animation_columns, so the
+    // frame durations load after the animation keys.
+    [Fact]
+    public void AnAtlasTileListsItsAnimationFramesAfterItsAnimationKeys()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/animation_frame_1/duration" Value="1.0" />
+              <x:Prop Name="0:0/animation_columns" Value="2" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:0/animation_columns", "0:0/animation_frame_1/duration"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // TileData::_get_property_list lists occlusion, physics, peering bits, navigation, then custom data.
+    [Fact]
+    public void AnAtlasAlternativeListsItsPeeringBitsBetweenPhysicsAndNavigation()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0/custom_data_0" Value="1" />
+              <x:Prop Name="0:0/0/navigation_layer_0/polygon" Value='Resource("res://n.tres")' />
+              <x:Prop Name="0:0/0/terrains_peering_bit/right_side" Value="0" />
+              <x:Prop Name="0:0/0/physics_layer_0/linear_velocity" Value="Vector2(1, 0)" />
+              <x:Prop Name="0:0/0/occlusion_layer_0/polygon_0/polygon" Value='Resource("res://o.tres")' />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "0:0/0/occlusion_layer_0/polygon_0/polygon",
+                "0:0/0/physics_layer_0/linear_velocity",
+                "0:0/0/terrains_peering_bit/right_side",
+                "0:0/0/navigation_layer_0/polygon",
+                "0:0/0/custom_data_0",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // A tile key Godot does not list goes after the tile's alternatives too.
+    [Fact]
+    public void AnUnknownAtlasTileKeyComesAfterTheAlternatives()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/zzz" Value="1" />
+              <x:Prop Name="0:0/0" Value="0" />
+              <x:Prop Name="0:0/size_in_atlas" Value="Vector2i(1, 1)" />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(["0:0/size_in_atlas", "0:0/0", "0:0/zzz"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // An occlusion layer's polygons come by number.
+    [Fact]
+    public void AnAtlasOcclusionLayerListsItsPolygonsInNumericOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0/occlusion_layer_0/polygon_10/polygon" Value='Resource("res://o.tres")' />
+              <x:Prop Name="0:0/0/occlusion_layer_0/polygon_2/polygon" Value='Resource("res://o.tres")' />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            ["0:0/0/occlusion_layer_0/polygon_2/polygon", "0:0/0/occlusion_layer_0/polygon_10/polygon"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // TileData::_set still loads occlusion_layer_<n>/polygon ("Kept for compatibility", tile_set.cpp) as the layer's first
+    // polygon, so it ranks in its occlusion layer, before that layer's polygon_<m>/polygon keys.
+    [Fact]
+    public void AnAtlasCompatOcclusionPolygonRanksInItsOcclusionLayer()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <TileSetAtlasSource {{X}}>
+              <x:Prop Name="0:0/0/custom_data_0" Value="1" />
+              <x:Prop Name="0:0/0/occlusion_layer_0/polygon_0/polygon" Value='Resource("res://o.tres")' />
+              <x:Prop Name="0:0/0/occlusion_layer_0/polygon" Value='Resource("res://o.tres")' />
+            </TileSetAtlasSource>
+            """
+        );
+
+        Assert.Equal(
+            ["0:0/0/occlusion_layer_0/polygon", "0:0/0/occlusion_layer_0/polygon_0/polygon", "0:0/0/custom_data_0"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // A ranked family reads its class list from the metadata in use; a metadata without that class is an error, not an order.
+    [Fact]
+    public void ARankedFamilyWhoseListedClassTheMetadataLacksThrows()
+    {
+        var metadata = GodotMetadata.Load(
+            new MemoryStream(
+                Encoding.UTF8.GetBytes(
+                    """
+                    {"godot": "4.7", "globalEnums": {}, "classes": {
+                      "Object": {"parent": null, "instantiable": true, "enums": {}, "properties": [], "signals": []},
+                      "TileSetAtlasSource": {"parent": "Object", "instantiable": true, "enums": {}, "properties": [], "signals": []}
+                    }}
+                    """
+                )
+            )
+        );
+        GodotClassInfo atlas = Assert.IsType<GodotClassInfo>(metadata.FindClass("TileSetAtlasSource"));
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() => new PropertyOrder(metadata).Sort(atlas, []));
+
+        Assert.Contains("TileData", error.Message, StringComparison.Ordinal);
+        Assert.Contains("TileSetAtlasSource", error.Message, StringComparison.Ordinal);
     }
 
     // With no skeleton, SpringBoneSimulator3D::set_root_bone frees a setting's joints, and the collision setters return early

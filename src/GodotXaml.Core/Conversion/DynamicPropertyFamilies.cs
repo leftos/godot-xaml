@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace GodotXaml.Core.Conversion;
@@ -13,7 +14,8 @@ namespace GodotXaml.Core.Conversion;
 /// <c>OpenXRCompositionLayer</c>, which adds any slash name a GDExtension supplies (the engine ships none). Every row states
 /// how Godot creates its entries on load (<see cref="EntryCreation"/>): in any order; sized first by a count property ranked
 /// before the family, named on the row; on one key; or in any order but listed in a key order a sibling property's value
-/// chooses (a VisualShader's flags/ by its mode). Godot creates an entry only on one key (the creating key), so each
+/// chooses (a VisualShader's flags/ by its mode); or in any order but placed by the row's own ranker (a TileSetAtlasSource's
+/// tiles, alternatives and TileData keys). Godot creates an entry only on one key (the creating key), so each
 /// entry's names come creating key first, and entries in numeric order, which a family that appends at the next index
 /// (Animation tracks, replication properties, TileSet patterns) needs. Such a pattern names each entry's number in an
 /// <c>index</c> group and any key after it in a <c>key</c> group, and the row carries the declaring class's key order. A
@@ -559,11 +561,9 @@ internal static class DynamicPropertyFamilies
         // TileSet::_set appends at most one pattern per name (its loop calls add_pattern, which refuses a pattern it holds).
         Row.OnKey("TileSet", @"^pattern_(?<index>[0-9]+)\z", []),
         // scene/resources/2d/tile_set.cpp, TileSetAtlasSource::_get_property_list
-        // TileData::set_terrain and set_terrain_peering_bit fail while terrain_set is unset, and _set creates a tile and an
-        // alternative on any of its keys, so every terrain key follows every other tile key.
-        Row.AnyOrder("TileSetAtlasSource", @"^[0-9]+:[0-9]+/(?![0-9]+/(?:terrain$|terrains_peering_bit/))"),
-        Row.AnyOrder("TileSetAtlasSource", @"^[0-9]+:[0-9]+/[0-9]+/terrain\z"),
-        Row.AnyOrder("TileSetAtlasSource", @"^[0-9]+:[0-9]+/[0-9]+/terrains_peering_bit/"),
+        // Each tile's names together, in Godot's per-tile order (AtlasTileRank); TileData lists terrain_set before terrain and
+        // the peering bits, whose setters fail while terrain_set is unset.
+        Row.Ranked("TileSetAtlasSource", @"^(?<tile>[0-9]+:[0-9]+)/(?<rest>[\s\S]*)\z", AtlasTileRank, "TileData"),
         // scene/resources/2d/tile_set.cpp, TileSetScenesCollectionSource::_get_property_list
         // Scene tiles by id (create_scene_tile sorts scenes_ids), each tile's scene first; _set creates a tile on either key.
         Row.OnKey("TileSetScenesCollectionSource", @"^scenes/(?<index>[0-9]+)/(?<key>[^/]*)", ["scene", "display_placeholder"]),
@@ -706,7 +706,9 @@ internal static class DynamicPropertyFamilies
             LiteralOf(entry),
             entry.ModeBy,
             [.. entry.ModeKeyOrders.Select(order => order.ToImmutableArray())],
-            [.. entry.ModeKeyOrders.Select(KeyLookup)]
+            [.. entry.ModeKeyOrders.Select(KeyLookup)],
+            entry.Ranker,
+            entry.ListedBy
         );
     }
 
@@ -741,8 +743,233 @@ internal static class DynamicPropertyFamilies
 
     // Each key's declaring place, sorted by key with the ordinal comparison, so a probe compares the key group's span and
     // allocates nothing.
-    private static ImmutableArray<(string Key, int Index)> KeyLookup(string[] keys) =>
+    internal static ImmutableArray<(string Key, int Index)> KeyLookup(IEnumerable<string> keys) =>
         [.. keys.Select((key, index) => (Key: key, Index: index)).OrderBy(entry => entry.Key, StringComparer.Ordinal)];
+
+    // scene/resources/2d/tile_set.cpp, TileSetAtlasSource::_get_property_list: a tile's own keys, before its animation frames
+    // (animation_frames_count is never stored).
+    private static readonly ImmutableArray<(string Key, int Index)> AtlasTileKeys = KeyLookup([
+        "size_in_atlas",
+        "next_alternative_id",
+        "animation_columns",
+        "animation_separation",
+        "animation_speed",
+        "animation_mode",
+    ]);
+
+    // scene/resources/2d/tile_set.cpp, TileSet::CELL_NEIGHBOR_ENUM_TO_TEXT, the order TileData lists its peering bits in.
+    private static readonly ImmutableArray<(string Key, int Index)> PeeringBits = KeyLookup([
+        "right_side",
+        "right_corner",
+        "bottom_right_side",
+        "bottom_right_corner",
+        "bottom_side",
+        "bottom_corner",
+        "bottom_left_side",
+        "bottom_left_corner",
+        "left_side",
+        "left_corner",
+        "top_left_side",
+        "top_left_corner",
+        "top_side",
+        "top_corner",
+        "top_right_side",
+        "top_right_corner",
+    ]);
+
+    // scene/resources/2d/tile_set.cpp, TileData::_get_property_list: a physics polygon's keys.
+    private static readonly ImmutableArray<(string Key, int Index)> PhysicsPolygonKeys = KeyLookup(["points", "one_way", "one_way_margin"]);
+
+    // A tile's parts after its own keys (AtlasTileKeys): its animation frames, its alternatives, then any key Godot does not list.
+    private static readonly int AtlasFrames = AtlasTileKeys.Length;
+    private static readonly int AtlasAlternatives = AtlasTileKeys.Length + 1;
+    private static readonly int AtlasUnknown = AtlasTileKeys.Length + 2;
+
+    // TileData's dynamic kinds after its class properties, in TileData::_get_property_list's order, then any key it does not list.
+    private enum TileDataKind
+    {
+        Occlusion,
+        Physics,
+        Peering,
+        Navigation,
+        CustomData,
+        Unknown,
+    }
+
+    // A packed level holds a small place above a number in its low bits; a number past those bits takes their largest value,
+    // so it goes last.
+    private const int LayerNumberBits = 20;
+    private const int LeafKeyBits = 2;
+
+    /// <summary>
+    /// The rank levels of a TileSetAtlasSource tile name, in TileSetAtlasSource::_get_property_list's order: tiles by
+    /// coordinates, x first (Vector2i's operator&lt;); in a tile, its own keys, its animation frames by number, then its
+    /// alternatives by id, each its marker then its TileData keys; then a key Godot does not list. Godot walks its tiles and
+    /// alternatives in the order they were created, which the text keeps no record of, so coordinates and ids stand for it.
+    /// </summary>
+    /// <param name="match">The match of the row's pattern, with its <c>tile</c> and <c>rest</c> groups.</param>
+    /// <param name="classKeys">TileData's class properties in ClassDB's list order, as a lookup sorted by key.</param>
+    /// <returns>
+    /// Entry and Key the tile's x and y; SubEntry the tile part; SubKey the frame number or alternative id; Layer and Leaf
+    /// the alternative key's place.
+    /// </returns>
+    internal static RankLevels AtlasTileRank(Match match, ImmutableArray<(string Key, int Index)> classKeys)
+    {
+        ReadOnlySpan<char> tile = match.Groups["tile"].ValueSpan;
+        int colon = tile.IndexOf(':');
+        (int part, int number, int layer, int leaf) = TileKeyRank(match.Groups["rest"].ValueSpan, classKeys);
+        return new RankLevels(Number(tile[..colon]) ?? 0, Number(tile[(colon + 1)..]) ?? 0, part, number, layer, leaf);
+    }
+
+    // A tile key's part, its frame number or alternative id, and an alternative key's Layer and Leaf.
+    private static (int Part, int Number, int Layer, int Leaf) TileKeyRank(ReadOnlySpan<char> rest, ImmutableArray<(string Key, int Index)> classKeys)
+    {
+        int slash = rest.IndexOf('/');
+        ReadOnlySpan<char> head = slash < 0 ? rest : rest[..slash];
+        if (Number(head) is { } alternative)
+        {
+            (int layer, int leaf) = slash < 0 ? (0, 0) : AlternativeKeyRank(rest[(slash + 1)..], classKeys);
+            return (AtlasAlternatives, alternative, layer, leaf);
+        }
+
+        if (slash < 0)
+        {
+            int place = PropertyOrder.PlaceOf(AtlasTileKeys, rest);
+            return (place < AtlasTileKeys.Length ? place : AtlasUnknown, 0, 0, 0);
+        }
+
+        return FrameOf(head, rest[(slash + 1)..]) is { } frame ? (AtlasFrames, frame, 0, 0) : (AtlasUnknown, 0, 0, 0);
+    }
+
+    // animation_frame_<number>/duration: the frame's number; null for any other key.
+    private static int? FrameOf(ReadOnlySpan<char> head, ReadOnlySpan<char> key) =>
+        head.StartsWith(FramePrefix) && key is "duration" ? Number(head[FramePrefix.Length..]) : null;
+
+    private const string FramePrefix = "animation_frame_";
+
+    // An alternative key's Layer and Leaf: Layer packs its place (the marker 0, then each class property, then each dynamic
+    // kind) above its layer number, or a peering bit's place; Leaf packs a physics layer's part (the velocities, then each
+    // polygon by number) above the polygon's key, or an occlusion polygon's number.
+    private static (int Layer, int Leaf) AlternativeKeyRank(ReadOnlySpan<char> key, ImmutableArray<(string Key, int Index)> classKeys)
+    {
+        int listed = PropertyOrder.PlaceOf(classKeys, key);
+        if (listed < classKeys.Length)
+        {
+            return (Pack(1 + listed, 0, LayerNumberBits), 0);
+        }
+
+        (TileDataKind kind, int number, int leaf) = DynamicKeyRank(key);
+        return (Pack(1 + classKeys.Length + (int)kind, number, LayerNumberBits), leaf);
+    }
+
+    // A TileData dynamic key's kind, its layer number (a peering bit's place) and its Leaf.
+    private static (TileDataKind Kind, int Number, int Leaf) DynamicKeyRank(ReadOnlySpan<char> key) =>
+        OcclusionRank(key) ?? PhysicsRank(key) ?? PeeringRank(key) ?? NavigationRank(key) ?? CustomDataRank(key) ?? (TileDataKind.Unknown, 0, 0);
+
+    // occlusion_layer_<layer>/polygon_<polygon>/polygon, after the layer's occlusion_layer_<layer>/polygon, which TileData::_set
+    // still loads as the layer's first polygon ("Kept for compatibility").
+    private static (TileDataKind, int, int)? OcclusionRank(ReadOnlySpan<char> key) =>
+        LayerOf(key, "occlusion_layer_", out int layer, out ReadOnlySpan<char> inner) && OcclusionLeaf(inner) is { } leaf
+            ? (TileDataKind.Occlusion, layer, leaf)
+            : null;
+
+    // An occlusion layer key's Leaf: the compatibility polygon, then each polygon by number; null for a key TileData does
+    // not load.
+    private static int? OcclusionLeaf(ReadOnlySpan<char> inner) =>
+        inner is "polygon" ? 0
+        : PolygonOf(inner, out int polygon, out ReadOnlySpan<char> leafKey) && leafKey is "polygon"
+            ? Pack(Math.Min(polygon, int.MaxValue - 1) + 1, 0, LeafKeyBits)
+        : null;
+
+    // physics_layer_<layer>/<key>
+    private static (TileDataKind, int, int)? PhysicsRank(ReadOnlySpan<char> key) =>
+        LayerOf(key, "physics_layer_", out int layer, out ReadOnlySpan<char> inner) && PhysicsLeaf(inner) is { } leaf
+            ? (TileDataKind.Physics, layer, leaf)
+            : null;
+
+    // terrains_peering_bit/<side>
+    private static (TileDataKind, int, int)? PeeringRank(ReadOnlySpan<char> key)
+    {
+        if (!key.StartsWith(PeeringPrefix))
+        {
+            return null;
+        }
+
+        int side = PropertyOrder.PlaceOf(PeeringBits, key[PeeringPrefix.Length..]);
+        return side < PeeringBits.Length ? (TileDataKind.Peering, side, 0) : null;
+    }
+
+    private const string PeeringPrefix = "terrains_peering_bit/";
+
+    // navigation_layer_<layer>/polygon
+    private static (TileDataKind, int, int)? NavigationRank(ReadOnlySpan<char> key) =>
+        LayerOf(key, "navigation_layer_", out int layer, out ReadOnlySpan<char> inner) && inner is "polygon"
+            ? (TileDataKind.Navigation, layer, 0)
+            : null;
+
+    // custom_data_<layer>
+    private static (TileDataKind, int, int)? CustomDataRank(ReadOnlySpan<char> key) =>
+        key.StartsWith(CustomDataPrefix) && Number(key[CustomDataPrefix.Length..]) is { } layer ? (TileDataKind.CustomData, layer, 0) : null;
+
+    private const string CustomDataPrefix = "custom_data_";
+
+    // A physics layer key's Leaf: linear_velocity, angular_velocity, then each polygon by number with its keys in order; null
+    // for a key TileData does not list.
+    private static int? PhysicsLeaf(ReadOnlySpan<char> inner)
+    {
+        if (inner is "linear_velocity" or "angular_velocity")
+        {
+            return Pack(inner is "linear_velocity" ? 0 : 1, 0, LeafKeyBits);
+        }
+
+        if (PolygonOf(inner, out int polygon, out ReadOnlySpan<char> leafKey))
+        {
+            int place = PropertyOrder.PlaceOf(PhysicsPolygonKeys, leafKey);
+            return place < PhysicsPolygonKeys.Length ? Pack(Math.Min(polygon, int.MaxValue - 2) + 2, place, LeafKeyBits) : null;
+        }
+
+        return null;
+    }
+
+    // <prefix><number>/<inner>: the layer number and what follows its slash.
+    private static bool LayerOf(ReadOnlySpan<char> key, string prefix, out int layer, out ReadOnlySpan<char> inner)
+    {
+        layer = 0;
+        inner = default;
+        if (!key.StartsWith(prefix))
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> after = key[prefix.Length..];
+        int slash = after.IndexOf('/');
+        if (slash < 0 || Number(after[..slash]) is not { } number)
+        {
+            return false;
+        }
+
+        layer = number;
+        inner = after[(slash + 1)..];
+        return true;
+    }
+
+    // polygon_<number>/<key>: the polygon number and its key.
+    private static bool PolygonOf(ReadOnlySpan<char> inner, out int polygon, out ReadOnlySpan<char> key) =>
+        LayerOf(inner, "polygon_", out polygon, out key);
+
+    // A run of ASCII digits as a number, a number past int's range as int.MaxValue; null for anything else.
+    private static int? Number(ReadOnlySpan<char> digits)
+    {
+        if (digits.IsEmpty || digits.ContainsAnyExceptInRange('0', '9'))
+        {
+            return null;
+        }
+
+        return int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out int number) ? number : int.MaxValue;
+    }
+
+    // A place above a number in the low bits; a place or a number past its bits takes their largest value.
+    private static int Pack(int place, int number, int bits) => (Math.Min(place, (1 << (31 - bits)) - 1) << bits) | Math.Min(number, (1 << bits) - 1);
 
     private static readonly FrozenDictionary<string, ImmutableArray<DynamicFamily>> ByClass = Families
         .GroupBy(row => row.Class, StringComparer.Ordinal)
@@ -801,7 +1028,23 @@ internal static class DynamicPropertyFamilies
         /// listed keys.
         /// </summary>
         ByMode,
+
+        /// <summary>
+        /// Godot creates an entry on any of its keys, so any order loads, but lists its names in an order deeper than an
+        /// entry's keys (a TileSetAtlasSource's tiles, each tile's alternatives and their TileData keys); the row's ranker
+        /// places each name from the pattern's groups and the class list of the class it names.
+        /// </summary>
+        Ranked,
     }
+
+    /// <summary>The levels a ranker places a name at inside its family's place, compared in order.</summary>
+    internal readonly record struct RankLevels(int Entry, int Key, int SubEntry, int SubKey, int Layer, int Leaf);
+
+    /// <summary>Places a name a <see cref="EntryCreation.Ranked"/> family's pattern matched.</summary>
+    /// <param name="match">The pattern's match over the name.</param>
+    /// <param name="classKeys">The class list of the row's <see cref="DynamicFamily.ListedBy"/> class, as a lookup sorted by key.</param>
+    /// <returns>The name's levels.</returns>
+    internal delegate RankLevels Ranker(Match match, ImmutableArray<(string Key, int Index)> classKeys);
 
     /// <summary>How a family's literal names a property, for a row the pattern alone names by one literal.</summary>
     internal enum LiteralMatch
@@ -849,6 +1092,11 @@ internal static class DynamicPropertyFamilies
     /// otherwise.
     /// </param>
     /// <param name="ModeKeyLookups">Each order of <paramref name="ModeKeyOrders"/> as a lookup sorted by key.</param>
+    /// <param name="Ranker">The ranker of a <see cref="EntryCreation.Ranked"/> family; null otherwise.</param>
+    /// <param name="ListedBy">
+    /// The class whose class list the <paramref name="Ranker"/> places keys by (TileData for an atlas tile's alternatives);
+    /// null for a family without a ranker.
+    /// </param>
     internal readonly record struct DynamicFamily(
         Regex Pattern,
         EntryCreation Creation,
@@ -860,12 +1108,14 @@ internal static class DynamicPropertyFamilies
         (string Text, LiteralMatch Kind)? Literal,
         string? ModeBy,
         ImmutableArray<ImmutableArray<string>> ModeKeyOrders,
-        ImmutableArray<ImmutableArray<(string Key, int Index)>> ModeKeyLookups
+        ImmutableArray<ImmutableArray<(string Key, int Index)>> ModeKeyLookups,
+        Ranker? Ranker,
+        string? ListedBy
     );
 
     // A table row: a class, its family's pattern and how Godot creates the family's entries. Only the factories make one, so
-    // every row states its kind: in any order, sized first by a named count property, on one key with its key order, or in
-    // an order a sibling property chooses.
+    // every row states its kind: in any order, sized first by a named count property, on one key with its key order, in an
+    // order a sibling property chooses, or placed by its own ranker.
     private sealed record Row
     {
         private Row(
@@ -876,7 +1126,9 @@ internal static class DynamicPropertyFamilies
             string[] keyOrder,
             string[] subKeyOrder,
             string? modeBy,
-            string[][] modeKeyOrders
+            string[][] modeKeyOrders,
+            Ranker? ranker,
+            string? listedBy
         )
         {
             Class = cls;
@@ -887,7 +1139,13 @@ internal static class DynamicPropertyFamilies
             SubKeyOrder = subKeyOrder;
             ModeBy = modeBy;
             ModeKeyOrders = modeKeyOrders;
+            Ranker = ranker;
+            ListedBy = listedBy;
         }
+
+        public Ranker? Ranker { get; }
+
+        public string? ListedBy { get; }
 
         public string? ModeBy { get; }
 
@@ -906,7 +1164,7 @@ internal static class DynamicPropertyFamilies
         public string[] SubKeyOrder { get; }
 
         // A family whose names Godot sets in any order.
-        public static Row AnyOrder(string cls, string pattern) => new(cls, pattern, EntryCreation.AnyOrder, null, [], [], null, []);
+        public static Row AnyOrder(string cls, string pattern) => new(cls, pattern, EntryCreation.AnyOrder, null, [], [], null, [], null, null);
 
         // A family whose entries a count property, ranked before it, sizes first.
         public static Row SizedFirst(string cls, string pattern, string sizedBy) => SizedFirst(cls, pattern, sizedBy, [], []);
@@ -914,15 +1172,20 @@ internal static class DynamicPropertyFamilies
         // A sized family whose keys reset one another, with the declaring class's key order and, for one nested level, its
         // nested key order (empty for nested entries without keys).
         public static Row SizedFirst(string cls, string pattern, string sizedBy, string[] keyOrder, string[] subKeyOrder) =>
-            new(cls, pattern, EntryCreation.SizedFirst, sizedBy, keyOrder, subKeyOrder, null, []);
+            new(cls, pattern, EntryCreation.SizedFirst, sizedBy, keyOrder, subKeyOrder, null, [], null, null);
 
         // A family Godot creates entry by entry on one key; an empty key order for a family with no key group.
         public static Row OnKey(string cls, string pattern, string[] keyOrder) =>
-            new(cls, pattern, EntryCreation.OnKey, null, keyOrder, [], null, []);
+            new(cls, pattern, EntryCreation.OnKey, null, keyOrder, [], null, [], null, null);
 
         // A family whose names Godot sets in any order but lists in the key order the sibling property's integer value picks,
         // one order per value from 0; the pattern names the key in a key group.
         public static Row ByMode(string cls, string pattern, string modeBy, string[][] modeKeyOrders) =>
-            new(cls, pattern, EntryCreation.ByMode, null, [], [], modeBy, modeKeyOrders);
+            new(cls, pattern, EntryCreation.ByMode, null, [], [], modeBy, modeKeyOrders, null, null);
+
+        // A family whose names Godot sets in any order but lists in an order its ranker computes from the pattern's groups and
+        // the class list of the named class.
+        public static Row Ranked(string cls, string pattern, Ranker ranker, string listedBy) =>
+            new(cls, pattern, EntryCreation.Ranked, null, [], [], null, [], ranker, listedBy);
     }
 }
