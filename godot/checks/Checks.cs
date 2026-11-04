@@ -215,7 +215,7 @@ public partial class Checks : Node
             ("C57", EngineDroppedSceneLeavesTheCache),
         ];
         DeleteFolder(SavesFolder);
-        int total = checks.Length + frameChecks.Length;
+        int total = checks.Length + frameChecks.Length + 1;
         XscnLoadRoute.RecordTempPaths = true;
         tempPathsBefore = XscnLoadRoute.TempPaths.Count;
         int passed = 0;
@@ -232,6 +232,9 @@ public partial class Checks : Node
                 string failure = await FailureOf(run);
                 passed += Report(id, () => failure) ? 1 : 0;
             }
+
+            // Last, because a mounted pack cannot be unmounted and freezes res:// for the rest of the process.
+            passed += Report("C70", RefreshSeesAMountedPacksClasses) ? 1 : 0;
         }
         finally
         {
@@ -785,6 +788,149 @@ public partial class Checks : Node
         }
 
         return string.Join("; ", failures);
+    }
+
+    // Mounting a pack refreshes Godot's class list but re-creates no loader, so only the explicit refresh shows its classes.
+    private static string RefreshSeesAMountedPacksClasses()
+    {
+        const string dlcScriptPath = "res://checks/dlc/dlc_checked.gd";
+        const string classCachePath = "res://.godot/global_script_class_cache.cfg";
+        const string dlcClass = "DlcCheckedResource";
+        string xresFolder = ProjectSettings.GlobalizePath(OutFolder + "dlc/");
+        string xresPath = OutFolder + "dlc/dlc.xres";
+
+        // A loader made after the mount would rebuild the snapshot in its constructor and hide the fault.
+        using var loader = new XresFormatLoader();
+        string temp = Path.Combine(Path.GetTempPath(), "gx-check-pack-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        Directory.CreateDirectory(xresFolder);
+        try
+        {
+            string scriptFile = Path.Combine(temp, "dlc_checked.gd");
+            File.WriteAllText(scriptFile, $"class_name {dlcClass}\nextends Resource\n\n@export var count: int = 0\n");
+            File.WriteAllText(
+                ProjectSettings.GlobalizePath(xresPath),
+                $"<Resource xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Script=\"{dlcScriptPath}\" count=\"3\" />\n"
+            );
+
+            string cacheFile = Path.Combine(temp, "global_script_class_cache.cfg");
+            string cacheFailure = WriteClassCacheWithDlc(classCachePath, cacheFile, dlcClass, dlcScriptPath);
+            if (cacheFailure.Length > 0)
+            {
+                return cacheFailure;
+            }
+
+            string mountFailure = MountPack(Path.Combine(temp, "dlc.pck"), [(dlcScriptPath, scriptFile), (classCachePath, cacheFile)]);
+            if (mountFailure.Length > 0)
+            {
+                return mountFailure;
+            }
+
+            string before = loader._GetResourceScriptClass(xresPath);
+            if (before == dlcClass)
+            {
+                return "the snapshot already knew the pack's class before the refresh; the check does not reproduce GXAML-150";
+            }
+
+            if (before.Length > 0)
+            {
+                return $"before the refresh the loader reports script class \"{before}\" for {xresPath}, not \"\"";
+            }
+
+            XresFormatLoader.RefreshGlobalClasses();
+            var failures = new List<string>();
+            string after = loader._GetResourceScriptClass(xresPath);
+            if (after != dlcClass)
+            {
+                failures.Add($"after the refresh the loader reports script class \"{after}\" for {xresPath}, not \"{dlcClass}\"");
+            }
+
+            if (!loader._HandlesType(dlcClass))
+            {
+                failures.Add($"after the refresh _HandlesType(\"{dlcClass}\") is false");
+            }
+
+            return string.Join("; ", failures);
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+            RemoveTempFolder(temp);
+        }
+    }
+
+    // The pack's sources are scratch files outside the project, so a folder left behind is worth a warning, not a failure.
+    private static void RemoveTempFolder(string folder)
+    {
+        try
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            GD.PushWarning($"C70 could not remove its temp folder {folder}: {exception.Message}");
+        }
+    }
+
+    // Each packing call reports its own error, so a failure names the call that made it.
+    private static string MountPack(string pck, (string Target, string Source)[] files)
+    {
+        using var packer = new PckPacker();
+        (string Call, Func<Error> Run)[] packing =
+        [
+            ($"PckStart({pck})", () => packer.PckStart(pck)),
+            .. files.Select(f => ($"AddFile({f.Target})", (Func<Error>)(() => packer.AddFile(f.Target, f.Source)))),
+            ("Flush()", () => packer.Flush()),
+        ];
+        foreach ((string call, Func<Error> run) in packing)
+        {
+            Error error = run();
+            if (error != Error.Ok)
+            {
+                return $"PCKPacker.{call} returned {error}";
+            }
+        }
+
+        return ProjectSettings.LoadResourcePack(pck) ? "" : $"ProjectSettings.LoadResourcePack({pck}) returned false";
+    }
+
+    // The pack's copy of the class cache replaces the project's, so it carries every current class plus the pack's own, each
+    // value with the variant type the existing entries use.
+    private static string WriteClassCacheWithDlc(string classCachePath, string cacheFile, string dlcClass, string dlcScriptPath)
+    {
+        using var current = new ConfigFile();
+        Error loaded = current.Load(classCachePath);
+        if (loaded != Error.Ok)
+        {
+            return $"loading {classCachePath} returned {loaded}";
+        }
+
+        using Godot.Collections.Array list = current.GetValue("", "list", new Godot.Collections.Array()).AsGodotArray();
+        if (list.Count == 0)
+        {
+            return $"{classCachePath} lists no classes";
+        }
+
+        using Godot.Collections.Dictionary sample = list[0].AsGodotDictionary();
+        Variant Text(string key, string value) =>
+            sample.TryGetValue(key, out Variant existing) && existing.VariantType == Variant.Type.StringName
+                ? Variant.From(new StringName(value))
+                : Variant.From(value);
+        using var dlc = new Godot.Collections.Dictionary
+        {
+            ["class"] = Text("class", dlcClass),
+            ["base"] = Text("base", "Resource"),
+            ["language"] = Text("language", "GDScript"),
+            ["path"] = Text("path", dlcScriptPath),
+            ["is_abstract"] = false,
+            ["is_tool"] = false,
+            ["icon"] = Text("icon", ""),
+        };
+        list.Add(dlc);
+        using var written = new ConfigFile();
+        written.SetValue("", "list", list);
+        Error saved = written.Save(cacheFile);
+        return saved == Error.Ok ? "" : $"saving the pack's class cache to {cacheFile} returned {saved}";
     }
 
     private static string ConversionErrorFailsTheLoad()

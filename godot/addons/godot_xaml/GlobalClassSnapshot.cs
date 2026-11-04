@@ -15,7 +15,8 @@ namespace GodotXaml.Addon;
 /// (<c>editor/file_system/editor_file_system.cpp:2195-2203</c>), so <see cref="XresFormatLoader"/>'s constructor and
 /// <see cref="XscnEditorPlugin"/> keep this snapshot current: the plugin rebuilds it when it enters the tree, after the
 /// first scan stored the fresh list (<c>editor/file_system/editor_file_system.cpp:336-343, 360</c>), and on each
-/// <c>script_classes_updated</c>.
+/// <c>script_classes_updated</c>. A game that mounts a pack calls <see cref="XresFormatLoader.RefreshGlobalClasses"/>, since
+/// mounting refreshes Godot's list with neither.
 /// </summary>
 internal sealed class GlobalClassSnapshot
 {

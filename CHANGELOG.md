@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `XresFormatLoader.RefreshGlobalClasses()`, called after mounting a pack, lets `.xres` files whose script is one of the pack's global classes report and load as that class.
+
 ## 0.2.1 - 2026-11-03
 
 ### Changed

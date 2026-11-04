@@ -25,6 +25,15 @@ public partial class XresFormatLoader : ResourceFormatLoader
         }
     }
 
+    /// <summary>
+    /// Rebuilds the loader's view of the project's global classes. Call it on the main thread after
+    /// <c>ProjectSettings.LoadResourcePack</c> mounts a pack that declares new global classes: Godot refreshes its own list then
+    /// (<c>core/config/project_settings.cpp:609-611</c>) but re-creates no loader and emits no signal, so without this call an
+    /// <c>.xres</c> whose root script is one of the pack's classes reports no script class, and a load by that class name skips
+    /// <c>.xres</c> files. Off the main thread it logs an error and changes nothing.
+    /// </summary>
+    public static void RefreshGlobalClasses() => GlobalClassSnapshot.Rebuild();
+
     /// <inheritdoc/>
     public override string[] _GetRecognizedExtensions() => [XscnLoading.ResourceExtension];
 
