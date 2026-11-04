@@ -331,6 +331,38 @@ internal static partial class XscnPreviewReferences
     }
 
     /// <summary>
+    /// The path Godot loads an instance placeholder's scene from (<c>ResourceLoader::_validate_local_path</c>,
+    /// resource_loader.cpp): a <c>uid://</c> text's registered path; a path with no scheme made a resource path, never one
+    /// against the including file; anything else localized, which simplifies it.
+    /// </summary>
+    /// <param name="placeholder">The node's <c>instance_placeholder</c> text, as the file writes it.</param>
+    /// <returns>The resolved path, or null for an unregistered uid, which loads nothing.</returns>
+    internal static string? PlaceholderPath(string placeholder) =>
+        placeholder.StartsWith(UidScheme, StringComparison.Ordinal) ? RegisteredPath(placeholder)
+        : IsAbsolutePath(placeholder) ? ProjectSettings.LocalizePath(placeholder)
+        : ("res://" + placeholder).SimplifyPath();
+
+    /// <summary>
+    /// What the preview makes of an instance placeholder's scene, which Godot always loads with the <c>PackedScene</c>
+    /// hint (packed_scene.cpp): the file's own kind, tightened as a declared <c>PackedScene</c> tightens it. A file that
+    /// does not exist and is kept stays kept, since a placeholder to it loads nothing.
+    /// </summary>
+    /// <param name="path">The placeholder's resolved path.</param>
+    /// <param name="kindOf">What the preview makes of a resolved path: the preview's own per-file answer.</param>
+    /// <returns>The kind.</returns>
+    internal static PreviewReferenceKind PlaceholderKind(string path, Func<string, PreviewReferenceKind> kindOf)
+    {
+        PreviewReferenceKind kind = kindOf(path);
+        return kind == PreviewReferenceKind.Kept && !FileAccess.FileExists(path) ? kind : ByDeclaredType(kind, PackedSceneClass);
+    }
+
+    // String::is_absolute_path (core/string/ustring.cpp): a leading separator, or ":/" or ":\" anywhere, which a scheme's
+    // "://" contains.
+    private static bool IsAbsolutePath(string path) =>
+        path.Length > 0
+        && (path[0] is '/' or '\\' || path.Contains(":/", StringComparison.Ordinal) || path.Contains(":\\", StringComparison.Ordinal));
+
+    /// <summary>
     /// The paths the text loader may load a <c>Resource()</c> value from, as it parses the value: its registered uid's, and
     /// its path made a resource path, which it loads when the uid's file does not load (variant_parser.cpp:1158-1171,
     /// resource_loader.cpp:689-698).

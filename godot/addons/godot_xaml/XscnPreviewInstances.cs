@@ -16,7 +16,9 @@ namespace GodotXaml.Addon;
 /// Strips a preview's document and every text scene and text resource file it references, at any depth: each is read from
 /// its file, stripped as the previewed text is (<see cref="XscnPreviewScene.WithoutScripts(TscnDocument)"/>), and written to
 /// the addon's temp folder, and the ext_resource that names it points at that copy. Godot would otherwise load a referenced
-/// file from disk with its scripts. A <c>Resource()</c> value is loaded by its path, never a copy: one that names a script
+/// file from disk with its scripts. A node's <c>instance_placeholder</c>, whose scene the editor's instantiation loads as an
+/// instance, is pointed at that scene's stripped copy too, and a placeholder whose scene cannot be stripped is refused. A
+/// <c>Resource()</c> value is loaded by its path, never a copy: one that names a script
 /// is made null, and one that names a file the preview would copy or refuse is refused. A referenced resource whose header
 /// type is a Script class is a script, never copied, and a script ext_resource is never copied. Disposing deletes the copies. Main
 /// thread only: it calls Godot.
@@ -89,7 +91,14 @@ internal sealed class XscnPreviewInstances : IDisposable
 
     private TscnDocument Stripped(TscnDocument document, out HashSet<string> lost)
     {
-        TscnDocument redirected = document with { ExtResources = [.. document.ExtResources.Select(Redirected)] };
+        // The editor stops Godot making placeholder nodes (editor_node.cpp) and loads each placeholder's scene as a real
+        // instance, so a placeholder is pointed at that scene's stripped copy too (packed_scene.cpp). The ext_resources
+        // are redirected first, so a copy is written before a placeholder that names it can reach it.
+        TscnDocument redirected = document with
+        {
+            ExtResources = [.. document.ExtResources.Select(Redirected)],
+            Nodes = [.. document.Nodes.Select(RedirectedPlaceholder)],
+        };
         HashSet<string> instanced = LostUnderInstances(document);
         lost = [.. instanced, .. XscnPreviewScene.ScriptedNodePaths(document)];
         return XscnPreviewScene.WithoutScripts(redirected, instanced, KindOf, RefusePathValue);
@@ -124,17 +133,14 @@ internal sealed class XscnPreviewInstances : IDisposable
     }
 
     // The paths, from the document's root, of the nodes in its instanced scenes that lost their script. An instance that
-    // detaches its scene's script itself keeps its connections, as it would with scripts allowed.
+    // detaches its scene's script itself keeps its connections, as it would with scripts allowed. A placeholder's scene is
+    // loaded as an instance is, so its nodes join the same way.
     private HashSet<string> LostUnderInstances(TscnDocument document)
     {
         var lost = new HashSet<string>(StringComparer.Ordinal);
         foreach (TscnNode node in document.Nodes)
         {
-            if (
-                node.Instance is not GodotResourceRef { Kind: GodotRefKind.External } reference
-                || document.ExtResources.FirstOrDefault(ext => ext.Id == reference.Id) is not { } ext
-                || !lostScripts.TryGetValue(XscnPreviewReferences.ResolvedPath(ext), out HashSet<string>? inside)
-            )
+            if (InstancedScenePath(document, node) is not { } scene || !lostScripts.TryGetValue(scene, out HashSet<string>? inside))
             {
                 continue;
             }
@@ -145,6 +151,19 @@ internal sealed class XscnPreviewInstances : IDisposable
         }
 
         return lost;
+    }
+
+    // The path of the scene the node loads: the ext_resource its instance names, or the scene its placeholder loads
+    // (_validate_local_path, resource_loader.cpp, resolves the placeholder's path as a load's). A placeholder whose uid is
+    // unregistered names no path, and Godot loads nothing for it.
+    private static string? InstancedScenePath(TscnDocument document, TscnNode node)
+    {
+        if (node.Instance is GodotResourceRef { Kind: GodotRefKind.External } reference)
+        {
+            return document.ExtResources.FirstOrDefault(ext => ext.Id == reference.Id) is { } ext ? XscnPreviewReferences.ResolvedPath(ext) : null;
+        }
+
+        return node.InstancePlaceholder is { } placeholder ? XscnPreviewReferences.PlaceholderPath(placeholder) : null;
     }
 
     private static string Joined(string at, string path) =>
@@ -177,6 +196,69 @@ internal sealed class XscnPreviewInstances : IDisposable
 
         return ext;
     }
+
+    // A placeholder's scene is loaded when the document is instantiated, so it is copied stripped and the placeholder
+    // points at the copy, as an ext_resource does. A placeholder's path cannot be removed as a script ext_resource can, so
+    // a scene that cannot be stripped is refused, the node staying as written like every other failed node. A uid nothing
+    // registers loads nothing, so the node stays as written with no issue.
+    private TscnNode RedirectedPlaceholder(TscnNode node)
+    {
+        if (node.InstancePlaceholder is not { } placeholder || XscnPreviewReferences.PlaceholderPath(placeholder) is not { } resolved)
+        {
+            return node;
+        }
+
+        PreviewReferenceKind kind = XscnPreviewReferences.PlaceholderKind(resolved, KindOf);
+        return kind switch
+        {
+            PreviewReferenceKind.TextScene => RedirectToCopy(node, resolved),
+            PreviewReferenceKind.Kept => node,
+            _ => RefusedPlaceholder(node, resolved, kind),
+        };
+    }
+
+    // The node pointed at its placeholder's scene's stripped copy. A copy that cannot be made is refused here instead: the
+    // placeholder's path cannot be removed, so it never falls back to the file as written.
+    private TscnNode RedirectToCopy(TscnNode node, string resolved)
+    {
+        if (StrippedCopy(resolved, PreviewReferenceKind.TextScene) is { } copy)
+        {
+            return node with { InstancePlaceholder = copy };
+        }
+
+        // The read reclassifies a file that is itself a script as one, and adds its own issue for a file it cannot read.
+        PreviewReferenceKind kind = KindOf(resolved);
+        if (kind == PreviewReferenceKind.Script)
+        {
+            Failed(resolved, PlaceholderRefusal(resolved, kind));
+        }
+        else if (!issues.Any(issue => issue.Location == resolved))
+        {
+            Failed(resolved, $"{resolved} is named by an instance placeholder, which the preview cannot strip of scripts; {AllowScriptsHint}");
+        }
+
+        return node;
+    }
+
+    // The node left as written, with the issue that says why its placeholder's scene cannot be previewed.
+    private TscnNode RefusedPlaceholder(TscnNode node, string resolved, PreviewReferenceKind kind)
+    {
+        Failed(resolved, PlaceholderRefusal(resolved, kind));
+        return node;
+    }
+
+    // Why a placeholder's scene cannot be previewed with scripts off: a script and a text resource get their own wording,
+    // since a placeholder cannot remove their path as it removes a script ext_resource, and every other kind reaching here
+    // has a file refusal.
+    private string PlaceholderRefusal(string resolved, PreviewReferenceKind kind) =>
+        kind switch
+        {
+            PreviewReferenceKind.Script => $"{resolved} is a script that an instance placeholder would load; {AllowScriptsHint}",
+            PreviewReferenceKind.TextResource =>
+                $"{resolved} is a text resource that an instance placeholder would load as a scene; {AllowScriptsHint}",
+            _ => Refusal(kind, resolved, declaredType: null)
+                ?? throw new InvalidOperationException($"No refusal is worded for the {kind} placeholder kind"),
+        };
 
     // Why a referenced file of this kind cannot be previewed with scripts off, or null when it can; the file's own
     // classification names a remap's target and a sidecar's reason, and the declared type names the class.

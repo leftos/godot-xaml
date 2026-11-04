@@ -463,6 +463,16 @@ Each text scene or resource is read from its file (an `.xscn` or `.xres` convert
 
 A `Resource("path")` value in an unconverted text (a referenced `.tscn` or `.tres`) or inside an `Object(...)` value is classified the same way: a script becomes null, a file proven inert is kept, and any other kind is refused with GXC0121 "<path> is referenced by a Resource() value, which the preview cannot redirect to a stripped copy", or with the kind's own refusal message. A `Resource("uid://…", path)` value is classified by both files. A tag field of a stripped copy that the model does not hold is dropped from every section.
 
+An instance placeholder is previewed as a scene load. The editor disables placeholders (`EditorNode` calls `SceneState::set_disable_placeholders(true)`, `editor/editor_node.cpp`), so instantiating the preview loads each placeholder's scene (`scene/resources/packed_scene.cpp`, Godot 4.7.2).
+
+With scripts off, a placeholder's path is resolved as Godot resolves it: `uid://` first, a path with no scheme as `res://` plus the path, an absolute path localized with `ProjectSettings.LocalizePath`, never against the including file. A `uid://` nothing registers stays as written with no issue, since Godot loads nothing for it.
+
+The path is classified as a declared `PackedScene`, the hint Godot loads it with. A text scene is copied stripped and the placeholder points at the copy, in the previewed document and in every copied scene. A missing file that would be kept stays as written; a missing `.tscn` is refused with the read failure, as a missing instance is; an existing file the classifier would keep is refused as another scene.
+
+A placeholder whose path is a script is refused with GXC0121 "<path> is a script that an instance placeholder would load; turn on godot_xaml/preview_server/allow_scripts to preview it", and a text resource with "<path> is a text resource that an instance placeholder would load as a scene; turn on …".
+
+A scene file that holds a script resource is refused too, and so is every kind the preview already refuses, with its existing message. Connections into a placeholder's children are dropped, as they are for an instance whose scripts were stripped.
+
 An `Object(...)` value whose class is a Script class becomes null. Godot fact (4.7.2): `Object(GDScript, "script/source": …)` compiles and runs the script's `_static_init` (`GDScript::_set` calls `reload`), while `"source_code"` only stores the text; the strip therefore cannot leave such a value to load (GXAML-191).
 
 A connection from or to a node of an instanced scene that lost its script is dropped, as one of the text's own stripped nodes is, unless the instance detaches its scene's script itself (`Script="{x:Null}"`), which a preview with scripts allowed would do as well.

@@ -393,6 +393,9 @@ public partial class Checks : Node
             // With scripts off, a project that declares a global ResourceFormatLoader class gets no preview, and the script
             // extensions are a fixed table.
             ("C137", PreviewRefusesAProjectWithALoaderClass),
+            // With scripts off, a placeholder's scene is loaded by the editor's instantiation, so it is stripped and copied
+            // too, and one that cannot be stripped is refused (GXAML-195).
+            ("C138", PreviewStripsAnInstancePlaceholdersScene),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -4716,6 +4719,287 @@ public partial class Checks : Node
             XscnPreviewReferences.ClassifyFile(binary) == PreviewReferenceKind.Script ? "" : $"{binary} is not classified Script",
             XscnPreviewReferences.ClassifyFile(sharp) == PreviewReferenceKind.Script ? "" : $"{sharp} is not classified Script",
             XscnPreviewReferences.ClassifyFile(shader) == PreviewReferenceKind.Script ? $"{shader} is classified Script" : ""
+        );
+    }
+
+    // With scripts off, a node's instance placeholder names a scene the editor's instantiation loads as a real instance
+    // (packed_scene.cpp:241-244, editor_node.cpp) and always with the PackedScene hint, so that scene is stripped and
+    // copied and the placeholder points at the copy. The path resolves as Godot resolves it: a uid first, a path with no
+    // scheme against res://, anything else localized; an unregistered uid names nothing and stays as written. A placeholder
+    // to a script, a text resource, a file that is not a scene or a binary scene is refused in place, since its path cannot
+    // be removed. A missing file of a kept kind stays as written, while a missing text scene is refused with the read
+    // failure, as a missing instance's is. A connection into the placeholder's child that lost its script is dropped.
+    private static string PreviewStripsAnInstancePlaceholdersScene()
+    {
+        string scene = CasesPath + "preview_inst_script.tscn";
+        string relative = scene["res://".Length..];
+        // A .tscn gets no uid from the import scan, so the uid case names a fixture the import gives one, which has a .uid.
+        string uidScene = CasesPath + "preview_scripted.xscn";
+        string uid = UidTextOf(uidScene);
+        string climb = "res://checks/../checks/cases/preview_inst_script.tscn";
+        const string absentUid = "uid://gxamlplaceholderabsent";
+        string child = "user://gxaml-preview-placeholder-child.tscn";
+        string gdscript = "user://gxaml-preview-placeholder-gdscript.tscn";
+        string json = "user://gxaml-preview-placeholder.json";
+        string outer = "user://gxaml-preview-placeholder-outer.tscn";
+        const string binary = "user://gxaml-preview-placeholder.scn";
+        File.WriteAllText(
+            Globalized(child),
+            "[gd_scene format=3]\n\n"
+                + $"[ext_resource type=\"Script\" path=\"{CasesPath}preview_inst_script.gd\" id=\"1_s\"]\n\n"
+                + "[node name=\"Root\" type=\"Control\"]\n\n"
+                + "[node name=\"Child\" type=\"Control\" parent=\".\"]\n"
+                + "script = ExtResource(\"1_s\")\n"
+        );
+        File.WriteAllText(Globalized(gdscript), "[gd_resource type=\"GDScript\" format=3]\n\n[resource]\n");
+        File.WriteAllText(Globalized(json), "{}\n");
+        try
+        {
+            var node = new Control { Name = "Binary" };
+            using var packed = new PackedScene();
+            Error packError = packed.Pack(node);
+            node.Free();
+            Error saved = packError == Error.Ok ? ResourceSaver.Save(packed, binary) : packError;
+            return Failures(
+                saved == Error.Ok ? "" : $"setup: saving {binary} gave {saved}",
+                PlaceholderPathOf(uid, uidScene),
+                PlaceholderPathOf(relative, scene),
+                PlaceholderPathOf(climb, scene),
+                XscnPreviewReferences.PlaceholderPath(absentUid) is null
+                    ? ""
+                    : $"{absentUid} resolves to {XscnPreviewReferences.PlaceholderPath(absentUid)}, not null",
+                PlaceholderStripped(scene),
+                PlaceholderStripped(uidScene),
+                PlaceholderStripped(uid),
+                PlaceholderStripped(relative),
+                PlaceholderStripped(climb),
+                PlaceholderCopiedOnce(scene, climb),
+                PlaceholderNested(outer, scene),
+                PlaceholderRefusedWith(
+                    CasesPath + "preview_inst_script.gd",
+                    $"{CasesPath}preview_inst_script.gd is a script that an instance placeholder would load; {AllowScriptsHint}"
+                ),
+                PlaceholderRefusedWith(
+                    PreviewPlainPath,
+                    $"{PreviewPlainPath} is a text resource that an instance placeholder would load as a scene; {AllowScriptsHint}"
+                ),
+                PlaceholderRefusedWith(gdscript, $"{gdscript} is a script that an instance placeholder would load; {AllowScriptsHint}"),
+                PlaceholderRefusedWith(binary, $"{binary}: a binary scene cannot be previewed with scripts off"),
+                // The PackedScene hint makes a file that is not a scene a refusal, unless it is a missing file, which Godot
+                // loads nothing for.
+                PlaceholderRefusedWith(json, $"{json} is not a text scene"),
+                PlaceholderKept("user://gxaml-preview-placeholder-absent.json"),
+                PlaceholderRefusedWith(
+                    "user://gxaml-preview-placeholder-absent.tscn",
+                    "user://gxaml-preview-placeholder-absent.tscn: the scene cannot be read: FileNotFound"
+                ),
+                PlaceholderUnchanged(absentUid),
+                PlaceholderConnectionDropped(child)
+            );
+        }
+        finally
+        {
+            DeleteFiles(child, gdscript, json, outer, binary);
+        }
+    }
+
+    // The placeholder's path resolves to the expected one.
+    private static string PlaceholderPathOf(string placeholder, string expected)
+    {
+        string? resolved = XscnPreviewReferences.PlaceholderPath(placeholder);
+        return resolved == expected ? "" : $"{placeholder} resolves to {resolved}, not {expected}";
+    }
+
+    // The strip of a scene whose root's instance placeholder names the path, the path the placeholder now names and the
+    // text of the copy, read before the strip deletes its copies.
+    private static (ConversionIssue[] Issues, TscnDocument Stripped, string? Copy, string? Text) PlaceholderStrip(string placeholder)
+    {
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            Nodes =
+            [
+                new TscnNode
+                {
+                    Name = "P",
+                    Type = "Control",
+                    InstancePlaceholder = placeholder,
+                },
+            ],
+        };
+        using var instances = new XscnPreviewInstances();
+        TscnDocument stripped = instances.Stripped(document);
+        string? copy = stripped.Nodes.Single().InstancePlaceholder;
+        string folder = AddonTempFolder.Get();
+        string? text = copy is { } path && path.StartsWith(folder, StringComparison.Ordinal) ? File.ReadAllText(path) : null;
+        return ([.. instances.Issues], stripped, copy, text);
+    }
+
+    // The placeholder names the addon's copy of a scripted scene, and the copy holds no script.
+    private static string PlaceholderStripped(string placeholder)
+    {
+        (ConversionIssue[] issues, _, string? copy, string? text) = PlaceholderStrip(placeholder);
+        string folder = AddonTempFolder.Get();
+        string problems = issues.Length == 0 ? "" : $"the issues are [{string.Join("; ", issues.Select(issue => issue.Message))}]";
+        if (copy is not { } path || !path.StartsWith(folder, StringComparison.Ordinal))
+        {
+            return Failures(problems, $"the placeholder points at {copy}, not the addon's copy in {folder}");
+        }
+
+        return Failures(
+            problems,
+            text is not null && !text.Contains("script =", StringComparison.Ordinal) ? "" : $"the copy holds a script: [{text}]"
+        );
+    }
+
+    // The placeholder's strip gives exactly the one message, and the node keeps its path.
+    private static string PlaceholderRefusedWith(string placeholder, string expected)
+    {
+        (ConversionIssue[] issues, TscnDocument stripped, _, _) = PlaceholderStrip(placeholder);
+        string[] messages = [.. issues.Select(issue => issue.Message)];
+        return Failures(
+            messages.SequenceEqual([expected], StringComparer.Ordinal) ? "" : $"the issues are [{string.Join("; ", messages)}], not [{expected}]",
+            stripped.Nodes.Single().InstancePlaceholder == placeholder
+                ? ""
+                : $"the placeholder points at {stripped.Nodes.Single().InstancePlaceholder}, not {placeholder}"
+        );
+    }
+
+    // A placeholder to a missing file stays as written, with no issue and no copy.
+    private static string PlaceholderKept(string placeholder)
+    {
+        DeleteFiles(placeholder);
+        return PlaceholderUnchanged(placeholder);
+    }
+
+    // The placeholder stays as written, with no issue.
+    private static string PlaceholderUnchanged(string placeholder)
+    {
+        (ConversionIssue[] issues, TscnDocument stripped, _, _) = PlaceholderStrip(placeholder);
+        return Failures(
+            issues.Length == 0 ? "" : $"the issues are [{string.Join("; ", issues.Select(issue => issue.Message))}]",
+            stripped.Nodes.Single().InstancePlaceholder == placeholder
+                ? ""
+                : $"the placeholder points at {stripped.Nodes.Single().InstancePlaceholder}, not {placeholder}"
+        );
+    }
+
+    // A scene named twice, by an ext_resource and by a placeholder whose path climbs out and back, is copied once: both
+    // point at the same copy.
+    private static string PlaceholderCopiedOnce(string scene, string climb)
+    {
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            ExtResources =
+            [
+                new TscnExtResource
+                {
+                    Type = "PackedScene",
+                    Path = scene,
+                    Id = "1_scene",
+                },
+            ],
+            Nodes =
+            [
+                new TscnNode
+                {
+                    Name = "P",
+                    Type = "Control",
+                    InstancePlaceholder = climb,
+                },
+            ],
+        };
+        string folder = AddonTempFolder.Get();
+        string[] before = Directory.GetFiles(folder);
+        using var instances = new XscnPreviewInstances();
+        TscnDocument stripped = instances.Stripped(document);
+        string[] written = [.. Directory.GetFiles(folder).Except(before, StringComparer.Ordinal)];
+        string? copy = stripped.Nodes.Single().InstancePlaceholder;
+        return Failures(
+            instances.Issues.Count == 0 ? "" : $"the issues are [{string.Join("; ", instances.Issues.Select(issue => issue.Message))}]",
+            stripped.ExtResources.Single().Path == copy
+                ? ""
+                : $"the ext_resource points at {stripped.ExtResources.Single().Path}, the placeholder at {copy}",
+            written.Length == 1 ? "" : $"the strip wrote [{string.Join(", ", written)}]"
+        );
+    }
+
+    // A placeholder inside an instanced scene is redirected in that scene's copy too.
+    private static string PlaceholderNested(string outer, string scene)
+    {
+        File.WriteAllText(
+            Globalized(outer),
+            "[gd_scene format=3]\n\n"
+                + "[node name=\"Root\" type=\"Control\"]\n\n"
+                + $"[node name=\"P\" type=\"Control\" parent=\".\" instance_placeholder=\"{scene}\"]\n"
+        );
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            ExtResources =
+            [
+                new TscnExtResource
+                {
+                    Type = "PackedScene",
+                    Path = outer,
+                    Id = "1_outer",
+                },
+            ],
+            Nodes = [new TscnNode { Name = "Inst", Instance = new GodotResourceRef(GodotRefKind.External, "1_outer") }],
+        };
+        string folder = AddonTempFolder.Get();
+        using var instances = new XscnPreviewInstances();
+        TscnDocument stripped = instances.Stripped(document);
+        string? copy = stripped.ExtResources.SingleOrDefault()?.Path;
+        bool redirected = copy is { } path && path.StartsWith(folder, StringComparison.Ordinal);
+        string text = redirected ? File.ReadAllText(copy!) : "";
+        return Failures(
+            instances.Issues.Count == 0 ? "" : $"the issues are [{string.Join("; ", instances.Issues.Select(issue => issue.Message))}]",
+            redirected ? "" : $"the instance points at {copy}, not the addon's copy in {folder}",
+            text.Contains($"instance_placeholder=\"{folder}", StringComparison.Ordinal)
+                ? ""
+                : $"the copy's placeholder is not the addon's copy: [{text}]"
+        );
+    }
+
+    // A connection from the root into a child of the placeholder's scene that lost its script is dropped, as one into an
+    // instance's is; the placeholder must have been redirected for the check to mean anything.
+    private static string PlaceholderConnectionDropped(string childScene)
+    {
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            Nodes =
+            [
+                new TscnNode { Name = "Root", Type = "Control" },
+                new TscnNode
+                {
+                    Name = "P",
+                    Parent = ".",
+                    InstancePlaceholder = childScene,
+                },
+            ],
+            Connections =
+            [
+                new TscnConnection
+                {
+                    Signal = "poked",
+                    From = ".",
+                    To = "P/Child",
+                    Method = "hide",
+                },
+            ],
+        };
+        using var instances = new XscnPreviewInstances();
+        TscnDocument stripped = instances.Stripped(document);
+        string? copy = stripped.Nodes.Single(node => node.Name == "P").InstancePlaceholder;
+        return Failures(
+            instances.Issues.Count == 0 ? "" : $"the issues are [{string.Join("; ", instances.Issues.Select(issue => issue.Message))}]",
+            copy?.StartsWith(AddonTempFolder.Get(), StringComparison.Ordinal) == true
+                ? ""
+                : "the placeholder was not redirected, so nothing was tested",
+            stripped.Connections.IsEmpty ? "" : $"the connection was kept: {stripped.Connections.Single().To}"
         );
     }
 

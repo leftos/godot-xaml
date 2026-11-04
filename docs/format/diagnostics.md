@@ -324,6 +324,10 @@ Such a file is a file with an extension none of Godot's own loaders claims (miss
 
 A project that declares a global class whose native base is `ResourceFormatLoader` is refused whole, one error per class, located at its script: `<class> is a ResourceFormatLoader class, which Godot registers as a loader that a failed load hands files to; turn on godot_xaml/preview_server/allow_scripts to preview it`. The addon's own two loaders are exempt.
 
+An instance placeholder (`x:InstancePlaceholder`) is loaded as a scene by the editor's preview, so its path is checked like an instance's.
+
+A script gives `<path> is a script that an instance placeholder would load; turn on godot_xaml/preview_server/allow_scripts to preview it`, a text resource `<path> is a text resource that an instance placeholder would load as a scene; turn on godot_xaml/preview_server/allow_scripts to preview it`, and a scene file that holds a script resource is refused too. A missing `.tscn` gives the read failure, as a missing instance does.
+
 A `Resource("…")` value in a referenced `.tscn` or `.tres`, or inside an `Object(...)` value, that names a file the preview cannot redirect to a stripped copy gives `<path> is referenced by a Resource() value, which the preview cannot redirect to a stripped copy`, or the message of the file's own kind.
 
 ### GXC0122 Source file unreadable

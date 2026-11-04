@@ -342,6 +342,8 @@ Each component gets an entry here in the commit that adds its project.
 
   C137 covers the scripts-off refusal of a project's `ResourceFormatLoader` global classes: the walk to the native base, a cycle, the addon's own loaders exempt, and the fixed script extension table.
 
+  C138 covers instance placeholders with scripts off, headless and structure only: the path resolved as Godot does (uid, schemeless, absolute), the scene stripped and the placeholder pointed at the copy in the document and in copied scenes, the GXC0121 refusals, and connections into a placeholder's children dropped. The editor check that the editor loads the stripped copy is GXAML-201, booked and blocked by GXAML-167, not done.
+
   They also cover remaps (locale and `.remap`), a `.gdextension` library, ClassDB asked before the metadata, an unknown extension (missing or not), and the sidecar tokenizer (keys as Godot reads them, text Godot reads otherwise, every loading value found by token).
 
   Run with `pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-checks.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/checks.ps1` (`--no-markers` because the expected load failure prints Godot's `ERROR:` line; `--stall 600` because a run starved by outside load can go two minutes without enough CPU for the gate to count it as progress). `checks.ps1` writes each scene line as Godot emits it, so the gate's log shows the `CHECK` lines live.
