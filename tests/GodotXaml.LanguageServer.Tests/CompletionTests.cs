@@ -299,20 +299,22 @@ public sealed class CompletionTests
         AssertEveryEdit(result, WholeValue(source));
     }
 
-    // The range holds the cursor: a cursor in the spaces around a part, or before it, inserts at the cursor.
+    // The range holds the cursor: beside a part, the insert carries the comma the value needs between them.
     [Theory]
-    [InlineData("Expand,| Fill")]
-    [InlineData("Fill |, Expand")]
-    [InlineData("Expand |")]
-    [InlineData("Expand,  |  ")]
-    [InlineData("| Expand")]
-    public async Task AFlagsCursorBesideAPartInsertsAtTheCursor(string value)
+    [InlineData("Expand,| Fill", "ShrinkEnd,")]
+    [InlineData("Fill |, Expand", ", ShrinkEnd")]
+    [InlineData("Expand |", ", ShrinkEnd")]
+    [InlineData("Expand,  |  ", "ShrinkEnd")]
+    [InlineData("| Expand", "ShrinkEnd,")]
+    [InlineData(" |", "ShrinkEnd")]
+    [InlineData("  | Expand", "ShrinkEnd,")]
+    public async Task AFlagsCursorBesideAPartInsertsAtTheCursor(string value, string newText)
     {
         string source = Root($"<Control SizeFlagsHorizontal=\"{value}\" />");
 
         JsonElement result = await CompleteAsync(source);
 
-        AssertEveryEdit(result, AtMarker(source));
+        AssertEdit(result, "ShrinkEnd", AtMarker(source), newText);
     }
 
     [Fact]
@@ -347,6 +349,18 @@ public sealed class CompletionTests
 
         Assert.Equal(["Ignore", "Pass", "Stop"], Labels(result));
         AssertEveryEdit(result, AtMarker(source));
+    }
+
+    // A value that starts on an earlier line offers nothing: an edit's range is one line and would leave that text in place.
+    [Theory]
+    [InlineData("<Control SizeFlagsHorizontal=\"Expand,\n  |\" />")]
+    [InlineData("<Control SizeFlagsHorizontal=\"Expand,\r  |\" />")]
+    [InlineData("<Control Visible=\"\n|\" />")]
+    public async Task AValueThatSpansLinesOffersNoValues(string inner)
+    {
+        JsonElement result = await CompleteAsync(Root(inner));
+
+        Assert.Equal(JsonValueKind.Null, result.ValueKind);
     }
 
     // A resource entry cannot refer to itself.
@@ -398,6 +412,32 @@ public sealed class CompletionTests
         Assert.Equal("MyTheme", Item(result, "{U}").GetProperty("detail").GetString());
     }
 
+    // A key holds the decoded characters, so its reference is written escaped again as XML.
+    [Fact]
+    public async Task AKeyWithMarkupCharactersInsertsItEscaped()
+    {
+        string source = Root("<x:Resources>\n    <Theme x:Key=\"A&amp;B\" />\n  </x:Resources>\n  <Control Name=\"C\" Theme=\"|\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.Equal(["{A&B}"], Labels(result));
+        AssertEdit(result, "{A&B}", WholeValue(source), "{A&amp;B}");
+        Assert.Equal("{A&amp;B}", Item(result, "{A&B}").GetProperty("filterText").GetString());
+    }
+
+    // A key holds a tab as the character, so its reference is written as the writer writes one.
+    [Fact]
+    public async Task AKeyWithAWhitespaceCharacterInsertsItEscaped()
+    {
+        string source = Root("<x:Resources>\n    <Theme x:Key=\"A&#9;B\" />\n  </x:Resources>\n  <Control Name=\"C\" Theme=\"|\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        string label = "{A\tB}";
+        Assert.Equal([label], Labels(result));
+        AssertEdit(result, label, WholeValue(source), "{A&#9;B}");
+    }
+
     [Fact]
     public async Task AKeylessEntryIsNotOffered()
     {
@@ -417,6 +457,7 @@ public sealed class CompletionTests
 
         Assert.Equal(["False", "True"], Labels(result));
         Assert.Equal(12, Item(result, "True").GetProperty("kind").GetInt32());
+        Assert.False(Item(result, "True").TryGetProperty("filterText", out _));
         AssertEveryEdit(result, WholeValue(source));
     }
 
@@ -463,6 +504,13 @@ public sealed class CompletionTests
         int cursor = source.IndexOf('|', StringComparison.Ordinal);
         LspPosition at = PositionOf(source.Remove(cursor, 1), cursor);
         return new LspRange(at, at);
+    }
+
+    private static void AssertEdit(JsonElement result, string label, LspRange range, string newText)
+    {
+        JsonElement edit = Item(result, label).GetProperty("textEdit");
+        Assert.Equal(range, RangeOf(edit.GetProperty("range")));
+        Assert.Equal(newText, edit.GetProperty("newText").GetString());
     }
 
     private static void AssertEveryEdit(JsonElement result, LspRange range)

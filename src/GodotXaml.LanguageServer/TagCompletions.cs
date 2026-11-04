@@ -98,12 +98,11 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
         return scope
             .Metadata.PropertiesOf(cls)
             .Where(p => p.IsStored && !p.Name.Contains('/') && HoldsResource(p))
-            .Select(p => new CompletionCandidate(
-                $"{owner.ElementName}.{p.CSharpName}",
-                CompletionItemKind.Property,
-                scope.TypeName(p.Type, p.ClassName)
-            ));
+            .Select(p => Named($"{owner.ElementName}.{p.CSharpName}", scope.TypeName(p.Type, p.ClassName)));
     }
+
+    // A property element's name, its label and its insert alike.
+    private static CompletionCandidate Named(string name, string detail) => new(name, CompletionItemKind.Property, detail, name);
 
     private bool HoldsResource(GodotPropertyInfo property) =>
         property.Type == "Object" && NameRules.HoldsResource(scope.Metadata, property.ClassName);

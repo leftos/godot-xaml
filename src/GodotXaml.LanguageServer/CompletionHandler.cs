@@ -49,7 +49,8 @@ internal sealed class CompletionHandler(DocumentStore store, ProjectCache projec
 /// <param name="Label">The name.</param>
 /// <param name="Kind">What it is.</param>
 /// <param name="Detail">A type, <c>signal</c>, a parent class, an enum member's integer or an entry's class, or null.</param>
-internal sealed record CompletionCandidate(string Label, CompletionItemKind Kind, string? Detail);
+/// <param name="Insert">The text the completion inserts in the document's syntax, its label where the label reads as it.</param>
+internal sealed record CompletionCandidate(string Label, CompletionItemKind Kind, string? Detail, string Insert);
 
 /// <summary>What an element's tag makes it.</summary>
 internal enum ElementShape
@@ -163,7 +164,7 @@ internal sealed partial class CompletionScope
     /// <param name="names">The names, with the conventional <c>x:</c> prefix or none.</param>
     /// <returns>The candidates.</returns>
     public IEnumerable<CompletionCandidate> Keywords(IEnumerable<string> names) =>
-        names.Select(Prefixed).OfType<string>().Select(n => new CompletionCandidate(n, CompletionItemKind.Keyword, null));
+        names.Select(Prefixed).OfType<string>().Select(n => new CompletionCandidate(n, CompletionItemKind.Keyword, null, n));
 
     /// <summary>The instantiable classes that inherit a class, the class included.</summary>
     /// <param name="baseGodotName">The class's Godot name.</param>
@@ -222,7 +223,7 @@ internal sealed partial class CompletionScope
         : null;
 
     private CompletionCandidate ClassCandidate(GodotClassInfo cls) =>
-        new(cls.CSharpName, CompletionItemKind.Class, cls.Parent is { } parent ? NameRules.CSharpClassName(Metadata, parent) : null);
+        new(cls.CSharpName, CompletionItemKind.Class, cls.Parent is { } parent ? NameRules.CSharpClassName(Metadata, parent) : null, cls.CSharpName);
 
     // Each label once (the first candidate of a label wins), sorted by label; the client filters by what is typed.
     private CompletionList List(TextSpan replace, IEnumerable<CompletionCandidate> candidates)
@@ -236,7 +237,7 @@ internal sealed partial class CompletionScope
             .. candidates
                 .Where(c => seen.Add(c.Label))
                 .OrderBy(c => c.Label, StringComparer.OrdinalIgnoreCase)
-                .Select(c => new CompletionItem(c.Label, c.Kind, c.Detail, new TextEdit(range, c.Label))),
+                .Select(c => new CompletionItem(c.Label, c.Kind, c.Detail, c.Insert == c.Label ? null : c.Insert, new TextEdit(range, c.Insert))),
         ];
         return new CompletionList(false, items);
     }

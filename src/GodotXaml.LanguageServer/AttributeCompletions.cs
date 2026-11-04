@@ -84,14 +84,14 @@ internal sealed partial class AttributeCompletions(CompletionScope scope, XscnCu
 
     // A property or theme override by the attribute name that reads back as it; null when it needs x:Prop.
     private CompletionCandidate? Spelled(GodotClassInfo cls, string godotName, string detail) =>
-        scope.Names.AttributeName(cls, godotName) is { } name ? new CompletionCandidate(name, CompletionItemKind.Property, detail) : null;
+        scope.Names.AttributeName(cls, godotName) is { } name ? new CompletionCandidate(name, CompletionItemKind.Property, detail, name) : null;
 
     private IEnumerable<CompletionCandidate> Signals(GodotClassInfo cls) =>
         scope
             .Metadata.SignalsOf(cls)
             .Select(s => s.CSharpName!)
             .Where(name => scope.Metadata.FindPropertyByCSharpName(cls, name) is null)
-            .Select(name => new CompletionCandidate(name, CompletionItemKind.Event, "signal"));
+            .Select(name => new CompletionCandidate(name, CompletionItemKind.Event, "signal", name));
 
     // The names of the attributes the start tag already has, the one at the cursor left out.
     private HashSet<string> Written(int lessThan)

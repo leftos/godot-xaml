@@ -18,8 +18,9 @@ internal sealed record CompletionList(bool IsIncomplete, CompletionItem[] Items)
 /// <param name="Label">The name it writes.</param>
 /// <param name="Kind">What the name is.</param>
 /// <param name="Detail">A type, <c>signal</c>, a parent class, an enum member's integer or an entry's class shown beside the label, or null.</param>
+/// <param name="FilterText">The text the client filters what is typed against, where the label is not what is inserted, or null.</param>
 /// <param name="TextEdit">The edit that writes the label over the token at the cursor.</param>
-internal sealed record CompletionItem(string Label, CompletionItemKind Kind, string? Detail, TextEdit TextEdit);
+internal sealed record CompletionItem(string Label, CompletionItemKind Kind, string? Detail, string? FilterText, TextEdit TextEdit);
 
 /// <summary>The kinds of completion item the server sends, with LSP's numbers.</summary>
 internal enum CompletionItemKind
