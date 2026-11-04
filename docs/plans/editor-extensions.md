@@ -9,10 +9,12 @@ The design of the VS Code extension (GXAML-15) and the Visual Studio extension (
 - **VS Code: publishing.** The VS Code Marketplace and Open VSX, from a tag-gated release job whose publisher tokens live in a protected environment, as the `macos-signing` secrets do.
 - **VS Code: language registration.** `.xscn` and `.xres` are their own languages, `xscn` and `xres`, coloured by VS Code's built-in XML TextMate grammar, with XML's comment and bracket configuration. Only this extension's language server attaches to them.
 - **VS Code: toolchain.** TypeScript with `vscode-languageclient`, under the user-level Node/TypeScript conventions (pnpm, oxlint, oxfmt).
+- **Versions.** Each extension's version is the release's (`VersionPrefix` in `Directory.Build.props`), bumped by `tools/pack-release.ps1` with the other version homes, and its packages are built and published by the release that attaches the server zips. An extension-only fix ships in a godot-xaml release.
+- **VS Code: settings.** `godotXaml.server.path` (another executable in place of the embedded one) and `godotXaml.trace.server` (the language client's standard message trace), both read by the client alone; the server still takes no arguments and no initialization options.
+- **VS Code: branch.** The extension is built on `feat/vscode-extension`, with a draft PR into `main`, and merges once its per-platform packaging is proven.
 
 ## Open
 
-- The extensions' version against the release's (lockstep with `VersionPrefix`, or independent with a minimum server version).
 - Visual Studio: the extension SDK (VisualStudio.Extensibility's `LanguageServerProvider`, or the legacy `ILanguageClient`), which also decides how GXAML-17's tool window and click-to-select are hosted.
 - Visual Studio: the content type (its own, based on XML, or the built-in XML editor), the IDE versions it targets, and how its two Windows executables are delivered.
-- Whether either extension's work goes on a feature branch.
+- Whether the Visual Studio extension's work goes on a feature branch.
