@@ -1734,4 +1734,85 @@ public sealed class PropertyOrderTests
             PropertyNames(scene.Nodes[0].Properties)
         );
     }
+
+    // TabContainer::_get_property_list (PropertyListHelper, tab_container.cpp) lists a tab's keys title, icon, disabled and
+    // hidden, the tabs in numeric order past ten.
+    [Fact]
+    public void ATabContainerTabListsItsTitleFirstAndTabsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <TabContainer {{X}} Name="Root">
+              <x:Prop Name="tab_10/disabled" Value="true" />
+              <x:Prop Name="tab_10/hidden" Value="true" />
+              <x:Prop Name="tab_10/icon" Value='Resource("res://t.tres")' />
+              <x:Prop Name="tab_10/title" Value='"Ten"' />
+              <x:Prop Name="tab_2/disabled" Value="true" />
+              <x:Prop Name="tab_2/hidden" Value="true" />
+              <x:Prop Name="tab_2/icon" Value='Resource("res://t.tres")' />
+              <x:Prop Name="tab_2/title" Value='"Two"' />
+            </TabContainer>
+            """
+        );
+
+        Assert.Equal(
+            ["tab_2/title", "tab_2/icon", "tab_2/disabled", "tab_2/hidden", "tab_10/title", "tab_10/icon", "tab_10/disabled", "tab_10/hidden"],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
+
+    // GraphNode::_get_property_list (graph_node.cpp) lists a slot's left_enabled, left_type, left_color and left_icon, then
+    // its right keys in the same shape, then draw_stylebox, the slots in numeric order past ten.
+    [Fact]
+    public void AGraphNodeSlotListsItsLeftSideFirstAndSlotsRunInNumericOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <GraphNode {{X}} Name="Root">
+              <x:Prop Name="slot/10/draw_stylebox" Value="true" />
+              <x:Prop Name="slot/10/left_color" Value="Color(1, 0, 0, 1)" />
+              <x:Prop Name="slot/10/left_enabled" Value="true" />
+              <x:Prop Name="slot/10/left_icon" Value="null" />
+              <x:Prop Name="slot/10/left_type" Value="1" />
+              <x:Prop Name="slot/10/right_color" Value="Color(0, 0, 1, 1)" />
+              <x:Prop Name="slot/10/right_enabled" Value="true" />
+              <x:Prop Name="slot/10/right_icon" Value="null" />
+              <x:Prop Name="slot/10/right_type" Value="2" />
+              <x:Prop Name="slot/2/draw_stylebox" Value="false" />
+              <x:Prop Name="slot/2/left_color" Value="Color(1, 0, 0, 1)" />
+              <x:Prop Name="slot/2/left_enabled" Value="true" />
+              <x:Prop Name="slot/2/left_icon" Value="null" />
+              <x:Prop Name="slot/2/left_type" Value="1" />
+              <x:Prop Name="slot/2/right_color" Value="Color(0, 0, 1, 1)" />
+              <x:Prop Name="slot/2/right_enabled" Value="true" />
+              <x:Prop Name="slot/2/right_icon" Value="null" />
+              <x:Prop Name="slot/2/right_type" Value="2" />
+            </GraphNode>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "slot/2/left_enabled",
+                "slot/2/left_type",
+                "slot/2/left_color",
+                "slot/2/left_icon",
+                "slot/2/right_enabled",
+                "slot/2/right_type",
+                "slot/2/right_color",
+                "slot/2/right_icon",
+                "slot/2/draw_stylebox",
+                "slot/10/left_enabled",
+                "slot/10/left_type",
+                "slot/10/left_color",
+                "slot/10/left_icon",
+                "slot/10/right_enabled",
+                "slot/10/right_type",
+                "slot/10/right_color",
+                "slot/10/right_icon",
+                "slot/10/draw_stylebox",
+            ],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+    }
 }

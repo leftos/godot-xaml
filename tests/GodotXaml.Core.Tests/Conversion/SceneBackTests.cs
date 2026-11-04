@@ -22,6 +22,7 @@ public sealed partial class SceneBackTests
             "ext_resource",
             "groups",
             "gui_item_arrays",
+            "gui_tabs_graph",
             "inherited",
             "instanced",
             "instanced_order",
@@ -531,6 +532,191 @@ public sealed partial class SceneBackTests
 
         Assert.Equal(["layout_mode", "anchors_preset", "anchor_right", "anchor_bottom"], PropertyNames(scene.Nodes[1].Properties));
         Assert.Equal(["toggle_mode", "button_pressed"], PropertyNames(scene.Nodes[2].Properties));
+    }
+
+    // The .xscn omits layout_mode under a Container, which the parent decides; the way back writes the value it decides.
+    [Fact]
+    public void AControlUnderAContainerGetsTheLayoutModeItsParentDecides()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <Control Name="Child" />
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Equal(new TscnProperty("layout_mode", new GodotInt(2)), Assert.Single(scene.Nodes[1].Properties));
+    }
+
+    [Fact]
+    public void AControlUnderANonContainerGetsNoLayoutMode()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <Control {{X}} Name="Root">
+              <Control Name="Child" />
+            </Control>
+            """
+        );
+
+        Assert.Empty(scene.Nodes[1].Properties);
+    }
+
+    [Fact]
+    public void AControlUnderAContainerKeepsItsOwnLayoutMode()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <Control Name="Child" LayoutMode="Anchors" />
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Equal(new TscnProperty("layout_mode", new GodotInt(1)), Assert.Single(scene.Nodes[1].Properties));
+    }
+
+    [Fact]
+    public void ANodeThatIsNoControlUnderAContainerGetsNoLayoutMode()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <Node2D Name="Child" />
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Empty(scene.Nodes[1].Properties);
+    }
+
+    // A Container is a Control, so a Container under a Container gets the mode too.
+    [Fact]
+    public void AContainerUnderAContainerGetsTheLayoutModeItsParentDecides()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <HBoxContainer Name="Child" />
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Equal(new TscnProperty("layout_mode", new GodotInt(2)), Assert.Single(scene.Nodes[1].Properties));
+    }
+
+    // A Window is no Control, so no Container lays it out.
+    [Fact]
+    public void AWindowUnderAContainerGetsNoLayoutMode()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <Window Name="Child" />
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Empty(scene.Nodes[1].Properties);
+    }
+
+    // An instance takes its class from another file, so the .xscn cannot say it is a Control under a Container.
+    [Fact]
+    public void AnInstanceUnderAContainerGetsNoLayoutMode()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <x:Instance Name="Inst" Scene="res://inner.tscn" />
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Empty(scene.Nodes[1].Properties);
+    }
+
+    // The parent of a new node inside an instance is the instance, whose class only its scene knows.
+    [Fact]
+    public void AControlInsideAnInstanceGetsNoLayoutMode()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <x:Instance Name="Inst" Scene="res://inner.tscn">
+                <Control Name="Child" />
+              </x:Instance>
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Equal(["Root", "Inst", "Child"], scene.Nodes.Select(node => node.Name));
+        Assert.Empty(scene.Nodes[2].Properties);
+    }
+
+    // An override names a node of an instanced scene, so it is no Container a child could be laid out by.
+    [Fact]
+    public void AControlUnderAnOverrideGetsNoLayoutMode()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <x:Instance Name="Inst" Scene="res://inner.tscn">
+                <x:Override Path="A">
+                  <Control Name="Child" />
+                </x:Override>
+              </x:Instance>
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Equal(["Root", "Inst", "Child"], scene.Nodes.Select(node => node.Name));
+        Assert.Empty(scene.Nodes[2].Properties);
+    }
+
+    [Fact]
+    public void ANodeOfUnknownClassUnderAContainerGetsNoLayoutMode()
+    {
+        XscnNode root = new()
+        {
+            Type = new XscnClassType(TestMetadata.FindClass("VBoxContainer")!),
+            Name = "Root",
+            Children = [new XscnNode { Type = new XscnUnknownType("MyThing"), Name = "Child" }],
+        };
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
+
+        Assert.Empty(back.Issues);
+        Assert.Empty(back.Document.Nodes[1].Properties);
+    }
+
+    // A placeholder's values are saved against its scene's state, and the writer never omits layout_mode for one, so the
+    // way back writes none: the tag names InstancePlaceholder's saved state, not the node the scene makes.
+    [Fact]
+    public void APlaceholderUnderAContainerGetsNoLayoutMode()
+    {
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(
+            Parse($$"""<VBoxContainer {{X}} Name="Root"><Button Name="P" x:InstancePlaceholder="res://b.tscn" /></VBoxContainer>"""),
+            TestMetadata,
+            Options
+        );
+
+        Assert.Empty(back.Document.Nodes[1].Properties);
+    }
+
+    // Name="%X" sorts unique_name_in_owner first; the restored layout_mode follows it in Control's class order.
+    [Fact]
+    public void AnUniqueNameControlUnderAContainerKeepsTheUniqueNameFirst()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <VBoxContainer {{X}} Name="Root">
+              <Control Name="%Child" />
+            </VBoxContainer>
+            """
+        );
+
+        Assert.Equal(["unique_name_in_owner", "layout_mode"], PropertyNames(scene.Nodes[1].Properties));
     }
 
     [Fact]

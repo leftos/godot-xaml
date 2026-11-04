@@ -24,6 +24,7 @@ public sealed partial class SceneForwardTests
             "ext_resource",
             "groups",
             "gui_item_arrays",
+            "gui_tabs_graph",
             "inherited",
             "instanced",
             "instanced_order",

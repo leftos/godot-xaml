@@ -1,0 +1,279 @@
+[gd_scene format=3]
+
+[sub_resource type="Gradient" id="Gradient_1c0ns"]
+colors = PackedColorArray(1, 0, 0, 1, 0, 0, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_1c0ns"]
+gradient = SubResource("Gradient_1c0ns")
+width = 16
+height = 16
+
+[sub_resource type="AudioStreamOggVorbis" id="AudioStreamOggVorbis_5tr30"]
+
+[node name="Root" type="Node" unique_id=757501449]
+
+[node name="TabContainer" type="TabContainer" parent="." unique_id=1304493887]
+current_tab = 0
+tab_0/title = "Title 0"
+tab_0/icon = SubResource("GradientTexture2D_1c0ns")
+tab_0/disabled = true
+tab_1/title = "Title 1"
+tab_2/title = "Title 2"
+tab_2/disabled = true
+tab_2/hidden = true
+tab_3/title = "Title 3"
+tab_3/icon = SubResource("GradientTexture2D_1c0ns")
+tab_4/title = "Title 4"
+tab_4/disabled = true
+tab_5/title = "Title 5"
+tab_5/hidden = true
+tab_6/title = "Title 6"
+tab_6/icon = SubResource("GradientTexture2D_1c0ns")
+tab_6/disabled = true
+tab_7/title = "Title 7"
+tab_8/title = "Title 8"
+tab_8/disabled = true
+tab_8/hidden = true
+tab_9/title = "Title 9"
+tab_9/icon = SubResource("GradientTexture2D_1c0ns")
+tab_10/title = "Title 10"
+tab_10/icon = SubResource("GradientTexture2D_1c0ns")
+tab_10/disabled = true
+tab_11/title = "Title 11"
+tab_11/icon = SubResource("GradientTexture2D_1c0ns")
+tab_11/hidden = true
+
+[node name="Page0" type="Control" parent="TabContainer" unique_id=822076220]
+layout_mode = 2
+metadata/_tab_index = 0
+metadata/_tab_name = "Title 0"
+
+[node name="Page1" type="Control" parent="TabContainer" unique_id=1364700865]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+metadata/_tab_name = "Title 1"
+
+[node name="Page2" type="Control" parent="TabContainer" unique_id=882807675]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+metadata/_tab_name = "Title 2"
+
+[node name="Page3" type="Control" parent="TabContainer" unique_id=1859674015]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3
+metadata/_tab_name = "Title 3"
+
+[node name="Page4" type="Control" parent="TabContainer" unique_id=1415043646]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 4
+metadata/_tab_name = "Title 4"
+
+[node name="Page5" type="Control" parent="TabContainer" unique_id=324483426]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 5
+metadata/_tab_name = "Title 5"
+
+[node name="Page6" type="Control" parent="TabContainer" unique_id=1541498512]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 6
+metadata/_tab_name = "Title 6"
+
+[node name="Page7" type="Control" parent="TabContainer" unique_id=986845745]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 7
+metadata/_tab_name = "Title 7"
+
+[node name="Page8" type="Control" parent="TabContainer" unique_id=645127147]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 8
+metadata/_tab_name = "Title 8"
+
+[node name="Page9" type="Control" parent="TabContainer" unique_id=431768762]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 9
+metadata/_tab_name = "Title 9"
+
+[node name="Page10" type="Control" parent="TabContainer" unique_id=1890047345]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 10
+metadata/_tab_name = "Title 10"
+
+[node name="Page11" type="Control" parent="TabContainer" unique_id=778294654]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 11
+metadata/_tab_name = "Title 11"
+
+[node name="GraphNode" type="GraphNode" parent="." unique_id=791565664]
+slot/0/left_enabled = true
+slot/0/left_type = 1
+slot/0/left_color = Color(1, 0, 0, 1)
+slot/0/left_icon = SubResource("GradientTexture2D_1c0ns")
+slot/0/right_enabled = true
+slot/0/right_type = 2
+slot/0/right_color = Color(0, 0, 1, 1)
+slot/0/right_icon = SubResource("GradientTexture2D_1c0ns")
+slot/0/draw_stylebox = true
+slot/1/left_enabled = true
+slot/1/left_type = 1
+slot/1/left_color = Color(1, 0, 0, 1)
+slot/1/left_icon = null
+slot/1/right_enabled = true
+slot/1/right_type = 2
+slot/1/right_color = Color(0, 0, 1, 1)
+slot/1/right_icon = null
+slot/1/draw_stylebox = false
+slot/2/left_enabled = true
+slot/2/left_type = 1
+slot/2/left_color = Color(1, 0, 0, 1)
+slot/2/left_icon = null
+slot/2/right_enabled = true
+slot/2/right_type = 2
+slot/2/right_color = Color(0, 0, 1, 1)
+slot/2/right_icon = null
+slot/2/draw_stylebox = true
+slot/3/left_enabled = true
+slot/3/left_type = 1
+slot/3/left_color = Color(1, 0, 0, 1)
+slot/3/left_icon = SubResource("GradientTexture2D_1c0ns")
+slot/3/right_enabled = true
+slot/3/right_type = 2
+slot/3/right_color = Color(0, 0, 1, 1)
+slot/3/right_icon = SubResource("GradientTexture2D_1c0ns")
+slot/3/draw_stylebox = false
+slot/4/left_enabled = true
+slot/4/left_type = 1
+slot/4/left_color = Color(1, 0, 0, 1)
+slot/4/left_icon = null
+slot/4/right_enabled = true
+slot/4/right_type = 2
+slot/4/right_color = Color(0, 0, 1, 1)
+slot/4/right_icon = null
+slot/4/draw_stylebox = true
+slot/5/left_enabled = true
+slot/5/left_type = 1
+slot/5/left_color = Color(1, 0, 0, 1)
+slot/5/left_icon = null
+slot/5/right_enabled = true
+slot/5/right_type = 2
+slot/5/right_color = Color(0, 0, 1, 1)
+slot/5/right_icon = null
+slot/5/draw_stylebox = false
+slot/6/left_enabled = true
+slot/6/left_type = 1
+slot/6/left_color = Color(1, 0, 0, 1)
+slot/6/left_icon = SubResource("GradientTexture2D_1c0ns")
+slot/6/right_enabled = true
+slot/6/right_type = 2
+slot/6/right_color = Color(0, 0, 1, 1)
+slot/6/right_icon = SubResource("GradientTexture2D_1c0ns")
+slot/6/draw_stylebox = true
+slot/7/left_enabled = true
+slot/7/left_type = 1
+slot/7/left_color = Color(1, 0, 0, 1)
+slot/7/left_icon = null
+slot/7/right_enabled = true
+slot/7/right_type = 2
+slot/7/right_color = Color(0, 0, 1, 1)
+slot/7/right_icon = null
+slot/7/draw_stylebox = false
+slot/8/left_enabled = true
+slot/8/left_type = 1
+slot/8/left_color = Color(1, 0, 0, 1)
+slot/8/left_icon = null
+slot/8/right_enabled = true
+slot/8/right_type = 2
+slot/8/right_color = Color(0, 0, 1, 1)
+slot/8/right_icon = null
+slot/8/draw_stylebox = true
+slot/9/left_enabled = true
+slot/9/left_type = 1
+slot/9/left_color = Color(1, 0, 0, 1)
+slot/9/left_icon = SubResource("GradientTexture2D_1c0ns")
+slot/9/right_enabled = true
+slot/9/right_type = 2
+slot/9/right_color = Color(0, 0, 1, 1)
+slot/9/right_icon = SubResource("GradientTexture2D_1c0ns")
+slot/9/draw_stylebox = false
+slot/10/left_enabled = true
+slot/10/left_type = 1
+slot/10/left_color = Color(1, 0, 0, 1)
+slot/10/left_icon = SubResource("GradientTexture2D_1c0ns")
+slot/10/right_enabled = true
+slot/10/right_type = 2
+slot/10/right_color = Color(0, 0, 1, 1)
+slot/10/right_icon = SubResource("GradientTexture2D_1c0ns")
+slot/10/draw_stylebox = true
+slot/11/left_enabled = true
+slot/11/left_type = 1
+slot/11/left_color = Color(1, 0, 0, 1)
+slot/11/left_icon = SubResource("GradientTexture2D_1c0ns")
+slot/11/right_enabled = true
+slot/11/right_type = 2
+slot/11/right_color = Color(0, 0, 1, 1)
+slot/11/right_icon = SubResource("GradientTexture2D_1c0ns")
+slot/11/draw_stylebox = false
+
+[node name="Slot0" type="Control" parent="GraphNode" unique_id=1830817235]
+layout_mode = 2
+
+[node name="Slot1" type="Control" parent="GraphNode" unique_id=147461676]
+layout_mode = 2
+
+[node name="Slot2" type="Control" parent="GraphNode" unique_id=14513340]
+layout_mode = 2
+
+[node name="Slot3" type="Control" parent="GraphNode" unique_id=1577684024]
+layout_mode = 2
+
+[node name="Slot4" type="Control" parent="GraphNode" unique_id=1649694138]
+layout_mode = 2
+
+[node name="Slot5" type="Control" parent="GraphNode" unique_id=1731603865]
+layout_mode = 2
+
+[node name="Slot6" type="Control" parent="GraphNode" unique_id=401481238]
+layout_mode = 2
+
+[node name="Slot7" type="Control" parent="GraphNode" unique_id=2103383739]
+layout_mode = 2
+
+[node name="Slot8" type="Control" parent="GraphNode" unique_id=92989722]
+layout_mode = 2
+
+[node name="Slot9" type="Control" parent="GraphNode" unique_id=261645986]
+layout_mode = 2
+
+[node name="Slot10" type="Control" parent="GraphNode" unique_id=1076297364]
+layout_mode = 2
+
+[node name="Slot11" type="Control" parent="GraphNode" unique_id=2051551774]
+layout_mode = 2
+
+[node name="AudioListener2D" type="AudioListener2D" parent="." unique_id=2095340152]
+current = true
+
+[node name="AudioListener3D" type="AudioListener3D" parent="." unique_id=905031928]
+current = true
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=1468509537]
+stream = SubResource("AudioStreamOggVorbis_5tr30")
+parameters/looping = true
+
+[node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="." unique_id=1996731295]
+stream = SubResource("AudioStreamOggVorbis_5tr30")
+parameters/looping = true
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=23056574]
+stream = SubResource("AudioStreamOggVorbis_5tr30")
+parameters/looping = true

@@ -1,0 +1,250 @@
+<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="757501449">
+  <x:Resources>
+    <GradientTexture2D x:Key="GradientTexture2D1" Height="16" Width="16">
+      <GradientTexture2D.Gradient>
+        <Gradient Colors="PackedColorArray(1, 0, 0, 1, 0, 0, 1, 1)" />
+      </GradientTexture2D.Gradient>
+    </GradientTexture2D>
+    <AudioStreamOggVorbis x:Key="AudioStreamOggVorbis1" />
+  </x:Resources>
+  <TabContainer Name="TabContainer" CurrentTab="0" x:UniqueId="1304493887">
+    <x:Prop Name="tab_0/disabled" Value="true" />
+    <x:Prop Name="tab_0/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_0/title" Value='"Title 0"' />
+    <x:Prop Name="tab_1/title" Value='"Title 1"' />
+    <x:Prop Name="tab_10/disabled" Value="true" />
+    <x:Prop Name="tab_10/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_10/title" Value='"Title 10"' />
+    <x:Prop Name="tab_11/hidden" Value="true" />
+    <x:Prop Name="tab_11/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_11/title" Value='"Title 11"' />
+    <x:Prop Name="tab_2/disabled" Value="true" />
+    <x:Prop Name="tab_2/hidden" Value="true" />
+    <x:Prop Name="tab_2/title" Value='"Title 2"' />
+    <x:Prop Name="tab_3/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_3/title" Value='"Title 3"' />
+    <x:Prop Name="tab_4/disabled" Value="true" />
+    <x:Prop Name="tab_4/title" Value='"Title 4"' />
+    <x:Prop Name="tab_5/hidden" Value="true" />
+    <x:Prop Name="tab_5/title" Value='"Title 5"' />
+    <x:Prop Name="tab_6/disabled" Value="true" />
+    <x:Prop Name="tab_6/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_6/title" Value='"Title 6"' />
+    <x:Prop Name="tab_7/title" Value='"Title 7"' />
+    <x:Prop Name="tab_8/disabled" Value="true" />
+    <x:Prop Name="tab_8/hidden" Value="true" />
+    <x:Prop Name="tab_8/title" Value='"Title 8"' />
+    <x:Prop Name="tab_9/icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="tab_9/title" Value='"Title 9"' />
+    <Control
+        Name="Page0"
+        Metadata._tab_index="0"
+        Metadata._tab_name='"Title 0"'
+        x:UniqueId="822076220" />
+    <Control
+        Name="Page1"
+        Metadata._tab_index="1"
+        Metadata._tab_name='"Title 1"'
+        Visible="False"
+        x:UniqueId="1364700865" />
+    <Control
+        Name="Page2"
+        Metadata._tab_index="2"
+        Metadata._tab_name='"Title 2"'
+        Visible="False"
+        x:UniqueId="882807675" />
+    <Control
+        Name="Page3"
+        Metadata._tab_index="3"
+        Metadata._tab_name='"Title 3"'
+        Visible="False"
+        x:UniqueId="1859674015" />
+    <Control
+        Name="Page4"
+        Metadata._tab_index="4"
+        Metadata._tab_name='"Title 4"'
+        Visible="False"
+        x:UniqueId="1415043646" />
+    <Control
+        Name="Page5"
+        Metadata._tab_index="5"
+        Metadata._tab_name='"Title 5"'
+        Visible="False"
+        x:UniqueId="324483426" />
+    <Control
+        Name="Page6"
+        Metadata._tab_index="6"
+        Metadata._tab_name='"Title 6"'
+        Visible="False"
+        x:UniqueId="1541498512" />
+    <Control
+        Name="Page7"
+        Metadata._tab_index="7"
+        Metadata._tab_name='"Title 7"'
+        Visible="False"
+        x:UniqueId="986845745" />
+    <Control
+        Name="Page8"
+        Metadata._tab_index="8"
+        Metadata._tab_name='"Title 8"'
+        Visible="False"
+        x:UniqueId="645127147" />
+    <Control
+        Name="Page9"
+        Metadata._tab_index="9"
+        Metadata._tab_name='"Title 9"'
+        Visible="False"
+        x:UniqueId="431768762" />
+    <Control
+        Name="Page10"
+        Metadata._tab_index="10"
+        Metadata._tab_name='"Title 10"'
+        Visible="False"
+        x:UniqueId="1890047345" />
+    <Control
+        Name="Page11"
+        Metadata._tab_index="11"
+        Metadata._tab_name='"Title 11"'
+        Visible="False"
+        x:UniqueId="778294654" />
+  </TabContainer>
+  <GraphNode Name="GraphNode" x:UniqueId="791565664">
+    <x:Prop Name="slot/0/draw_stylebox" Value="true" />
+    <x:Prop Name="slot/0/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/0/left_enabled" Value="true" />
+    <x:Prop Name="slot/0/left_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/0/left_type" Value="1" />
+    <x:Prop Name="slot/0/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/0/right_enabled" Value="true" />
+    <x:Prop Name="slot/0/right_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/0/right_type" Value="2" />
+    <x:Prop Name="slot/1/draw_stylebox" Value="false" />
+    <x:Prop Name="slot/1/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/1/left_enabled" Value="true" />
+    <x:Prop Name="slot/1/left_icon" Value="null" />
+    <x:Prop Name="slot/1/left_type" Value="1" />
+    <x:Prop Name="slot/1/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/1/right_enabled" Value="true" />
+    <x:Prop Name="slot/1/right_icon" Value="null" />
+    <x:Prop Name="slot/1/right_type" Value="2" />
+    <x:Prop Name="slot/10/draw_stylebox" Value="true" />
+    <x:Prop Name="slot/10/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/10/left_enabled" Value="true" />
+    <x:Prop Name="slot/10/left_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/10/left_type" Value="1" />
+    <x:Prop Name="slot/10/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/10/right_enabled" Value="true" />
+    <x:Prop Name="slot/10/right_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/10/right_type" Value="2" />
+    <x:Prop Name="slot/11/draw_stylebox" Value="false" />
+    <x:Prop Name="slot/11/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/11/left_enabled" Value="true" />
+    <x:Prop Name="slot/11/left_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/11/left_type" Value="1" />
+    <x:Prop Name="slot/11/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/11/right_enabled" Value="true" />
+    <x:Prop Name="slot/11/right_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/11/right_type" Value="2" />
+    <x:Prop Name="slot/2/draw_stylebox" Value="true" />
+    <x:Prop Name="slot/2/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/2/left_enabled" Value="true" />
+    <x:Prop Name="slot/2/left_icon" Value="null" />
+    <x:Prop Name="slot/2/left_type" Value="1" />
+    <x:Prop Name="slot/2/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/2/right_enabled" Value="true" />
+    <x:Prop Name="slot/2/right_icon" Value="null" />
+    <x:Prop Name="slot/2/right_type" Value="2" />
+    <x:Prop Name="slot/3/draw_stylebox" Value="false" />
+    <x:Prop Name="slot/3/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/3/left_enabled" Value="true" />
+    <x:Prop Name="slot/3/left_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/3/left_type" Value="1" />
+    <x:Prop Name="slot/3/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/3/right_enabled" Value="true" />
+    <x:Prop Name="slot/3/right_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/3/right_type" Value="2" />
+    <x:Prop Name="slot/4/draw_stylebox" Value="true" />
+    <x:Prop Name="slot/4/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/4/left_enabled" Value="true" />
+    <x:Prop Name="slot/4/left_icon" Value="null" />
+    <x:Prop Name="slot/4/left_type" Value="1" />
+    <x:Prop Name="slot/4/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/4/right_enabled" Value="true" />
+    <x:Prop Name="slot/4/right_icon" Value="null" />
+    <x:Prop Name="slot/4/right_type" Value="2" />
+    <x:Prop Name="slot/5/draw_stylebox" Value="false" />
+    <x:Prop Name="slot/5/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/5/left_enabled" Value="true" />
+    <x:Prop Name="slot/5/left_icon" Value="null" />
+    <x:Prop Name="slot/5/left_type" Value="1" />
+    <x:Prop Name="slot/5/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/5/right_enabled" Value="true" />
+    <x:Prop Name="slot/5/right_icon" Value="null" />
+    <x:Prop Name="slot/5/right_type" Value="2" />
+    <x:Prop Name="slot/6/draw_stylebox" Value="true" />
+    <x:Prop Name="slot/6/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/6/left_enabled" Value="true" />
+    <x:Prop Name="slot/6/left_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/6/left_type" Value="1" />
+    <x:Prop Name="slot/6/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/6/right_enabled" Value="true" />
+    <x:Prop Name="slot/6/right_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/6/right_type" Value="2" />
+    <x:Prop Name="slot/7/draw_stylebox" Value="false" />
+    <x:Prop Name="slot/7/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/7/left_enabled" Value="true" />
+    <x:Prop Name="slot/7/left_icon" Value="null" />
+    <x:Prop Name="slot/7/left_type" Value="1" />
+    <x:Prop Name="slot/7/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/7/right_enabled" Value="true" />
+    <x:Prop Name="slot/7/right_icon" Value="null" />
+    <x:Prop Name="slot/7/right_type" Value="2" />
+    <x:Prop Name="slot/8/draw_stylebox" Value="true" />
+    <x:Prop Name="slot/8/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/8/left_enabled" Value="true" />
+    <x:Prop Name="slot/8/left_icon" Value="null" />
+    <x:Prop Name="slot/8/left_type" Value="1" />
+    <x:Prop Name="slot/8/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/8/right_enabled" Value="true" />
+    <x:Prop Name="slot/8/right_icon" Value="null" />
+    <x:Prop Name="slot/8/right_type" Value="2" />
+    <x:Prop Name="slot/9/draw_stylebox" Value="false" />
+    <x:Prop Name="slot/9/left_color" Value="Color(1, 0, 0, 1)" />
+    <x:Prop Name="slot/9/left_enabled" Value="true" />
+    <x:Prop Name="slot/9/left_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/9/left_type" Value="1" />
+    <x:Prop Name="slot/9/right_color" Value="Color(0, 0, 1, 1)" />
+    <x:Prop Name="slot/9/right_enabled" Value="true" />
+    <x:Prop Name="slot/9/right_icon" Value="{GradientTexture2D1}" />
+    <x:Prop Name="slot/9/right_type" Value="2" />
+    <Control Name="Slot0" x:UniqueId="1830817235" />
+    <Control Name="Slot1" x:UniqueId="147461676" />
+    <Control Name="Slot2" x:UniqueId="14513340" />
+    <Control Name="Slot3" x:UniqueId="1577684024" />
+    <Control Name="Slot4" x:UniqueId="1649694138" />
+    <Control Name="Slot5" x:UniqueId="1731603865" />
+    <Control Name="Slot6" x:UniqueId="401481238" />
+    <Control Name="Slot7" x:UniqueId="2103383739" />
+    <Control Name="Slot8" x:UniqueId="92989722" />
+    <Control Name="Slot9" x:UniqueId="261645986" />
+    <Control Name="Slot10" x:UniqueId="1076297364" />
+    <Control Name="Slot11" x:UniqueId="2051551774" />
+  </GraphNode>
+  <AudioListener2D Name="AudioListener2D" current="true" x:UniqueId="2095340152" />
+  <AudioListener3D Name="AudioListener3D" current="true" x:UniqueId="905031928" />
+  <AudioStreamPlayer
+      Name="AudioStreamPlayer"
+      Parameters.looping="true"
+      Stream="{AudioStreamOggVorbis1}"
+      x:UniqueId="1468509537" />
+  <AudioStreamPlayer2D
+      Name="AudioStreamPlayer2D"
+      Parameters.looping="true"
+      Stream="{AudioStreamOggVorbis1}"
+      x:UniqueId="1996731295" />
+  <AudioStreamPlayer3D
+      Name="AudioStreamPlayer3D"
+      Parameters.looping="true"
+      Stream="{AudioStreamOggVorbis1}"
+      x:UniqueId="23056574" />
+</Node>

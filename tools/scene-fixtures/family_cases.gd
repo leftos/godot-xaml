@@ -196,6 +196,32 @@ static func gui_item_arrays(generator) -> String:
 	return generator._save_scene("gui_item_arrays", root)
 
 
+## A TabContainer of 12 pages, a GraphNode of 12 slots, an AudioListener2D and an
+## AudioListener3D marked current, and one AudioStreamPlayer of each kind playing a shared
+## AudioStreamOggVorbis. The pages and slots are children of their node (both key their names
+## by the child's index), the TabContainer's titles differ from the pages' names (a title equal
+## to the name is not stored), and the players get their stream before any parameter (a player
+## lists parameters/ only once it holds a stream). Keys in each class's _get_property_list
+## order: tab_container.cpp (title, icon, disabled, hidden) and graph_node.cpp (left_enabled,
+## left_type, left_color, left_icon, the right keys of the same shape, then draw_stylebox).
+## TabContainer's PropertyListHelper refuses a tab_N/ name for an index with no tab yet, and a
+## loaded scene sets them before its children exist, so both loaders drop tab_N/ and the tabs
+## stay as a way-back regression; GraphNode's _set accepts a slot/N/ name with no child, so its
+## slots load.
+static func gui_tabs_graph(generator) -> String:
+	var root: Node = generator._root("Node")
+	var icon := _icon()
+	var stream := _audio_stream()
+	_gui_tab_container(generator, root, icon)
+	_gui_graph_node(generator, root, icon)
+	_audio_listener(generator, root, "AudioListener2D")
+	_audio_listener(generator, root, "AudioListener3D")
+	_audio_player(generator, root, "AudioStreamPlayer", stream)
+	_audio_player(generator, root, "AudioStreamPlayer2D", stream)
+	_audio_player(generator, root, "AudioStreamPlayer3D", stream)
+	return generator._save_scene("gui_tabs_graph", root)
+
+
 ## The texture the cases' icons share, its own and its gradient's sub-resource ids pinned.
 static func _icon() -> GradientTexture2D:
 	var gradient := Gradient.new()
@@ -295,6 +321,54 @@ static func _gui_file_dialog(generator, root: Node) -> void:
 	var file_dialog: FileDialog = generator._add(root, "FileDialog", "FileDialog")
 	for index in 12:
 		file_dialog.add_option("Opt %d" % index, PackedStringArray(["fast", "slow"]), 1)
+
+
+## 12 pages of a TabContainer, each with a title that differs from the page's name, some disabled,
+## hidden or with the shared icon.
+static func _gui_tab_container(generator, root: Node, icon: Texture2D) -> void:
+	var tabs: TabContainer = generator._add(root, "TabContainer", "TabContainer")
+	for index in 12:
+		generator._add(tabs, "Page%d" % index, "Control")
+	for index in 12:
+		tabs.set_tab_title(index, "Title %d" % index)
+		tabs.set_tab_disabled(index, index % 2 == 0)
+		tabs.set_tab_hidden(index, index % 3 == 2)
+		if _carries_icon(index):
+			tabs.set_tab_icon(index, icon)
+
+
+## 12 Control children of a GraphNode, both of each one's slots on and coloured, some with the
+## shared icon and some without a stylebox.
+static func _gui_graph_node(generator, root: Node, icon: Texture2D) -> void:
+	var graph: GraphNode = generator._add(root, "GraphNode", "GraphNode")
+	for index in 12:
+		generator._add(graph, "Slot%d" % index, "Control")
+	for index in 12:
+		graph.set_slot(index, true, 1, Color.RED, true, 2, Color.BLUE)
+		graph.set_slot_draw_stylebox(index, index % 2 == 0)
+		if _carries_icon(index):
+			graph.set_slot_custom_icon_left(index, icon)
+			graph.set_slot_custom_icon_right(index, icon)
+
+
+## A listener of the given class marked current; outside the tree its setter only keeps the flag.
+static func _audio_listener(generator, root: Node, type_name: String) -> void:
+	var listener: Node = generator._add(root, type_name, type_name)
+	listener.set("current", true)
+
+
+## A player of the given class playing the shared stream with its one parameter turned on.
+static func _audio_player(generator, root: Node, type_name: String, stream: AudioStream) -> void:
+	var player: Node = generator._add(root, type_name, type_name)
+	player.set("stream", stream)
+	player.set("parameters/looping", true)
+
+
+## The stream the three players share, its sub-resource id pinned.
+static func _audio_stream() -> AudioStreamOggVorbis:
+	var stream := AudioStreamOggVorbis.new()
+	stream.resource_scene_unique_id = "AudioStreamOggVorbis_5tr30"
+	return stream
 
 
 ## A value off the default of a custom data layer of the given type.

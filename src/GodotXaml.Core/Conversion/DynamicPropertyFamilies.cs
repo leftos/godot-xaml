@@ -374,6 +374,23 @@ internal static class DynamicPropertyFamilies
     // scene/gui/tab_bar.cpp, TabBar::_bind_methods (PropertyListHelper registration): one tab's keys.
     private static readonly string[] TabKeys = ["title", "tooltip", "icon", "disabled"];
 
+    // scene/gui/tab_container.cpp, TabContainer::_bind_methods (PropertyListHelper registration): one tab's keys.
+    private static readonly string[] ContainerTabKeys = ["title", "icon", "disabled", "hidden"];
+
+    // scene/gui/graph_node.cpp, GraphNode::_get_property_list: one slot's keys.
+    private static readonly string[] SlotKeys =
+    [
+        "left_enabled",
+        "left_type",
+        "left_color",
+        "left_icon",
+        "right_enabled",
+        "right_type",
+        "right_color",
+        "right_icon",
+        "draw_stylebox",
+    ];
+
     // scene/gui/popup_menu.cpp and scene/gui/menu_button.cpp, PopupMenu::_bind_methods and MenuButton::_bind_methods
     // (PropertyListHelper registrations): one item's keys, the same order in both classes.
     private static readonly string[] PopupItemKeys = ["text", "icon", "checkable", "checked", "id", "disabled", "separator"];
@@ -414,9 +431,9 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("MeshInstance3D", @"^blend_shapes/"),
         Row.SizedFirst("MeshInstance3D", @"^surface_material_override/[0-9]+\z", "mesh"),
         // scene/gui/graph_node.cpp, GraphNode::_get_property_list
-        Row.AnyOrder("GraphNode", @"^slot/[0-9]+/"),
+        Row.OnKey("GraphNode", @"^slot/(?<index>[0-9]+)/(?<key>.*)\z", SlotKeys),
         // scene/gui/tab_container.cpp, TabContainer::_get_property_list (PropertyListHelper)
-        Row.AnyOrder("TabContainer", @"^tab_[0-9]+/"),
+        Row.OnKey("TabContainer", @"^tab_(?<index>[0-9]+)/(?<key>.*)\z", ContainerTabKeys),
         // scene/gui/tab_bar.cpp, TabBar::_bind_methods (PropertyListHelper registration)
         Row.SizedFirst("TabBar", @"^tab_(?<index>[0-9]+)/(?<key>.*)\z", "tab_count", TabKeys, []),
         // scene/gui/popup_menu.cpp, PopupMenu::_bind_methods (PropertyListHelper registration)

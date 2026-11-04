@@ -11,6 +11,10 @@ public static partial class XscnToTscn
     private sealed partial class Context
     {
         private const string UniqueNameProperty = "unique_name_in_owner";
+        private const string LayoutModeProperty = "layout_mode";
+
+        // Control::_set_layout_mode's LAYOUT_MODE_CONTAINER, the mode a Container gives every Control child it lays out.
+        private const int ContainerLayoutMode = 2;
 
         // An .xscn becomes a .tscn: the element tree flattened in pre-order (packed_scene.cpp:1129-1131), the files found
         // per node, its instanced scene before its properties' (packed_scene.cpp:844-853, 1000), and the connections'
@@ -51,7 +55,10 @@ public static partial class XscnToTscn
         {
             PlacedElement? here = element switch
             {
-                XscnNode node => new PlacedElement(element, node.Name, TscnNodePaths.PathOf(parent?.Path, node.Name), parent?.Path),
+                XscnNode node => new PlacedElement(element, node.Name, TscnNodePaths.PathOf(parent?.Path, node.Name), parent?.Path)
+                {
+                    ParentElement = parent,
+                },
                 XscnOverride over => PlaceOverride(over, parent!),
                 _ => throw new InvalidOperationException($"No conversion for a {element.GetType().Name}."),
             };
@@ -87,7 +94,11 @@ public static partial class XscnToTscn
             }
 
             int slash = path.LastIndexOf('/');
-            return new PlacedElement(over, path[(slash + 1)..], path, TscnNodePaths.ParentOf(path)) { InstancedBy = instanced };
+            return new PlacedElement(over, path[(slash + 1)..], path, TscnNodePaths.ParentOf(path))
+            {
+                InstancedBy = instanced,
+                ParentElement = parent,
+            };
         }
 
         private void DiscoverElement(PlacedElement placed)
@@ -101,7 +112,8 @@ public static partial class XscnToTscn
             // The node's files in the order its section writes its properties (packed_scene.cpp:860-866): the same class and
             // sort NodeProperties uses, so the two agree.
             ImmutableArray<XscnProperty> sorted = SortedProperties(placed.Element);
-            DiscoverInOrder((placed.Element as XscnNode)?.Type, order.Sort(NodeClass(placed, sorted, location), sorted), location, placed.Path);
+            GodotClassInfo? cls = NodeClass(placed, sorted, location);
+            DiscoverInOrder((placed.Element as XscnNode)?.Type, order.Sort(cls, RestoreLayoutMode(placed, sorted)), location, placed.Path);
         }
 
         private void DiscoverBinds(PlacedElement placed)
@@ -164,9 +176,11 @@ public static partial class XscnToTscn
         {
             XscnNodeElement element = placed.Element;
             ImmutableArray<XscnProperty> sorted = SortedProperties(element);
+            GodotClassInfo? cls = NodeClass(placed, sorted, location);
+            sorted = RestoreLayoutMode(placed, sorted);
             if (element is not XscnNode { Unique: true } node)
             {
-                return Properties(NodeClass(placed, sorted, location), sorted, location);
+                return Properties(cls, sorted, location);
             }
 
             ImmutableArray<XscnProperty> explicitOnes = [.. node.Properties.Where(property => property.GodotName == UniqueNameProperty)];
@@ -176,8 +190,7 @@ public static partial class XscnToTscn
                 Report(ConversionCodes.UniqueNameConflict, ConversionSeverity.Warning, message, location);
             }
 
-            return Properties(NodeClass(placed, sorted, location), sorted, location)
-                .Insert(0, new TscnProperty(UniqueNameProperty, new GodotBool(true)));
+            return Properties(cls, sorted, location).Insert(0, new TscnProperty(UniqueNameProperty, new GodotBool(true)));
         }
 
         // The properties a node's section sorts: for Name="%X", all but an explicit unique_name_in_owner, which goes first.
@@ -199,6 +212,33 @@ public static partial class XscnToTscn
                 XscnOverride over when placed.InstancedBy is { } scene => ClassInScene(scene, over.Path, properties.Length, location),
                 _ => null,
             };
+
+        // The .xscn omits layout_mode under a Container, since the parent decides it (DECISIONS "a value the parent decides");
+        // the way back writes the value the parent decides, so the section holds what Godot wrote. Only a node whose tag
+        // names its class, under a parent whose tag names a Container, gets it: an instance or an override takes its class
+        // from another file, and a node with its own layout_mode keeps it. The class test is the writer's, so the two agree.
+        private ImmutableArray<XscnProperty> RestoreLayoutMode(PlacedElement placed, ImmutableArray<XscnProperty> properties)
+        {
+            if (
+                TagClass(placed.Element) is not { } cls
+                || !metadata.Inherits(cls, "Control")
+                || metadata.FindProperty(cls, LayoutModeProperty) is null
+                || properties.Any(property => property.GodotName == LayoutModeProperty)
+                || placed.ParentElement is not { } parent
+                || TagClass(parent.Element) is not { } parentClass
+                || !metadata.Inherits(parentClass, "Container")
+            )
+            {
+                return properties;
+            }
+
+            return [.. properties, new XscnProperty(LayoutModeProperty, new XscnScalar(new GodotInt(ContainerLayoutMode)))];
+        }
+
+        // The class an element's tag names; null for an instance, a placeholder or an override, whose class only another
+        // file knows, and for a tag the metadata lacks.
+        private static GodotClassInfo? TagClass(XscnNodeElement element) =>
+            element is XscnNode { Type: XscnClassType tagged, InstancePlaceholder: null } ? tagged.Class : null;
 
         // A scene that cannot be read is warned about once per reference and reason, at the first section that meets it.
         // The scene's uid is the one its ext_resource is written with.
@@ -276,6 +316,9 @@ public static partial class XscnToTscn
         {
             // For an override, the scene its parent instances, where its path leads; null for a node.
             public string? InstancedBy { get; init; }
+
+            // The element this one was placed under, whose class decides a Control child's layout_mode.
+            public PlacedElement? ParentElement { get; init; }
         }
     }
 }

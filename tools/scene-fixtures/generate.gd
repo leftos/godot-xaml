@@ -77,6 +77,7 @@ func _run() -> String:
 		FamilyCases.physics_bones.bind(self),
 		FamilyCases.tile_set_layers.bind(self),
 		FamilyCases.gui_item_arrays.bind(self),
+		FamilyCases.gui_tabs_graph.bind(self),
 	]
 	for step in steps:
 		var error: String = step.call()
