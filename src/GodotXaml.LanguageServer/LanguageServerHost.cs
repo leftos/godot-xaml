@@ -42,14 +42,10 @@ internal static class LanguageServerHost
         var log = TextWriter.Synchronized(stderr);
         using JsonRpc rpc = new(new HeaderDelimitedMessageHandler(output, input, CreateFormatter()));
         ClientChannel client = new(rpc, log);
-        using DiagnosticsPublisher publisher = new(
-            new DocumentStore(log),
-            new ProjectCache(seams.LoadMetadata, client),
-            client,
-            scheduler,
-            seams.Parse
-        );
-        LanguageServerTarget server = new(client, publisher);
+        DocumentStore store = new(log);
+        ProjectCache projects = new(seams.LoadMetadata, client);
+        using DiagnosticsPublisher publisher = new(store, projects, client, scheduler, seams.Parse);
+        LanguageServerTarget server = new(client, publisher, new FormattingHandler(store, projects, client, seams.Parse));
 
         // The transport's own warnings and errors (a message it could not read or answer) go to stderr.
         rpc.TraceSource = new TraceSource("godot-xaml.jsonrpc", SourceLevels.Warning);
@@ -173,8 +169,8 @@ internal sealed class ClientChannel(JsonRpc rpc, TextWriter stderr) : IClientMes
     }
 }
 
-/// <summary>The RPC methods: the lifecycle and its order rules, then the document notifications.</summary>
-internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPublisher publisher)
+/// <summary>The RPC methods: the lifecycle and its order rules, then the document notifications and requests.</summary>
+internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPublisher publisher, FormattingHandler formatting)
 {
     private readonly Lock gate = new();
     private readonly TaskCompletionSource exited = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -214,7 +210,7 @@ internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPu
         }
 
         return new InitializeResult(
-            new ServerCapabilities(new TextDocumentSyncOptions(OpenClose: true, Change: TextDocumentSyncKind.Full)),
+            new ServerCapabilities(new TextDocumentSyncOptions(OpenClose: true, Change: TextDocumentSyncKind.Full), DocumentFormattingProvider: true),
             new ServerInfo(LanguageServerHost.ServerName, LanguageServerHost.Version)
         );
     }
@@ -297,6 +293,21 @@ internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPu
         {
             publisher.Closed(parameters.TextDocument.Uri);
         }
+    }
+
+    /// <summary>Formats a document: one edit replacing its whole text, or none.</summary>
+    /// <param name="parameters">The document and the client's formatting options, unread.</param>
+    /// <param name="cancellation">The request's cancellation.</param>
+    /// <returns>The edits, an empty list when there is nothing to do.</returns>
+    [JsonRpcMethod("textDocument/formatting")]
+    public Task<TextEdit[]> Formatting(DocumentFormattingParams parameters, CancellationToken cancellation)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        lock (gate)
+        {
+            EnsureServing();
+        }
+        return formatting.FormatAsync(parameters.TextDocument.Uri, cancellation);
     }
 
     // A notification is dropped before initialize and after shutdown.

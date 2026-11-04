@@ -60,6 +60,10 @@ internal sealed class ServerHarness : IAsyncDisposable
     public Task<JsonElement> RequestAsync(string method, params object?[] arguments) =>
         Guard(client.InvokeWithCancellationAsync<JsonElement>(method, arguments, hang.Token), method);
 
+    /// <summary>Sends a request whose parameters are one object, as an LSP client sends them.</summary>
+    public Task<JsonElement> RequestObjectAsync(string method, object parameters) =>
+        Guard(client.InvokeWithParameterObjectAsync<JsonElement>(method, parameters, hang.Token), method);
+
     public async Task<InitializeResult> InitializeAsync(InitializeParams? parameters = null)
     {
         InitializeResult result = await Guard(

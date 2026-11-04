@@ -95,6 +95,17 @@ internal sealed partial class DocumentStore(TextWriter? stderr = null) : ISceneF
         }
     }
 
+    /// <summary>An open buffer by its URI.</summary>
+    /// <param name="uri">The URI its client names it by.</param>
+    /// <returns>The buffer, or null when no buffer is open under the URI.</returns>
+    public OpenDocument? Find(string uri)
+    {
+        lock (gate)
+        {
+            return byUri.GetValueOrDefault(uri);
+        }
+    }
+
     /// <summary>Whether a buffer is still the newest one under its URI: not changed, closed or reopened since.</summary>
     /// <param name="document">The buffer.</param>
     /// <returns>Whether it is current.</returns>

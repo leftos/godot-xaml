@@ -12,6 +12,8 @@ namespace GodotXaml.LanguageServer.Protocol;
 [JsonSerializable(typeof(DidOpenTextDocumentParams))]
 [JsonSerializable(typeof(DidChangeTextDocumentParams))]
 [JsonSerializable(typeof(DidCloseTextDocumentParams))]
+[JsonSerializable(typeof(DocumentFormattingParams))]
+[JsonSerializable(typeof(TextEdit[]))]
 [JsonSerializable(typeof(PublishDiagnosticsParams))]
 [JsonSerializable(typeof(LogMessageParams))]
 [JsonSerializable(typeof(ShowMessageParams))]

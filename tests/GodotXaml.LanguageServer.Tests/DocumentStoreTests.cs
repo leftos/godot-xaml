@@ -72,4 +72,24 @@ public sealed class DocumentStoreTests : IDisposable
 
     [Fact]
     public void AMissingSceneGivesNull() => Assert.Null(((ISceneFiles)store).Read(Referrer, "res://Missing.xscn", uid: null));
+
+    [Fact]
+    public void AnOpenBufferIsFoundByItsUriBesideTheOneAChangeMakesAndNoneOnceClosed()
+    {
+        string uri = new Uri(Referenced).AbsoluteUri;
+        Assert.Null(store.Find(uri));
+
+        store.Open(uri, 3, "<Control Name=\"InBuffer\" />");
+        OpenDocument open = Assert.IsType<OpenDocument>(store.Find(uri));
+        Assert.Equal(3, open.Version);
+        Assert.Equal("<Control Name=\"InBuffer\" />", open.Text);
+
+        store.Change(uri, 4, "<Control Name=\"Changed\" />");
+        OpenDocument changed = Assert.IsType<OpenDocument>(store.Find(uri));
+        Assert.Equal(4, changed.Version);
+        Assert.Equal("<Control Name=\"Changed\" />", changed.Text);
+
+        store.Close(uri);
+        Assert.Null(store.Find(uri));
+    }
 }
