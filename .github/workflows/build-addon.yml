@@ -1,0 +1,49 @@
+name: Build the addon for export
+
+# Builds the Godot addon project in ExportRelease, the configuration a game export compiles, where code under #if TOOLS
+# is absent: a non-TOOLS file that reaches an editor-only symbol builds in Debug, which every local gate but the
+# godot-export-build pre-push hook uses, and fails only in a user's export. The build needs the Godot .NET SDK and
+# GodotSharp packages from nuget.org, not a Godot binary.
+on:
+  push:
+    branches: [main]
+    paths: &inputs
+      - godot/**
+      - src/GodotXaml.Core/**
+      - metadata/**
+      - Directory.Build.props
+      - Directory.Packages.props
+      - .editorconfig
+      - CodeMetricsConfig.txt
+      - global.json
+      - .github/workflows/build-addon.yml
+  pull_request:
+    branches: [main]
+    paths: *inputs
+
+permissions: {}
+
+concurrency:
+  group: build-addon-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build the addon in ExportRelease
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read # actions/checkout reads the repository
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      - name: Build godot/GodotXaml.Addon.csproj in ExportRelease
+        run: dotnet build godot/GodotXaml.Addon.csproj -c ExportRelease -warnaserror

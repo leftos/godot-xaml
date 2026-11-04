@@ -52,9 +52,10 @@ Then run `pwsh -NoProfile -File tools/pack-release.ps1 -Version <v> -CheckOnly`,
 Write `.tmp/release-gates.sh`, a bash script with `set -e` that runs one gate at a time, and start it with `run_in_background`. Each step is named in the log:
 
 1. `pwsh -NoProfile -File run.ps1 test`
-2. `pwsh -NoProfile -File run.ps1 godot-build`
-3. `pwsh -NoProfile -File run.ps1 format-check`
-4. `godot/checks.ps1`, `godot/compare.ps1`, `godot/editor-checks.ps1` and `godot/export.ps1`, each with its gate line from "Test locations" in `docs/ARCHITECTURE.md`; the editor checks open the real editor, so they are the only gate that runs the addon's editor plugin
+2. `pwsh -NoProfile -File run.ps1 godot-export-build`
+3. `pwsh -NoProfile -File run.ps1 godot-build`
+4. `pwsh -NoProfile -File run.ps1 format-check`
+5. `godot/checks.ps1`, `godot/compare.ps1`, `godot/editor-checks.ps1` and `godot/export.ps1`, each with its gate line from "Test locations" in `docs/ARCHITECTURE.md`; the editor checks open the real editor, so they are the only gate that runs the addon's editor plugin
 
 5. When `git diff <last tag>..HEAD --stat` touches the release path (`.github/workflows/build-server.yml`, `tools/publish-server.ps1`, `tools/sign-macos.ps1`, `tools/smoke-server.ps1`), run `gh workflow run build-server.yml --ref main` once `main` is on `origin` (the dispatch builds the remote branch) and wait for it, both smoke-signed jobs green, before tagging. With no tag it is a dry run that attaches nothing.
 

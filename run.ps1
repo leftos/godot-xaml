@@ -8,17 +8,19 @@ Builds, tests and format-checks the GodotXaml solution, every step run through t
 Every verb but help runs its command through the repo's gate wrapper, tools/gate.ps1, in a pwsh of its own: the wrapper
 hands the words to the installed gate.exe, which writes the command's whole output to the log under .tmp/ and enforces
 the ceiling, and on a machine without gate.exe it runs the command directly. The script exits with the gated command's
-status. The hooks in .pre-commit-config.yaml call build, godot-build and format-check, so the same commands run there.
+status. The pre-push hooks in .pre-commit-config.yaml call build, godot-build and godot-export-build, so the same
+commands run there; pre-commit runs csharpier on the staged files itself.
 
-  help          prints this usage; the verb a run without one uses
-  build         dotnet build GodotXaml.slnx in Release, warnings as errors; .tmp/build.log, ceiling 600 s
-  godot-build   dotnet build godot/GodotXaml.Addon.csproj in Debug, warnings as errors; .tmp/godot-build.log, ceiling 600 s
-  test          build, then dotnet test of the solution in Release without building it again; .tmp/test.log, ceiling 600 s
-  format-check  dotnet tool restore, then dotnet csharpier check on the repo, changing nothing; .tmp/format.log
-  format        dotnet tool restore, then dotnet csharpier format on the repo; .tmp/format.log
+  help                prints this usage; the verb a run without one uses
+  build               dotnet build GodotXaml.slnx in Release, warnings as errors; .tmp/build.log, ceiling 600 s
+  godot-build         dotnet build godot/GodotXaml.Addon.csproj in Debug, warnings as errors; .tmp/godot-build.log, ceiling 600 s
+  godot-export-build  dotnet build godot/GodotXaml.Addon.csproj in ExportRelease, warnings as errors; .tmp/godot-export-build.log, ceiling 600 s
+  test                build, then dotnet test of the solution in Release without building it again; .tmp/test.log, ceiling 600 s
+  format-check        dotnet tool restore, then dotnet csharpier check on the repo, changing nothing; .tmp/format.log
+  format              dotnet tool restore, then dotnet csharpier format on the repo; .tmp/format.log
 
 .PARAMETER Verb
-One of help, build, godot-build, test, format-check or format; help when it is not given.
+One of help, build, godot-build, godot-export-build, test, format-check or format; help when it is not given.
 
 .EXAMPLE
 ./run.ps1 build
@@ -29,7 +31,7 @@ One of help, build, godot-build, test, format-check or format; help when it is n
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'build', 'godot-build', 'test', 'format-check', 'format')]
+    [ValidateSet('help', 'build', 'godot-build', 'godot-export-build', 'test', 'format-check', 'format')]
     [string]$Verb = 'help'
 )
 
@@ -51,12 +53,13 @@ $pwshPath = $pwshCommand.Source
 # The usage, printed for help and for a run with no verb.
 function Show-Help {
     Write-Host 'usage: ./run.ps1 <verb>'
-    Write-Host '  help          prints this usage'
-    Write-Host '  build         dotnet build GodotXaml.slnx -c Release -warnaserror (.tmp/build.log)'
-    Write-Host '  godot-build   dotnet build godot/GodotXaml.Addon.csproj -c Debug -warnaserror (.tmp/godot-build.log)'
-    Write-Host '  test          build, then dotnet test the solution -c Release --no-build (.tmp/test.log)'
-    Write-Host '  format-check  dotnet csharpier check . (.tmp/format.log)'
-    Write-Host '  format        dotnet csharpier format . (.tmp/format.log)'
+    Write-Host '  help                prints this usage'
+    Write-Host '  build               dotnet build GodotXaml.slnx -c Release -warnaserror (.tmp/build.log)'
+    Write-Host '  godot-build         dotnet build godot/GodotXaml.Addon.csproj -c Debug -warnaserror (.tmp/godot-build.log)'
+    Write-Host '  godot-export-build  dotnet build godot/GodotXaml.Addon.csproj -c ExportRelease -warnaserror (.tmp/godot-export-build.log)'
+    Write-Host '  test                build, then dotnet test the solution -c Release --no-build (.tmp/test.log)'
+    Write-Host '  format-check        dotnet csharpier check . (.tmp/format.log)'
+    Write-Host '  format              dotnet csharpier format . (.tmp/format.log)'
 }
 
 # One command under the gate: the log, the slot and the ceiling as given, and the command's own status returned.
@@ -82,6 +85,13 @@ function Invoke-BuildVerb {
 function Invoke-GodotBuildVerb {
     return Invoke-Gated -Log '.tmp/godot-build.log' -Slot 'heavy' -TimeoutSeconds 600 -Command @(
         'dotnet', 'build', 'godot/GodotXaml.Addon.csproj', '-c', 'Debug', '-warnaserror')
+}
+
+# The Godot addon project in ExportRelease, the configuration a game export builds, where code under #if TOOLS is absent,
+# so a non-TOOLS file reaching an editor-only symbol fails here instead of in a user's export.
+function Invoke-GodotExportBuildVerb {
+    return Invoke-Gated -Log '.tmp/godot-export-build.log' -Slot 'heavy' -TimeoutSeconds 600 -Command @(
+        'dotnet', 'build', 'godot/GodotXaml.Addon.csproj', '-c', 'ExportRelease', '-warnaserror')
 }
 
 # The build, then the solution's tests against that build, so the runner never builds a configuration of its own.
@@ -114,6 +124,7 @@ try {
     $status = switch ($Verb) {
         'build' { Invoke-BuildVerb }
         'godot-build' { Invoke-GodotBuildVerb }
+        'godot-export-build' { Invoke-GodotExportBuildVerb }
         'test' { Invoke-TestVerb }
         'format-check' { Invoke-FormatVerb }
         'format' { Invoke-FormatVerb -Fix }
