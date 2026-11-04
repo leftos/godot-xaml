@@ -12,6 +12,7 @@ using GodotXaml.Addon;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Metadata;
+using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
 
@@ -127,6 +128,75 @@ public partial class Checks : Node
         + "  <Panel />\n"
         + "</Control>\n";
 
+    // C74-C79's document path: no file has it and no other check loads it, so nothing is cached under it beforehand.
+    private const string PreviewPath = CasesPath + "preview.xscn";
+
+    private const string PreviewScriptsSetting = "godot_xaml/preview_server/allow_scripts";
+
+    // C76 and C77's text: the relative holder with a node more than its file has, so the text is not the file's.
+    private const string PreviewRelativeScene =
+        "<Node2D xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Holder\">\n"
+        + "  <x:Prop Name=\"metadata/box\" Value='Resource(\"box.xres\")' />\n"
+        + "  <Node2D Name=\"Added\" />\n"
+        + "</Node2D>\n";
+
+    // C78's text: an inline box, so the converted scene has a sub-resource.
+    private const string PreviewInlineScene =
+        "<Control Name=\"Root\">\n"
+        + "  <Panel Name=\"Panel\">\n"
+        + "    <Panel.ThemeOverrideStyles.panel>\n"
+        + "      <StyleBoxFlat BgColor=\"1, 0, 0, 1\" />\n"
+        + "    </Panel.ThemeOverrideStyles.panel>\n"
+        + "  </Panel>\n"
+        + "</Control>\n";
+
+    // C79's text: a scripted root with a Control property and a script property.
+    private const string PreviewRootScriptPath = CasesPath + "preview_root.gd";
+
+    private const string PreviewRanMeta = "gx_preview_ran";
+
+    // C80's text: a built-in @tool script on the root whose static initializer marks the engine.
+    private const string PreviewBuiltInScriptScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + "  <Control.script>\n"
+        + "    <GDScript Script.source='\"@tool&#10;extends Control&#10;&#10;static func _static_init():&#10;&#9;Engine.set_meta(\\\""
+        + PreviewRanMeta
+        + "\\\", true)&#10;\"' />\n"
+        + "  </Control.script>\n"
+        + "</Control>\n";
+
+    // C81's text: a scripted emitter connected by its script's signal to an unscripted node, and an unscripted Button
+    // connected to the scripted root's method.
+    private const string PreviewSignalsScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\" Script=\""
+        + CasesPath
+        + "preview_signals.gd\">\n"
+        + "  <Control Name=\"Emitter\" Script=\""
+        + CasesPath
+        + "preview_signals.gd\">\n"
+        + "    <x:Connect Signal=\"poked\" To=\"Plain\" Method=\"hide\" />\n"
+        + "  </Control>\n"
+        + "  <Control Name=\"Plain\" />\n"
+        + "  <Button Name=\"Ok\" Pressed=\"on_poked\">\n"
+        + "    <x:Connect Signal=\"Pressed\" To=\"./Emitter\" Method=\"on_poked\" />\n"
+        + "    <x:Connect Signal=\"ButtonDown\" To=\"Plain/../Emitter\" Method=\"on_poked\" />\n"
+        + "  </Button>\n"
+        + "</Control>\n";
+
+    // C82's text: an instance of a scene with a scripted root, its script detached, connected to a plain node.
+    private const string PreviewNullScriptScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + "  <x:Instance Scene=\""
+        + CasesPath
+        + "preview_scripted.xscn\" Name=\"Inst\" Script=\"{x:Null}\">\n"
+        + "    <x:Connect GodotSignal=\"resized\" To=\"Plain\" Method=\"hide\" />\n"
+        + "  </x:Instance>\n"
+        + "  <Control Name=\"Plain\" />\n"
+        + "</Control>\n";
+
+    private const string PreviewScriptedScene =
+        "<Control Name=\"Root\" Script=\"" + CasesPath + "preview_root.gd\" TooltipText=\"kept\" count=\"3\" />\n";
+
     private static readonly string[] ResourceTypesToHandle = ["StyleBox", "Theme"];
 
     // A hang guard, not a time budget: the threaded load of two small scenes takes a few frames, and checks.ps1 quits the
@@ -215,6 +285,16 @@ public partial class Checks : Node
             ("C71", TempFolderIsPerUser),
             // A value a load left to its finalizer could be destroyed after the engine shut down (GXAML-81).
             ("C72", LoadLeavesNothingToTheFinalizer),
+            // The preview server's text-to-scene step (GXAML-165).
+            ("C74", PreviewInstantiatesAButton),
+            ("C75", PreviewParseErrorGivesNoRoot),
+            ("C76", PreviewResolvesRelativeReferences),
+            ("C77", PreviewWritesNothingUnderRes),
+            ("C78", PreviewLeavesNoCacheEntry),
+            ("C79", PreviewStripsScriptsUnlessAllowed),
+            ("C80", PreviewBuiltInScriptDoesNotRun),
+            ("C81", PreviewDropsConnectionsOfStrippedNodes),
+            ("C82", PreviewKeepsAnExplicitNullScript),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -2246,6 +2326,354 @@ public partial class Checks : Node
         finally
         {
             root.Free();
+        }
+    }
+
+    // Previews the text and inspects its root, which is freed afterwards; a null root fails with the preview's problems.
+    private static string WithPreview(string text, string resPath, bool scriptsRequested, Func<Node, string> inspect)
+    {
+        PreviewScene preview = XscnPreviewScene.Instantiate(text, resPath, scriptsRequested);
+        if (preview.Root is not { } root)
+        {
+            return $"the preview has no root: {PreviewProblems(preview)}";
+        }
+
+        try
+        {
+            return inspect(root);
+        }
+        finally
+        {
+            root.Free();
+        }
+    }
+
+    private static string PreviewProblems(PreviewScene preview) =>
+        string.Join("; ", preview.Diagnostics.Select(d => $"{d.Code} {d.Message}").Concat(preview.Issues.Select(i => $"{i.Code} {i.Message}")));
+
+    // A Button scene's text instantiates with its Button and no diagnostics.
+    private static string PreviewInstantiatesAButton()
+    {
+        PreviewScene preview = XscnPreviewScene.Instantiate(CleanScene, PreviewPath, scriptsRequested: false);
+        try
+        {
+            return Failures(
+                preview.Diagnostics.IsEmpty ? "" : $"diagnostics: {PreviewProblems(preview)}",
+                preview.Root switch
+                {
+                    null => "the preview has no root",
+                    var root => root.GetNodeOrNull("Ok") is Button ? "" : "the root has no Button named Ok",
+                }
+            );
+        }
+        finally
+        {
+            preview.Root?.Free();
+        }
+    }
+
+    // A text that does not parse gives its GX error and no root.
+    private static string PreviewParseErrorGivesNoRoot()
+    {
+        PreviewScene preview = XscnPreviewScene.Instantiate(FailedParseScene, PreviewPath, scriptsRequested: false);
+        try
+        {
+            bool hasError = preview.Diagnostics.Any(d => d.Severity == XscnSeverity.Error && d.Code.StartsWith("GX", StringComparison.Ordinal));
+            return Failures(
+                hasError ? "" : $"the diagnostics hold no GX error: [{PreviewProblems(preview)}]",
+                preview.Root is null ? "" : $"the preview returned a {preview.Root.GetClass()} root, not null"
+            );
+        }
+        finally
+        {
+            preview.Root?.Free();
+        }
+    }
+
+    // A relative reference in the text resolves against the document's res:// path, not the temp file's folder.
+    private static string PreviewResolvesRelativeReferences() =>
+        WithPreview(
+            PreviewRelativeScene,
+            RelativeHolderPath,
+            scriptsRequested: false,
+            root =>
+            {
+                const string expected = RelativeCasesPath + "box.xres";
+                using Variant box = root.GetMeta("box", default(Variant));
+                return Failures(
+                    root.GetNodeOrNull("Added") is null ? "the root has no node Added, so the file was read, not the text" : "",
+                    box.Obj switch
+                    {
+                        StyleBoxFlat { ResourcePath: expected } => "",
+                        Resource other => $"metadata/box is a {other.GetClass()} at \"{other.ResourcePath}\", not the StyleBoxFlat at {expected}",
+                        _ => "metadata/box holds no resource",
+                    }
+                );
+            }
+        );
+
+    // A preview writes nothing under res://, its only temp file is in the addon's temp folder, and the file at the document's
+    // path keeps its bytes.
+    private static string PreviewWritesNothingUnderRes()
+    {
+        string userFile = ProjectSettings.GlobalizePath(RelativeHolderPath);
+        byte[] bytesBefore = File.ReadAllBytes(userFile);
+        string[] listingBefore = ResListing();
+        bool recording = XscnLoadRoute.RecordTempPaths;
+        int tempPathsBeforePreview = XscnLoadRoute.TempPaths.Count;
+        string failure;
+        string[] tempPaths;
+        try
+        {
+            XscnLoadRoute.RecordTempPaths = true;
+            failure = WithPreview(PreviewRelativeScene, RelativeHolderPath, scriptsRequested: false, _ => "");
+            tempPaths = [.. XscnLoadRoute.TempPaths.Skip(tempPathsBeforePreview)];
+        }
+        finally
+        {
+            // The run records every temp path from its start, and later checks count from the queue, so it is left as found.
+            XscnLoadRoute.RecordTempPaths = recording;
+        }
+
+        string[] listingAfter = ResListing();
+        string[] added = [.. listingAfter.Except(listingBefore, StringComparer.Ordinal)];
+        string[] gone = [.. listingBefore.Except(listingAfter, StringComparer.Ordinal)];
+        string tempFolder = AddonTempFolder.Get().TrimEnd('/') + "/";
+        string resFolder = ProjectSettings.GlobalizePath("res://").Replace('\\', '/').TrimEnd('/') + "/";
+        string[] misplaced =
+        [
+            .. tempPaths.Where(path =>
+                !path.StartsWith(tempFolder, StringComparison.OrdinalIgnoreCase) || path.StartsWith(resFolder, StringComparison.OrdinalIgnoreCase)
+            ),
+        ];
+        return Failures(
+            failure,
+            added.Length == 0 && gone.Length == 0
+                ? ""
+                : $"res:// changed: new or touched [{string.Join(", ", added)}], gone [{string.Join(", ", gone)}]",
+            File.ReadAllBytes(userFile).AsSpan().SequenceEqual(bytesBefore) ? "" : $"{RelativeHolderPath}'s bytes changed",
+            tempPaths.Length == 0 ? "the preview recorded no temp file" : "",
+            misplaced.Length == 0 ? "" : $"temp files outside {tempFolder} or under {resFolder}: [{string.Join(", ", misplaced)}]"
+        );
+    }
+
+    // Every file under res://, with its last write time.
+    private static string[] ResListing()
+    {
+        string root = ProjectSettings.GlobalizePath("res://");
+        return
+        [
+            .. Directory
+                .EnumerateFiles(root, "*", SearchOption.AllDirectories)
+                .Select(file => $"{file} {File.GetLastWriteTimeUtc(file).Ticks}")
+                .Order(StringComparer.Ordinal),
+        ];
+    }
+
+    // The preview's sub-resources stay out of the cache while its root is alive.
+    private static string PreviewLeavesNoCacheEntry()
+    {
+        XscnParseResult parsed = XscnParser.Parse(PreviewInlineScene, XscnDocumentKind.Scene, GodotMetadata.LoadBundled("4.7"));
+        string[] subPaths = [.. XscnLoading.ToTscn(parsed.Document, PreviewPath).Document.SubResources.Select(sub => $"{PreviewPath}::{sub.Id}")];
+        if (subPaths.Length == 0)
+        {
+            return "the inline scene converts with no sub-resource";
+        }
+
+        if (subPaths.FirstOrDefault(ResourceLoader.HasCached) is { } before)
+        {
+            return $"{before} was cached before the preview";
+        }
+
+        return WithPreview(
+            PreviewInlineScene,
+            PreviewPath,
+            scriptsRequested: false,
+            _ => Failures([.. subPaths.Select(path => ResourceLoader.HasCached(path) ? $"{path} is cached" : "")])
+        );
+    }
+
+    // The root's script is stripped, its Control property kept, unless the request and the project setting both allow it.
+    private static string PreviewStripsScriptsUnlessAllowed()
+    {
+        static string Stripped(Node root)
+        {
+            using Variant script = root.GetScript();
+            return Failures(
+                script.VariantType == Variant.Type.Nil ? "" : "the root has a script",
+                root is Control { TooltipText: "kept" } ? "" : "the root's TooltipText is not \"kept\""
+            );
+        }
+
+        static string Scripted(Node root)
+        {
+            using Variant script = root.GetScript();
+            return script.VariantType == Variant.Type.Nil ? "the root has no script" : "";
+        }
+
+        using var previous = new PreviewSettingScope();
+        string notRequested = WithPreview(PreviewScriptedScene, PreviewPath, scriptsRequested: false, Stripped);
+        ProjectSettings.SetSetting(PreviewScriptsSetting, false);
+        string settingOff = WithPreview(PreviewScriptedScene, PreviewPath, scriptsRequested: true, Stripped);
+        // A stripped preview loads no script either: the script's file stays out of the cache.
+        bool scriptLoaded = ResourceLoader.HasCached(PreviewRootScriptPath);
+        ProjectSettings.SetSetting(PreviewScriptsSetting, true);
+        string bothOn = WithPreview(PreviewScriptedScene, PreviewPath, scriptsRequested: true, Scripted);
+        return Failures(
+            notRequested.Length == 0 ? "" : $"not requested: {notRequested}",
+            settingOff.Length == 0 ? "" : $"requested, setting off: {settingOff}",
+            scriptLoaded ? $"{PreviewRootScriptPath} is cached after the stripped previews" : "",
+            bothOn.Length == 0 ? "" : $"requested, setting on: {bothOn}",
+            EditorTypedScriptExtFailure()
+        );
+    }
+
+    // In the editor the conversion types a .gd ext_resource GDScript, not Script; the strip drops it by class all the same.
+    private static string EditorTypedScriptExtFailure()
+    {
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            ExtResources =
+            [
+                new TscnExtResource
+                {
+                    Type = "GDScript",
+                    Path = PreviewRootScriptPath,
+                    Id = "1_gdscr",
+                },
+                // Held only in metadata, so only its class can remove it.
+                new TscnExtResource
+                {
+                    Type = "GDScript",
+                    Path = CasesPath + "preview_signals.gd",
+                    Id = "2_gdscr",
+                },
+            ],
+            Nodes =
+            [
+                new TscnNode
+                {
+                    Name = "Root",
+                    Type = "Control",
+                    Properties =
+                    [
+                        new TscnProperty("script", new GodotResourceRef(GodotRefKind.External, "1_gdscr")),
+                        new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "2_gdscr")),
+                    ],
+                },
+            ],
+        };
+        TscnDocument stripped = XscnPreviewScene.WithoutScripts(document);
+        string[] properties = [.. stripped.Nodes[0].Properties.Select(property => property.Name)];
+        return Failures(
+            stripped.ExtResources.IsEmpty
+                ? ""
+                : $"the strip kept the ext_resources [{string.Join(", ", stripped.ExtResources.Select(ext => $"{ext.Type} {ext.Path}"))}]",
+            properties.SequenceEqual(["metadata/s"], StringComparer.Ordinal)
+                ? ""
+                : $"the root's properties after the strip are [{string.Join(", ", properties)}], not [metadata/s]",
+            stripped.Nodes[0].Properties.FirstOrDefault(property => property.Name == "metadata/s")?.Value is GodotNull
+                ? ""
+                : "the root's metadata/s is not null after the strip"
+        );
+    }
+
+    // An explicit null script on an instance detaches the instanced scene's script, and stays in a stripped preview: the
+    // instance has no script and keeps its connections.
+    private static string PreviewKeepsAnExplicitNullScript() =>
+        WithPreview(
+            PreviewNullScriptScene,
+            PreviewPath,
+            scriptsRequested: false,
+            root =>
+            {
+                if (root.GetNodeOrNull("Inst") is not { } instance)
+                {
+                    return "the root has no node Inst";
+                }
+
+                using Variant script = instance.GetScript();
+                return Failures(
+                    script.VariantType == Variant.Type.Nil ? "" : "the instance has its scene's script back",
+                    root.GetNodeOrNull("Plain") is { } plain && IncomingConnections(plain) == 1 ? "" : "Plain does not have its 1 incoming connection"
+                );
+            }
+        );
+
+    // The typed list's cast returns its untyped Array, which can be disposed.
+    private static int IncomingConnections(Node node)
+    {
+        using var connections = (Godot.Collections.Array)node.GetIncomingConnections();
+        return connections.Count;
+    }
+
+    // A built-in @tool script's static initializer runs only when the request and the setting both allow scripts.
+    private static string PreviewBuiltInScriptDoesNotRun()
+    {
+        using var previous = new PreviewSettingScope();
+        Godot.GodotObject engine = Engine.Singleton;
+        engine.RemoveMeta(PreviewRanMeta);
+        try
+        {
+            ProjectSettings.SetSetting(PreviewScriptsSetting, false);
+            string stripped = WithPreview(PreviewBuiltInScriptScene, PreviewPath, scriptsRequested: true, _ => "");
+            bool ranStripped = engine.HasMeta(PreviewRanMeta);
+            engine.RemoveMeta(PreviewRanMeta);
+            ProjectSettings.SetSetting(PreviewScriptsSetting, true);
+            string allowed = WithPreview(PreviewBuiltInScriptScene, PreviewPath, scriptsRequested: true, _ => "");
+            bool ranAllowed = engine.HasMeta(PreviewRanMeta);
+            return Failures(
+                stripped,
+                ranStripped ? "the built-in script's _static_init ran in a stripped preview" : "",
+                allowed,
+                ranAllowed ? "" : "the built-in script's _static_init did not run with scripts allowed"
+            );
+        }
+        finally
+        {
+            engine.RemoveMeta(PreviewRanMeta);
+        }
+    }
+
+    // A connection from a stripped node's script signal, and one to a stripped node's script method, are dropped with the
+    // scripts, and kept when scripts are allowed.
+    private static string PreviewDropsConnectionsOfStrippedNodes()
+    {
+        static Func<Node, string> Expect(int each, int toEmitter) =>
+            root =>
+                Failures(
+                    root.GetNodeOrNull("Plain") is { } plain && IncomingConnections(plain) == each
+                        ? ""
+                        : $"Plain does not have {each} incoming connection(s)",
+                    IncomingConnections(root) == each ? "" : $"the root does not have {each} incoming connection(s)",
+                    // Named "./Emitter" and "Plain/../Emitter" in the text, so the strip must match the path Godot simplifies.
+                    root.GetNodeOrNull("Emitter")
+                        is { } emitter
+                    && IncomingConnections(emitter) == toEmitter
+                        ? ""
+                        : $"Emitter does not have {toEmitter} incoming connection(s)"
+                );
+
+        using var previous = new PreviewSettingScope();
+        ProjectSettings.SetSetting(PreviewScriptsSetting, false);
+        string stripped = WithPreview(PreviewSignalsScene, PreviewPath, scriptsRequested: true, Expect(0, 0));
+        ProjectSettings.SetSetting(PreviewScriptsSetting, true);
+        string allowed = WithPreview(PreviewSignalsScene, PreviewPath, scriptsRequested: true, Expect(1, 2));
+        return Failures(stripped.Length == 0 ? "" : $"stripped: {stripped}", allowed.Length == 0 ? "" : $"allowed: {allowed}");
+    }
+
+    // Keeps the preview setting as found and puts it back on dispose; a Nil value erases it, so a run that had none leaves none.
+    private sealed class PreviewSettingScope : IDisposable
+    {
+        private readonly Variant previous = ProjectSettings.HasSetting(PreviewScriptsSetting)
+            ? ProjectSettings.GetSetting(PreviewScriptsSetting)
+            : default;
+
+        public void Dispose()
+        {
+            ProjectSettings.SetSetting(PreviewScriptsSetting, previous);
+            previous.Dispose();
         }
     }
 
