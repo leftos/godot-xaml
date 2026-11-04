@@ -19,6 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The class reference ships inside the executable, as the core ships the metadata: a single-file or NativeAOT build
+         has no folder beside it to read from (ClassDocs.LoadBundled). The glob picks up a later Godot minor version. -->
+    <EmbeddedResource Include="..\..\metadata\docs\godot-*.json" LogicalName="docs/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="GodotXaml.LanguageServer.Tests" />
   </ItemGroup>
 </Project>

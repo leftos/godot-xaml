@@ -262,6 +262,7 @@ internal static class DiagnosticLinks
         [XscnCodes.NotAResource] = "gx0117-not-a-resource",
         [XscnCodes.SignalAndGodotSignal] = "gx0118-signal-and-godotsignal",
         [XscnCodes.PlaceholderRoot] = "gx0119-placeholder-at-the-root",
+        [XscnCodes.NestingTooDeep] = "gx0120-nested-too-deep",
     }.ToFrozenDictionary(StringComparer.Ordinal);
 
     /// <summary>The link to a code's heading, or to the reference itself for a code it does not know.</summary>

@@ -29,10 +29,11 @@ internal sealed class InitializedParams;
 /// <param name="ServerInfo">The server's name and version.</param>
 internal sealed record InitializeResult(ServerCapabilities Capabilities, ServerInfo ServerInfo);
 
-/// <summary>What the server does: text synchronisation and whole-document formatting.</summary>
+/// <summary>What the server does: text synchronisation, whole-document formatting and hover.</summary>
 /// <param name="TextDocumentSync">How the client sends a document's text.</param>
 /// <param name="DocumentFormattingProvider">Whether the server formats a whole document.</param>
-internal sealed record ServerCapabilities(TextDocumentSyncOptions TextDocumentSync, bool DocumentFormattingProvider);
+/// <param name="HoverProvider">Whether the server answers a hover.</param>
+internal sealed record ServerCapabilities(TextDocumentSyncOptions TextDocumentSync, bool DocumentFormattingProvider, bool HoverProvider);
 
 /// <summary>How the client sends a document's text.</summary>
 /// <param name="OpenClose">Whether the client sends <c>didOpen</c> and <c>didClose</c>.</param>

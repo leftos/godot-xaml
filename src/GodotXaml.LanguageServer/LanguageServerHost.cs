@@ -45,7 +45,12 @@ internal static class LanguageServerHost
         DocumentStore store = new(log);
         ProjectCache projects = new(seams.LoadMetadata, client);
         using DiagnosticsPublisher publisher = new(store, projects, client, scheduler, seams.Parse);
-        LanguageServerTarget server = new(client, publisher, new FormattingHandler(store, projects, client, seams.Parse));
+        LanguageServerTarget server = new(
+            client,
+            publisher,
+            new FormattingHandler(store, projects, client, seams.Parse),
+            new HoverHandler(store, projects, seams.Parse, seams.LoadDocs)
+        );
 
         // The transport's own warnings and errors (a message it could not read or answer) go to stderr.
         rpc.TraceSource = new TraceSource("godot-xaml.jsonrpc", SourceLevels.Warning);
@@ -95,13 +100,14 @@ internal delegate XscnParseResult ParseFunction(string text, XscnDocumentKind ki
 /// <param name="Warning">Why it is not the project's version, or null.</param>
 internal sealed record LoadedMetadata(GodotMetadata Metadata, string Version, string? Warning);
 
-/// <summary>What a test replaces in the server: the metadata loader and the parser.</summary>
+/// <summary>What a test replaces in the server: the metadata loader, the parser and the class reference loader.</summary>
 /// <param name="LoadMetadata">Loads a project's metadata.</param>
 /// <param name="Parse">Parses a document.</param>
-internal sealed record ServerSeams(MetadataLoader LoadMetadata, ParseFunction Parse)
+/// <param name="LoadDocs">Loads a Godot minor version's class reference.</param>
+internal sealed record ServerSeams(MetadataLoader LoadMetadata, ParseFunction Parse, DocsLoader LoadDocs)
 {
-    /// <summary>The bundled metadata and <see cref="XscnParser.Parse"/>.</summary>
-    public static ServerSeams Default { get; } = new(LoadBundled, XscnParser.Parse);
+    /// <summary>The bundled metadata, <see cref="XscnParser.Parse"/> and the bundled class reference.</summary>
+    public static ServerSeams Default { get; } = new(LoadBundled, XscnParser.Parse, ClassDocs.LoadBundled);
 
     private static LoadedMetadata LoadBundled(string? projectVersion)
     {
@@ -170,7 +176,7 @@ internal sealed class ClientChannel(JsonRpc rpc, TextWriter stderr) : IClientMes
 }
 
 /// <summary>The RPC methods: the lifecycle and its order rules, then the document notifications and requests.</summary>
-internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPublisher publisher, FormattingHandler formatting)
+internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPublisher publisher, FormattingHandler formatting, HoverHandler hover)
 {
     private readonly Lock gate = new();
     private readonly TaskCompletionSource exited = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -210,7 +216,11 @@ internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPu
         }
 
         return new InitializeResult(
-            new ServerCapabilities(new TextDocumentSyncOptions(OpenClose: true, Change: TextDocumentSyncKind.Full), DocumentFormattingProvider: true),
+            new ServerCapabilities(
+                new TextDocumentSyncOptions(OpenClose: true, Change: TextDocumentSyncKind.Full),
+                DocumentFormattingProvider: true,
+                HoverProvider: true
+            ),
             new ServerInfo(LanguageServerHost.ServerName, LanguageServerHost.Version)
         );
     }
@@ -308,6 +318,21 @@ internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPu
             EnsureServing();
         }
         return formatting.FormatAsync(parameters.TextDocument.Uri, cancellation);
+    }
+
+    /// <summary>Describes the name or value at a position: a class, a property, a signal, an enum value, a key or an <c>x:</c> attribute.</summary>
+    /// <param name="parameters">The document and the position.</param>
+    /// <param name="cancellation">The request's cancellation.</param>
+    /// <returns>The hover, or null when there is nothing to describe there.</returns>
+    [JsonRpcMethod("textDocument/hover")]
+    public Task<Hover?> HoverAsync(HoverParams parameters, CancellationToken cancellation)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        lock (gate)
+        {
+            EnsureServing();
+        }
+        return hover.HoverAsync(parameters.TextDocument.Uri, parameters.Position, cancellation);
     }
 
     // A notification is dropped before initialize and after shutdown.
