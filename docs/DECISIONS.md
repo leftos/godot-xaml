@@ -388,7 +388,9 @@ Rejected: failing on `ERROR: ` alone. A script or shader error is as much a defe
 
 The open Godot editor's addon can listen on a local socket, render the `.xscn` text a client sends into a `SubViewport`, and send back an image and each node's rectangle, so the Visual Studio preview pane shows a scene as Godot draws it and a click in the image selects the element in the text. The text need not be saved: the server never touches the user's `.xscn`, and a request is rendered from the text it carries, with relative references resolved against the document's `res://` path.
 
-**Lifetime.** The server is off until a project turns it on with the project setting `godot_xaml/preview_server/enabled`, default off, so no editor listens for a feature its user did not enable. The plugin starts the listener in `_EnterTree` and stops it in `_ExitTree`, and it must survive the C# assembly reload the plugin already survives (`XscnEditorPlugin`).
+**Lifetime.** The server is off until a project turns it on with the project setting `godot_xaml/preview_server/enabled`, default off, so no editor listens for a feature its user did not enable. The plugin starts the listener in `_EnterTree`, follows the setting live (`FollowPreviewSetting` on `settings_changed`) and stops it in `_ExitTree`. It survives the C# assembly reload the plugin already survives: the server stops before the reload and a new one starts after it when the setting is on, with a new port, token and discovery file (`XscnEditorPlugin`, `OnBeforeSerialize` and `OnAfterDeserialize`).
+
+A reload that fails leaves the plugin without `OnAfterDeserialize`, so the server stays off and the setting is not followed until the next reload that succeeds.
 
 **Transport.** Loopback TCP. Each editor binds `127.0.0.1` on a free port, never all interfaces (`TCPServer.listen` in `doc/classes/TCPServer.xml` defaults to `*`), and writes `{port, token, pid, project}` to a discovery file under `%LOCALAPPDATA%\godot-xaml\editors\` (the platform's per-user local data folder elsewhere). The client picks the file for its project and sends the token; a connection without the token is refused. A stale file (pid gone, connect refused) means no editor is open. The file is removed when the server stops.
 
@@ -497,9 +499,9 @@ A node inside an instanced scene has no element of its own, so it selects the in
 
 **Tests.** The codec, token check, project refusal, text-to-scene instantiation and rectangle structure (containment, ordering, entry count, paths and classes, never values: headless text metrics are not real) run headless in `godot/checks.ps1`, in plain C# in the addon folder. Pixels, a request's PNG size and a hit-test run in `godot/editor-checks.ps1`, on a desktop.
 
-The server itself (`XscnPreviewServer`, with `XscnPreviewFraming`, `XscnPreviewProtocol` and `XscnPreviewDiscovery`) is checked headless by a same-process client (C139 to C143): the discovery file, the first ping and the connection caps, malformed frames, renders and the path rule, latest-wins, cancel, the queue cap and the stop. The plugin's wiring (the setting, the start and the stop) has no headless check yet.
+The server itself (`XscnPreviewServer`, with `XscnPreviewFraming`, `XscnPreviewProtocol` and `XscnPreviewDiscovery`) is checked headless by a same-process client (C139 to C143): the discovery file, the first ping and the connection caps, malformed frames, renders and the path rule, latest-wins, cancel, the queue cap and the stop. The plugin's wiring (the setting, the start, the stop and the restart after a reload) has no headless check; the editor checks E13 to E16 cover it.
 
-**Server rulings.** The plugin starts the server when `godot_xaml/preview_server/enabled` is on, follows the setting live on `settings_changed`, and stops it in `_ExitTree` and before an assembly reload (`OnBeforeSerialize`, which also disconnects the setting hook). Restarting after a reload is GXAML-169's.
+**Server rulings.** The plugin starts the server when `godot_xaml/preview_server/enabled` is on, follows the setting live on `settings_changed`, and stops it in `_ExitTree` and before an assembly reload (`OnBeforeSerialize`, which also disconnects the setting hook). After a reload (`OnAfterDeserialize`) it reconnects the hook and starts a new server when the setting is on; the server is one-shot, so the new one has a new port, token and discovery file, and the old port and file are gone.
 
 The discovery file is `<LocalApplicationData>/godot-xaml/editors/<pid>-<32 hex>.json`, owner-only, written to a temporary name and moved into place without overwriting, and removed first when the server stops; a server removes only its own file.
 
@@ -511,7 +513,7 @@ Godot is called only on the main thread, from a pump the host node calls each fr
 
 The server does not prove itself to the client: the ping's token is the client's proof to the server only. The Visual Studio client (GXAML-17) checks the owning process of the discovery file's port against its pid before it sends any text.
 
-Booked, not done: a check of the pre-authentication deadline (GXAML-206), a check that a hung frame is cut off by the frame budget (GXAML-207), the image (GXAML-168), and the restart after a reload and the user docs (GXAML-169).
+Booked, not done: a check of the pre-authentication deadline (GXAML-206) and a check that a hung frame is cut off by the frame budget (GXAML-207).
 
 ## Name
 

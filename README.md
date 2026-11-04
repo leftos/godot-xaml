@@ -79,7 +79,7 @@ Otherwise the originals are copied to `.godot-xaml-backup/` before they are remo
 - A CLI to convert, check and format.
 - A language server, as a native executable per platform attached to each release.
 
-Still to come in version 1: the Visual Studio and VS Code extensions that use the language server, and a live preview pane in Visual Studio. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md).
+Still to come in version 1: the Visual Studio and VS Code extensions that use the language server, and a live preview pane in Visual Studio. The addon already has the editor side of the preview, a [server in the Godot editor](docs/guide/editor.md#live-preview-server) that is off by default. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## License
 

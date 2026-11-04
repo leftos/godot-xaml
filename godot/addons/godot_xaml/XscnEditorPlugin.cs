@@ -51,7 +51,7 @@ public partial class XscnEditorPlugin : EditorPlugin, ISerializationListener
         exportPlugin = new XscnExportPlugin();
         AddExportPlugin(exportPlugin);
         RegisterPreviewSetting();
-        ProjectSettings.Singleton.Connect(ProjectSettings.SignalName.SettingsChanged, new Callable(this, MethodName.OnSettingsChanged));
+        ConnectSettingsHook();
         FollowPreviewSetting();
     }
 
@@ -60,7 +60,7 @@ public partial class XscnEditorPlugin : EditorPlugin, ISerializationListener
 
     /// <summary>
     /// Stops the preview server before an assembly reload unloads this class, and disconnects the settings hook, so nothing
-    /// starts it again until the plugin re-enters the tree.
+    /// starts it during the reload; <see cref="OnAfterDeserialize"/> follows the setting again once the new class is in.
     /// </summary>
     public void OnBeforeSerialize()
     {
@@ -68,8 +68,16 @@ public partial class XscnEditorPlugin : EditorPlugin, ISerializationListener
         StopPreviewServer();
     }
 
-    /// <summary>Does nothing yet: the server is not restarted after a reload.</summary>
-    public void OnAfterDeserialize() { }
+    /// <summary>
+    /// Reconnects the settings hook and starts a new preview server when the setting is on, since <see cref="_EnterTree"/>
+    /// does not run again after an assembly reload and the stopped server cannot restart.
+    /// </summary>
+    public void OnAfterDeserialize()
+    {
+        ConnectSettingsHook();
+        previewStartFailed = false;
+        FollowPreviewSetting();
+    }
 
     /// <inheritdoc/>
     public override void _ExitTree()
@@ -142,6 +150,15 @@ public partial class XscnEditorPlugin : EditorPlugin, ISerializationListener
 
         previewStartFailed = true;
         server.Dispose();
+    }
+
+    private void ConnectSettingsHook()
+    {
+        var settingsHook = new Callable(this, MethodName.OnSettingsChanged);
+        if (!ProjectSettings.Singleton.IsConnected(ProjectSettings.SignalName.SettingsChanged, settingsHook))
+        {
+            ProjectSettings.Singleton.Connect(ProjectSettings.SignalName.SettingsChanged, settingsHook);
+        }
     }
 
     private void DisconnectSettingsHook()

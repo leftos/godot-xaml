@@ -26,6 +26,7 @@ The format reference is at https://github.com/leftos/godot-xaml/blob/v0.3.0/docs
 - **The language server** (diagnostics, formatting, hover and completions over LSP on stdin/stdout) is a native executable with no .NET install, in `godot-xaml-ls-<version>-<rid>.zip` on each GitHub release, for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64` and `osx-arm64`. How to get it: https://github.com/leftos/godot-xaml/blob/v0.3.0/docs/guide/getting-started.md#editor-support. It does not replace `check` and `format`.
 - **Commit `.uid` sidecars** (`main.xscn.uid`). Never delete one, and never invent a uid. Leave the `<x:Uids>` table to the editor.
 - **Move and rename files in the Godot editor,** so references are rewritten.
+- **Leave the preview settings to the owner.** Never turn on `godot_xaml/preview_server/enabled` or `godot_xaml/preview_server/allow_scripts` in the project settings.
 
 ## Problems with godot-xaml itself
 

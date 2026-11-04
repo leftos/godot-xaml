@@ -47,3 +47,12 @@ A file that loads can show parse warnings in the Output panel too, in the same f
 ## C# and GDScript
 
 Property names in the file are those of Godot's C# API (`SizeFlagsHorizontal`), whatever language the scripts are in. A script's own exported properties keep the names the script gives them, whether `speed` in GDScript or `Speed` in C#. Their values are in Godot's value text, since the format cannot know their types without running the script.
+
+## Live preview server
+
+A client such as the coming Visual Studio preview pane can send the text of an `.xscn` to the open Godot editor and get back Godot's image of the scene and the rectangle of each Control. The text need not be saved, and the server never touches your file.
+
+- **Turning it on:** set the project setting `godot_xaml/preview_server/enabled`. It is off by default, so no editor listens until you ask. It is in Project Settings once the addon is enabled. Turning it off or on takes effect at once, and the server starts again on its own after a C# rebuild, with a new port.
+- **Who can reach it:** only programs on your machine. One server runs per editor. While it runs, the editor writes a discovery file in your user's local data folder (`%LOCALAPPDATA%\godot-xaml\editors\` on Windows, the platform's equivalent elsewhere) and removes it when the server stops. The first request on a connection must carry the token from that file.
+- **Scripts:** by default nothing the previewed text references runs a script. Scripts are stripped, with the exported values kept, and a file that cannot be proven free of scripts is refused with `GXC0121` (the cases are in [the diagnostics reference](../format/diagnostics.md)). To preview with scripts, add the project setting `godot_xaml/preview_server/allow_scripts` as `true` by hand; the addon does not list it.
+- **Waiting:** a render waits while the editor scans or imports files.

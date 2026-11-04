@@ -30,4 +30,5 @@ What godot-xaml does not do, or does differently from a `.tscn`.
 - **The language server has no editor extension yet.** It provides diagnostics, formatting, hover and completions over the Language Server Protocol, as a native executable for win-x64, win-arm64, linux-x64, linux-arm64, osx-x64 and osx-arm64 ([Getting started](getting-started.md#editor-support)); the Visual Studio and VS Code extensions that launch it, and a live preview pane in Visual Studio, are planned for later releases.
 - **Completion of `res://` paths, scene-instance tags and `x:Connect` values is not built.**
 - **The macOS zips are notarised but not stapled.** A bare executable cannot hold a stapled ticket, so a Mac's first launch of the server checks the ticket with Apple online.
+- **The live preview pane in Visual Studio is not released.** The editor side of the preview exists: a [server in the Godot editor](editor.md#live-preview-server) renders `.xscn` text for a client, and is off by default.
 - `godot-xaml check` and `format` are the tools outside the editor.

@@ -63,12 +63,15 @@ func close() -> void:
 # The next whole message, {} while none is complete, or {"error": <why>} when a read fails.
 func _read() -> Dictionary:
 	_peer.poll()
-	var available := _peer.get_available_bytes()
-	if available > 0:
-		var got := _peer.get_data(available)
-		if got[0] != OK:
-			return {"error": "reading from the server failed: %s" % error_string(got[0])}
-		_buffer.append_array(got[1])
+	# A closed peer logs an engine error on get_available_bytes, so only a connected peer is read;
+	# what is already buffered is still parsed.
+	if _peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+		var available := _peer.get_available_bytes()
+		if available > 0:
+			var got := _peer.get_data(available)
+			if got[0] != OK:
+				return {"error": "reading from the server failed: %s" % error_string(got[0])}
+			_buffer.append_array(got[1])
 	var header_end := _blank_line_at(_buffer)
 	if header_end < 0:
 		return {}

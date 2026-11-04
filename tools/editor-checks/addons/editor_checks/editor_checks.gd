@@ -32,14 +32,7 @@ const E12_XRES_TEXT := (
 	'<Resource xmlns:x="https://github.com/leftos/godot-xaml/format/1"'
 	+ ' Script="res://fixtures/E12Named.gd" count="3" />\n'
 )
-const E13_PATH := "res://fixtures/E13.xscn"
-const E13_FRONT := "Front"
-const E13_FRONT_COLOR := Color(0, 0, 1, 1)
-const E13_SIZE := Vector2i(640, 480)
-const PREVIEW_SETTING := "godot_xaml/preview_server/enabled"
-const DISCOVERY_FRAMES := 120
-const COLOR_TOLERANCE := 0.02
-const PreviewClient := preload("res://addons/editor_checks/preview_client.gd")
+const PreviewChecks := preload("res://addons/editor_checks/preview_checks.gd")
 
 var _mode := ""
 var _out := ""
@@ -47,6 +40,7 @@ var _passed := 0
 var _total := 0
 var _e12_emitted := false
 var _e12_still_found := false
+var _preview: PreviewChecks
 
 
 func _enter_tree() -> void:
@@ -73,8 +67,13 @@ func _run() -> void:
 			await _run_all()
 		"reopen":
 			await _report("E8", await _check_reopen())
-			# In the fresh editor: after the run's assembly reload the setting starts no server.
-			await _report("E13", await _check_preview_image())
+			# The preview checks run in this fresh editor, which has had no assembly reload yet, so
+			# they see the server as an editor starts it and have the scripts they test unloaded.
+			_preview = PreviewChecks.new(self)
+			await _report("E13", await _preview.check_preview_image())
+			await _report("E14", await _preview.check_preview_placeholder_strip())
+			await _report("E15", await _preview.check_preview_placeholder_script())
+			await _report("E16", await _preview.check_preview_reload())
 		_:
 			await _report("MODE", "unknown mode '%s'; expected run or reopen" % _mode)
 	_emit("DONE %d/%d" % [_passed, _total])
@@ -685,141 +684,6 @@ func _class_removed_landed() -> bool:
 	return (
 		not FileAccess.file_exists(E12_SCRIPT_PATH) and _scan_done() and not _xres_found_as_class()
 	)
-
-
-# Turns the preview server on, renders E13.xscn at 320x240 at scale 2 over a loopback client, then
-# a broken text of it, which answers the first image again, stale; then turns the server off.
-func _check_preview_image() -> String:
-	ProjectSettings.set_setting(PREVIEW_SETTING, true)
-	var discovery := await _wait_discovery_file(true)
-	var failure := ""
-	if discovery.is_empty():
-		failure = (
-			"no discovery file for pid %d appeared in %s within %d frames"
-			% [OS.get_process_id(), _discovery_folder(), DISCOVERY_FRAMES]
-		)
-	else:
-		var client := PreviewClient.new(get_tree())
-		failure = await _preview_session(client, discovery)
-		client.close()
-	ProjectSettings.set_setting(PREVIEW_SETTING, false)
-	var left := await _wait_discovery_file(false)
-	if not left.is_empty():
-		failure = _join(failure, "the discovery file %s is still there with the setting off" % left)
-	return failure
-
-
-func _discovery_folder() -> String:
-	return OS.get_environment("LOCALAPPDATA").path_join("godot-xaml").path_join("editors")
-
-
-# This editor's discovery file, or "" when there is none.
-func _discovery_file() -> String:
-	var prefix := "%d-" % OS.get_process_id()
-	# get_files_at logs an engine error for a folder that does not exist yet.
-	if not DirAccess.dir_exists_absolute(_discovery_folder()):
-		return ""
-	for file_name in DirAccess.get_files_at(_discovery_folder()):
-		if file_name.begins_with(prefix) and file_name.ends_with(".json"):
-			return _discovery_folder().path_join(file_name)
-	return ""
-
-
-# Waits up to DISCOVERY_FRAMES frames for the file to be there (present) or gone; returns the path
-# found at the end, "" when there is none.
-func _wait_discovery_file(present: bool) -> String:
-	for _frame in DISCOVERY_FRAMES:
-		if _discovery_file().is_empty() != present:
-			break
-		await get_tree().process_frame
-	return _discovery_file()
-
-
-func _preview_session(client: PreviewClient, discovery: String) -> String:
-	var info = JSON.parse_string(FileAccess.get_file_as_string(discovery))
-	if not info is Dictionary:
-		return "the discovery file %s holds no JSON object" % discovery
-	var failure: String = await client.open(int(info["port"]))
-	if not failure.is_empty():
-		return failure
-	var ping_params := {"token": info["token"], "project": info["project"]}
-	var pinged: Dictionary = await client.request(1, "ping", ping_params)
-	if not pinged.has("result"):
-		return "the ping got %s" % _describe_reply(pinged)
-	var text := FileAccess.get_file_as_string(E13_PATH)
-	var params := {"document": E13_PATH, "text": text, "width": 320, "height": 240, "scale": 2}
-	var fresh: Dictionary = await client.request(2, "render", params)
-	failure = _fresh_image_failure(fresh)
-	if not failure.is_empty():
-		return failure
-	params["text"] = text.replace("</Control>", "")
-	var stale: Dictionary = await client.request(3, "render", params)
-	return _stale_image_failure(stale, fresh["result"]["image"])
-
-
-# A reply without its image, which is too long to print.
-func _describe_reply(reply: Dictionary) -> String:
-	var shown := reply.duplicate(true)
-	if shown.get("result") is Dictionary and shown["result"].has("image"):
-		shown["result"]["image"] = "<%d base64 chars>" % str(shown["result"]["image"]).length()
-	return JSON.stringify(shown)
-
-
-func _fresh_image_failure(reply: Dictionary) -> String:
-	var result = reply.get("result")
-	if not result is Dictionary or result.get("stale") != false or not result.has("image"):
-		return "the render got %s, not a fresh image" % _describe_reply(reply)
-	var image := Image.new()
-	var loaded := image.load_png_from_buffer(Marshalls.base64_to_raw(result["image"]))
-	if loaded != OK:
-		return "the render's image does not load as a PNG: %s" % error_string(loaded)
-	if image.get_size() != E13_SIZE:
-		return "the render's image is %s, not %s" % [image.get_size(), E13_SIZE]
-	if _one_colour(image):
-		return "the render's image is one colour, %s" % image.get_pixel(0, 0)
-	return _front_pixel_failure(image, result["rects"])
-
-
-func _one_colour(image: Image) -> bool:
-	var first := image.get_pixel(0, 0)
-	for y in range(0, image.get_height(), 8):
-		for x in range(0, image.get_width(), 8):
-			if not _same_colour(image.get_pixel(x, y), first):
-				return false
-	return true
-
-
-func _same_colour(a: Color, b: Color) -> bool:
-	return (
-		absf(a.r - b.r) <= COLOR_TOLERANCE
-		and absf(a.g - b.g) <= COLOR_TOLERANCE
-		and absf(a.b - b.b) <= COLOR_TOLERANCE
-	)
-
-
-func _front_pixel_failure(image: Image, rects: Array) -> String:
-	for rect in rects:
-		if rect["path"] != E13_FRONT:
-			continue
-		var x := int(rect["x"] + rect["width"] / 2)
-		var y := int(rect["y"] + rect["height"] / 2)
-		var pixel := image.get_pixel(x, y)
-		if _same_colour(pixel, E13_FRONT_COLOR):
-			return ""
-		return (
-			"the pixel at (%d, %d), %s's centre, is %s, not %s"
-			% [x, y, E13_FRONT, pixel, E13_FRONT_COLOR]
-		)
-	return "the render's rects %s have none whose path is %s" % [rects, E13_FRONT]
-
-
-func _stale_image_failure(reply: Dictionary, fresh_image: String) -> String:
-	var result = reply.get("result")
-	if not result is Dictionary or result.get("stale") != true:
-		return "the broken render got %s, not a stale result" % _describe_reply(reply)
-	if result.get("image") != fresh_image:
-		return "the broken render's stale image is not the fresh render's"
-	return ""
 
 
 func _write_project_file(path: String, text: String) -> String:
