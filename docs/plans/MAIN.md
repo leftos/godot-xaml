@@ -7,26 +7,25 @@
 - [ ] GXAML-175 Core: one public writer-refusal predicate for the CLI, the core and the language server
 - [ ] GXAML-187 Conversion back: FontFile size textures, glyphs and kerning in Godot's order
 - [ ] GXAML-188 Core: trim and AOT analyzers on the core project
-- [ ] GXAML-194 Conversion back: warn on an unreadable shader or mesh file, and read a mesh .xres converted in the same run
-- [ ] GXAML-197 Conversion back: MeshLibrary items with negative ids come first, as Godot lists them
-- [ ] GXAML-199 Fixture: VisualShader modes/depth_test
 
 ## Godot addon
 
 - [ ] GXAML-11 Addon: preview server for the Visual Studio preview pane · release vNext
-  - [ ] GXAML-167 Preview server: loopback server, token, discovery file and plugin lifecycle · release vNext
-  - [ ] GXAML-168 Preview server: SubViewport PNG render, size clamp and the last good image · release vNext
   - [ ] GXAML-169 Preview server: survive an assembly reload, and the user docs · release vNext
   - [ ] GXAML-171 Merge feat/preview-server to main (#2)
   - [ ] GXAML-179 Preview server: the previewed root names the document as its scene file
   - [ ] GXAML-181 Preview server: a connection to a stripped %Name target is dropped too
-  - [/] GXAML-189 Preview server: classify references by content, follow remaps, and refuse GDExtension libraries · release vNext
   - [ ] GXAML-190 Preview server: preview imported models whose import attaches no script
-  - [ ] GXAML-195 Preview server: strip or refuse an instance placeholder's scene with scripts off · release vNext
   - [ ] GXAML-196 Preview server: one GXC0121 issue per refused path, not per occurrence
-  - [ ] GXAML-198 Preview server: no project loader script runs during classification or after a failed load · release vNext
+  - [ ] GXAML-201 Editor check: the preview loads an instance placeholder's stripped copy · release vNext
+  - [ ] GXAML-203 Preview server: a failed importer or built-in load falls through to project loaders
+  - [ ] GXAML-204 Preview server: preview a scene that uses a compressed imported font
+  - [ ] GXAML-206 Preview server: a check proves the pre-authentication deadline
+  - [ ] GXAML-208 Preview server: bound a render reply's size and the last-image store's bytes
+  - [ ] GXAML-209 Preview server: encode the PNG off the editor's main thread
 - [ ] GXAML-174 Godot harnesses: fail the import steps and editor runs on a Fatal error line too
 - [ ] GXAML-176 Addon: an export configuration build fails on a TOOLS-only cref in GlobalClassSnapshot
+- [ ] GXAML-207 Godot checks: a hung frame check is reported by name, not cut off by the frame budget
 
 ## Agent tooling
 
@@ -34,15 +33,15 @@
 
 ## Editor support
 
-- [ ] GXAML-14 Language server: completions, hover, diagnostics and formatting · release vNext
-  - [ ] GXAML-173 Merge feat/language-server to main (#3)
-  - [ ] GXAML-178 Language server: a {Key} hover reuses the document's parse
-  - [ ] GXAML-180 Language server: completion and hover read prefixes, the names index and the parent element from the core
-  - [ ] GXAML-183 Language server: completions of res:// paths, scene-instance tags and x:Connect values
-  - [ ] GXAML-185 Language server: theme-override values and hover, and zero-valued flags members
+- [ ] GXAML-185 Language server: theme-override values and hover, and zero-valued flags members
+- [ ] GXAML-183 Language server: completions of res:// paths, scene-instance tags and x:Connect values
+- [ ] GXAML-180 Language server: completion and hover read prefixes, the names index and the parent element from the core
+- [ ] GXAML-178 Language server: a {Key} hover reuses the document's parse
 - [ ] GXAML-15 VS Code extension over the language server · release vNext+1
 - [ ] GXAML-16 Visual Studio extension over the language server · release vNext+1
 - [ ] GXAML-17 Visual Studio preview pane with click-to-select · release vNext+1
+- [ ] GXAML-202 Language server: flags completion treats words with no comma between them as separate parts
+- [ ] GXAML-205 Language server: a {Key} hover finds an entry whose key holds an escaped character
 
 ## Later
 
@@ -56,6 +55,5 @@
 
 ## Design files
 
-- [language-server-libraries.md](language-server-libraries.md) — GXAML-14
-- [language-server.md](language-server.md) — GXAML-14, GXAML-183
-- [v1-design.md](v1-design.md) — GXAML-11, GXAML-14, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, Agent tooling, Core format, Editor support, Godot addon
+- [language-server.md](language-server.md) — GXAML-183
+- [v1-design.md](v1-design.md) — GXAML-11, GXAML-15, GXAML-16, GXAML-17, GXAML-18, GXAML-19, Agent tooling, Core format, Editor support, Godot addon
