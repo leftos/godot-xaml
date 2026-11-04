@@ -91,7 +91,7 @@ pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-export.lo
 
 `godot/editor-checks.ps1` copies `godot/`, `src/` and `metadata/` into `.tmp/editor-checks/run/` with the checks plugin and fixtures of `tools/editor-checks/`, so the tracked files stay untouched, then starts a windowed editor twice (`--xscn-editor-checks=run`, then `reopen`).
 
-The plugin writes its results to `.tmp/editor-checks/results/results.txt`, with a screenshot per check, and the script prints `EDITOR-CHECKS passed <p>, failed <f>, expected <n>`. Run it after a change to the addon's editor behaviour.
+The plugin writes its results to `.tmp/editor-checks/results/results.txt`, with a screenshot per check, and the script prints `EDITOR-CHECKS passed <p>, failed <f>, expected <n>`. The script also echoes each editor's error output live and fails the run on any engine line starting with `ERROR: `, even when every check passed and the editor exited 0: after that editor's exit line it prints `STEP editor-<mode> engine errors: <n>` and one `ENGINE-ERROR editor-<mode> <line>` per case. It scans rather than the plugin logging, because the errors at the editor's exit come after the plugin's `DONE`. Run it after a change to the addon's editor behaviour.
 
 ```
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/editor-checks.log --slot heavy --timeout 1200 -- pwsh -NoProfile -File godot/editor-checks.ps1

@@ -14,8 +14,13 @@ editor twice with the plugin's user arguments: once with --xscn-editor-checks=ru
 The plugin writes its CHECK, NOTE and DONE lines to results/results.txt under that folder, with a screenshot per check and
 copies of the saved scenes. The script echoes results.txt and prints EDITOR-CHECKS passed <p>, failed <f>, expected <n>.
 
+Each editor's error output is echoed as it arrives and scanned: any line starting with ERROR: fails the run, and the
+script lists each one as ENGINE-ERROR editor-<mode> <line> after that editor exits. The exit errors come after the
+plugin's DONE, so only the script sees them.
+
 Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script opens editor windows, so it runs through the gate, which routes it
-to a builder's hidden desktop. It exits 0 only when every step exited 0, no check failed and every expected check passed.
+to a builder's hidden desktop. It exits 0 only when every step exited 0, neither editor printed an ERROR: line, no check
+failed and every expected check passed.
 
 .EXAMPLE
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/editor-checks.log --slot heavy --timeout 1200 --
@@ -87,26 +92,79 @@ function Set-RunProjectSettings {
     [IO.File]::WriteAllText($Path, $text)
 }
 
+function Read-EditorErrors {
+    param(
+        [Parameter(Mandatory)][Diagnostics.Process] $Process,
+        [Parameter(Mandatory)][DateTime] $Deadline
+    )
+    $errors = [System.Collections.Generic.List[string]]::new()
+    $read = $Process.StandardError.ReadLineAsync()
+    $emptySliceAfterExit = $false
+    while ($true) {
+        $left = [int][Math]::Max(0, ($Deadline - [DateTime]::UtcNow).TotalMilliseconds)
+        if (-not $read.Wait([Math]::Min($left, 1000))) {
+            if (-not $Process.HasExited) {
+                $emptySliceAfterExit = $false
+                if ($left -eq 0) {
+                    return [pscustomobject]@{ Errors = $errors; TimedOut = $true }
+                }
+                continue
+            }
+            # A line printed before the editor's exit completes the read within a slice, so two empty slices after
+            # the exit mean nothing more of its output is coming, even when another process holds the pipe open.
+            if ($emptySliceAfterExit) {
+                return [pscustomobject]@{ Errors = $errors; TimedOut = $false }
+            }
+            $emptySliceAfterExit = $true
+            continue
+        }
+        $line = $read.Result
+        if ($null -eq $line) {
+            return [pscustomobject]@{ Errors = $errors; TimedOut = $false }
+        }
+        $emptySliceAfterExit = $false
+        [Console]::Error.WriteLine($line)
+        if ($line -cmatch '^ERROR: ') {
+            $errors.Add($line)
+        }
+        $read = $Process.StandardError.ReadLineAsync()
+    }
+}
+
 function Invoke-Editor {
     param([Parameter(Mandatory)][string] $Mode)
     $ceiling = $editorCeilingSeconds[$Mode]
     [Console]::Out.WriteLine("STEP editor-$Mode")
     $info = [Diagnostics.ProcessStartInfo]::new($godot)
     $info.UseShellExecute = $false
+    # Standard output stays inherited; the error stream is captured so the engine's ERROR: lines can fail the run.
+    $info.RedirectStandardError = $true
+    # Godot writes UTF-8; naming it keeps text off the console code page.
+    $info.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
     foreach ($argument in @('--path', $runProject, '--editor', '--', "--xscn-editor-checks=$Mode", $outArg)) {
         $info.ArgumentList.Add($argument)
     }
+    $deadline = [DateTime]::UtcNow.AddSeconds($ceiling)
     $process = [Diagnostics.Process]::Start($info)
     try {
-        if (-not $process.WaitForExit($ceiling * 1000)) {
+        $pumped = Read-EditorErrors -Process $process -Deadline $deadline
+        if ($pumped.TimedOut) {
             $process.Kill($true)
             $process.WaitForExit()
             [Console]::Out.WriteLine("STEP editor-$Mode killed: still running after the $ceiling s hang guard")
-            return $false
         }
-        $process.WaitForExit()
-        [Console]::Out.WriteLine("STEP editor-$Mode exit $($process.ExitCode)")
-        return $process.ExitCode -eq 0
+        else {
+            $process.WaitForExit()
+            [Console]::Out.WriteLine("STEP editor-$Mode exit $($process.ExitCode)")
+        }
+        $engineErrors = $pumped.Errors
+        if ($engineErrors.Count -gt 0) {
+            [Console]::Out.WriteLine("STEP editor-$Mode engine errors: $($engineErrors.Count)")
+            foreach ($engineError in $engineErrors) {
+                [Console]::Out.WriteLine("ENGINE-ERROR editor-$Mode $engineError")
+            }
+        }
+        return (-not $pumped.TimedOut) -and $engineErrors.Count -eq 0 -and $process.ExitCode -eq 0
     }
     finally {
         $process.Dispose()
