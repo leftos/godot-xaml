@@ -271,7 +271,7 @@ Each component gets an entry here in the commit that adds its project.
 
   They also cover saves of scenes and resources (the editor path and `ResourceSaver.Save`, kept keys including an edited keyed sub-resource with no `resource_name` (`EditingAKeyedResourceKeepsItsKey`), the `.uid` sidecar, failures), which clear `user://gx-saves/` first.
 
-  C33 to C45 cover sub-resources: the takeover on save (also over an existing file, after a rename, and not without the flag), the cache on load, Replace and Reuse of live sub-resources, a failed replace, a dropped scene leaving the cache, and a non-stored script variable left alone; the cases `held.gd` and `contained.xscn` serve them.
+  C33 to C45, C53 and C57 cover sub-resources: the takeover on save (also over an existing file, after a rename, and not without the flag), the cache on load, Replace and Reuse of live sub-resources, a failed replace, a dropped scene or resource leaving the cache (also through an engine caller, and for sub-resources held in a container), and a non-stored script variable left alone; the cases `held.gd` and `contained.xscn` serve them.
 
   C63 to C66 cover load diagnostics: warnings reaching Godot's log by severity (a clean parse logs its warnings, a failed one logs warnings and errors apart), no GX0107 for a class the running engine has, and a failed load pruning old kept temp files, with Godot's backup-save leftovers of the save route's temp files (`{guid}.tscn-XXXXXX` on unix, `{guid}.tscn1.tmp` on Windows) pruned under the same rule and other names left alone (C65).
 
