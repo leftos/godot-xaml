@@ -4,5 +4,7 @@ GodotTools/*
 godot-xaml.json
 ScriptMethodsGenerator.cs
 VariantUtils.generic.cs
+# A file the editor checks create at run time.
+E12Named.gd
 # This PC's gate configuration, outside the repo.
 remote.json
