@@ -134,4 +134,11 @@ public static class ConversionCodes
     /// ext_resource keeps the first.
     /// </summary>
     public const string UidsDisagree = "GXC0120";
+
+    /// <summary>
+    /// An external <c>.gdshader</c> or text mesh file that a by-source family is ordered by
+    /// (<see cref="ConversionOptions.SceneFiles"/>) could not be read (not found, or it does not parse); the section keeps
+    /// its written property order.
+    /// </summary>
+    public const string SourceFileUnreadable = "GXC0122";
 }

@@ -730,6 +730,29 @@ public sealed partial class CliProgramTests
         Assert.Contains("\ngrow_vertical = 0\nlayout_mode = 1\n", File.ReadAllText(Located("main.tscn")), StringComparison.Ordinal);
     }
 
+    // A .xres converted in the same run stands in for its .tres output under its own .xres key, so it is parsed as a
+    // resource and its blend shape names order the node's.
+    [Fact]
+    public void BackRunOrdersBlendShapesFromAMeshXresConvertedInTheSameRun()
+    {
+        Write("project.godot", Project);
+        Write("m.xres", $"<ArrayMesh {Namespace}>\n  <x:Prop Name=\"_blend_shape_names\" Value='PackedStringArray(\"z\", \"a\")' />\n</ArrayMesh>\n");
+        Write(
+            "main.xscn",
+            $"<MeshInstance3D {Namespace} Name=\"Root\" Mesh=\"res://m.xres\">\n"
+                + "  <x:Prop Name=\"blend_shapes/a\" Value=\"0.5\" />\n"
+                + "  <x:Prop Name=\"blend_shapes/z\" Value=\"0.25\" />\n"
+                + "</MeshInstance3D>\n"
+        );
+
+        RunResult run = RunProject("--back");
+
+        string main = File.ReadAllText(Located("main.tscn"));
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("\nblend_shapes/z = 0.25\nblend_shapes/a = 0.5\n", main, StringComparison.Ordinal);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("GXC0122", StringComparison.Ordinal));
+    }
+
     // a.xscn is refused, since a.tscn exists, so b's reference to res://a.tscn names the Node2D on disk, whose list holds
     // neither property, and not a.xscn's Control.
     [Fact]

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Metadata;
@@ -459,10 +460,14 @@ public sealed class PropertyOrderTests
     {
         MemoryFiles files = new();
 
-        TscnDocument scene = BackReading(ShaderOnFile("res://s.gdshader"), files);
+        (TscnDocument scene, ImmutableArray<ConversionIssue> issues) = BackReadingWithIssues(ShaderOnFile("res://s.gdshader"), files);
 
         Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
         Assert.Equal(1, files.Reads);
+        ConversionIssue issue = Assert.Single(issues);
+        Assert.Equal(ConversionCodes.SourceFileUnreadable, issue.Code);
+        Assert.Equal(ConversionSeverity.Warning, issue.Severity);
+        Assert.Equal("The file \"res://s.gdshader\" could not be read (not found), so this section keeps its written property order.", issue.Message);
     }
 
     // A conversion with no reader, or no key for the file the references sit in, cannot read a file.
@@ -640,7 +645,7 @@ public sealed class PropertyOrderTests
     {
         MemoryFiles files = new();
 
-        TscnDocument scene = BackReading(
+        (TscnDocument scene, ImmutableArray<ConversionIssue> issues) = BackReadingWithIssues(
             $$"""
             <Node3D {{X}} Name="Root">
               <MeshInstance3D Name="One">
@@ -669,6 +674,10 @@ public sealed class PropertyOrderTests
             material => Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(material.Properties))
         );
         Assert.Equal(1, files.Reads);
+        ConversionIssue issue = Assert.Single(issues);
+        Assert.Equal(ConversionCodes.SourceFileUnreadable, issue.Code);
+        Assert.Equal(ConversionSeverity.Warning, issue.Severity);
+        Assert.Equal("The file \"res://s.gdshader\" could not be read (not found), so this section keeps its written property order.", issue.Message);
     }
 
     // Each set of a property replaces the last, so the last shader of a section gives the order.
@@ -772,7 +781,6 @@ public sealed class PropertyOrderTests
     [Theory]
     [InlineData("[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n")]
     [InlineData("[gd_resource type=\"BoxMesh\" format=3]\n\n[resource]\n_blend_shape_names = PackedStringArray(\"z\", \"a\")\n")]
-    [InlineData("[gd_resource type=\"ArrayMesh\" format=3]\n\n[resource]\n_blend_shape_names = PackedStringArray(\"z\", \n")]
     public void AMeshFileThatIsNoTextArrayMeshKeepsTheSourceOrder(string text)
     {
         MemoryFiles files = new(("res://m.tres", text));
@@ -781,6 +789,102 @@ public sealed class PropertyOrderTests
 
         Assert.Equal(["mesh", "blend_shapes/a", "blend_shapes/z"], PropertyNames(scene.Nodes[0].Properties));
         Assert.Equal(1, files.Reads);
+    }
+
+    // A mesh file whose text does not parse is warned about, with the position the text reader gives.
+    [Fact]
+    public void AMeshFileThatDoesNotParseWarnsWithItsPosition()
+    {
+        MemoryFiles files = new(
+            ("res://m.tres", "[gd_resource type=\"ArrayMesh\" format=3]\n\n[resource]\n_blend_shape_names = PackedStringArray(\"z\", \n")
+        );
+
+        (TscnDocument scene, ImmutableArray<ConversionIssue> issues) = BackReadingWithIssues(BlendShapesOnFile("res://m.tres"), files);
+
+        Assert.Equal(["mesh", "blend_shapes/a", "blend_shapes/z"], PropertyNames(scene.Nodes[0].Properties));
+        ConversionIssue issue = Assert.Single(issues);
+        Assert.Equal(ConversionCodes.SourceFileUnreadable, issue.Code);
+        Assert.Equal(ConversionSeverity.Warning, issue.Severity);
+        Assert.StartsWith("The file \"res://m.tres\" could not be read (line ", issue.Message, StringComparison.Ordinal);
+        Assert.Contains("column ", issue.Message, StringComparison.Ordinal);
+    }
+
+    // A file is read once per conversion, so two nodes on the same missing mesh warn once, at the first node.
+    [Fact]
+    public void AMissingMeshFileWarnsOnce()
+    {
+        MemoryFiles files = new();
+
+        (TscnDocument scene, ImmutableArray<ConversionIssue> issues) = BackReadingWithIssues(
+            $$"""
+            <Node3D {{X}} Name="Root">
+              <MeshInstance3D Name="One" Mesh="res://m.tres">
+                <x:Prop Name="blend_shapes/a" Value="0.5" />
+                <x:Prop Name="blend_shapes/z" Value="0.25" />
+              </MeshInstance3D>
+              <MeshInstance3D Name="Two" Mesh="res://m.tres">
+                <x:Prop Name="blend_shapes/a" Value="0.5" />
+                <x:Prop Name="blend_shapes/z" Value="0.25" />
+              </MeshInstance3D>
+            </Node3D>
+            """,
+            files
+        );
+
+        Assert.Equal(["mesh", "blend_shapes/a", "blend_shapes/z"], PropertyNames(scene.Nodes[1].Properties));
+        Assert.Equal(["mesh", "blend_shapes/a", "blend_shapes/z"], PropertyNames(scene.Nodes[2].Properties));
+        Assert.Equal(1, files.Reads);
+        ConversionIssue issue = Assert.Single(issues);
+        Assert.Equal(ConversionCodes.SourceFileUnreadable, issue.Code);
+        Assert.Equal(ConversionSeverity.Warning, issue.Severity);
+        Assert.Equal("The file \"res://m.tres\" could not be read (not found), so this section keeps its written property order.", issue.Message);
+        Assert.Equal("node \"One\"", issue.Location);
+    }
+
+    // A .tres reference the run converts reads the .xres it was converted from, picked by the served file's key.
+    [Fact]
+    public void AMeshXresServedForATresReferenceGivesItsBlendShapes()
+    {
+        MemoryFiles files = new(("res://m.tres", ArrayMeshXresText("z", "a"))) { ServedKeys = { ["res://m.tres"] = "res://m.xres" } };
+
+        TscnDocument scene = BackReading(BlendShapesOnFile("res://m.tres"), files);
+
+        Assert.Equal(["mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // A served .xres whose text does not parse is warned about, with the position the parser gives.
+    [Fact]
+    public void AMeshXresThatDoesNotParseWarnsWithItsPosition()
+    {
+        MemoryFiles files = new(("res://m.tres", $"<ArrayMesh {X} Name=\"a\" Name=\"b\" />\n"))
+        {
+            ServedKeys = { ["res://m.tres"] = "res://m.xres" },
+        };
+
+        (TscnDocument scene, ImmutableArray<ConversionIssue> issues) = BackReadingWithIssues(BlendShapesOnFile("res://m.tres"), files);
+
+        Assert.Equal(["mesh", "blend_shapes/a", "blend_shapes/z"], PropertyNames(scene.Nodes[0].Properties));
+        ConversionIssue issue = Assert.Single(issues);
+        Assert.Equal(ConversionCodes.SourceFileUnreadable, issue.Code);
+        Assert.Equal(ConversionSeverity.Warning, issue.Severity);
+        Assert.StartsWith("The file \"res://m.tres\" could not be read (line ", issue.Message, StringComparison.Ordinal);
+        Assert.Contains("column ", issue.Message, StringComparison.Ordinal);
+    }
+
+    // A served .xres of another class gives no blend shape names, so the node keeps its source order with no issue.
+    [Fact]
+    public void ANonArrayMeshXresKeepsTheSourceOrderSilently()
+    {
+        MemoryFiles files = new(
+            ("res://m.tres", $"<BoxMesh {X}>\n  <x:Prop Name=\"_blend_shape_names\" Value='PackedStringArray(\"z\", \"a\")' />\n</BoxMesh>\n")
+        )
+        {
+            ServedKeys = { ["res://m.tres"] = "res://m.xres" },
+        };
+
+        TscnDocument scene = BackReading(BlendShapesOnFile("res://m.tres"), files);
+
+        Assert.Equal(["mesh", "blend_shapes/a", "blend_shapes/z"], PropertyNames(scene.Nodes[0].Properties));
     }
 
     // recognize_path compares extensions with nocasecmp (resource_loader.cpp).
@@ -819,6 +923,12 @@ public sealed class PropertyOrderTests
         "[gd_resource type=\"ArrayMesh\" format=3]\n\n[resource]\n"
         + $"_blend_shape_names = PackedStringArray({string.Join(", ", names.Select(name => $"\"{name}\""))})\n";
 
+    private static string ArrayMeshXresText(params string[] names)
+    {
+        string packed = string.Join(", ", names.Select(name => $"\"{name}\""));
+        return $"<ArrayMesh {X}>\n  <x:Prop Name=\"_blend_shape_names\" Value='PackedStringArray({packed})' />\n</ArrayMesh>\n";
+    }
+
     private static string ShaderOnFile(string path) =>
         $$"""
             <MeshInstance3D {{X}} Name="Root">
@@ -842,6 +952,18 @@ public sealed class PropertyOrderTests
     // Parses a scene and converts it with a file reader and the scene's key, with no issue.
     private static TscnDocument BackReading(string text, ISceneFiles? files, string? sourceKey = "res://cases/s.xscn")
     {
+        (TscnDocument document, ImmutableArray<ConversionIssue> issues) = BackReadingWithIssues(text, files, sourceKey);
+        Assert.Empty(issues);
+        return document;
+    }
+
+    // Parses a scene and converts it with a file reader and the scene's key, giving the issues it found.
+    private static (TscnDocument Document, ImmutableArray<ConversionIssue> Issues) BackReadingWithIssues(
+        string text,
+        ISceneFiles? files,
+        string? sourceKey = "res://cases/s.xscn"
+    )
+    {
         XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, TestMetadata);
         Assert.Empty(parsed.Diagnostics);
         ConversionResult<TscnDocument> back = XscnToTscn.Convert(
@@ -853,11 +975,11 @@ public sealed class PropertyOrderTests
                 SourceKey = sourceKey,
             }
         );
-        Assert.Empty(back.Issues);
-        return back.Document;
+        return (back.Document, back.Issues);
     }
 
-    // Files held in memory by the uid that names them, else by the reference; keeps every read's referrer, reference and uid.
+    // Files held in memory by the uid that names them, else by the reference, which a ServedKeys entry serves under
+    // another key; keeps every read's referrer, reference and uid.
     private sealed class MemoryFiles(params (string Path, string Text)[] files) : ISceneFiles
     {
         public int Reads => Calls.Count;
@@ -865,6 +987,8 @@ public sealed class PropertyOrderTests
         public List<(string Referrer, string Reference, string? Uid)> Calls { get; } = [];
 
         public Dictionary<string, string> ByUid { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, string> ServedKeys { get; } = new(StringComparer.Ordinal);
 
         public SceneFile? Read(string referrer, string reference, string? uid)
         {
@@ -874,7 +998,15 @@ public sealed class PropertyOrderTests
                 return new SceneFile(reference, text);
             }
 
-            return files.Where(file => file.Path == reference).Select(file => new SceneFile(file.Path, file.Text)).FirstOrDefault();
+            foreach ((string path, string fileText) in files)
+            {
+                if (path == reference)
+                {
+                    return new SceneFile(ServedKeys.TryGetValue(path, out string? key) ? key : path, fileText);
+                }
+            }
+
+            return null;
         }
     }
 
@@ -1993,7 +2125,9 @@ public sealed class PropertyOrderTests
         );
         GodotClassInfo atlas = Assert.IsType<GodotClassInfo>(metadata.FindClass("TileSetAtlasSource"));
 
-        InvalidDataException error = Assert.Throws<InvalidDataException>(() => new PropertyOrder(metadata).Sort(atlas, [], SourceOrders.Empty()));
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+            new PropertyOrder(metadata).Sort(atlas, [], SourceOrders.Empty(metadata))
+        );
 
         Assert.Contains("TileData", error.Message, StringComparison.Ordinal);
         Assert.Contains("TileSetAtlasSource", error.Message, StringComparison.Ordinal);

@@ -146,7 +146,11 @@ Four more families come back in Godot's order. `instance_shader_parameters/` (Ca
 
 A shader gives its local uniforms in declaration order, regrouped by `group_uniforms` as `ShaderMaterial::_get_property_list` does: groups in first-appearance order, and the ungrouped bucket where its first uniform appeared. `instance uniform` and `global uniform` are left out, as are uniforms hinted `hint_screen_texture`, `hint_normal_roughness_texture`, `hint_depth_texture` or `hint_blit_source0` to `3`. A shader with a preprocessor directive (a `#` with only blanks or comments before it on its line) keeps source order. A mesh gives an ArrayMesh's `_blend_shape_names` index.
 
-The source is inline, an `x:Resources` entry by key, or an external `.gdshader` or text `.tres` ArrayMesh read through the scene lookup (`ISceneFiles`) when the conversion has `SceneFiles` and `SourceKey`. Each file is read once per conversion, keyed by referrer, reference and the uid from `x:Uids`, then the reference's own uid. Anything unreadable keeps source order: a missing file, no lookup, a `.res` or `.glb` mesh, a `.tres` shader or a parse failure. A warning for those, and reading a mesh `.xres` converted in the same CLI run, are open as GXAML-194.
+The source is inline, an `x:Resources` entry by key, or an external `.gdshader` or text ArrayMesh read through the scene lookup (`ISceneFiles`) when the conversion has `SceneFiles` and `SourceKey`. Each file is read once per conversion, keyed by referrer, reference and the uid from `x:Uids`, then the reference's own uid.
+
+A mesh file is parsed by the key the host serves it under: a text `.tres` as a `.tres`, and an `.xres` key as a resource, so `convert --back` orders `blend_shapes/` from the `.xres` converted in the same run. Anything unreadable keeps source order: a missing file, no lookup, a `.res` or `.glb` mesh, a `.tres` shader or a parse failure.
+
+A missing file or a mesh that does not parse is warning GXC0122, once per file and reason at the first section that meets it; no lookup, a shader only the preprocessor could read, and a file that is not an ArrayMesh or has no blend shape names stay silent.
 
 `UnorderedNames` hides two more families whose order the text cannot restore, because Godot walks a HashMap: FontFile `language_support_override/` and `script_support_override/` (the order the overrides were set in) and BoneMap `bone_map/` (the order the profile's bones were added in).
 

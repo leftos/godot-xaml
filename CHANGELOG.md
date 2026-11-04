@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Converting back to `.tscn` or `.tres`, shader parameters, instance shader parameters, global shader overrides and blend shapes keep the order Godot saves them in.
+- Converting back, shader parameters, global shader overrides and blend shapes keep Godot's order, even from a same-run mesh `.xres`; an unreadable source warns `GXC0122`.
 - Converting back, TileMap layers, MeshLibrary items and surface material overrides keep Godot's order past the tenth, with each layer's and item's keys in Godot's order.
 - Converting back to `.tres`, audio bus layouts, EQ bands, stream randomizers, label outlines, skins, skeleton profiles and font caches keep Godot's order past the tenth entry.
 - Converting back to `.tres`, a TileSetAtlasSource keeps each tile's keys together in Godot's order, tiles by coordinates and alternatives by id.

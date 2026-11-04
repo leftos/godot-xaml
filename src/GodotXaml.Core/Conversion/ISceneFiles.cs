@@ -12,7 +12,9 @@ public sealed record SceneFile(string Key, string Text);
 /// The files a conversion's document refers to, read by a host that can open them, since the property order Godot sets
 /// depends on them; the core opens no file itself. The way back reads the class of an instanced node from its scene, and
 /// the order of a by-source family from a shader's text (a <c>.gdshader</c>, for a ShaderMaterial's parameters) or a
-/// mesh's text (a <c>.tres</c> ArrayMesh, for a MeshInstance3D's blend shapes). A host reads any extension it is asked for.
+/// mesh's text (a text <c>.tres</c> ArrayMesh, or the <c>.xres</c> it was converted from, picked by the served file's
+/// key, for a MeshInstance3D's blend shapes). An external file the conversion cannot read is warned about as GXC0122,
+/// naming the file. A host reads any extension it is asked for.
 /// </summary>
 public interface ISceneFiles
 {

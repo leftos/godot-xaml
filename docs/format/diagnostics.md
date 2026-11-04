@@ -294,7 +294,7 @@ Warning. A save could not carry a comment of the file it replaced, because what 
 
 ### GXC0118 Instanced class unreadable
 
-Warning. The class of an instanced scene could not be read: no lookup was given, or the file is unparsable, a cycle, missing the node path, or referred to by `uid://` only. The section keeps its written property order rather than Godot's.
+Warning. The class of an instanced scene could not be read: the file is missing, unparsable, a cycle, missing the node path, or referred to by `uid://` only. The section keeps its written property order rather than Godot's.
 
 ### GXC0119 Property name XML cannot hold
 
@@ -303,6 +303,10 @@ Error. `The property name "metadata/a\u0001b" holds a character XML cannot hold;
 ### GXC0120 Uids disagree
 
 Warning. `x:Uids gives 'res://a.tres' more than one uid (uid://bbb, uid://aaa); its ext_resource keeps 'uid://bbb'.` Two `x:Uid` entries name one path with different uids, written so or made so when `convert` rewrites one file's path onto another's. The `.tscn` keeps the first uid; check which file the path should name, and remove the other entry.
+
+### GXC0122 Source file unreadable
+
+Warning. `The file "res://s.gdshader" could not be read (not found), so this section keeps its written property order.` An external `.gdshader` or mesh file that a by-source family is ordered by could not be read: `not found` when the host cannot give it, or `line L, column C: <reason>` when a mesh file does not parse. Reported once per file and reason, at the first section that meets it, which keeps its written property order rather than Godot's. Silent with no lookup or no source key, for a shader only the preprocessor could read, and for a file that is not an ArrayMesh or holds no blend shape names.
 
 ## Project conversion: `GXP`
 

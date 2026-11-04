@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using GodotXaml.Core.Diagnostics;
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
@@ -11,13 +13,16 @@ namespace GodotXaml.Core.Conversion;
 /// blend shapes. Each resource is read once and cached for the conversion, since both sorts of a section ask for the same
 /// list. A sibling value that is an inline resource is read directly, and a key reference through the document's
 /// <c>x:Resources</c> table. An external file is read through the host's <see cref="ISceneFiles"/>, once per conversion
-/// for each referrer, reference and uid: a <c>.gdshader</c>'s whole text is the shader's code, and a text <c>.tres</c>
-/// ArrayMesh holds its blend shape names; the extension decides, compared case-insensitively as Godot's
+/// for each referrer, reference and uid: a <c>.gdshader</c>'s whole text is the shader's code, and a mesh file is a text
+/// <c>.tres</c> ArrayMesh's blend shape names or, when the host serves a key that is the <c>.xres</c> it was converted
+/// from, that file parsed as a resource; the reference's extension decides, compared case-insensitively as Godot's
 /// <c>ResourceFormatLoader::recognize_path</c> does (<c>nocasecmp</c>, core/io/resource_loader.cpp), and a file of any
 /// other extension is not asked for. No list comes from a file when the conversion has no reader or no key for its own
-/// file, or the reader cannot give it, nor from any other value, a resource that does not hold the list, or a shader with a
-/// preprocessor directive; a family with no list keeps source order.
+/// file, or the file gives none, nor from any other value, a resource that does not hold the list, or a shader with a
+/// preprocessor directive; a family with no list keeps source order. A file the reader cannot give, or one that does not
+/// parse, is recorded as a failure its caller reports as <see cref="ConversionCodes.SourceFileUnreadable"/>.
 /// </summary>
+/// <param name="metadata">The metadata a served <c>.xres</c> file's classes are resolved with.</param>
 /// <param name="table">The document's <c>x:Resources</c> entries by key; read on each lookup, so it may be filled after.</param>
 /// <param name="files">The host's file reader, or null when it gives none.</param>
 /// <param name="sourceKey">The key of the file being converted, the referrer of its references; null when unknown.</param>
@@ -26,6 +31,7 @@ namespace GodotXaml.Core.Conversion;
 /// sort of a section reads under the same key.
 /// </param>
 internal sealed class SourceOrders(
+    GodotMetadata metadata,
     IReadOnlyDictionary<string, XscnResource> table,
     ISceneFiles? files,
     string? sourceKey,
@@ -35,15 +41,20 @@ internal sealed class SourceOrders(
     private const string CodeProperty = "code";
     private const string BlendShapeNamesProperty = "_blend_shape_names";
     private const string ArrayMeshClass = "ArrayMesh";
+    private const string NotFound = "not found";
 
     private readonly Dictionary<XscnResource, SourceList?> shaders = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<XscnResource, SourceList?> meshes = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<(string Referrer, string Reference, string? Uid), SourceList?> shaderFiles = [];
     private readonly Dictionary<(string Referrer, string Reference, string? Uid), SourceList?> meshFiles = [];
+    private readonly List<(string Reference, string Reason)> failures = [];
+    private readonly HashSet<(string Reference, string Reason)> failed = [];
 
     /// <summary>A cache over no document and no reader, under which every key reference and file gives no list.</summary>
+    /// <param name="metadata">The metadata a parsed file's classes are resolved with.</param>
     /// <returns>The cache.</returns>
-    public static SourceOrders Empty() => new(new Dictionary<string, XscnResource>(StringComparer.Ordinal), null, null, _ => null);
+    public static SourceOrders Empty(GodotMetadata metadata) =>
+        new(metadata, new Dictionary<string, XscnResource>(StringComparer.Ordinal), null, null, _ => null);
 
     /// <summary>The list a sibling property's value gives, or null when it gives none.</summary>
     /// <param name="value">The sibling property's value.</param>
@@ -92,41 +103,103 @@ internal sealed class SourceOrders(
         }
 
         Dictionary<(string Referrer, string Reference, string? Uid), SourceList?> cache = shader ? shaderFiles : meshFiles;
-        (string, string, string?) key = (sourceKey, path, uid);
+        (string Referrer, string Reference, string? Uid) key = (sourceKey, path, uid);
         if (!cache.TryGetValue(key, out SourceList? list))
         {
-            list = files.Read(key.Item1, key.Item2, key.Item3) is { } file ? ListOfText(file.Text, shader) : null;
+            list = ReadList(key, shader);
             cache.Add(key, list);
         }
 
         return list;
     }
 
-    private static SourceList? ListOfText(string text, bool shader) => shader ? ShaderListOf(text) : MeshFileList(text);
+    // The list a file gives; a file the reader cannot give is recorded as not found, and one that does not parse with the
+    // reason the reader gives.
+    private SourceList? ReadList((string Referrer, string Reference, string? Uid) key, bool shader)
+    {
+        if (files?.Read(key.Referrer, key.Reference, key.Uid) is not { } file)
+        {
+            Record(key.Reference, NotFound);
+            return null;
+        }
+
+        (SourceList? list, string? failure) = Reading(file, shader);
+        if (failure is not null)
+        {
+            Record(key.Reference, failure);
+        }
+
+        return list;
+    }
+
+    /// <summary>The failures recorded since the last call, each once per reference and reason.</summary>
+    /// <returns>Each reference as written and why it could not be read, in the order they were met.</returns>
+    public IReadOnlyList<(string Reference, string Reason)> TakeFailures()
+    {
+        if (failures.Count == 0)
+        {
+            return [];
+        }
+
+        List<(string Reference, string Reason)> taken = [.. failures];
+        failures.Clear();
+        return taken;
+    }
+
+    // A file that could not be read is recorded the first time it is met, so two sections that meet it warn once.
+    private void Record(string reference, string reason)
+    {
+        if (failed.Add((reference, reason)))
+        {
+            failures.Add((reference, reason));
+        }
+    }
 
     private static bool HasExtension(string path, string extension) => Path.GetExtension(path).Equals(extension, StringComparison.OrdinalIgnoreCase);
 
-    // A text resource file whose [resource] section is an ArrayMesh gives its _blend_shape_names; a file the text reader
-    // rejects, or of another class, gives none.
-    private static SourceList? MeshFileList(string text)
+    // A text file's list, or why it could not be read; a shader the preprocessor alone could tell, a resource of another
+    // class, or one without the names gives neither, which stays silent.
+    private (SourceList? List, string? Failure) Reading(SceneFile file, bool shader) => shader ? (ShaderListOf(file.Text), null) : MeshFileList(file);
+
+    // A mesh file's blend shape names: a text .tres whose [resource] section is an ArrayMesh, or, when the served key is
+    // the .xres the run converted it from, that file's root resource. A file that does not parse gives the reason its
+    // reader gives; another class, or no names, gives none.
+    private (SourceList? List, string? Failure) MeshFileList(SceneFile file)
     {
+        if (file.Key.EndsWith(".xres", StringComparison.OrdinalIgnoreCase))
+        {
+            XscnParseResult result = XscnParser.Parse(file.Text, XscnDocumentKind.Resource, metadata);
+            if (result.Diagnostics.FirstOrDefault(diagnostic => diagnostic.Severity == XscnSeverity.Error) is { } error)
+            {
+                LinePosition position = new LineMap(file.Text).OneBased(error.Span.Start);
+                return (null, $"line {position.Line}, column {position.Column}: {error.Message}");
+            }
+
+            if (result.Document.Root is XscnResource { Type: XscnClassType { Class.Name: ArrayMeshClass } } root)
+            {
+                return (BlendShapeList(root), null);
+            }
+
+            return (null, null);
+        }
+
         TscnDocument document;
         try
         {
-            document = TscnReader.Read(text);
+            document = TscnReader.Read(file.Text);
         }
-        catch (TscnParseException)
+        catch (TscnParseException exception)
         {
-            return null;
+            return (null, $"line {exception.Line}, column {exception.Column}: {exception.Reason}");
         }
 
         if (document is not { Kind: TscnKind.Resource, Header.Type: ArrayMeshClass })
         {
-            return null;
+            return (null, null);
         }
 
         TscnProperty? names = document.ResourceProperties.LastOrDefault(property => property.Name == BlendShapeNamesProperty);
-        return names?.Value is GodotPackedStrings packed ? new SourceList(packed.Items) : null;
+        return (names?.Value is GodotPackedStrings packed ? new SourceList(packed.Items) : null, null);
     }
 
     // Shader::code is the shader's text (shader.cpp); a resource with none, or one the scan cannot read, gives no list.

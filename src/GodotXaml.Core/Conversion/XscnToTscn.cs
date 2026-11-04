@@ -121,7 +121,7 @@ public static partial class XscnToTscn
             this.options = options;
             this.siteHash = siteHash;
             order = new PropertyOrder(metadata);
-            sources = new SourceOrders(table, options.SceneFiles, options.SourceKey, DeclaredUidOf);
+            sources = new SourceOrders(metadata, table, options.SceneFiles, options.SourceKey, DeclaredUidOf);
             instancedClasses = options.SceneFiles is { } files && options.SourceKey is { } key ? new InstancedClasses(metadata, files, key) : null;
             IndexTable();
         }
@@ -409,7 +409,9 @@ public static partial class XscnToTscn
         private ImmutableArray<TscnProperty> Properties(GodotClassInfo? cls, ImmutableArray<XscnProperty> source, string location)
         {
             ImmutableArray<TscnProperty>.Builder properties = ImmutableArray.CreateBuilder<TscnProperty>();
-            foreach (XscnProperty property in order.Sort(cls, source, sources))
+            ImmutableArray<XscnProperty> sorted = order.Sort(cls, source, sources);
+            ReportSourceFailures(location);
+            foreach (XscnProperty property in sorted)
             {
                 if (Value(property.Value, location + "." + property.GodotName) is { } value)
                 {
@@ -447,6 +449,17 @@ public static partial class XscnToTscn
             string message = $"The value '{invalid.Text}' could not be read ({invalid.Message}); the property is dropped.";
             Report(ConversionCodes.InvalidValue, ConversionSeverity.Error, message, location);
             return null;
+        }
+
+        // A file a by-source family is ordered by that the conversion could not read is warned about once, at the first
+        // section whose sort met it.
+        private void ReportSourceFailures(string location)
+        {
+            foreach ((string reference, string reason) in sources.TakeFailures())
+            {
+                string message = $"The file \"{reference}\" could not be read ({reason}), so this section keeps its written property order.";
+                Report(ConversionCodes.SourceFileUnreadable, ConversionSeverity.Warning, message, location);
+            }
         }
 
         private void Report(string code, ConversionSeverity severity, string message, string location) =>
