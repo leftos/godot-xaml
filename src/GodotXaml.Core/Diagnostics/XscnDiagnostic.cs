@@ -94,4 +94,7 @@ public static class XscnCodes
 
     /// <summary>A scene's root is an instance placeholder, which Godot refuses to load.</summary>
     public const string PlaceholderRoot = "GX0119";
+
+    /// <summary>An element nested deeper than the reader accepts; it and everything inside it are not read.</summary>
+    public const string NestingTooDeep = "GX0120";
 }

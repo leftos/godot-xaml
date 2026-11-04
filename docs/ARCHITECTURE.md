@@ -128,7 +128,7 @@ Each component gets an entry here in the commit that adds its project.
 
   Dictionaries are written in Godot's key order (`GodotKeyOrder`, internal): string keys by code point, other keys by Variant type then value, and keys Godot cannot order keep source order. `ValueWriteOptions.Compat` also decides `PackedByteArray`: a number list on, `PackedByteArray("base64")` off.
 
-  Nesting past 512 arrays, dictionaries or objects raises `GodotValueParseException` ("Nesting is too deep"), so a hostile text cannot overflow the stack of the language server or editor. `GodotValueLexer` and `GodotValueReader.ReadAt` are internal, for the `.tscn` reader.
+  Nesting past 512 arrays, dictionaries or objects raises `GodotValueParseException` ("Nesting is too deep"), so a hostile value cannot overflow the stack of the language server or editor; the `.xscn` reader caps element nesting at 512 the same way (`GX0120`, the too-deep element and its subtree left unread). `GodotValueLexer` and `GodotValueReader.ReadAt` are internal, for the `.tscn` reader.
 - **Metadata loader** (`src/GodotXaml.Core/Metadata/`): `GodotMetadata.Load` reads `metadata/godot-<minor>.json` into immutable records (`GodotClassInfo`, `GodotPropertyInfo` with a typed `Default` and `IsStored`, `GodotEnumInfo`, `GodotEnumMember`, `GodotThemeOverrideInfo`, `GodotSignalInfo`, `GodotSignalArgument`), each with its C# name.
 
   `FindDefault(cls, godotName)` returns a property's effective default for a class (`GodotPropertyDefault`: text and value) or null: none for a class with `hasDefaults` false, else from the class's own declaration, else its `defaultOverrides`, else its parent's; it throws for a class the metadata lacks.

@@ -555,6 +555,93 @@ public sealed class XscnParserErrorTests
         Assert.False(result.HasErrors);
     }
 
+    // A reader that recursed into 10,000 elements would overflow the stack, which .NET cannot catch, so the cap reports
+    // once and stops.
+    [Fact]
+    public void ATenThousandDeepChainIsOneErrorAndATree512Deep()
+    {
+        (XscnParseResult result, _) = Parse(NestedControls(10_000));
+
+        XscnDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal("GX0120", diagnostic.Code);
+        Assert.Equal(XscnSeverity.Error, diagnostic.Severity);
+        Assert.Equal("Elements are nested deeper than 512; the reader stops here.", diagnostic.Message);
+        Assert.Equal(512, TreeDepth(Assert.IsType<XscnNode>(result.Document.Root)));
+    }
+
+    [Fact]
+    public void A512DeepChainIsNoError()
+    {
+        (XscnParseResult result, _) = Parse(NestedControls(512));
+
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(512, TreeDepth(Assert.IsType<XscnNode>(result.Document.Root)));
+    }
+
+    [Fact]
+    public void A513DeepChainIsOneErrorAndATree512Deep()
+    {
+        (XscnParseResult result, _) = Parse(NestedControls(513));
+
+        Assert.Equal("GX0120", Assert.Single(result.Diagnostics).Code);
+        Assert.Equal(512, TreeDepth(Assert.IsType<XscnNode>(result.Document.Root)));
+    }
+
+    [Fact]
+    public void ASiblingAfterATooDeepBranchIsRead()
+    {
+        string text =
+            "<Control Name=\"Root\">"
+            + "<Control Name=\"A\">"
+            + string.Concat(Enumerable.Repeat("<Control Name=\"N\">", 511))
+            + string.Concat(Enumerable.Repeat("</Control>", 511))
+            + "</Control>"
+            + "<Label Name=\"S\" />"
+            + "</Control>";
+        (XscnParseResult result, _) = Parse(text);
+
+        Assert.Equal("GX0120", Assert.Single(result.Diagnostics).Code);
+        XscnNode root = Assert.IsType<XscnNode>(result.Document.Root);
+        Assert.Equal(["A", "S"], root.Children.Select(child => Assert.IsType<XscnNode>(child).Name));
+        Assert.Equal(512, TreeDepth(root));
+    }
+
+    [Fact]
+    public void ATooDeepPropertyElementIsOneErrorAndHoldsNoResource()
+    {
+        string text =
+            string.Concat(Enumerable.Repeat("<Control Name=\"N\">", 512))
+            + "<Control.Theme><StyleBoxFlat /></Control.Theme>"
+            + string.Concat(Enumerable.Repeat("</Control>", 512));
+        (XscnParseResult result, _) = Parse(text);
+
+        Assert.Equal("GX0120", Assert.Single(result.Diagnostics).Code);
+        XscnNode deepest = Assert.IsType<XscnNode>(result.Document.Root);
+        while (!deepest.Children.IsEmpty)
+        {
+            deepest = Assert.IsType<XscnNode>(Assert.Single(deepest.Children));
+        }
+
+        Assert.Empty(deepest.Properties);
+    }
+
+    // Far past the cap, the reader stops at it; the size is chosen as one GuiLabs' own parser still reads.
+    [Fact]
+    public void AHundredThousandDeepChainReturnsOneError()
+    {
+        (XscnParseResult result, _) = Parse(NestedControls(100_000));
+
+        Assert.Equal("GX0120", Assert.Single(result.Diagnostics).Code);
+        Assert.Equal(512, TreeDepth(Assert.IsType<XscnNode>(result.Document.Root)));
+    }
+
+    // A scene of nested <Control Name="N"> elements, the outermost at depth 1.
+    private static string NestedControls(int elements) =>
+        string.Concat(Enumerable.Repeat("<Control Name=\"N\">", elements)) + string.Concat(Enumerable.Repeat("</Control>", elements));
+
+    // The number of elements on the longest path from the root down.
+    private static int TreeDepth(XscnNodeElement element) => 1 + (element.Children.IsEmpty ? 0 : element.Children.Max(TreeDepth));
+
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text) => Parse(text, Real);
 
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text, GodotMetadata metadata) =>

@@ -211,6 +211,12 @@ internal sealed partial class XscnTreeReader
 
     private void ReadChild(ElementParts parent, IXmlElementSyntax element)
     {
+        if (TooDeep(element))
+        {
+            return;
+        }
+
+        elementDepth++;
         TagKind kind = KindOf(element);
         switch (kind)
         {
@@ -224,6 +230,25 @@ internal sealed partial class XscnTreeReader
                 AddNode(parent, element, kind);
                 break;
         }
+
+        elementDepth--;
+    }
+
+    // An element past the cap is reported once and not read, so nothing of it or of what it holds reaches the model and
+    // the reader never recurses far enough to exhaust the stack.
+    private bool TooDeep(IXmlElementSyntax element)
+    {
+        if (elementDepth < MaxElementDepth)
+        {
+            return false;
+        }
+
+        Report(
+            XscnCodes.NestingTooDeep,
+            $"Elements are nested deeper than {MaxElementDepth}; the reader stops here.",
+            element is XmlElementSyntax syntax ? SpanOf(syntax.StartTag) : SpanOf(element.AsNode)
+        );
+        return true;
     }
 
     private void ReadFormatChild(ElementParts parent, IXmlElementSyntax element)
@@ -412,6 +437,11 @@ internal sealed partial class XscnTreeReader
 
     private XscnResource? ListedResource(IXmlElementSyntax element, ElementKind kind, ImmutableArray<string> leading)
     {
+        if (TooDeep(element))
+        {
+            return null;
+        }
+
         if (KindOf(element) != TagKind.Class)
         {
             string code = kind == ElementKind.TableEntry ? XscnCodes.MisplacedElement : XscnCodes.InvalidPropertyElement;
@@ -419,10 +449,12 @@ internal sealed partial class XscnTreeReader
             return null;
         }
 
+        elementDepth++;
         XscnType type = ClassTag(element);
         CheckIsResource(element, type);
         var parts = new ElementParts(element, kind, ClassOf(type), isRoot: false);
         XscnResource resource = ReadResource(parts, type, leading);
+        elementDepth--;
         return kind != ElementKind.TableEntry || HasNewKey(parts) ? resource : null;
     }
 

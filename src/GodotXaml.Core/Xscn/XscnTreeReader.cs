@@ -15,6 +15,10 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
 {
     private const string ResourcePrefix = "res://";
 
+    // A document deeper than this would exhaust the stack of every program that reads it, which .NET cannot catch; no
+    // Godot scene needs the depth.
+    private const int MaxElementDepth = 512;
+
     private readonly List<XscnDiagnostic> diagnostics = [];
     private readonly Dictionary<string, string> sceneFolders = new(StringComparer.Ordinal);
     private readonly List<XscnResource> resources = [];
@@ -27,6 +31,9 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
     private string? formatPrefix;
     private bool uidTableSeen;
     private bool resourceTableSeen;
+
+    // The depth of the element being read: the root is 1, and every element inside another is one deeper.
+    private int elementDepth = 1;
 
     private enum TagKind
     {

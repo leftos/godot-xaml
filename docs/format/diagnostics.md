@@ -152,6 +152,10 @@ Error. `<x:Connect> has both Signal and GodotSignal; write one.` Keep `Signal` (
 
 Error. `The root cannot be an instance placeholder; Godot loads no scene whose first node is one.` Godot refuses a scene whose first node is an instance placeholder, because the scene cannot be used for inheritance. Make the root a node of the scene's own, and put the placeholder under it.
 
+### GX0120 Nested too deep
+
+Error. `Elements are nested deeper than 512; the reader stops here.` A deeper file would exhaust the call stack of every program that reads it, and no Godot scene needs that depth. Flatten the tree, or split it into instanced scenes.
+
 ## Conversion to `.xscn`: `GXC00xx`
 
 Reported when a `.tscn` or `.tres` is converted forward, by `godot-xaml convert` and by the editor's saver.
