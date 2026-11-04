@@ -2,6 +2,8 @@
 
 The full reference is [docs/format/README.md](../../../docs/format/README.md), with every value type in [values.md](../../../docs/format/values.md) and every code in [diagnostics.md](../../../docs/format/diagnostics.md).
 
+The language server (diagnostics, formatting, hover and completions over LSP on stdin/stdout) is the native executable in `godot-xaml-ls-<version>-<rid>.zip` on each release, for win-x64, win-arm64, linux-x64, linux-arm64, osx-x64 and osx-arm64; see [editor support](../../../docs/guide/getting-started.md#editor-support).
+
 ## Elements
 
 | Element | Where | What it is |

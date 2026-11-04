@@ -135,7 +135,9 @@ pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/publish.log --slot heavy --t
 
 `tools/publish-server.ps1 -Rid <rid> [-Out <folder>]` publishes into `.tmp/publish/<rid>/` and fails on any publish warning. `-Out` must be a folder under `.tmp/publish/`; the script refuses any other. When the identifier is this machine's, it runs the smoke test on the executable first. It then writes `godot-xaml-ls-<version>-<rid>.zip` beside the publish folder, holding the executable alone, with the version from `VersionPrefix` in `Directory.Build.props`.
 
-For another identifier it says the zip was not smoke-tested.
+For another identifier it says the zip was not smoke-tested. `-HostRid <rid>` names the identifier to take as this machine's, which is how a test makes it smoke or skip.
+
+A release's six zips are built by `.github/workflows/build-server.yml`, not on one machine: see the Language server entry of [`ARCHITECTURE.md`](ARCHITECTURE.md) for its jobs and the macOS signing. Its zips are unsigned from `publish-server.ps1`; the macOS ones that ship are the signed and notarised copies.
 
 `tools/smoke-server.ps1 -Exe <path> [-TimeoutSeconds <n>]` launches an executable and drives one session over stdio: `initialize` (name, version, capabilities), `initialized` and the server's "started" log, a `$/cancelRequest`, a `didOpen` whose `publishDiagnostics` must carry a GX code under camelCase keys, a hover on a class tag with its description, a completion with items, then `shutdown` and `exit`. The process must exit 0 and write nothing to stdout but framed messages.
 

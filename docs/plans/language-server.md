@@ -162,7 +162,7 @@ Gap summary (new core API work, in priority order):
 - Release packing: `tools/pack-release.ps1 -Version x.y.z`: checks four version homes (Directory.Build.props, godot/addons/godot_xaml/plugin.cfg, README.md PackageReference, AGENTS.md links), then `dotnet pack` of the Core and Cli projects and zips the addon, and asserts the output folder holds exactly `GodotXaml.Cli.<v>.nupkg`, `GodotXaml.Core.<v>.nupkg`, `godot-xaml-addon-<v>.zip` (pack-release.ps1:125-135 in the `Assert-ReleaseFolder` function).
 
   A new shipped artifact (a tool package or extension-bundled binaries) means editing `Invoke-Pack` calls, the `$expected` list and the usage text. `.github/workflows/publish-nuget.yml` pushes release packages to nuget.org by trusted publishing, and the nuget.org policy names that file (ARCHITECTURE.md Task Index row "Cut a release"). A new package therefore needs its own nuget.org trusted-publishing registration.
-- Docs that must change with the new component (ARCHITECTURE.md:40 "Each component gets an entry here in the commit that adds its project"): ARCHITECTURE.md Layers + Task Index + Test locations; README.md:73; docs/guide/limitations.md:27 ("planned for later releases"); `docs/guide/getting-started.md` install steps; `llms.txt`; `agents/skill/godot-xaml/`; docs/plans/v1-design.md.
+- Docs that must change with the new component (ARCHITECTURE.md, Layers: "Each component gets an entry here in the commit that adds its project"): ARCHITECTURE.md Layers + Task Index + Test locations; the README's Status section; docs/guide/limitations.md (Tooling, "planned for later releases"); `docs/guide/getting-started.md` install steps; `llms.txt`; `agents/skill/godot-xaml/`; docs/plans/v1-design.md.
 
 ## 5. Existing mentions of the language server (every constraint)
 
@@ -298,9 +298,9 @@ Branch `feat/language-server`. Steps 1-4 are core work with plain unit tests. St
 8. Completion (split into two commits if large): element names and attribute names; then values (enums, flags, bool, `{Key}`, `res://` paths, x: directives). Part 1 (element and attribute names) DONE (GXAML-138). Part 2 (enum and flags members, `True`/`False`, `{Key}` references) DONE (GXAML-182); `res://` paths, scene-instance tags and `x:Connect` values are still to come.
    - Files: `CompletionHandler` (+ providers: `TagCompletions`, `AttributeCompletions`, `ValueCompletions`, `NameRules`, `StartTags`), `Protocol/Completion.cs`, tests (`CompletionTests`).
    - Proof: table-driven: for a source with a cursor marker, the item labels equal the expected set (e.g. `<Button Mouse|` offers `MouseFilter`, `MouseDefaultCursorShape`, not `MouseFilter` twice if present; `MouseFilter="|"` offers `Stop, Pass, Ignore`; `Alignment="|"` for BoxContainer; `SizeFlagsHorizontal="Expand, |"` flags); the replacement range covers the typed prefix; no completions in comments or content text.
-9. Packaging, docs, and extension hand-off.
-   - Files: pack-release.ps1 (+ expected files), publish workflow, README.md:73, docs/guide/limitations.md:27, docs/guide/getting-started.md, llms.txt, agents/skill docs, docs/plans/v1-design.md, ARCHITECTURE.md.
-   - Proof: `pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/pack.log --slot heavy --timeout 900 -- pwsh -NoProfile -File tools/pack-release.ps1 -Version 0.1.0` produces the expected folder; a smoke test launches the packed binary, sends initialize/shutdown over stdio and gets valid responses; the docs tests still pass.
+9. Packaging, docs, and extension hand-off. DONE (GXAML-186, GXAML-193): the six zips are built, signed (macOS) and attached by `.github/workflows/build-server.yml`, with `tools/publish-server.ps1`, `tools/smoke-server.ps1` and `tools/sign-macos.ps1`; `tools/pack-release.ps1` is unchanged and still makes the three local files.
+   - Files: `.github/workflows/build-server.yml`, `tools/publish-server.ps1`, `tools/sign-macos.ps1`, `tools/test-sign-macos.ps1`, the README's "Language server" section, `docs/guide/limitations.md` (Tooling), `docs/guide/getting-started.md` (Editor support), `llms.txt`, `agents/skill/godot-xaml/`, `docs/plans/v1-design.md`, `docs/ARCHITECTURE.md`.
+   - Proof: a pull request that touches the release path builds all six unsigned and smoke-tests each on its native runner; `tools/test-sign-macos.ps1` drives `sign-macos.ps1` against stubs; after a release, `gh release view v<v>` lists the three files plus six `godot-xaml-ls-<v>-<rid>.zip` assets.
 
 Size note: steps 3 and 8 are the large ones; 5 needs the LSP library decided; 1, 2, 6 are small. Hover docs (decision 9) are a separate item if option B/C.
 
@@ -314,7 +314,7 @@ Size note: steps 3 and 8 are the large ones; 5 needs the LSP library decided; 1,
 - docs/ARCHITECTURE.md:57 says a nesting cap exists "so a hostile text cannot overflow the stack of the language server or editor", but the cap is on the value grammar only (GodotValueReader); the XML element depth has no cap in src/GodotXaml.Core/Xscn (grep "depth": only XscnWriter.cs:49-69).
 
   Which side is wrong: the doc over-promises for the whole parse path; unmeasured whether GuiLabs's parser or XscnTreeReader overflows. Owner of the fix: ARCHITECTURE.md (Value grammar bullet) or add a cap in code. The bullet now says the cap covers the value grammar only; the element-depth cap is GXAML-172.
-- docs/guide/limitations.md:27 says the server is "planned for later releases"; consistent with the code today. Becomes drift when step 9 lands.
+- docs/guide/limitations.md (Tooling) said the server was "planned for later releases"; step 9 landed and the page now describes it.
 - docs/ARCHITECTURE.md:3 (not drift) says "the language server and the editor extensions are still to come". Consistent.
 
 ## TASK INDEX GAP
@@ -325,7 +325,7 @@ The answer took many reads beyond the Task Index (about 25 reads and 4 searches)
 
   Then src/GodotXaml.Core/Xscn/ (`XscnPropertyNames`, `XscnValueText`, `XscnEnumText`, `XscnWriter`) → src/GodotXaml.Cli/ (`ProjectRoot`, `MetadataFile`, `FormatCommand` as the reference behaviour) → the new src/GodotXaml.LanguageServer/ and tests/GodotXaml.LanguageServer.Tests/.
 - "Add a completion or hover source (a new metadata field, a doc text)": tools/metadata-dump/README.md → metadata/godot-4.7.json → src/GodotXaml.Core/Metadata/ → the server's providers.
-- "Add a project, a package or a shipped artifact": GodotXaml.slnx → Directory.Packages.props → the csproj → tools/pack-release.ps1 (`Invoke-Pack`, `Assert-ReleaseFolder`) → .github/workflows/publish-nuget.yml → ARCHITECTURE.md (Layers, Test locations). The existing "Cut a release" row covers only part.
+- "Add a project, a package or a shipped artifact": GodotXaml.slnx → Directory.Packages.props → the csproj → tools/pack-release.ps1 (`Invoke-Pack`, `Assert-ReleaseFolder`) → .github/workflows/publish-nuget.yml → ARCHITECTURE.md (Layers, Test locations). The existing "Cut a release" row covers only part. (The language server's executables took the route of `.github/workflows/build-server.yml` instead, and the Task Index has its row.)
 - The existing row "Parse an .xscn/.xres or change a diagnostic" has no mention that the model carries no attribute spans; a one-line note there saves the next reader the reading of XscnModel.cs.
 
 ## MISSING ENTRY POINT

@@ -67,6 +67,12 @@ Dotnet writes `.config/dotnet-tools.json` with CRLF line endings and no final ne
 
 Its commands are in [the CLI reference](../../src/GodotXaml.Cli/README.md).
 
+## Editor support
+
+The language server gives an editor diagnostics, formatting, hover and completions for `.xscn` and `.xres` files. Download the zip for your platform from [the latest release](https://github.com/leftos/godot-xaml/releases/latest): `godot-xaml-ls-<version>-<rid>.zip`, where `<rid>` is `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64` or `osx-arm64`. It holds one native executable and needs no .NET install; it speaks the Language Server Protocol on stdin/stdout, so an editor's LSP client can launch it.
+
+The macOS executables are signed and notarised. They cannot be stapled, so a Mac's first launch checks the ticket online ([Limitations](limitations.md)). No Visual Studio or VS Code extension that launches the server exists yet.
+
 ## A first scene
 
 In the editor, choose Scene > New Scene, add nodes, and save with the `.xscn` extension (`ui/main_menu.xscn`). Godot writes XML like this:

@@ -93,12 +93,14 @@ A local version never takes a published version's place in the shared NuGet pack
 4. The packages reach nuget.org by trusted publishing, with no API key: publishing the release runs `.github/workflows/publish-nuget.yml`. The workflow downloads the release's `.nupkg` files, exchanges its GitHub OIDC token for a one-hour nuget.org key (the nuget.org policy "godot-xaml GitHub releases" on account `leftos` trusts that file, for `GodotXaml.*`), and pushes them with `--skip-duplicate`.
 
    Watch it with `gh run list --workflow publish-nuget.yml --limit 1`, then `gh run watch <id> --exit-status` through the gate's `--slot none`. When the release event did not start it, run it by hand: `gh workflow run publish-nuget.yml -f tag=v<v>`. That happens when the tag's commit predates the workflow file, since a release event runs the workflow as the tag's commit has it.
-5. Install the agent skill on this machine, its links pinned to the tag just pushed: `pwsh -NoProfile -File tools/install-skill.ps1 -Version <v>`.
+5. Publishing the release also runs `.github/workflows/build-server.yml`, which builds the language server's six NativeAOT zips on their native runners, signs and notarises the two macOS ones, and attaches the six `godot-xaml-ls-<v>-<rid>.zip` files to the release with `--clobber`. It takes a while. Watch it with `gh run list --workflow build-server.yml --limit 1`, then `gh run watch <id> --exit-status` through the gate's `--slot none`; the run must include both Sign and notarise jobs and both smoke-signed jobs. When the release event did not start it, dispatch it by hand once the release exists: `gh workflow run build-server.yml -f tag=v<v>`. That happens when the tag's commit predates the workflow file. A failed run is re-run, or dispatched again; it attaches nothing until every leg has passed.
+6. Install the agent skill on this machine, its links pinned to the tag just pushed: `pwsh -NoProfile -File tools/install-skill.ps1 -Version <v>`.
 
 **Done when** all of these hold:
 
 - `git ls-remote --tags origin v<v>` shows the tag;
-- `gh release view v<v>` lists the three assets and marks the release as latest;
+- `gh release view v<v>` lists the three files plus six `godot-xaml-ls-<v>-<rid>.zip` assets, and marks the release as latest;
+- the build-server run for `v<v>` passed;
 - the publish workflow's run for `v<v>` passed, and `https://api.nuget.org/v3-flatcontainer/godotxaml.core/index.json` lists `<v>`;
 - `~/.claude/skills/godot-xaml` is a junction to `%LOCALAPPDATA%\godot-xaml\versions\<v>\skill`.
 

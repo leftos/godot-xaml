@@ -53,6 +53,10 @@ To run a `.xscn` from the command line, use `godot --path <project> --scene res:
 
 The command-line tool installs best as a local tool pinned to the same version as the addon and `GodotXaml.Core`: run `dotnet new tool-manifest` if the project has no `.config/dotnet-tools.json`, then `dotnet tool install GodotXaml.Cli --version 0.3.0`, and run it as `dotnet godot-xaml`. A global install (`dotnet tool install -g GodotXaml.Cli`) also works.
 
+## Language server
+
+The language server gives an editor diagnostics, formatting, hover and completions for `.xscn` and `.xres` files over the Language Server Protocol on stdin/stdout. It is a NativeAOT executable, so it needs no .NET install. Each GitHub release carries it as six zips, `godot-xaml-ls-<version>-<rid>.zip`, for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64` and `osx-arm64`; each holds the executable alone. [`.github/workflows/build-server.yml`](.github/workflows/build-server.yml) builds and attaches them. The macOS executables are signed and notarised; see [the limitations](docs/guide/limitations.md#tooling) for what that does and does not cover. No editor extension that launches it exists yet; point an editor's LSP client at the executable. See [Getting started](docs/guide/getting-started.md#editor-support).
+
 ## Converting a project
 
 `godot-xaml convert --project <root>` converts every `.tscn` and `.tres` under a project to `.xscn` and `.xres` (`--back` goes the other way), rewrites the `res://` references between them, and edits the scripts and `project.godot` that name a converted file. It is all or nothing: if any file fails, the project is left as it was.
@@ -73,8 +77,9 @@ Otherwise the originals are copied to `.godot-xaml-backup/` before they are remo
 - Exported games load `.xscn` and `.xres` as Godot binary, with no addon code run on a load and no raw XML shipped, once the `godot-xaml` editor plugin is enabled.
 - A converter for existing `.tscn` and `.tres` files, which rewrites the `res://` references between the files it converts.
 - A CLI to convert, check and format.
+- A language server, as a native executable per platform attached to each release.
 
-Still to come in version 1: a language server for Visual Studio and VS Code, and a live preview pane in Visual Studio. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md).
+Still to come in version 1: the Visual Studio and VS Code extensions that use the language server, and a live preview pane in Visual Studio. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## License
 

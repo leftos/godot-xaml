@@ -10,7 +10,7 @@ How godot-xaml version 1 is built and in what order. The settled choices are in 
   Committed per Godot minor version, so the core needs no running Godot. The core computes C# names from Godot's own naming rules (`modules/mono/utils/naming_utils.cpp`), checked in tests against `GodotSharp.dll` and `GodotSharpEditor.dll` (class, property, signal and enum names).
 - **Godot addon** (`addons/godot_xaml/`, C#): the `ResourceFormatLoader` and `ResourceFormatSaver` for `.xscn`/`.xres`, an export plugin that converts them to binary, and the preview server the Visual Studio pane talks to.
 - **CLI** (`godot-xaml`, .NET tool): `convert`, `check`, `format`, for people, agents and CI.
-- **Language server** (.NET): completions, hover, diagnostics and formatting from the core and the metadata; shared by the Visual Studio and VS Code extensions.
+- **Language server** (.NET): completions, hover, diagnostics and formatting from the core and the metadata; shared by the Visual Studio and VS Code extensions. Packaging is done: six NativeAOT executables, one per platform, built and attached to each release by `.github/workflows/build-server.yml`, the macOS ones signed and notarised.
 - **Visual Studio extension**: the language server plus the preview pane.
 - **VS Code extension**: the language server.
 

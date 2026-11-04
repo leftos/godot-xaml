@@ -20,11 +20,18 @@ godot-xaml-ls-<version>-<Rid>.zip beside -Out, holding only the executable (the 
 Directory.Build.props; on Linux and macOS the entry keeps the executable bit). It prints the executable's and the zip's
 sizes.
 
+The zip is unsigned. The release workflow signs and notarises the macOS executable in a job of its own, through
+tools/sign-macos.ps1, and ships that job's zip in place of this one.
+
 .PARAMETER Rid
 The runtime identifier: win-x64, win-arm64, linux-x64, linux-arm64, osx-x64 or osx-arm64.
 
 .PARAMETER Out
 The publish folder, under .tmp/publish/ of the repository; .tmp/publish/<Rid>/ when not given.
+
+.PARAMETER HostRid
+The runtime identifier taken as this machine's when deciding whether to smoke-test, one of the -Rid values; the
+machine's own when not given.
 
 .EXAMPLE
 pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/publish.log --slot heavy --timeout 1500 --
@@ -35,7 +42,9 @@ param(
     [Parameter(Mandatory)]
     [ValidateSet('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64')]
     [string] $Rid,
-    [string] $Out
+    [string] $Out,
+    [ValidateSet('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64')]
+    [string] $HostRid
 )
 
 Set-StrictMode -Version Latest
@@ -94,7 +103,7 @@ if ($extra.Count -gt 0) {
 $exeSize = (Get-Item -LiteralPath $exe).Length
 Write-Host ('publish-server: {0} {1:N1} MB ({2} bytes)' -f $exe, ($exeSize / 1MB), $exeSize)
 
-$hostRid = [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+$hostRid = if ($HostRid) { $HostRid } else { [System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier }
 $smoked = $hostRid -eq $Rid
 if ($smoked) {
     & (Join-Path $PSScriptRoot 'smoke-server.ps1') -Exe $exe

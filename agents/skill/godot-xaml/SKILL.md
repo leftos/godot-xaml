@@ -73,6 +73,10 @@ dotnet godot-xaml format <files or folder>
 
 Use the CLI at the project's godot-xaml version: the project's `addons/godot_xaml/AGENTS.md` names that version and how to install it, as a local tool run with `dotnet godot-xaml`. That file also wins over this skill for the version of every doc link, since a project may pin an older release than the one this skill was installed from.
 
+## Language server
+
+For diagnostics, formatting, hover and completions in an editor, the language server speaks LSP on stdin/stdout. It is a native executable with no .NET install, in the zip `godot-xaml-ls-<version>-<rid>.zip` of each GitHub release, for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64` and `osx-arm64` ([editor support](../../../docs/guide/getting-started.md#editor-support)). The macOS ones are notarised but not stapled, so a first launch checks online. No editor extension launches it yet, and it does not replace `check` and `format` for an agent.
+
 ## Uids
 
 - **Commit `.uid` sidecars.** A scene's own uid is in its sidecar, `main_menu.xscn.uid`. Never delete one, and never invent a uid value.

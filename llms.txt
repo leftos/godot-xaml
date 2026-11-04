@@ -6,7 +6,7 @@ Element tags are Godot class names in C# form, attributes are C# property names,
 
 ## Docs
 
-- [Getting started](https://github.com/leftos/godot-xaml/blob/main/docs/guide/getting-started.md): install the addon and the CLI, and make a first scene.
+- [Getting started](https://github.com/leftos/godot-xaml/blob/main/docs/guide/getting-started.md): install the addon and the CLI, get the language server's native executables (`godot-xaml-ls-<version>-<rid>.zip` on each release), and make a first scene.
 - [Format reference](https://github.com/leftos/godot-xaml/blob/main/docs/format/README.md): elements, attributes, names, resources, instances, signals and the canonical form.
 - [Value text](https://github.com/leftos/godot-xaml/blob/main/docs/format/values.md): every Godot value type's text in an attribute.
 - [Diagnostics](https://github.com/leftos/godot-xaml/blob/main/docs/format/diagnostics.md): every GX, GXC, GXP and GXT code.

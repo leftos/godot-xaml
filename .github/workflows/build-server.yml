@@ -1,0 +1,324 @@
+name: Build the language server
+
+# Builds the language server's six NativeAOT executables, one leg per runtime identifier on that platform's own runner
+# (NativeAOT does not cross-compile across operating systems), signs and notarises the two macOS ones in a job of their
+# own, and attaches the six zips to the GitHub release. It never touches nuget.org: publish-nuget.yml alone pushes
+# packages, and the nuget.org trusted-publishing policy names that file. A pull request builds win-x64 and linux-x64
+# unsigned, or all six unsigned when it changes this workflow, tools/publish-server.ps1 or tools/sign-macos.ps1, and
+# attaches nothing. The build legs hold no secret: the MACOS_* signing secrets live in the macos-signing environment,
+# which only the sign-macos job names, and that job never runs for a pull request. The signed executables are
+# smoke-tested in smoke-signed, a job with no secret, before attach runs. The macos-signing environment admits main and
+# any v* tag, so it relies on v* tags being creatable only by the owner (a tag ruleset).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag whose language server to build and attach, such as v0.1.0
+        required: true
+        type: string
+  pull_request:
+    branches: [main]
+    paths:
+      - src/GodotXaml.LanguageServer/**
+      - src/GodotXaml.Core/**
+      - metadata/**
+      - Directory.Build.props
+      - Directory.Packages.props
+      - tools/publish-server.ps1
+      - tools/smoke-server.ps1
+      - tools/sign-macos.ps1
+      - .github/workflows/build-server.yml
+
+permissions: {}
+
+concurrency:
+  group: build-server-${{ github.event.release.tag_name || inputs.tag || github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  plan:
+    name: Choose the legs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # gh release view reads the dispatch's release
+      pull-requests: read # gh api reads the pull request's changed files
+    outputs:
+      legs: ${{ steps.legs.outputs.legs }}
+    steps:
+      - name: Check the dispatch's tag and choose the legs
+        id: legs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          all='[{"rid":"win-x64","runner":"windows-2025"},{"rid":"win-arm64","runner":"windows-11-arm"},{"rid":"linux-x64","runner":"ubuntu-24.04"},{"rid":"linux-arm64","runner":"ubuntu-24.04-arm"},{"rid":"osx-x64","runner":"macos-15-intel"},{"rid":"osx-arm64","runner":"macos-15"}]'
+          pr='[{"rid":"win-x64","runner":"windows-2025"},{"rid":"linux-x64","runner":"ubuntu-24.04"}]'
+          case "$EVENT" in
+            pull_request)
+              files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
+              if grep -qxE '\.github/workflows/build-server\.yml|tools/publish-server\.ps1|tools/sign-macos\.ps1' <<<"$files"; then
+                echo "The pull request changes the release path, so all six legs build, unsigned."
+                legs="$all"
+              else
+                echo "The pull request builds win-x64 and linux-x64, unsigned."
+                legs="$pr"
+              fi
+              ;;
+            workflow_dispatch)
+              rule='^v[0-9A-Za-z.+-]+$'
+              if ! [[ "$TAG" =~ $rule ]]; then
+                echo '::error::The tag input must match ^v[0-9A-Za-z.+-]+$: a v, then only letters, digits, dots, plus and minus signs.'
+                exit 1
+              fi
+              if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+                echo "::error::$TAG has no GitHub release: create the release first, then dispatch this workflow again with tag $TAG."
+                exit 1
+              fi
+              legs="$all"
+              ;;
+            *)
+              legs="$all"
+              ;;
+          esac
+          echo "legs=$legs" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.rid }}
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read # actions/checkout reads the repository
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs) }}
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      - name: Install the NativeAOT prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev
+
+      - name: Publish and smoke-test
+        shell: pwsh
+        env:
+          RID: ${{ matrix.rid }}
+        run: pwsh -NoProfile -File tools/publish-server.ps1 -Rid $env:RID
+
+      - name: Warn that the macOS zip is unsigned
+        if: startsWith(matrix.rid, 'osx-') && github.event_name == 'pull_request'
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          echo "::warning::The $RID zip is unsigned and not notarised: signing runs only on a release or a dispatch."
+
+      # A macOS zip is unsigned; on a release or dispatch the sign-macos job's release-zip-<rid> ships in its place.
+      - name: Upload the zip
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ startsWith(matrix.rid, 'osx-') && 'unsigned-zip' || 'release-zip' }}-${{ matrix.rid }}
+          path: .tmp/publish/godot-xaml-ls-*-${{ matrix.rid }}.zip
+          if-no-files-found: error
+
+      - name: Upload the unsigned executable for signing
+        if: startsWith(matrix.rid, 'osx-')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unsigned-exe-${{ matrix.rid }}
+          path: .tmp/publish/${{ matrix.rid }}/GodotXaml.LanguageServer
+          if-no-files-found: error
+
+  sign-macos:
+    name: Sign and notarise ${{ matrix.rid }}
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    environment: macos-signing
+    permissions:
+      contents: read # actions/checkout reads the repository
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-x64
+            runner: macos-15-intel
+          - rid: osx-arm64
+            runner: macos-15
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+
+      - name: Download the unsigned executable
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: unsigned-exe-${{ matrix.rid }}
+          path: .tmp/sign/${{ matrix.rid }}
+
+      # An artifact does not keep the executable bit. The release zip's name takes VersionPrefix, as publish-server.ps1's.
+      - name: Restore the executable bit and name the release zip
+        id: paths
+        shell: pwsh
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          $exe = ".tmp/sign/$env:RID/GodotXaml.LanguageServer"
+          chmod 755 $exe
+          if ($LASTEXITCODE -ne 0) { throw "chmod failed with exit code $LASTEXITCODE." }
+          [xml] $props = Get-Content -LiteralPath Directory.Build.props -Raw
+          $version = $props.SelectSingleNode('/Project/PropertyGroup/VersionPrefix').InnerText.Trim()
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "exe=$exe"
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "zip=.tmp/publish/godot-xaml-ls-$version-$env:RID.zip"
+
+      - name: Sign
+        shell: pwsh
+        env:
+          EXE: ${{ steps.paths.outputs.exe }}
+          MACOS_DEVID_APP_CERT_P12_BASE64: ${{ secrets.MACOS_DEVID_APP_CERT_P12_BASE64 }}
+          MACOS_DEVID_CERT_PASSWORD: ${{ secrets.MACOS_DEVID_CERT_PASSWORD }}
+          MACOS_SIGN_APP_IDENTITY: ${{ secrets.MACOS_SIGN_APP_IDENTITY }}
+        run: pwsh -NoProfile -File tools/sign-macos.ps1 -Step Sign -Exe $env:EXE
+
+      - name: Zip and notarise
+        shell: pwsh
+        env:
+          EXE: ${{ steps.paths.outputs.exe }}
+          ZIP: ${{ steps.paths.outputs.zip }}
+          MACOS_NOTARY_API_KEY_P8_BASE64: ${{ secrets.MACOS_NOTARY_API_KEY_P8_BASE64 }}
+          MACOS_NOTARY_API_KEY_ID: ${{ secrets.MACOS_NOTARY_API_KEY_ID }}
+          MACOS_NOTARY_API_ISSUER_ID: ${{ secrets.MACOS_NOTARY_API_ISSUER_ID }}
+        run: pwsh -NoProfile -File tools/sign-macos.ps1 -Step Notarise -Exe $env:EXE -Zip $env:ZIP
+
+      - name: Upload the signed zip
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-zip-${{ matrix.rid }}
+          path: ${{ steps.paths.outputs.zip }}
+          if-no-files-found: error
+
+  # The signed executable runs here, on a runner that never held a secret, not in sign-macos.
+  smoke-signed:
+    name: Smoke-test the signed ${{ matrix.rid }} zip
+    needs: sign-macos
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    permissions:
+      contents: read # actions/checkout reads the repository
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-x64
+            runner: macos-15-intel
+          - rid: osx-arm64
+            runner: macos-15
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+
+      - name: Download the signed zip
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-zip-${{ matrix.rid }}
+          path: .tmp/signed/${{ matrix.rid }}
+
+      - name: Unzip it and check the executable bit
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          dir=".tmp/signed/$RID"
+          zips=("$dir"/godot-xaml-ls-*-"$RID".zip)
+          if [ "${#zips[@]}" -ne 1 ] || [ ! -f "${zips[0]}" ]; then
+            echo "::error::release-zip-$RID holds ${#zips[@]} matching zips where one is right."
+            exit 1
+          fi
+          unzip -q "${zips[0]}" -d "$dir/unzipped"
+          if [ ! -x "$dir/unzipped/GodotXaml.LanguageServer" ]; then
+            echo "::error::The signed $RID zip's GodotXaml.LanguageServer lost its executable bit."
+            exit 1
+          fi
+
+      - name: Smoke-test the signed executable
+        shell: pwsh
+        env:
+          RID: ${{ matrix.rid }}
+        run: pwsh -NoProfile -File tools/smoke-server.ps1 -Exe ".tmp/signed/$env:RID/unzipped/GodotXaml.LanguageServer"
+
+  attach:
+    name: Attach the zips to the release
+    needs: [build, sign-macos, smoke-signed]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # gh release upload adds assets to the release
+    steps:
+      - name: Download the six release zips
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-zip-*
+          path: zips
+          merge-multiple: true
+
+      - name: Check the six zips against the tag
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          failed=0
+          for rid in win-x64 win-arm64 linux-x64 linux-arm64 osx-x64 osx-arm64; do
+            expected="godot-xaml-ls-$version-$rid.zip"
+            if [ -f "zips/$expected" ]; then
+              continue
+            fi
+            found=$(find zips -maxdepth 1 -name "godot-xaml-ls-*-$rid.zip" -printf '%f\n' | head -n 1)
+            if [ -n "$found" ]; then
+              zipversion="${found#godot-xaml-ls-}"
+              zipversion="${zipversion%-"$rid".zip}"
+              echo "::error::The tag $TAG names version $version, but the $rid zip carries version $zipversion ($found): VersionPrefix in Directory.Build.props at the tag must match the tag."
+            else
+              echo "::error::No $expected among the build's zips."
+            fi
+            failed=1
+          done
+          count=$(find zips -maxdepth 1 -type f | wc -l)
+          if [ "$count" -ne 6 ]; then
+            echo "::error::The build left $count files where six zips belong: $(find zips -maxdepth 1 -type f -printf '%f ')"
+            failed=1
+          fi
+          exit "$failed"
+
+      - name: Attach the zips
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" zips/*.zip --repo "$GITHUB_REPOSITORY" --clobber
