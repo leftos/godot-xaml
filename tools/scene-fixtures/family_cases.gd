@@ -600,3 +600,78 @@ static func _custom_value(type: int, layer: int) -> Variant:
 			return true
 		_:
 			return Vector2(layer, 1)
+
+
+## A MeshInstance3D on a BoxMesh and a ColorRect, each with an embedded ShaderMaterial whose shader
+## declares 12 plain uniforms out of name order, a group_uniforms group of two and 12 instance
+## uniforms out of name order, every one set off its default; the canvas shader also declares a
+## hint_screen_texture sampler, which ShaderMaterial does not list. Beside them a
+## ShaderGlobalsOverride of 12 global uniforms, added to the RenderingServer out of name order and
+## removed again once the scene is saved, since the server's globals outlive the case;
+## godot/project.godot defines the same globals, so the compare's load keeps them. Orders:
+## ShaderMaterial::_get_property_list (material.cpp, the shader's order regrouped by group), the
+## instance parameters (visual_instance_3d.cpp, canvas_item.cpp) and ShaderGlobalsOverride
+## (shader_globals_override.cpp), both by name.
+static func shader_parameters(generator) -> String:
+	var root: Node3D = generator._root("Node3D")
+	var mesh_instance: MeshInstance3D = generator._add(root, "MeshInstance3D", "MeshInstance3D")
+	var box := BoxMesh.new()
+	box.resource_scene_unique_id = "BoxMesh_5h4d3"
+	mesh_instance.mesh = box
+	var plain := [7, 11, 0, 3, 10, 1, 9, 2, 8, 5, 4, 6]
+	var instance := [5, 10, 0, 8, 3, 11, 1, 6, 9, 2, 7, 4]
+	var spatial := _shader_material("spatial", plain, "", instance, "sp4t1")
+	mesh_instance.material_override = spatial
+	for index in instance:
+		mesh_instance.set_instance_shader_parameter("i%d" % index, 0.5 + index)
+
+	var rect: ColorRect = generator._add(root, "ColorRect", "ColorRect")
+	plain = [4, 9, 0, 11, 2, 7, 10, 5, 1, 8, 3, 6]
+	instance = [9, 2, 11, 0, 6, 3, 10, 7, 1, 5, 8, 4]
+	var screen := "uniform sampler2D screen : hint_screen_texture;\n"
+	var canvas := _shader_material("canvas_item", plain, screen, instance, "c4nv5")
+	rect.material = canvas
+	for index in instance:
+		rect.set_instance_shader_parameter("i%d" % index, 0.25 + index)
+
+	var globals := [6, 11, 0, 3, 9, 1, 10, 4, 7, 2, 8, 5]
+	for index in globals:
+		RenderingServer.global_shader_parameter_add(
+			"g%d" % index, RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 1.0
+		)
+	var override: Node = generator._add(root, "ShaderGlobalsOverride", "ShaderGlobalsOverride")
+	for index in globals:
+		override.set("params/g%d" % index, 2.0 + 0.5 * index)
+	var error: String = generator._save_scene("shader_parameters", root)
+	for index in globals:
+		RenderingServer.global_shader_parameter_remove("g%d" % index)
+	return error
+
+
+## A ShaderMaterial on an embedded shader of the given mode: the plain uniforms u<n> in the given
+## order, then the extra declaration, a group tint of tz and ta, one more plain uniform late, and
+## the instance uniforms i<n> in the given order; every plain uniform is set off its default. The
+## shader and the material ids end in the given suffix.
+static func _shader_material(
+	mode: String, plain: Array, extra: String, instance: Array, suffix: String
+) -> ShaderMaterial:
+	var code := "shader_type %s;\n" % mode
+	for index in plain:
+		code += "uniform float u%d = 0.0;\n" % index
+	code += extra
+	code += "group_uniforms tint;\nuniform float tz = 0.0;\nuniform float ta = 0.0;\n"
+	code += "group_uniforms;\nuniform float late = 0.0;\n"
+	for index in instance:
+		code += "instance uniform float i%d = 0.0;\n" % index
+	var shader := Shader.new()
+	shader.resource_scene_unique_id = "Shader_" + suffix
+	shader.code = code
+	var material := ShaderMaterial.new()
+	material.resource_scene_unique_id = "ShaderMaterial_" + suffix
+	material.shader = shader
+	for index in plain:
+		material.set_shader_parameter("u%d" % index, 1.5 + index)
+	material.set_shader_parameter("tz", 3.5)
+	material.set_shader_parameter("ta", 4.5)
+	material.set_shader_parameter("late", 5.5)
+	return material

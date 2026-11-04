@@ -38,6 +38,7 @@ public sealed class SceneRoundTripTests
             "placeholder_order",
             "property_order",
             "script_node",
+            "shader_parameters",
             "skeleton_bones",
             "skeleton_modification_chains",
             "sub_resources",

@@ -20,3 +20,55 @@ project/assembly_name="GodotXaml.Addon"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot_xaml/plugin.cfg")
+
+[shader_globals]
+
+; The globals the ShaderGlobalsOverride of tests/fixtures/scenes/shader_parameters.tscn overrides.
+g0={
+"type": "float",
+"value": 1.0
+}
+g1={
+"type": "float",
+"value": 1.0
+}
+g2={
+"type": "float",
+"value": 1.0
+}
+g3={
+"type": "float",
+"value": 1.0
+}
+g4={
+"type": "float",
+"value": 1.0
+}
+g5={
+"type": "float",
+"value": 1.0
+}
+g6={
+"type": "float",
+"value": 1.0
+}
+g7={
+"type": "float",
+"value": 1.0
+}
+g8={
+"type": "float",
+"value": 1.0
+}
+g9={
+"type": "float",
+"value": 1.0
+}
+g10={
+"type": "float",
+"value": 1.0
+}
+g11={
+"type": "float",
+"value": 1.0
+}

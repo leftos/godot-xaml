@@ -1,0 +1,154 @@
+[gd_scene format=3]
+
+[sub_resource type="Shader" id="Shader_sp4t1"]
+code = "shader_type spatial;
+uniform float u7 = 0.0;
+uniform float u11 = 0.0;
+uniform float u0 = 0.0;
+uniform float u3 = 0.0;
+uniform float u10 = 0.0;
+uniform float u1 = 0.0;
+uniform float u9 = 0.0;
+uniform float u2 = 0.0;
+uniform float u8 = 0.0;
+uniform float u5 = 0.0;
+uniform float u4 = 0.0;
+uniform float u6 = 0.0;
+group_uniforms tint;
+uniform float tz = 0.0;
+uniform float ta = 0.0;
+group_uniforms;
+uniform float late = 0.0;
+instance uniform float i5 = 0.0;
+instance uniform float i10 = 0.0;
+instance uniform float i0 = 0.0;
+instance uniform float i8 = 0.0;
+instance uniform float i3 = 0.0;
+instance uniform float i11 = 0.0;
+instance uniform float i1 = 0.0;
+instance uniform float i6 = 0.0;
+instance uniform float i9 = 0.0;
+instance uniform float i2 = 0.0;
+instance uniform float i7 = 0.0;
+instance uniform float i4 = 0.0;
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sp4t1"]
+render_priority = 0
+shader = SubResource("Shader_sp4t1")
+shader_parameter/u7 = 8.5
+shader_parameter/u11 = 12.5
+shader_parameter/u0 = 1.5
+shader_parameter/u3 = 4.5
+shader_parameter/u10 = 11.5
+shader_parameter/u1 = 2.5
+shader_parameter/u9 = 10.5
+shader_parameter/u2 = 3.5
+shader_parameter/u8 = 9.5
+shader_parameter/u5 = 6.5
+shader_parameter/u4 = 5.5
+shader_parameter/u6 = 7.5
+shader_parameter/late = 5.5
+shader_parameter/tz = 3.5
+shader_parameter/ta = 4.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_5h4d3"]
+
+[sub_resource type="Shader" id="Shader_c4nv5"]
+code = "shader_type canvas_item;
+uniform float u4 = 0.0;
+uniform float u9 = 0.0;
+uniform float u0 = 0.0;
+uniform float u11 = 0.0;
+uniform float u2 = 0.0;
+uniform float u7 = 0.0;
+uniform float u10 = 0.0;
+uniform float u5 = 0.0;
+uniform float u1 = 0.0;
+uniform float u8 = 0.0;
+uniform float u3 = 0.0;
+uniform float u6 = 0.0;
+uniform sampler2D screen : hint_screen_texture;
+group_uniforms tint;
+uniform float tz = 0.0;
+uniform float ta = 0.0;
+group_uniforms;
+uniform float late = 0.0;
+instance uniform float i9 = 0.0;
+instance uniform float i2 = 0.0;
+instance uniform float i11 = 0.0;
+instance uniform float i0 = 0.0;
+instance uniform float i6 = 0.0;
+instance uniform float i3 = 0.0;
+instance uniform float i10 = 0.0;
+instance uniform float i7 = 0.0;
+instance uniform float i1 = 0.0;
+instance uniform float i5 = 0.0;
+instance uniform float i8 = 0.0;
+instance uniform float i4 = 0.0;
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_c4nv5"]
+shader = SubResource("Shader_c4nv5")
+shader_parameter/u4 = 5.5
+shader_parameter/u9 = 10.5
+shader_parameter/u0 = 1.5
+shader_parameter/u11 = 12.5
+shader_parameter/u2 = 3.5
+shader_parameter/u7 = 8.5
+shader_parameter/u10 = 11.5
+shader_parameter/u5 = 6.5
+shader_parameter/u1 = 2.5
+shader_parameter/u8 = 9.5
+shader_parameter/u3 = 4.5
+shader_parameter/u6 = 7.5
+shader_parameter/late = 5.5
+shader_parameter/tz = 3.5
+shader_parameter/ta = 4.5
+
+[node name="Root" type="Node3D" unique_id=628645524]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1428055827]
+material_override = SubResource("ShaderMaterial_sp4t1")
+instance_shader_parameters/i0 = 0.5
+instance_shader_parameters/i1 = 1.5
+instance_shader_parameters/i10 = 10.5
+instance_shader_parameters/i11 = 11.5
+instance_shader_parameters/i2 = 2.5
+instance_shader_parameters/i3 = 3.5
+instance_shader_parameters/i4 = 4.5
+instance_shader_parameters/i5 = 5.5
+instance_shader_parameters/i6 = 6.5
+instance_shader_parameters/i7 = 7.5
+instance_shader_parameters/i8 = 8.5
+instance_shader_parameters/i9 = 9.5
+mesh = SubResource("BoxMesh_5h4d3")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=992547931]
+material = SubResource("ShaderMaterial_c4nv5")
+instance_shader_parameters/i0 = 0.25
+instance_shader_parameters/i1 = 1.25
+instance_shader_parameters/i10 = 10.25
+instance_shader_parameters/i11 = 11.25
+instance_shader_parameters/i2 = 2.25
+instance_shader_parameters/i3 = 3.25
+instance_shader_parameters/i4 = 4.25
+instance_shader_parameters/i5 = 5.25
+instance_shader_parameters/i6 = 6.25
+instance_shader_parameters/i7 = 7.25
+instance_shader_parameters/i8 = 8.25
+instance_shader_parameters/i9 = 9.25
+
+[node name="ShaderGlobalsOverride" type="ShaderGlobalsOverride" parent="." unique_id=1671860232]
+params/g0 = 2.0
+params/g1 = 2.5
+params/g10 = 7.0
+params/g11 = 7.5
+params/g2 = 3.0
+params/g3 = 3.5
+params/g4 = 4.0
+params/g5 = 4.5
+params/g6 = 5.0
+params/g7 = 5.5
+params/g8 = 6.0
+params/g9 = 6.5

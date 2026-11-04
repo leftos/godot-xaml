@@ -81,6 +81,7 @@ func _run() -> String:
 		FamilyCases.visual_shader_modes.bind(self),
 		FamilyCases.audio_resources.bind(self),
 		FamilyCases.theme_font_resources.bind(self),
+		FamilyCases.shader_parameters.bind(self),
 	]
 	for step in steps:
 		var error: String = step.call()
