@@ -71,7 +71,8 @@ function Write-Result {
     [Console]::Out.WriteLine($Line)
 }
 
-# Exports one preset to .tmp/export/<id>.pck; returns the pack path, the godot-xaml error lines and the exit status.
+# Exports one preset to .tmp/export/<id>.pck; returns the pack path, the godot-xaml error lines, the Fatal error line the
+# call printed if any, and the exit status.
 function Invoke-Export {
     param([Parameter(Mandatory)][string] $Id, [Parameter(Mandatory)][string] $Preset)
     $pack = Join-Path $exportDir "$Id.pck"
@@ -81,27 +82,30 @@ function Invoke-Export {
     $run = Invoke-GodotStreaming -Godot $godot -Name "export $Id" -Arguments @(
         '--headless', '--path', $project, '--export-pack', $Preset, $pack)
     $errors = @($run.Lines | Where-Object { $_.Contains($pluginError) })
-    return [pscustomobject]@{ Id = $Id; Pack = $pack; Errors = $errors; Exit = $run.Exit }
+    return [pscustomobject]@{ Id = $Id; Pack = $pack; Errors = $errors; Fatal = $run.Fatal; Exit = $run.Exit }
 }
 
-# An export expected to succeed: Godot exits 0, prints no godot-xaml error and writes the pack.
+# An export expected to succeed: no Fatal error line, Godot exits 0, prints no godot-xaml error and writes the pack.
 function Test-CleanExport {
     param([Parameter(Mandatory)] $Export)
     $id = "EXPORT $($Export.Id)"
-    $line = if ($Export.Exit -ne 0) { "$id FAIL godot exited $($Export.Exit)" }
+    $line = if ($Export.Fatal) { "$id FAIL $($Export.Fatal)" }
+    elseif ($Export.Exit -ne 0) { "$id FAIL godot exited $($Export.Exit)" }
     elseif ($Export.Errors.Count -gt 0) { "$id FAIL $($Export.Errors[0])" }
     elseif (-not (Test-Path -LiteralPath $Export.Pack)) { "$id FAIL no pack at $($Export.Pack)" }
     else { "$id PASS" }
     Write-Result $id $line
 }
 
-# An export expected to report errors: every needle is in some godot-xaml error, and no error holds a forbidden text.
+# An export expected to report errors: every needle is in some godot-xaml error, and no error holds a forbidden text. A
+# Fatal error line fails it outright, whatever its errors say.
 function Test-FailedExport {
     param([Parameter(Mandatory)] $Export, [Parameter(Mandatory)][string[]] $Needles, [string[]] $Forbidden = @())
     $id = "EXPORT $($Export.Id)"
     $missing = @($Needles | Where-Object { $needle = $_; -not ($Export.Errors | Where-Object { $_.Contains($needle) }) })
     $unwanted = @($Export.Errors | Where-Object { $errorLine = $_; $Forbidden | Where-Object { $errorLine.Contains($_) } })
-    $line = if ($missing.Count -gt 0) { "$id FAIL no godot-xaml error with: $($missing[0])" }
+    $line = if ($Export.Fatal) { "$id FAIL $($Export.Fatal)" }
+    elseif ($missing.Count -gt 0) { "$id FAIL no godot-xaml error with: $($missing[0])" }
     elseif ($unwanted.Count -gt 0) { "$id FAIL unexpected error: $($unwanted[0])" }
     else { "$id PASS" }
     Write-Result $id $line
@@ -119,7 +123,9 @@ function Test-Probe {
     $arguments = @('--headless', '--path', $probe, '--script', 'res://probe.gd', '--', $Export.Pack, $Mode, $sceneUid)
     $run = Invoke-GodotStreaming -Godot $godot -Name "probe $($Export.Id)" -Arguments $arguments
     foreach ($id in $Ids) {
-        $line = $run.Lines | Where-Object { $_ -match "^PROBE $id (PASS|FAIL)" } | Select-Object -First 1
+        # A probe that crashed printed no verdict worth reading, so its Fatal error line fails each id.
+        $line = if ($run.Fatal) { "PROBE $id FAIL $($run.Fatal)" }
+        else { $run.Lines | Where-Object { $_ -match "^PROBE $id (PASS|FAIL)" } | Select-Object -First 1 }
         Write-Result "PROBE $id" $(if ($line) { $line } else { "PROBE $id FAIL the probe printed no line for it" })
     }
 }

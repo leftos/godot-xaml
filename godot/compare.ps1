@@ -19,8 +19,8 @@ Godot's lines are printed as Godot writes them, so the gate's stall watchdog see
 command passes --stall 600 because a run starved by outside load can go two minutes without enough CPU to count as
 progress.
 
-Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no fixture failed,
-every expected fixture passed and the scene printed DONE with all of them.
+Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no fixture failed, every
+expected fixture passed, the scene printed DONE with all of them and Godot printed no Fatal error line.
 
 .EXAMPLE
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-compare.log --slot light --timeout 1500 `
@@ -100,6 +100,6 @@ $compareExit = $run.Exit
 $passes = @($lines | Where-Object { $_ -match '^COMPARE \S+ PASS$' }).Count
 $fails = @($lines | Where-Object { $_ -match '^COMPARE \S+ FAIL' }).Count
 $done = @($lines | Where-Object { $_ -eq "DONE $expectedFixtures/$expectedFixtures" }).Count
-$allPassed = $compareExit -eq 0 -and $fails -eq 0 -and $passes -eq $expectedFixtures -and $done -eq 1
+$allPassed = $compareExit -eq 0 -and -not $run.Fatal -and $fails -eq 0 -and $passes -eq $expectedFixtures -and $done -eq 1
 [Console]::Out.WriteLine("COMPARE passed $passes, failed $fails, expected $expectedFixtures")
 exit $(if ($allPassed) { 0 } else { 1 })

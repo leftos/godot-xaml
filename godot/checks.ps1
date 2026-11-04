@@ -12,8 +12,8 @@ The scene's lines are printed as Godot writes them, so the gate's stall watchdog
 documented command passes --stall 600 because a run starved by outside load can go two minutes without enough CPU to
 count as progress.
 
-Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no check failed,
-every expected check passed and the scene printed DONE with all of them.
+Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no check failed, every
+expected check passed, the scene printed DONE with all of them and Godot printed no Fatal error line.
 
 .EXAMPLE
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-checks.log --slot light --timeout 1500 --
@@ -61,6 +61,6 @@ $checksExit = $run.Exit
 $passes = @($lines | Where-Object { $_ -match '^CHECK \S+ PASS$' }).Count
 $fails = @($lines | Where-Object { $_ -match '^CHECK \S+ FAIL' }).Count
 $done = @($lines | Where-Object { $_ -eq "DONE $expectedChecks/$expectedChecks" }).Count
-$allPassed = $checksExit -eq 0 -and $fails -eq 0 -and $passes -eq $expectedChecks -and $done -eq 1
+$allPassed = $checksExit -eq 0 -and -not $run.Fatal -and $fails -eq 0 -and $passes -eq $expectedChecks -and $done -eq 1
 [Console]::Out.WriteLine("CHECKS passed $passes, failed $fails, expected $expectedChecks")
 exit $(if ($allPassed) { 0 } else { 1 })

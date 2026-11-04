@@ -346,6 +346,12 @@ Godot fact (4.7.2): GodotSharp registers each of these in `DisposablesTracker.Ot
 
 Rejected: a shutdown hook that forces a GC and waits for the finalizers. It would add a full GC to every game's exit. Godot's generated dispatch leaves one `StringName` per C# loader per engine `_HandlesType` call, which is Godot's own code and outside the addon's reach; the check `LoadLeavesNothingToTheFinalizer` therefore calls each loader's `_HandlesType` directly.
 
+## The editor checks fail on engine errors, not warnings
+
+`godot/editor-checks.ps1` fails the run on any line of an editor's stderr starting `ERROR: `, `SCRIPT ERROR: ` or `SHADER ERROR: ` (case-sensitive), even when every check passed and the editor exited 0, and prints each as `ENGINE-ERROR editor-<mode> <kind> <line>`, `<kind>` one of `ERROR`, `SCRIPT-ERROR`, `SHADER-ERROR`. Warnings (`WARNING: `) stay informational and never fail the run.
+
+Rejected: failing on `ERROR: ` alone. A script or shader error is as much a defect in the addon's editor behaviour as an engine error, and Godot prints it under its own prefix.
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.
