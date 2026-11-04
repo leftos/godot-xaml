@@ -9,3 +9,6 @@ VariantUtils.generic.cs
 E12Named.gd
 # This PC's gate configuration, outside the repo.
 remote.json
+# Godot source files the preview server task row names.
+CSharpInstanceBridge.cs
+HotReloadAssemblyWatcher.cs

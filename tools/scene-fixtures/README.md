@@ -76,4 +76,13 @@ Regenerate only when a case is added or changed. A changed case commits the whol
   The canvas shader adds a `hint_screen_texture` sampler, which Godot does not list. The generator adds the globals to the RenderingServer and removes them again, and `godot/project.godot` defines them for the compare.
 - `tile_map_grid_map.tscn`: a TileMap of 12 layers (named, modulated, y-sorted with an origin and a z index, some disabled or without navigation), a GridMap on a MeshLibrary of 12 items (each with its own BoxMesh and every key off its default) with one cell per item and its meshes baked, and a MeshInstance3D on an ArrayMesh of 12 blend shapes named out of name order and 12 surfaces, each shape's value set and each surface with an override material, so the way back must keep the layer and item keys in Godot's order, `blend_shapes/` in the mesh's order and every family in numeric order past ten.
 
+## What a dynamic-family case needs from Godot
+
+A row of the dynamic-family table is covered by a generated fixture unless Godot never stores its names from a headless `--script` run (editor-only usage, or listed only under `Engine::is_editor_hint()`): those rows are in `DynamicFamilyCoverageTests.Exceptions`, each with its reason. Whether the node is in the tree makes no difference to what is stored.
+
+- An audio player lists `parameters/` only once a stream is assigned, so the stream is set first, and it stores a parameter only while its value differs from the parameter's default (`AudioStreamPlayerInternal`). `AudioStreamInteractive`'s one parameter, `switch_to_clip`, has editor usage alone and is never stored; `AudioStreamOggVorbis` and `AudioStreamMP3` store `looping`, whose default is nil, so any bool set on it is saved. Read an audio class's `get_parameter_list` usage before choosing it for a case.
+- Shader uniforms are listed from the `Shader` resource's code, not from a compiled backend, so the dummy renderer lists and stores `shader_parameter/` and `instance_shader_parameters/`. The shader is assigned before `set_instance_shader_parameter`, and its payload is declared `instance uniform`.
+- A ShaderGlobalsOverride lists `params/<name>` only for a global added with `RenderingServer.global_shader_parameter_add`, and the global stays in the server for the rest of the process.
+- `GridMap.make_baked_meshes()` gives its ArrayMesh a random sub-resource id, which the generator pins.
+
 `uid=` attributes are absent from every fixture: the saver asks the editor's file system for uids, which a `--script` run does not start.
