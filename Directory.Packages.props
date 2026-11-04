@@ -7,6 +7,8 @@
     <PackageVersion Include="GodotSharp" Version="4.7.2" />
     <PackageVersion Include="GodotSharpEditor" Version="4.7.2" />
     <PackageVersion Include="GuiLabs.Language.Xml" Version="1.2.120" />
+    <!-- The version StreamJsonRpc already brings in; referenced directly for its source generator (the server's RPC target shape). -->
+    <PackageVersion Include="PolyType" Version="1.4.1" />
     <PackageVersion Include="StreamJsonRpc" Version="2.26.150" />
     <PackageVersion Include="System.CommandLine" Version="2.0.14" />
     <PackageVersion Include="xunit.v3" Version="4.0.1" />

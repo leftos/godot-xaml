@@ -22,7 +22,10 @@ internal sealed class ServerHarness : IAsyncDisposable
     /// <summary>Starts a server and a client.</summary>
     /// <param name="seams">The server's metadata loader and parser; the defaults when null.</param>
     /// <param name="inlineDelays">Whether a delay's cancellation runs the server's continuation inline, inside <c>Cancel()</c>.</param>
-    public ServerHarness(ServerSeams? seams = null, bool inlineDelays = false)
+    /// <param name="stderr">
+    /// Where the server's stderr and both ends' transport warnings and errors go; nowhere when null.
+    /// </param>
+    public ServerHarness(ServerSeams? seams = null, bool inlineDelays = false, TextWriter? stderr = null)
     {
         Scheduler = new ManualScheduler(inlineDelays);
         Pipe toServer = new();
@@ -30,10 +33,14 @@ internal sealed class ServerHarness : IAsyncDisposable
         Stream serverInput = toServer.Reader.AsStream();
         Stream serverOutput = toClient.Writer.AsStream();
         ServerSeams used = seams ?? ServerSeams.Default;
-        ServerRun = Task.Run(() => LanguageServerHost.Run(serverInput, serverOutput, Scheduler, TextWriter.Null, used));
+        TextWriter log = stderr is null ? TextWriter.Null : TextWriter.Synchronized(stderr);
+        ServerRun = Task.Run(() => LanguageServerHost.Run(serverInput, serverOutput, Scheduler, log, used));
         client = new JsonRpc(
             new HeaderDelimitedMessageHandler(toServer.Writer.AsStream(), toClient.Reader.AsStream(), LanguageServerHost.CreateFormatter())
         );
+        client.TraceSource = new System.Diagnostics.TraceSource("client.jsonrpc", System.Diagnostics.SourceLevels.Warning);
+        client.TraceSource.Listeners.Clear();
+        client.TraceSource.Listeners.Add(new System.Diagnostics.TextWriterTraceListener(log));
         client.AddLocalRpcTarget(target, new JsonRpcTargetOptions { UseSingleObjectParameterDeserialization = true });
         client.StartListening();
         drained = CompleteWhenDisconnectedAsync();
@@ -63,6 +70,13 @@ internal sealed class ServerHarness : IAsyncDisposable
     /// <summary>Sends a request whose parameters are one object, as an LSP client sends them.</summary>
     public Task<JsonElement> RequestObjectAsync(string method, object parameters) =>
         Guard(client.InvokeWithParameterObjectAsync<JsonElement>(method, parameters, hang.Token), method);
+
+    /// <summary>
+    /// Sends a request whose parameters are one object, and returns at once; cancelling the token after the send makes the
+    /// client send <c>$/cancelRequest</c>.
+    /// </summary>
+    public Task<JsonElement> RequestObjectAsync(string method, object parameters, CancellationToken cancellation) =>
+        client.InvokeWithParameterObjectAsync<JsonElement>(method, parameters, cancellation);
 
     public async Task<InitializeResult> InitializeAsync(InitializeParams? parameters = null)
     {

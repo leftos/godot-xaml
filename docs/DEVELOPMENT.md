@@ -125,6 +125,24 @@ godot --headless --path tools/metadata-dump --script res://check.gd -- --file <a
 
 A Godot bump also regenerates `src/GodotXaml.Core/Names/GodotCaseTables.g.cs` with `tools/case-tables/generate.ps1` ([`../tools/case-tables/README.md`](../tools/case-tables/README.md)).
 
+## Language server executables
+
+The language server ships as a NativeAOT executable per runtime identifier: win-x64, win-arm64, linux-x64, linux-arm64, osx-x64 and osx-arm64. NativeAOT does not cross-compile across operating systems, so a Windows machine publishes only the `win-` ones. It needs the platform's native toolchain: the Visual Studio C++ tools on Windows, and clang and zlib on Linux.
+
+```
+pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/publish.log --slot heavy --timeout 1500 -- pwsh -NoProfile -File tools/publish-server.ps1 -Rid win-x64
+```
+
+`tools/publish-server.ps1 -Rid <rid> [-Out <folder>]` publishes into `.tmp/publish/<rid>/` and fails on any publish warning. `-Out` must be a folder under `.tmp/publish/`; the script refuses any other. When the identifier is this machine's, it runs the smoke test on the executable first. It then writes `godot-xaml-ls-<version>-<rid>.zip` beside the publish folder, holding the executable alone, with the version from `VersionPrefix` in `Directory.Build.props`.
+
+For another identifier it says the zip was not smoke-tested.
+
+`tools/smoke-server.ps1 -Exe <path> [-TimeoutSeconds <n>]` launches an executable and drives one session over stdio: `initialize` (name, version, capabilities), `initialized` and the server's "started" log, a `$/cancelRequest`, a `didOpen` whose `publishDiagnostics` must carry a GX code under camelCase keys, a hover on a class tag with its description, a completion with items, then `shutdown` and `exit`. The process must exit 0 and write nothing to stdout but framed messages.
+
+Its stderr must hold no exception text and no `godot-xaml.jsonrpc` warning or error. Every read is bounded, and the process is killed on a failure.
+
+A change that adds a message type adds it to `Protocol/LspJsonContext.cs`. A change that adds an RPC method declares it on `ILanguageServerTarget`, whose generated shape is what registers it.
+
 ## Releases
 
 The release procedure is the `prepare-release` skill, [`../.claude/skills/prepare-release/SKILL.md`](../.claude/skills/prepare-release/SKILL.md), invoked as `/prepare-release`. Its pack step runs `tools/pack-release.ps1 -Version <v>`, which builds the two NuGet packages and the addon zip under `.tmp/release/<v>/`; without `-Local` it refuses a version whose tag is on `origin` or which nuget.org lists, and with `-Local` it packs `<v>-local.<UTC stamp>` for trying an install on this machine, its zip's `plugin.cfg` naming that version, and asks neither. `-CheckOnly` runs the version-home and published checks and packs nothing.

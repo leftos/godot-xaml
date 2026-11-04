@@ -7,6 +7,7 @@ using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
 using GodotXaml.LanguageServer.Protocol;
 using Microsoft.VisualStudio.Threading;
+using PolyType;
 using StreamJsonRpc;
 
 namespace GodotXaml.LanguageServer;
@@ -60,7 +61,11 @@ internal static class LanguageServerHost
 
         // LSP's notifications are ordered: a change must not overtake the open or the change before it.
         rpc.SynchronizationContext = new NonConcurrentSynchronizationContext(sticky: false);
-        rpc.AddLocalRpcTarget(server, new JsonRpcTargetOptions { UseSingleObjectParameterDeserialization = true });
+        rpc.AddLocalRpcTarget(
+            RpcTargetMetadata.FromShape<ILanguageServerTarget>(),
+            server,
+            new JsonRpcTargetOptions { UseSingleObjectParameterDeserialization = true }
+        );
         rpc.StartListening();
         await Task.WhenAny(rpc.Completion, server.Exited);
 
@@ -71,6 +76,18 @@ internal static class LanguageServerHost
 
     /// <summary>The formatter both ends use: the source-generated LSP types, camelCase, no explicit nulls.</summary>
     /// <returns>A new formatter.</returns>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026",
+        Justification = "The resolver is LspJsonContext, as StreamJsonRpc's NativeAOT guide documents; it holds every type the server "
+            + "reads or writes: the LSP messages, CommonErrorData and RequestId. A type missing from it fails at run time, not here."
+    )]
+    [UnconditionalSuppressMessage(
+        "AOT",
+        "IL3050",
+        Justification = "The resolver is LspJsonContext, as StreamJsonRpc's NativeAOT guide documents; it holds every type the server "
+            + "reads or writes: the LSP messages, CommonErrorData and RequestId. A type missing from it fails at run time, not here."
+    )]
     public static SystemTextJsonFormatter CreateFormatter() =>
         new()
         {
@@ -158,6 +175,14 @@ internal sealed class ClientChannel(JsonRpc rpc, TextWriter stderr) : IClientMes
     /// <inheritdoc/>
     public Task PublishAsync(PublishDiagnosticsParams parameters) => SendAsync("textDocument/publishDiagnostics", parameters);
 
+    // NamedArgs would write the C# property names as the keys; SystemTextJsonFormatter writes a plain object whole,
+    // through the source-generated LspJsonContext that holds every type sent here, so nothing is reflected over.
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026",
+        Justification = "SystemTextJsonFormatter writes a parameter object that is not NamedArgs whole, through LspJsonContext, "
+            + "which holds every type sent here; nothing reflects over its members."
+    )]
     private async Task SendAsync(string method, object parameters)
     {
         try
@@ -176,6 +201,80 @@ internal sealed class ClientChannel(JsonRpc rpc, TextWriter stderr) : IClientMes
     }
 }
 
+/// <summary>
+/// The RPC methods the client calls. Its source-generated shape registers them with StreamJsonRpc
+/// (<see cref="RpcTargetMetadata.FromShape{T}()"/>), so a NativeAOT build dispatches without reflecting over the target.
+/// </summary>
+[GenerateShape(IncludeMethods = MethodShapeFlags.PublicInstance)]
+internal partial interface ILanguageServerTarget
+{
+    /// <summary>Answers <c>initialize</c> with the capabilities.</summary>
+    /// <param name="parameters">The client's parameters, unread.</param>
+    /// <returns>The capabilities and the server's name and version.</returns>
+    [JsonRpcMethod("initialize")]
+    InitializeResult Initialize(InitializeParams parameters);
+
+    /// <summary>Logs that the server started.</summary>
+    /// <returns>The log's send.</returns>
+    [JsonRpcMethod("initialized")]
+    Task InitializedAsync();
+
+    /// <summary>Stops all work; after it, every request is refused and only <c>exit</c> is heard.</summary>
+    /// <returns>The shutdown.</returns>
+    [JsonRpcMethod("shutdown")]
+    Task ShutdownAsync();
+
+    /// <summary>Ends the run, with 0 when <c>shutdown</c> came first and 1 when it did not.</summary>
+    [JsonRpcMethod("exit")]
+    void Exit();
+
+    /// <summary>Accepts <c>$/setTrace</c>; the server keeps no trace level.</summary>
+    /// <param name="parameters">The level, unread.</param>
+    [JsonRpcMethod("$/setTrace")]
+    void SetTrace(JsonElement parameters);
+
+    /// <summary>Accepts <c>workspace/didChangeConfiguration</c>; the server reads no settings yet.</summary>
+    /// <param name="parameters">The settings, unread.</param>
+    [JsonRpcMethod("workspace/didChangeConfiguration")]
+    void DidChangeConfiguration(JsonElement parameters);
+
+    /// <summary>Opens a buffer and publishes its diagnostics at once.</summary>
+    /// <param name="parameters">The document and its text.</param>
+    [JsonRpcMethod("textDocument/didOpen")]
+    void DidOpen(DidOpenTextDocumentParams parameters);
+
+    /// <summary>Replaces a buffer's text with the last change's; the diagnostics follow after the debounce.</summary>
+    /// <param name="parameters">The document, its version and the changes.</param>
+    [JsonRpcMethod("textDocument/didChange")]
+    void DidChange(DidChangeTextDocumentParams parameters);
+
+    /// <summary>Drops a buffer and clears its diagnostics.</summary>
+    /// <param name="parameters">The document.</param>
+    [JsonRpcMethod("textDocument/didClose")]
+    void DidClose(DidCloseTextDocumentParams parameters);
+
+    /// <summary>Formats a document: one edit replacing its whole text, or none.</summary>
+    /// <param name="parameters">The document and the client's formatting options, unread.</param>
+    /// <param name="cancellation">The request's cancellation.</param>
+    /// <returns>The edits, an empty list when there is nothing to do.</returns>
+    [JsonRpcMethod("textDocument/formatting")]
+    Task<TextEdit[]> Formatting(DocumentFormattingParams parameters, CancellationToken cancellation);
+
+    /// <summary>Describes the name or value at a position: a class, a property, a signal, an enum value, a key or an <c>x:</c> attribute.</summary>
+    /// <param name="parameters">The document and the position.</param>
+    /// <param name="cancellation">The request's cancellation.</param>
+    /// <returns>The hover, or null when there is nothing to describe there.</returns>
+    [JsonRpcMethod("textDocument/hover")]
+    Task<Hover?> HoverAsync(HoverParams parameters, CancellationToken cancellation);
+
+    /// <summary>Completes the element or attribute name at a position.</summary>
+    /// <param name="parameters">The document and the cursor.</param>
+    /// <param name="cancellation">The request's cancellation.</param>
+    /// <returns>The completions, or null where the server completes nothing.</returns>
+    [JsonRpcMethod("textDocument/completion")]
+    Task<CompletionList?> CompletionAsync(CompletionParams parameters, CancellationToken cancellation);
+}
+
 /// <summary>The RPC methods: the lifecycle and its order rules, then the document notifications and requests.</summary>
 internal sealed class LanguageServerTarget(
     IClientMessages client,
@@ -183,7 +282,7 @@ internal sealed class LanguageServerTarget(
     FormattingHandler formatting,
     HoverHandler hover,
     CompletionHandler completion
-)
+) : ILanguageServerTarget
 {
     // The characters that open a tag, a prefix's name, a property element's name, an attribute, a value and a flags part.
     private static readonly string[] CompletionTriggers = ["<", ":", ".", " ", "\"", ","];
@@ -209,10 +308,7 @@ internal sealed class LanguageServerTarget(
         }
     }
 
-    /// <summary>Answers <c>initialize</c> with the capabilities.</summary>
-    /// <param name="parameters">The client's parameters, unread.</param>
-    /// <returns>The capabilities and the server's name and version.</returns>
-    [JsonRpcMethod("initialize")]
+    /// <inheritdoc/>
     public InitializeResult Initialize(InitializeParams parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
@@ -236,15 +332,11 @@ internal sealed class LanguageServerTarget(
         );
     }
 
-    /// <summary>Logs that the server started.</summary>
-    /// <returns>The log's send.</returns>
-    [JsonRpcMethod("initialized")]
+    /// <inheritdoc/>
     public Task InitializedAsync() =>
         client.LogAsync(MessageType.Info, $"{LanguageServerHost.ServerName} language server {LanguageServerHost.Version} started");
 
-    /// <summary>Stops all work; after it, every request is refused and only <c>exit</c> is heard.</summary>
-    /// <returns>The shutdown.</returns>
-    [JsonRpcMethod("shutdown")]
+    /// <inheritdoc/>
     public async Task ShutdownAsync()
     {
         lock (gate)
@@ -256,8 +348,7 @@ internal sealed class LanguageServerTarget(
         await publisher.StopAsync();
     }
 
-    /// <summary>Ends the run, with 0 when <c>shutdown</c> came first and 1 when it did not.</summary>
-    [JsonRpcMethod("exit")]
+    /// <inheritdoc/>
     public void Exit()
     {
         lock (gate)
@@ -267,21 +358,13 @@ internal sealed class LanguageServerTarget(
         exited.TrySetResult();
     }
 
-    /// <summary>Accepts <c>$/setTrace</c>; the server keeps no trace level.</summary>
-    /// <param name="parameters">The level, unread.</param>
-    [JsonRpcMethod("$/setTrace")]
-    [SuppressMessage("Performance", "CA1822", Justification = "An RPC method, called on the target instance.")]
+    /// <inheritdoc/>
     public void SetTrace(JsonElement parameters) { }
 
-    /// <summary>Accepts <c>workspace/didChangeConfiguration</c>; the server reads no settings yet.</summary>
-    /// <param name="parameters">The settings, unread.</param>
-    [JsonRpcMethod("workspace/didChangeConfiguration")]
-    [SuppressMessage("Performance", "CA1822", Justification = "An RPC method, called on the target instance.")]
+    /// <inheritdoc/>
     public void DidChangeConfiguration(JsonElement parameters) { }
 
-    /// <summary>Opens a buffer and publishes its diagnostics at once.</summary>
-    /// <param name="parameters">The document and its text.</param>
-    [JsonRpcMethod("textDocument/didOpen")]
+    /// <inheritdoc/>
     public void DidOpen(DidOpenTextDocumentParams parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
@@ -292,9 +375,7 @@ internal sealed class LanguageServerTarget(
         }
     }
 
-    /// <summary>Replaces a buffer's text with the last change's; the diagnostics follow after the debounce.</summary>
-    /// <param name="parameters">The document, its version and the changes.</param>
-    [JsonRpcMethod("textDocument/didChange")]
+    /// <inheritdoc/>
     public void DidChange(DidChangeTextDocumentParams parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
@@ -304,9 +385,7 @@ internal sealed class LanguageServerTarget(
         }
     }
 
-    /// <summary>Drops a buffer and clears its diagnostics.</summary>
-    /// <param name="parameters">The document.</param>
-    [JsonRpcMethod("textDocument/didClose")]
+    /// <inheritdoc/>
     public void DidClose(DidCloseTextDocumentParams parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
@@ -316,11 +395,7 @@ internal sealed class LanguageServerTarget(
         }
     }
 
-    /// <summary>Formats a document: one edit replacing its whole text, or none.</summary>
-    /// <param name="parameters">The document and the client's formatting options, unread.</param>
-    /// <param name="cancellation">The request's cancellation.</param>
-    /// <returns>The edits, an empty list when there is nothing to do.</returns>
-    [JsonRpcMethod("textDocument/formatting")]
+    /// <inheritdoc/>
     public Task<TextEdit[]> Formatting(DocumentFormattingParams parameters, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(parameters);
@@ -331,11 +406,7 @@ internal sealed class LanguageServerTarget(
         return formatting.FormatAsync(parameters.TextDocument.Uri, cancellation);
     }
 
-    /// <summary>Describes the name or value at a position: a class, a property, a signal, an enum value, a key or an <c>x:</c> attribute.</summary>
-    /// <param name="parameters">The document and the position.</param>
-    /// <param name="cancellation">The request's cancellation.</param>
-    /// <returns>The hover, or null when there is nothing to describe there.</returns>
-    [JsonRpcMethod("textDocument/hover")]
+    /// <inheritdoc/>
     public Task<Hover?> HoverAsync(HoverParams parameters, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(parameters);
@@ -346,11 +417,7 @@ internal sealed class LanguageServerTarget(
         return hover.HoverAsync(parameters.TextDocument.Uri, parameters.Position, cancellation);
     }
 
-    /// <summary>Completes the element or attribute name at a position.</summary>
-    /// <param name="parameters">The document and the cursor.</param>
-    /// <param name="cancellation">The request's cancellation.</param>
-    /// <returns>The completions, or null where the server completes nothing.</returns>
-    [JsonRpcMethod("textDocument/completion")]
+    /// <inheritdoc/>
     public Task<CompletionList?> CompletionAsync(CompletionParams parameters, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(parameters);

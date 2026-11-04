@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using StreamJsonRpc;
 using StreamJsonRpc.Protocol;
 
 namespace GodotXaml.LanguageServer.Protocol;
@@ -24,4 +25,7 @@ namespace GodotXaml.LanguageServer.Protocol;
 [JsonSerializable(typeof(JsonElement))]
 // StreamJsonRpc writes an error reply's data, for any exception but a LocalRpcException, through these options.
 [JsonSerializable(typeof(CommonErrorData))]
+// StreamJsonRpc reads and writes $/cancelRequest's id through these options; RequestId names its own converter
+// (SystemTextJsonFormatter.RequestIdSTJsonConverter), which StreamJsonRpc ships for source-generated contexts.
+[JsonSerializable(typeof(RequestId))]
 internal sealed partial class LspJsonContext : JsonSerializerContext;

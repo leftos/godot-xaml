@@ -8,10 +8,23 @@
     <IsPackable>false</IsPackable>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The server ships as NativeAOT executables. The trim and AOT analyzers run on this project's code in every build,
+         warnings as errors; the core and the packages are checked by ILC at publish (tools/publish-server.ps1). -->
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- Only a NativeAOT publish (tools/publish-server.ps1) takes these; a build and the in-process tests do not. -->
+  <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+    <StripSymbols>true</StripSymbols>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="StreamJsonRpc" />
+    <!-- StreamJsonRpc brings PolyType without its source generator; the generated shape of ILanguageServerTarget is what
+         registers the RPC methods without reflection under NativeAOT (RpcTargetMetadata.FromShape). -->
+    <PackageReference Include="PolyType" />
   </ItemGroup>
 
   <ItemGroup>
