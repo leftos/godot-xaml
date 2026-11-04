@@ -45,11 +45,29 @@ internal sealed class XscnPreviewInstances : IDisposable
 
     /// <summary>
     /// The document stripped of its scripts, each ext_resource that resolves to a scene pointed at that scene's stripped copy
-    /// with no uid, and no connection from or to an instanced node that lost its script.
+    /// with no uid, and no connection from or to an instanced node that lost its script. A project that declares a global
+    /// class whose native base is <c>ResourceFormatLoader</c> gets the document back as it was, with one issue per class:
+    /// nothing is read, classified or copied.
     /// </summary>
     /// <param name="document">A converted scene whose ext_resource paths are resource paths.</param>
     /// <returns>The document to load; when <see cref="Issues"/> is not empty, one that must not be loaded.</returns>
-    internal TscnDocument Stripped(TscnDocument document) => Stripped(document, out _);
+    internal TscnDocument Stripped(TscnDocument document)
+    {
+        // Godot registers a global class whose native base is ResourceFormatLoader as a loader, and a built-in loader that
+        // fails on a file hands that file on to them (resource_loader.cpp, add_custom_loaders), which runs the class's
+        // script: with scripts off such a project gets no preview.
+        IReadOnlyList<(string Class, string Path)> loaderClasses = XscnPreviewReferences.ProjectLoaderClasses();
+        foreach ((string className, string path) in loaderClasses)
+        {
+            Failed(path, LoaderClassRefusal(className));
+        }
+
+        return loaderClasses.Count > 0 ? document : Stripped(document, out _);
+    }
+
+    // Why a project's loader class leaves nothing to preview.
+    private static string LoaderClassRefusal(string className) =>
+        $"{className} is a ResourceFormatLoader class, which Godot registers as a loader that a failed load hands files to; {AllowScriptsHint}";
 
     /// <summary>Deletes every copy written; one that cannot be deleted is a warning, and the others are still deleted.</summary>
     public void Dispose()

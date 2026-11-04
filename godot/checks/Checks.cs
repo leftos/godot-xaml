@@ -390,6 +390,9 @@ public partial class Checks : Node
             ("C134", () => Failures(PreviewClassifiesImportTargetsFully(), PreviewRefusesAnImportTargetThatLeavesTheImporterFolder())),
             ("C135", () => Failures(PreviewClassifiesTheImporterBesideAFrontLoader(), PreviewClassifiesATypelessOrTiedImport())),
             ("C136", PreviewRefusesAMissingUnknownExtension),
+            // With scripts off, a project that declares a global ResourceFormatLoader class gets no preview, and the script
+            // extensions are a fixed table.
+            ("C137", PreviewRefusesAProjectWithALoaderClass),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -3206,31 +3209,8 @@ public partial class Checks : Node
     // messages and whether the ext_resource is kept as written.
     private static (string[] Messages, bool Kept) StrippedReference(string path)
     {
-        var document = new TscnDocument
-        {
-            Kind = TscnKind.Scene,
-            ExtResources =
-            [
-                new TscnExtResource
-                {
-                    Type = "Resource",
-                    Path = path,
-                    Id = "1_ref",
-                },
-            ],
-            Nodes =
-            [
-                new TscnNode
-                {
-                    Name = "Root",
-                    Type = "Control",
-                    Properties = [new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "1_ref"))],
-                },
-            ],
-        };
-        using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(document);
-        return ([.. instances.Issues.Select(issue => issue.Message)], stripped.ExtResources.SingleOrDefault()?.Path == path);
+        (ConversionIssue[] issues, TscnDocument stripped) = StrippedIssues(ReferencedDocument(path, "Resource"));
+        return ([.. issues.Select(issue => issue.Message)], stripped.ExtResources.SingleOrDefault()?.Path == path);
     }
 
     // The reference's strip gives exactly the one issue message.
@@ -3940,31 +3920,8 @@ public partial class Checks : Node
     // messages and the stripped document.
     private static (string[] Messages, TscnDocument Stripped) StrippedTypedReference(string path, string type)
     {
-        var document = new TscnDocument
-        {
-            Kind = TscnKind.Scene,
-            ExtResources =
-            [
-                new TscnExtResource
-                {
-                    Type = type,
-                    Path = path,
-                    Id = "1_ref",
-                },
-            ],
-            Nodes =
-            [
-                new TscnNode
-                {
-                    Name = "Root",
-                    Type = "Control",
-                    Properties = [new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "1_ref"))],
-                },
-            ],
-        };
-        using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(document);
-        return ([.. instances.Issues.Select(issue => issue.Message)], stripped);
+        (ConversionIssue[] issues, TscnDocument stripped) = StrippedIssues(ReferencedDocument(path, type));
+        return ([.. issues.Select(issue => issue.Message)], stripped);
     }
 
     // "Is it a Script?" asks ClassDB, here through the seam, before the bundled metadata: an ext declared as a class only
@@ -4548,6 +4505,217 @@ public partial class Checks : Node
             XscnPreviewReferences.ClassifyFile(json) == PreviewReferenceKind.Kept ? "" : $"{json} is not classified Kept",
             messages.Length == 0 ? "" : $"{json}: issues: [{string.Join("; ", messages)}]",
             kept ? "" : $"{json}: the ext_resource was not kept as written"
+        );
+    }
+
+    // A one-ext_resource scene whose root's metadata/s names the path through an ext_resource of the type.
+    private static TscnDocument ReferencedDocument(string path, string type) =>
+        new()
+        {
+            Kind = TscnKind.Scene,
+            ExtResources =
+            [
+                new TscnExtResource
+                {
+                    Type = type,
+                    Path = path,
+                    Id = "1_ref",
+                },
+            ],
+            Nodes =
+            [
+                new TscnNode
+                {
+                    Name = "Root",
+                    Type = "Control",
+                    Properties = [new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "1_ref"))],
+                },
+            ],
+        };
+
+    // The issues a strip of the document leaves, and the document it returns.
+    private static (ConversionIssue[] Issues, TscnDocument Stripped) StrippedIssues(TscnDocument document)
+    {
+        using var instances = new XscnPreviewInstances();
+        TscnDocument stripped = instances.Stripped(document);
+        return ([.. instances.Issues], stripped);
+    }
+
+    // With scripts off, a project that declares a global class whose native base is ResourceFormatLoader gets no preview:
+    // Godot registers it as a loader, and a built-in loader that fails on a file hands it on to them (resource_loader.cpp,
+    // add_custom_loaders). The addon's own two loaders are exempt. The script extensions are a fixed table, so classifying
+    // a file runs no project loader's code.
+    private static string PreviewRefusesAProjectWithALoaderClass() =>
+        Failures(
+            PreviewRefusesALoaderClass(),
+            PreviewStripsWithoutALoaderClass(),
+            PreviewExemptsItsOwnLoaders(),
+            PreviewClassifiesScriptExtensionsByTable()
+        );
+
+    // A class whose native base is ResourceFormatLoader refuses the whole preview: one issue per class, at the class's
+    // script path, naming it. A class extending one, a class whose bases repeat, and a class that merely shares the addon
+    // loader's name are refused the same; a class extending Resource is not, and nothing is classified or copied.
+    private static string PreviewRefusesALoaderClass()
+    {
+        (string Class, string Path)[] refused =
+        [
+            ("GxDirectLoader", "res://loaders/gx_direct.gd"),
+            ("GxIndirectLoader", "res://loaders/gx_indirect.gd"),
+            ("GxCycleA", "res://loaders/gx_cycle_a.gd"),
+            ("GxCycleB", "res://loaders/gx_cycle_b.gd"),
+            (nameof(XscnFormatLoader), "res://loaders/not_the_addon.gd"),
+        ];
+        XscnPreviewReferences.GlobalClassProbe = () =>
+            [
+                ("GxDirectLoader", "res://loaders/gx_direct.gd", "ResourceFormatLoader"),
+                ("GxIndirectLoader", "res://loaders/gx_indirect.gd", "GxDirectLoader"),
+                ("GxCycleA", "res://loaders/gx_cycle_a.gd", "GxCycleB"),
+                ("GxCycleB", "res://loaders/gx_cycle_b.gd", "GxCycleA"),
+                (nameof(XscnFormatLoader), "res://loaders/not_the_addon.gd", "ResourceFormatLoader"),
+                ("GxPlainResource", "res://loaders/gx_plain.gd", "Resource"),
+            ];
+        string folder = AddonTempFolder.Get();
+        string[] before = Directory.GetFiles(folder);
+        try
+        {
+            (ConversionIssue[] issues, TscnDocument stripped) = StrippedIssues(ReferencedDocument(PreviewPlainPath, "Resource"));
+            string[] written = [.. Directory.GetFiles(folder).Except(before, StringComparer.Ordinal)];
+            string[] messages = [.. issues.Select(issue => issue.Message)];
+            string[] expected = [.. refused.Select(item => LoaderClassMessage(item.Class))];
+            return Failures(
+                messages.SequenceEqual(expected, StringComparer.Ordinal)
+                    ? ""
+                    : $"the issues are [{string.Join("; ", messages)}], not [{string.Join("; ", expected)}]",
+                issues.All(issue => issue.Code == ConversionCodes.InstanceNotStripped)
+                    ? ""
+                    : $"the codes are [{string.Join(", ", issues.Select(issue => issue.Code))}]",
+                issues.All(issue => issue.Severity == ConversionSeverity.Error)
+                    ? ""
+                    : $"the severities are [{string.Join(", ", issues.Select(issue => issue.Severity))}]",
+                issues.Select(issue => issue.Location).SequenceEqual(refused.Select(item => item.Path), StringComparer.Ordinal)
+                    ? ""
+                    : $"the issues are located at [{string.Join(", ", issues.Select(issue => issue.Location))}]",
+                stripped.ExtResources.Single().Path == PreviewPlainPath
+                    ? ""
+                    : $"the document was changed: the ext_resource points at {stripped.ExtResources.Single().Path}",
+                written.Length == 0 ? "" : $"the strip wrote copies: [{string.Join(", ", written)}]"
+            );
+        }
+        finally
+        {
+            XscnPreviewReferences.GlobalClassProbe = null;
+        }
+    }
+
+    // The refusal's message for a project's loader class, as the strip words it.
+    private static string LoaderClassMessage(string className) =>
+        $"{className} is a ResourceFormatLoader class, which Godot registers as a loader that a failed load hands files to; " + AllowScriptsHint;
+
+    // Only the addon's own loaders, at their own scripts, and a class extending Resource: nothing is refused, and the
+    // reference is copied as the strip does.
+    private static string PreviewStripsWithoutALoaderClass()
+    {
+        XscnPreviewReferences.GlobalClassProbe = () =>
+            [
+                AddonLoader(nameof(XscnFormatLoader)),
+                AddonLoader(nameof(XresFormatLoader)),
+                ("GxPlainResource", "res://loaders/gx_plain.gd", "Resource"),
+            ];
+        try
+        {
+            (string[] messages, bool kept) = StrippedReference(PreviewPlainPath);
+            return Failures(
+                messages.Length == 0 ? "" : $"the issues are [{string.Join("; ", messages)}]",
+                kept ? "the reference was not copied" : ""
+            );
+        }
+        finally
+        {
+            XscnPreviewReferences.GlobalClassProbe = null;
+        }
+    }
+
+    // The addon's own loader class as the class list records it: the class named by its script, at the script's path.
+    private static (string Class, string Path, string Base) AddonLoader(string className) =>
+        (className, XscnExportPlugin.LoaderScripts.Single(script => Path.GetFileNameWithoutExtension(script) == className), "ResourceFormatLoader");
+
+    // The checks project's real class list holds the addon's loaders, each walking to ResourceFormatLoader, and
+    // ProjectLoaderClasses refuses none of them.
+    private static string PreviewExemptsItsOwnLoaders()
+    {
+        (string[] classes, Dictionary<string, string> baseOfClass) = RealGlobalClasses();
+        string? nativeBase = NativeBaseIn(baseOfClass, nameof(XscnFormatLoader));
+        IReadOnlyList<(string Class, string Path)> loaders = XscnPreviewReferences.ProjectLoaderClasses();
+        return Failures(
+            classes.Contains(nameof(XscnFormatLoader), StringComparer.Ordinal) ? "" : $"the project's class list holds no {nameof(XscnFormatLoader)}",
+            nativeBase == "ResourceFormatLoader"
+                ? ""
+                : $"{nameof(XscnFormatLoader)}'s walk reaches {nativeBase ?? "no native base"}, not ResourceFormatLoader",
+            loaders.Count == 0
+                ? ""
+                : $"the project's loader classes are [{string.Join(", ", loaders.Select(loader => $"{loader.Class} at {loader.Path}"))}]"
+        );
+    }
+
+    // Each global class the project's own cache holds, in its order, with its direct base.
+    private static (string[] Classes, Dictionary<string, string> BaseOfClass) RealGlobalClasses()
+    {
+        List<string> classes = [];
+        var baseOfClass = new Dictionary<string, string>(StringComparer.Ordinal);
+        using Variant classKey = "class";
+        using Variant baseKey = "base";
+        using var list = (Godot.Collections.Array)ProjectSettings.GetGlobalClassList();
+        foreach (Variant item in list)
+        {
+            using (item)
+            {
+                using Godot.Collections.Dictionary entry = item.AsGodotDictionary();
+                using Variant className = entry[classKey];
+                using Variant baseName = entry[baseKey];
+                classes.Add(className.AsString());
+                baseOfClass[className.AsString()] = baseName.AsString();
+            }
+        }
+
+        return ([.. classes], baseOfClass);
+    }
+
+    // The engine class the project's list walks a class to, as the preview walks it; null when the list repeats a class.
+    private static string? NativeBaseIn(Dictionary<string, string> baseOfClass, string className)
+    {
+        if (!baseOfClass.TryGetValue(className, out string? current))
+        {
+            return null;
+        }
+
+        var visited = new HashSet<string>(StringComparer.Ordinal) { className };
+        while (baseOfClass.TryGetValue(current, out string? next))
+        {
+            if (!visited.Add(current))
+            {
+                return null;
+            }
+
+            current = next;
+        }
+
+        return current;
+    }
+
+    // The script extensions are the fixed table, whatever the case: GDScript's text and binary savers and C# are scripts, and
+    // a .gdshader is not one.
+    private static string PreviewClassifiesScriptExtensionsByTable()
+    {
+        string script = CasesPath + "preview_root.gd";
+        string binary = CasesPath + "preview_root.GDC";
+        string sharp = CasesPath + "CheckedResource.cs";
+        string shader = CasesPath + "preview_path_inert.gdshader";
+        return Failures(
+            XscnPreviewReferences.ClassifyFile(script) == PreviewReferenceKind.Script ? "" : $"{script} is not classified Script",
+            XscnPreviewReferences.ClassifyFile(binary) == PreviewReferenceKind.Script ? "" : $"{binary} is not classified Script",
+            XscnPreviewReferences.ClassifyFile(sharp) == PreviewReferenceKind.Script ? "" : $"{sharp} is not classified Script",
+            XscnPreviewReferences.ClassifyFile(shader) == PreviewReferenceKind.Script ? $"{shader} is classified Script" : ""
         );
     }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -82,13 +83,17 @@ internal sealed record PreviewClassification(PreviewReferenceKind Kind)
 /// file the text loader loads is the one its registered uid names, and the text sets that uid through <c>x:Uids</c>. A
 /// file's kind comes from its content where Godot's loaders read it by content, from the files a remap may load in its
 /// place, and from its <c>.import</c> sidecar; its extension, the editor's class and the declared type can only add a
-/// refusal. Main thread only: it calls Godot.
+/// refusal. The extensions a script loader claims come from a fixed table, never from the live loaders, so classifying a
+/// file runs no project loader's code. It also names the project's global classes Godot registers as resource loaders, which
+/// a preview with scripts off refuses. Main thread only: it calls Godot.
 /// </summary>
 internal static partial class XscnPreviewReferences
 {
     private const string UidScheme = "uid://";
 
     private const string ScriptClass = "Script";
+
+    private const string LoaderClass = "ResourceFormatLoader";
 
     private const string PackedSceneClass = "PackedScene";
 
@@ -200,6 +205,116 @@ internal static partial class XscnPreviewReferences
     internal static Func<string, string, bool?>? ClassProbe { get; set; }
 
     /// <summary>
+    /// A test seam in front of the project's class list: each class with its script path and its direct base, or null to
+    /// read the class cache. The walk and the exemption run either way. Set only by the checks, which put it back.
+    /// </summary>
+    internal static Func<IReadOnlyList<(string Class, string Path, string Base)>>? GlobalClassProbe { get; set; }
+
+    /// <summary>
+    /// The project's global classes whose native base is <c>ResourceFormatLoader</c>, each with its script's path: Godot
+    /// registers every one of them as a resource loader (<c>ResourceLoader::add_custom_loaders</c>, resource_loader.cpp),
+    /// and a built-in loader that fails on a file hands that file on to them, which runs the class's script.
+    /// </summary>
+    /// <remarks>
+    /// The class cache is read fresh each time (<c>ProjectSettings.GetGlobalClassList</c>, project_settings.cpp, which runs
+    /// no script), and each class is walked to its native base through the list's own classes, as
+    /// <c>ScriptServer::get_global_class_native_base</c> walks it (script_language.cpp). Every class counts, abstract or not,
+    /// tool or not, as Godot registers them all; one whose bases form a cycle is refused too, since the walk proves nothing
+    /// about its base. The addon's own loaders are exempt, since every project with the addon holds them and would otherwise
+    /// refuse every preview.
+    /// </remarks>
+    /// <returns>The classes, in the list's order; empty when the project declares none or has no class cache yet.</returns>
+    internal static IReadOnlyList<(string Class, string Path)> ProjectLoaderClasses()
+    {
+        List<string> names = [];
+        var baseOfClass = new Dictionary<string, string>(StringComparer.Ordinal);
+        var pathOfClass = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (GlobalClassProbe is { } probe)
+        {
+            foreach ((string className, string path, string baseName) in probe())
+            {
+                names.Add(className);
+                baseOfClass[className] = baseName;
+                pathOfClass[className] = path;
+            }
+        }
+        else
+        {
+            ReadClassCache(names, baseOfClass, pathOfClass);
+        }
+
+        List<(string Class, string Path)> loaderClasses = [];
+        foreach (string name in names)
+        {
+            string path = pathOfClass[name];
+            string? nativeBase = NativeBase(baseOfClass, name);
+            // A walk that repeats a class never reaches a native base, so nothing proves the class is not a loader: it is
+            // refused like one.
+            if ((nativeBase is null || nativeBase == LoaderClass) && !IsOwnLoader(name, path))
+            {
+                loaderClasses.Add((name, path));
+            }
+        }
+
+        return loaderClasses;
+    }
+
+    // The project's class cache, each class's name, script path and direct base, in the list's order.
+    private static void ReadClassCache(List<string> names, Dictionary<string, string> baseOfClass, Dictionary<string, string> pathOfClass)
+    {
+        // The list, each item, each class's Dictionary, its keys and its values are all owned by the caller, so each is
+        // disposed as it is read: one left to its finalizer can be destroyed after the engine has shut down, which crashes
+        // the process. The typed array wrapper has no Dispose of its own, but casting it to Godot.Collections.Array returns
+        // the untyped Array it wraps (modules/mono/glue/GodotSharp/GodotSharp/Core/Array.cs:1205-1208).
+        using Variant classKey = "class";
+        using Variant pathKey = "path";
+        using Variant baseKey = "base";
+        using var list = (Godot.Collections.Array)ProjectSettings.GetGlobalClassList();
+        foreach (Variant item in list)
+        {
+            using (item)
+            {
+                using Godot.Collections.Dictionary entry = item.AsGodotDictionary();
+                using Variant className = entry[classKey];
+                using Variant path = entry[pathKey];
+                using Variant baseName = entry[baseKey];
+                string name = className.AsString();
+                names.Add(name);
+                baseOfClass[name] = baseName.AsString();
+                pathOfClass[name] = path.AsString();
+            }
+        }
+    }
+
+    // The engine class a global class derives from, as ScriptServer::get_global_class_native_base walks it: the first base
+    // name the list does not hold; null when the name is not a global class, or its bases repeat.
+    private static string? NativeBase(Dictionary<string, string> baseOfClass, string className)
+    {
+        if (!baseOfClass.TryGetValue(className, out string? current))
+        {
+            return null;
+        }
+
+        var visited = new HashSet<string>(StringComparer.Ordinal) { className };
+        while (baseOfClass.TryGetValue(current, out string? next))
+        {
+            if (!visited.Add(current))
+            {
+                return null;
+            }
+
+            current = next;
+        }
+
+        return current;
+    }
+
+    // The addon's own two loaders, which every project with the addon registers: exempt by class name and script path both,
+    // so a project's class that merely shares a name is still refused.
+    private static bool IsOwnLoader(string className, string path) =>
+        (className is nameof(XscnFormatLoader) or nameof(XresFormatLoader)) && XscnExportPlugin.LoaderScripts.Contains(path);
+
+    /// <summary>
     /// The path the text loader loads an ext_resource from: its registered uid's, else its path, a uid:// path resolved. A
     /// uid wins over the path when it is registered (resource_format_text.cpp:491-507).
     /// </summary>
@@ -293,7 +408,7 @@ internal static partial class XscnPreviewReferences
     }
 
     private static PreviewReferenceKind? ByExtension(string extension) =>
-        ScriptExtensions().Contains(extension) ? PreviewReferenceKind.Script
+        ScriptExtensions.Contains(extension) ? PreviewReferenceKind.Script
         : IsAny(extension, "tscn", XscnLoading.SceneExtension) ? PreviewReferenceKind.TextScene
         : IsAny(extension, XscnLoading.ResourceExtension) ? PreviewReferenceKind.TextResource
         : IsAny(extension, "scn") ? PreviewReferenceKind.BinaryScene
@@ -698,15 +813,12 @@ internal static partial class XscnPreviewReferences
         return id != ResourceUid.InvalidId && ResourceUid.HasId(id) ? ResourceUid.GetIdPath(id) : null;
     }
 
-    // The extensions only a script loader claims. Every resource loader also claims its own extensions for any resource
-    // class, Script included (resource_format_text.cpp:1478-1492 pushes "tres" for any type but PackedScene), so the
-    // extensions claimed for Resource are taken out: otherwise every .tres would read as a script.
-    private static HashSet<string> ScriptExtensions()
-    {
-        var extensions = new HashSet<string>(ResourceLoader.GetRecognizedExtensionsForType(ScriptClass), StringComparer.OrdinalIgnoreCase);
-        extensions.ExceptWith(ResourceLoader.GetRecognizedExtensionsForType("Resource"));
-        return extensions;
-    }
+    // The extensions only a script loader claims: ResourceFormatLoaderGDScript (modules/gdscript/gdscript_resource_format.cpp)
+    // for gd and gdc, and ResourceFormatLoaderCSharpScript (modules/mono/csharp_script_resource_format.cpp) for cs. The table
+    // is fixed, never ResourceLoader.GetRecognizedExtensionsForType, which asks every registered loader, project loaders
+    // included, for its extensions and so runs their script's code: a preview with scripts off runs none of it. An extension
+    // another script language claims is refused as unknown instead, which fails closed.
+    private static readonly FrozenSet<string> ScriptExtensions = new[] { "gd", "gdc", "cs" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Whether the class inherits the base class (or is it), asked of the running <c>ClassDB</c> first, which holds the

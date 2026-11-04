@@ -322,6 +322,8 @@ A file whose kind the preview cannot prove inert is refused too, with a message 
 
 Such a file is a file with an extension none of Godot's own loaders claims (missing or not, since a project loader script may claim it), a `.gdextension` native library, a remap with an unsafe target (the message names the target), a `.import` sidecar that names a script or cannot be read safely, and an imported asset that is not a binary resource under `res://.godot/imported/` (`<source> is imported to <target>: …`).
 
+A project that declares a global class whose native base is `ResourceFormatLoader` is refused whole, one error per class, located at its script: `<class> is a ResourceFormatLoader class, which Godot registers as a loader that a failed load hands files to; turn on godot_xaml/preview_server/allow_scripts to preview it`. The addon's own two loaders are exempt.
+
 A `Resource("…")` value in a referenced `.tscn` or `.tres`, or inside an `Object(...)` value, that names a file the preview cannot redirect to a stripped copy gives `<path> is referenced by a Resource() value, which the preview cannot redirect to a stripped copy`, or the message of the file's own kind.
 
 ### GXC0122 Source file unreadable

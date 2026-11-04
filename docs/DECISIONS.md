@@ -416,7 +416,7 @@ A socket that hands text to an in-editor instantiate would otherwise run any `[T
 
 Every ext_resource, in the text and in each stripped copy, is classified by the file it resolves to, not by its type, which is the converter's guess (`XscnPreviewReferences`). The file is the one a registered uid names (the text sets uids through `x:Uids`), else the path, a `uid://` path resolved. Extensions compare in any letter case, as Godot picks a loader.
 
-- A script: an extension only a script loader claims (`ResourceLoader.get_recognized_extensions_for_type("Script")` less those claimed for `Resource`, since every resource loader claims its own for any class), or a file whose class, from the editor's filesystem, is a `Script`. It is removed and every reference to it made null, as a `Script`-typed ext_resource always is.
+- A script: an extension only a script loader claims (a fixed table: `gd` and `gdc` for GDScript's loader, `cs` for the C# loader; `ResourceLoader.get_recognized_extensions_for_type` is never asked, since it runs `_get_recognized_extensions` of every registered loader, a project's included), or a file whose class, from the editor's filesystem, is a `Script`. It is removed and every reference to it made null, as a `Script`-typed ext_resource always is.
 - A text scene (`tscn`, `xscn`): loaded from a stripped copy.
 - A binary scene: a `scn`, or a `res` whose class (the editor's, else the binary header's type string, read as `ResourceLoaderBinary::recognize` does) is a `PackedScene`. It cannot be stripped: no root, and error GXC0121 "a binary scene cannot be previewed with scripts off".
 
@@ -428,7 +428,7 @@ Every ext_resource, in the text and in each stripped copy, is classified by the 
 
   The owner's ruling: "With scripts off, a project-authored binary resource the previewed text reaches … is refused with GXC0121 naming the file … Turning on `godot_xaml/preview_server/allow_scripts` previews it. Imported assets are unaffected." An imported binary resource under `res://.godot/imported/` is the exception the ruling names; one anywhere else is a project binary resource.
 - A `.gdextension` file: refused as a native library.
-- An extension none of Godot's own loaders claims, missing file or not: refused, since a project loader script may claim it (a script loader class is not consulted, GXAML-198). Godot's own loaders are the text and binary resource loaders, the importer through a `.import` sidecar and the addon's `.xscn` and `.xres` loaders. Such a file is called own-claimed.
+- An extension none of Godot's own loaders claims, missing file or not: refused, since a loader a script registers by itself may claim it (a project that declares a loader class is refused whole, below). Godot's own loaders are the text and binary resource loaders, the importer through a `.import` sidecar and the addon's `.xscn` and `.xres` loaders. Such a file is called own-claimed.
 - Anything else is kept.
 
 The order of classification for a file is: the extension fast path (script, scene, `.gdextension`); remaps; the `.import` sidecar; the content head; then the editor's class and the declared type, which only add refusals.
@@ -449,7 +449,15 @@ A `.remap` names a target only when its first assignment is `path`; an `.import`
 
 A `Resource`, `ExtResource`, `SubResource` or `Object` identifier token anywhere outside a string or comment makes the sidecar unsafe, and so does a sidecar the tokenizer cannot read: an unterminated string or bracket, an unknown escape, `^"…"`, a 0 byte, a leading BOM, a `\u` or `\U` escape outside 0x01 to 0x7F, or U+FEFF or U+FFFD in a string, key or tag.
 
-Every one of these refusals is GXC0121, its message naming the path and the reason and ending "; turn on godot_xaml/preview_server/allow_scripts to preview it". A failed importer or built-in load falling through to a project loader (GXAML-203) and compressed imported fonts (GXAML-204) are booked, not handled.
+Every one of these refusals is GXC0121, its message naming the path and the reason and ending "; turn on godot_xaml/preview_server/allow_scripts to preview it". A failed importer or built-in load falling through to a project loader that no class registers (GXAML-203) and compressed imported fonts (GXAML-204) are booked, not handled.
+
+A project that declares a global class whose native base is `ResourceFormatLoader` gets no preview with scripts off: Godot registers each such class as a resource loader (`ResourceLoader::add_custom_loaders` in `core/io/resource_loader.cpp`), and a built-in loader that fails on a file hands it on to them, which runs the class's script.
+
+The preview is refused with GXC0121, one issue per class, located at its script path: "<class> is a ResourceFormatLoader class, which Godot registers as a loader that a failed load hands files to; turn on godot_xaml/preview_server/allow_scripts to preview it". Nothing else is read or classified.
+
+The class list is read fresh for each preview from the class cache (`ProjectSettings.GetGlobalClassList`, which runs no script), and each class is walked to its native base through the script classes. Every such class counts, abstract or not, tool or not, and so does a class whose bases form a cycle, since the walk proves nothing about its base. The addon's own `XscnFormatLoader` and `XresFormatLoader` are exempt, only at their own script paths. An empty or missing cache refuses nothing.
+
+Residual risk: the preview cannot refuse for a loader that a running script registers itself (`ResourceLoader.add_resource_format_loader`, which editor plugins commonly call), a loader class not yet in the class cache, or a GDExtension's native loader subclass, since none can be listed without running code.
 
 Each text scene or resource is read from its file (an `.xscn` or `.xres` converted, a `.tscn` or `.tres` read), stripped the same way, written to the addon's temp folder and loaded from there, recursively and with cycles handled (`XscnPreviewInstances`); the copy's extension comes from the document read (`.tres` for a `gd_resource`, `.tscn` for a `gd_scene`), and its ext_resource's uid is dropped since a registered uid wins over the path. The copies are deleted once the load is done, so a referenced resource has the copy's `ResourcePath`. That covers an instance, an inherited root, an exported scene or resource property and a `metadata/` value alike, and a node's `instance=` value, which goes through the same path-value walk. Each resolved path is classified once per preview.
 

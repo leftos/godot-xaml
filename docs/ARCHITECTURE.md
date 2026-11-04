@@ -112,6 +112,8 @@ Each component gets an entry here in the commit that adds its project.
   `XscnPreviewScene.Instantiate` turns `.xscn` text into an instantiated scene for the preview server (main thread only, the caller frees the root, diagnostics returned and never logged), with scripts stripped unless the request and `godot_xaml/preview_server/allow_scripts` both allow them.
   With scripts off, `XscnPreviewReferences` classifies every reference by the file it resolves to (uid first; extension, then remaps, the `.import` and `.remap` sidecars through its own tokenizer, the content head, the editor's class and the declared type; rules in `DECISIONS.md`, "The preview server"), refusing a file no Godot loader claims, a native library and an unsafe remap or import target.
 
+  `XscnPreviewReferences.ProjectLoaderClasses` lists the project's global classes whose native base is `ResourceFormatLoader` (the addon's own loaders exempt), and `XscnPreviewInstances.Stripped` refuses the whole preview with GXC0121, one issue per class, when it finds any.
+
   `XscnPreviewInstances` redirects each text scene or resource (`.tscn`, `.tres`, `.xscn`, `.xres`) the preview references, at any depth, to a stripped copy in the addon's temp folder (deleted after the load), makes a Script-class resource, ext_resource or `Object(...)` null, refuses a binary or unreadable file, or a `Resource()` value it cannot redirect, with GXC0121. It also retypes typed containers of a removed script (or typed by a `Resource()` path) to `Object`, and drops the connections of nodes that lost a script inside instances.
 
   `XscnPreviewRects.Collect` walks the instantiated tree (`PreviewScene.Document` carries the parsed text) and returns each visible Control's rectangle with its element's span, back to front; the root must be inside a tree.
@@ -337,6 +339,8 @@ Each component gets an entry here in the commit that adds its project.
   C106 to C121 cover what a scripts-off preview does with the files the text references beyond scenes: a `.tres` or `.xres` read, stripped and loaded from a temp copy (recursively, cycles handled, the copy's `ResourcePath`, uid dropped, copies deleted), a Script-class resource or ext_resource made null, a binary `.res` refused with GXC0121, a `Resource()` value in a referenced text or an `Object(...)` value classified, an `instance=` value walked, a container typed by a `Resource()` path becoming `Object`, unknown tag fields dropped, an `Object(...)` of a Script class made null, and the resource wording of read, parse and conversion errors. C76 checks a referenced box by content and C87 also looks for `.tres` copies; `godot/checks.ps1` (`$expectedChecks`) holds the expected total.
 
   C122 to C136 cover how `XscnPreviewReferences` tells a file's kind: a binary scene or resource and a binary script behind a base extension, a text scene in a `.tres`, and the `.import` sidecar (type, target, chains, targets leaving `res://.godot/imported/`, the importer beside a front loader, a typeless or tied import, an invalid import).
+
+  C137 covers the scripts-off refusal of a project's `ResourceFormatLoader` global classes: the walk to the native base, a cycle, the addon's own loaders exempt, and the fixed script extension table.
 
   They also cover remaps (locale and `.remap`), a `.gdextension` library, ClassDB asked before the metadata, an unknown extension (missing or not), and the sidecar tokenizer (keys as Godot reads them, text Godot reads otherwise, every loading value found by token).
 
