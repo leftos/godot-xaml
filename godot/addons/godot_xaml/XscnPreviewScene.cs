@@ -21,7 +21,16 @@ namespace GodotXaml.Addon;
 /// </param>
 /// <param name="Diagnostics">The parse's diagnostics, never pushed to Godot's log.</param>
 /// <param name="Issues">The conversion's issues, never pushed to Godot's log; empty when the text did not parse.</param>
-internal sealed record PreviewScene(Node? Root, ImmutableArray<XscnDiagnostic> Diagnostics, ImmutableArray<ConversionIssue> Issues);
+/// <param name="Document">
+/// The parsed document, whose elements' spans locate each node's source (<see cref="XscnPreviewRects"/>); null when the
+/// text did not parse.
+/// </param>
+internal sealed record PreviewScene(
+    Node? Root,
+    ImmutableArray<XscnDiagnostic> Diagnostics,
+    ImmutableArray<ConversionIssue> Issues,
+    XscnDocument? Document
+);
 
 /// <summary>
 /// Turns <c>.xscn</c> text, saved or not, into an instantiated scene for the preview server: parsed, converted, loaded
@@ -53,13 +62,13 @@ internal static class XscnPreviewScene
         XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, XscnMetadata.Value);
         if (parsed.HasErrors)
         {
-            return new PreviewScene(null, parsed.Diagnostics, []);
+            return new PreviewScene(null, parsed.Diagnostics, [], null);
         }
 
         ConversionResult<TscnDocument> result = XscnLoading.ToTscn(parsed.Document, resPath);
         if (result.Issues.Any(issue => issue.Severity == ConversionSeverity.Error))
         {
-            return new PreviewScene(null, parsed.Diagnostics, result.Issues);
+            return new PreviewScene(null, parsed.Diagnostics, result.Issues, parsed.Document);
         }
 
         // The text loader reads the temp file, so each path is made a resource path against the document's, as a load does.
@@ -69,15 +78,15 @@ internal static class XscnPreviewScene
         };
         if (scriptsRequested && ScriptsAllowed())
         {
-            return new PreviewScene(LoadAndInstantiate(resPath, converted), parsed.Diagnostics, result.Issues);
+            return new PreviewScene(LoadAndInstantiate(resPath, converted), parsed.Diagnostics, result.Issues, parsed.Document);
         }
 
         // Each scene the text instances, at any depth, is loaded from a stripped copy, deleted once the load is done.
         using var instances = new XscnPreviewInstances();
         TscnDocument stripped = instances.Stripped(converted);
         return instances.Issues.Count > 0
-            ? new PreviewScene(null, parsed.Diagnostics, [.. result.Issues, .. instances.Issues])
-            : new PreviewScene(LoadAndInstantiate(resPath, stripped), parsed.Diagnostics, result.Issues);
+            ? new PreviewScene(null, parsed.Diagnostics, [.. result.Issues, .. instances.Issues], parsed.Document)
+            : new PreviewScene(LoadAndInstantiate(resPath, stripped), parsed.Diagnostics, result.Issues, parsed.Document);
     }
 
     private static bool ScriptsAllowed()

@@ -1,0 +1,3 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Child">
+  <Button Name="Inner" />
+</Control>

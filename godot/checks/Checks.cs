@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -337,6 +338,8 @@ public partial class Checks : Node
             ("C100", () => PreviewRefusesAnUnreadableHeader("truncated.res", [.. "RSRC"u8, .. new byte[8]])),
             ("C101", () => PreviewRefusesAnUnreadableHeader("nomagic.res", [.. "XXXX"u8, .. new byte[36]])),
             ("C102", PreviewRefusesAnUpperCaseBinaryScene),
+            // The preview's Control rectangles and source spans (GXAML-166).
+            ("C105", PreviewRectsNeedATree),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -348,6 +351,9 @@ public partial class Checks : Node
             ("C45", DroppedSceneReleasesContainerSubResources),
             ("C53", DroppedResourceReleasesContainerSubResources),
             ("C57", EngineDroppedSceneLeavesTheCache),
+            // The preview's Control rectangles and source spans (GXAML-166).
+            ("C103", PreviewRectsFollowTheTreeAndSpans),
+            ("C104", PreviewRectsSelectTheInstanceElement),
         ];
         DeleteFolder(SavesFolder);
         int total = checks.Length + frameChecks.Length + 2;
@@ -4023,6 +4029,192 @@ public partial class Checks : Node
         finally
         {
             DeleteFolder(OutFolder);
+        }
+    }
+
+    // A VBoxContainer root holding a row of two Buttons, a MarginContainer with a uniquely named Label, a plain Node with a
+    // Button, a SubViewportContainer whose SubViewport holds a Button, and last a hidden Panel holding a Button. The Panel
+    // asks for the full rect, though the VBoxContainer places its children and skips a hidden one; it is there to be hidden.
+    private const string PreviewRectsScene =
+        "<VBoxContainer Name=\"Root\">\n"
+        + "  <HBoxContainer Name=\"Row\">\n"
+        + "    <Button Name=\"Ok\" Text=\"Ok\" />\n"
+        + "    <Button Name=\"Cancel\" Text=\"Cancel\" />\n"
+        + "  </HBoxContainer>\n"
+        + "  <MarginContainer Name=\"Margin\">\n"
+        + "    <Label Name=\"%Caption\" Text=\"Caption\" />\n"
+        + "  </MarginContainer>\n"
+        + "  <Node Name=\"Plain\">\n"
+        + "    <Button Name=\"Loose\" Text=\"Loose\" />\n"
+        + "  </Node>\n"
+        + "  <SubViewportContainer Name=\"Inset\">\n"
+        + "    <SubViewport Name=\"View\">\n"
+        + "      <Button Name=\"Far\" Text=\"Far\" />\n"
+        + "    </SubViewport>\n"
+        + "  </SubViewportContainer>\n"
+        + "  <Panel Name=\"Cover\" Visible=\"False\" AnchorRight=\"1\" AnchorBottom=\"1\">\n"
+        + "    <Button Name=\"Covered\" Text=\"Covered\" />\n"
+        + "  </Panel>\n"
+        + "</VBoxContainer>\n";
+
+    // A Control root holding an instance of a Control scene with one Button, to which an override adds a Label.
+    private const string PreviewRectsInstanceScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + "  <x:Instance Scene=\"res://checks/cases/preview_rect_child.xscn\" Name=\"Inst\">\n"
+        + "    <x:Override Path=\"Inner\">\n"
+        + "      <Label Name=\"Added\" />\n"
+        + "    </x:Override>\n"
+        + "  </x:Instance>\n"
+        + "</Control>\n";
+
+    // The instance's root and the node inside it select the x:Instance element; the node the override adds, its own.
+    private static readonly (string Path, string Start)[] PreviewRectsInstanceSpans =
+    [
+        ("Inst", "<x:Instance"),
+        ("Inst/Inner", "<x:Instance"),
+        ("Inst/Inner/Added", "<Label"),
+    ];
+
+    // PreviewRectsScene's Controls in pre-order, with their classes. The plain Node gets no entry, its Button does; the
+    // SubViewportContainer gets one, but nothing inside its SubViewport; the hidden Panel and its Button get none.
+    private static readonly (string Path, string Class)[] PreviewRectsExpected =
+    [
+        (".", "VBoxContainer"),
+        ("Row", "HBoxContainer"),
+        ("Row/Ok", "Button"),
+        ("Row/Cancel", "Button"),
+        ("Margin", "MarginContainer"),
+        ("Margin/Caption", "Label"),
+        ("Plain/Loose", "Button"),
+        ("Inset", "SubViewportContainer"),
+    ];
+
+    // Instantiates the text, lays it out in a 640x480 SubViewport under the checks node and assesses its rectangles.
+    // Container sorting is deferred (Container::queue_sort calls _sort_children deferred, scene/gui/container.cpp), so
+    // the collect waits two frames for layout to settle.
+    private async Task<string> WithPreviewRects(string text, Func<string, ImmutableArray<PreviewRect>, string> assess)
+    {
+        PreviewScene preview = XscnPreviewScene.Instantiate(text, PreviewPath, scriptsRequested: false);
+        if (preview.Root is null || preview.Document is null)
+        {
+            preview.Root?.Free();
+            return $"the preview has no root or no document: [{PreviewProblems(preview)}]";
+        }
+
+        var viewport = new SubViewport { Size = new Vector2I(640, 480) };
+        viewport.AddChild(preview.Root);
+        try
+        {
+            AddChild(viewport);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            return assess(text, XscnPreviewRects.Collect(preview.Root, preview.Document));
+        }
+        finally
+        {
+            viewport.Free();
+        }
+    }
+
+    // The rectangles follow the tree in pre-order, each Control child inside its Control parent, each with its element's span.
+    private Task<string> PreviewRectsFollowTheTreeAndSpans() =>
+        WithPreviewRects(
+            PreviewRectsScene,
+            (text, rects) =>
+            {
+                var failures = new List<string>();
+                string paths = string.Join(", ", rects.Select(rect => rect.Path));
+                string expectedPaths = string.Join(", ", PreviewRectsExpected.Select(expected => expected.Path));
+                if (paths != expectedPaths)
+                {
+                    failures.Add($"paths [{paths}], expected [{expectedPaths}]");
+                }
+
+                string classes = string.Join(", ", rects.Select(rect => rect.Class));
+                string expectedClasses = string.Join(", ", PreviewRectsExpected.Select(expected => expected.Class));
+                if (classes != expectedClasses)
+                {
+                    failures.Add($"classes [{classes}], expected [{expectedClasses}]");
+                }
+
+                failures.AddRange(rects.Where(rect => rect.Kind != "control").Select(rect => $"{rect.Path} has kind {rect.Kind}"));
+                var byPath = rects.ToDictionary(rect => rect.Path, StringComparer.Ordinal);
+                foreach (PreviewRect rect in rects.Where(rect => rect.Path != "."))
+                {
+                    int slash = rect.Path.LastIndexOf('/');
+                    string parentPath = slash < 0 ? "." : rect.Path[..slash];
+                    // A parent with no entry is not a Control (Plain), so its child's rect has nothing to lie inside. The
+                    // parent's rect grows by one pixel to allow for rounding in the layout's float positions.
+                    if (byPath.TryGetValue(parentPath, out PreviewRect? parent) && !parent.Rect.Grow(1f).Encloses(rect.Rect))
+                    {
+                        failures.Add($"{rect.Path} {rect.Rect} is not inside {parent.Path} {parent.Rect}");
+                    }
+
+                    failures.Add(PreviewRectSpanFailure(text, rect, rect.Class, rect.Path[(slash + 1)..]));
+                }
+
+                if (byPath.TryGetValue(".", out PreviewRect? root))
+                {
+                    failures.Add(PreviewRectSpanFailure(text, root, root.Class, "Root"));
+                }
+
+                return Failures([.. failures]);
+            }
+        );
+
+    // The entry's span starts with the element's tag and holds its Name attribute, with or without a unique name's %.
+    private static string PreviewRectSpanFailure(string text, PreviewRect rect, string tag, string name)
+    {
+        string source = text.Substring(rect.SpanStart, rect.SpanLength);
+        bool named = source.Contains($"Name=\"{name}\"", StringComparison.Ordinal) || source.Contains($"Name=\"%{name}\"", StringComparison.Ordinal);
+        return source.StartsWith("<" + tag, StringComparison.Ordinal) && named
+            ? ""
+            : $"{rect.Path} has span [{source}], not a <{tag}> element named {name}";
+    }
+
+    // A node inside an instanced scene, and the instance's own root, both select the x:Instance element; a node an override
+    // adds selects its own element.
+    private Task<string> PreviewRectsSelectTheInstanceElement() =>
+        WithPreviewRects(
+            PreviewRectsInstanceScene,
+            (text, rects) =>
+                Failures([
+                    .. PreviewRectsInstanceSpans.Select(expected =>
+                        rects.FirstOrDefault(rect => rect.Path == expected.Path) switch
+                        {
+                            null => $"no entry for {expected.Path} among [{string.Join(", ", rects.Select(rect => rect.Path))}]",
+                            var rect when text.Substring(rect.SpanStart, rect.SpanLength).StartsWith(expected.Start, StringComparison.Ordinal) => "",
+                            var rect =>
+                                $"{expected.Path} selects [{text.Substring(rect.SpanStart, rect.SpanLength)}], not a {expected.Start} element",
+                        }
+                    ),
+                ])
+        );
+
+    // Collecting from a root outside the tree throws rather than returning rectangles no layout produced.
+    private static string PreviewRectsNeedATree()
+    {
+        PreviewScene preview = XscnPreviewScene.Instantiate(CleanScene, PreviewPath, scriptsRequested: false);
+        try
+        {
+            if (preview.Root is null || preview.Document is null)
+            {
+                return $"the preview has no root or no document: [{PreviewProblems(preview)}]";
+            }
+
+            try
+            {
+                _ = XscnPreviewRects.Collect(preview.Root, preview.Document);
+                return "Collect returned for a root outside the tree";
+            }
+            catch (InvalidOperationException)
+            {
+                return "";
+            }
+        }
+        finally
+        {
+            preview.Root?.Free();
         }
     }
 
