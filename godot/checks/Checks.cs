@@ -340,6 +340,32 @@ public partial class Checks : Node
             ("C102", PreviewRefusesAnUpperCaseBinaryScene),
             // The preview's Control rectangles and source spans (GXAML-166).
             ("C105", PreviewRectsNeedATree),
+            // Referenced resources, path references and path-typed containers in a stripped preview (GXAML-184).
+            ("C106", PreviewStripsAResourcesBuiltInScript),
+            ("C107", PreviewStripsAResourcesScriptFile),
+            ("C108", PreviewStripsAnXres),
+            ("C109", PreviewStripsResourcesAtAnyDepth),
+            (
+                "C110",
+                () =>
+                    Failures(
+                        PreviewRetypesAPathTypedContainer("preview_typed_element.tscn", "list", Variant.Type.Array),
+                        PreviewRetypesAPathTypedContainer("preview_typed_key.tscn", "map", Variant.Type.Dictionary),
+                        PreviewRetypesAPathTypedContainer("preview_typed_value.tscn", "map", Variant.Type.Dictionary)
+                    )
+            ),
+            ("C111", PreviewNullsAPathReferenceToAScript),
+            ("C112", PreviewRefusesABinaryResource),
+            ("C113", PreviewRefusesAPathValueToAScene),
+            // Review of GXAML-184: instances, tag fields, script resources, Object values (GXAML-191).
+            ("C114", PreviewRefusesAPathInstance),
+            ("C115", PreviewDropsUnknownTagFields),
+            ("C116", PreviewNullsAResourceThatIsAScript),
+            ("C117", PreviewObjectValueScriptDoesNotRun),
+            ("C118", PreviewClassifiesAPathValuesUidAndPath),
+            ("C119", PreviewCopiesAResourceForATypedProperty),
+            ("C120", PreviewKeepsAPathValueToAnInertFile),
+            ("C121", PreviewNullsAPathValueByItsUid),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -2438,7 +2464,9 @@ public partial class Checks : Node
         }
     }
 
-    // A relative reference in the text resolves against the document's res:// path, not the temp file's folder.
+    // A relative reference in the text resolves against the document's res:// path, not the temp file's folder. A stripped
+    // preview loads every referenced text resource from its stripped copy in the temp folder, so the box is known by its
+    // content, the relative box.xres's blue, and by a path outside res://, not by its original path.
     private static string PreviewResolvesRelativeReferences() =>
         WithPreview(
             PreviewRelativeScene,
@@ -2447,13 +2475,17 @@ public partial class Checks : Node
             root =>
             {
                 const string expected = RelativeCasesPath + "box.xres";
+                var blue = new Color(0, 0, 1, 1);
                 using Variant box = root.GetMeta("box", default(Variant));
                 return Failures(
                     root.GetNodeOrNull("Added") is null ? "the root has no node Added, so the file was read, not the text" : "",
                     box.Obj switch
                     {
-                        StyleBoxFlat { ResourcePath: expected } => "",
-                        Resource other => $"metadata/box is a {other.GetClass()} at \"{other.ResourcePath}\", not the StyleBoxFlat at {expected}",
+                        StyleBoxFlat flat when flat.BgColor != blue => $"metadata/box's BgColor is {flat.BgColor}, not {expected}'s {blue}",
+                        StyleBoxFlat flat when flat.ResourcePath.StartsWith("res://", StringComparison.Ordinal) =>
+                            $"metadata/box was loaded from \"{flat.ResourcePath}\", not from a stripped copy",
+                        StyleBoxFlat => "",
+                        Resource other => $"metadata/box is a {other.GetClass()} at \"{other.ResourcePath}\", not the StyleBoxFlat of {expected}",
                         _ => "metadata/box holds no resource",
                     }
                 );
@@ -2814,8 +2846,8 @@ public partial class Checks : Node
         );
     }
 
-    // C83 to C86's stripped previews leave no .tscn in the addon's temp folder and write nothing under res://. The folder is
-    // staged for the check, so another process's temp files do not count.
+    // C83 to C86's and C107's stripped previews leave no .tscn or .tres copy in the addon's temp folder and write nothing
+    // under res://. The folder is staged for the check, so another process's temp files do not count.
     private static string PreviewLeavesNoInstancedTempFiles()
     {
         string[] texts =
@@ -2824,6 +2856,7 @@ public partial class Checks : Node
             InstancingScene(CasesPath + "preview_inst_script.tscn"),
             InstancingScene(CasesPath + "preview_deep_a.xscn"),
             PreviewTypedArrayScene,
+            ReferencingResource(CasesPath + "preview_res_script.tres"),
         ];
         string staged = Path.Combine(Path.GetTempPath(), $"godot-xaml-c87-{Guid.NewGuid():N}");
         string[] resBefore = ResListing();
@@ -2831,14 +2864,15 @@ public partial class Checks : Node
         try
         {
             string folder = AddonTempFolder.Get();
-            string[] before = Directory.GetFiles(folder, "*.tscn");
+            string[] Copies() => [.. Directory.GetFiles(folder, "*.tscn"), .. Directory.GetFiles(folder, "*.tres")];
+            string[] before = Copies();
             string failure = Failures([.. texts.Select(text => WithPreview(text, PreviewPath, scriptsRequested: false, _ => ""))]);
             // C91's cycle: Godot refuses the load, and the load route keeps its own temp file on purpose; only the preview's
             // copies must be gone.
             int tempPathsBeforeCycle = XscnLoadRoute.TempPaths.Count;
             XscnPreviewScene.Instantiate(InstancingScene(CasesPath + "preview_cycle_a.xscn"), PreviewPath, scriptsRequested: false).Root?.Free();
             DeleteKeptTempFiles(tempPathsBeforeCycle);
-            string[] left = [.. Directory.GetFiles(folder, "*.tscn").Except(before, StringComparer.Ordinal)];
+            string[] left = [.. Copies().Except(before, StringComparer.Ordinal)];
             string[] resAfter = ResListing();
             return Failures(
                 failure,
@@ -3248,6 +3282,363 @@ public partial class Checks : Node
             File.Delete(ProjectSettings.GlobalizePath(path));
         }
     }
+
+    // A text whose root's metadata/r names the resource at the path through a Resource() value.
+    private static string ReferencingResource(string resourcePath) =>
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + $"  <x:Prop Name=\"metadata/r\" Value='Resource(\"{resourcePath}\")' />\n"
+        + "</Control>\n";
+
+    // A .tres's built-in @tool script is stripped from its copy: its static initializer does not run, and the preview has
+    // a root.
+    private static string PreviewStripsAResourcesBuiltInScript()
+    {
+        const string resource = CasesPath + "preview_res_builtin.tres";
+        return WithoutMarker(
+            "gx_preview_res_builtin",
+            $"{resource}'s built-in script",
+            () => WithPreview(ReferencingResource(resource), PreviewPath, scriptsRequested: false, _ => "")
+        );
+    }
+
+    // A .tres's script file is removed from its copy: the script neither runs nor loads.
+    private static string PreviewStripsAResourcesScriptFile() =>
+        PreviewStripsAScriptedResource(CasesPath + "preview_res_script.tres", CasesPath + "preview_res_script.gd", "gx_preview_res_script");
+
+    // An .xres's Script= path is removed from its copy: the script neither runs nor loads.
+    private static string PreviewStripsAnXres() =>
+        PreviewStripsAScriptedResource(CasesPath + "preview_res_x.xres", CasesPath + "preview_res_x.gd", "gx_preview_res_x");
+
+    private static string PreviewStripsAScriptedResource(string resource, string script, string meta)
+    {
+        string failure = WithoutMarker(meta, script, () => WithPreview(ReferencingResource(resource), PreviewPath, scriptsRequested: false, _ => ""));
+        return Failures(failure, ResourceLoader.HasCached(script) ? $"{script} is cached after the stripped preview" : "");
+    }
+
+    // A scene a referenced .tres references is stripped too, and a cycle of .tres files returns from the preview, root or
+    // none, with no stack overflow and no hang; the cycle's way back points at the first file's stripped copy, so the
+    // script the first file names neither runs nor loads.
+    private static string PreviewStripsResourcesAtAnyDepth()
+    {
+        const string cycleScript = CasesPath + "preview_res_script.gd";
+        string deep = WithoutMarker(
+            "gx_preview_res_depth",
+            $"{CasesPath}preview_res_depth.tscn's built-in script",
+            () => WithPreview(ReferencingResource(CasesPath + "preview_res_depth.tres"), PreviewPath, scriptsRequested: false, _ => "")
+        );
+        int tempPathsBeforeCycle = XscnLoadRoute.TempPaths.Count;
+        string cycle = WithoutMarker(
+            "gx_preview_res_script",
+            $"{CasesPath}preview_res_cycle_a.tres's {cycleScript}",
+            () =>
+            {
+                XscnPreviewScene
+                    .Instantiate(ReferencingResource(CasesPath + "preview_res_cycle_a.tres"), PreviewPath, scriptsRequested: false)
+                    .Root?.Free();
+                return "";
+            }
+        );
+        // A failed load keeps its temp file for inspection; the cycle's is expected.
+        DeleteKeptTempFiles(tempPathsBeforeCycle);
+        return Failures(deep, cycle, ResourceLoader.HasCached(cycleScript) ? $"{cycleScript} is cached after the cycle's stripped preview" : "");
+    }
+
+    // An instanced .tscn whose container type is a Resource() path to a script loads with the container kept, and the
+    // script is not loaded.
+    private static string PreviewRetypesAPathTypedContainer(string scene, string meta, Variant.Type type)
+    {
+        string failure = WithPreview(
+            InstancingScene(CasesPath + scene),
+            PreviewPath,
+            scriptsRequested: false,
+            root =>
+            {
+                if (root.GetNodeOrNull("Inst") is not { } inst)
+                {
+                    return $"{scene}: the root has no node Inst";
+                }
+
+                using Variant value = inst.GetMeta(meta, default(Variant));
+                return value.VariantType == type ? "" : $"{scene}: metadata/{meta} is a {value.VariantType}, not a {type}";
+            }
+        );
+        return Failures(
+            failure,
+            ResourceLoader.HasCached(PreviewTypedScriptPath) ? $"{scene}: {PreviewTypedScriptPath} is cached after the stripped preview" : ""
+        );
+    }
+
+    // A Resource() value naming a script in an instanced .tscn, plain or inside an Object() value, is made null: the
+    // script neither runs nor loads.
+    private static string PreviewNullsAPathReferenceToAScript() =>
+        PreviewRunsNoPathValueScript("preview_path_value.tscn", "preview_path_object.tscn");
+
+    // Each instanced case scene, which references preview_path_value.gd, previews with its Inst node, and the script
+    // neither runs nor loads.
+    private static string PreviewRunsNoPathValueScript(params string[] scenes)
+    {
+        const string script = CasesPath + "preview_path_value.gd";
+        return Failures([
+            .. scenes.Select(scene =>
+                Failures(
+                    WithoutMarker(
+                        "gx_preview_path_value",
+                        $"{scene}'s {script}",
+                        () => WithPreview(InstancingScene(CasesPath + scene), PreviewPath, scriptsRequested: false, root => HasNode(root, "Inst"))
+                    ),
+                    ResourceLoader.HasCached(script) ? $"{scene}: {script} is cached after the stripped preview" : ""
+                )
+            ),
+        ]);
+    }
+
+    // A binary resource that is not a scene cannot be stripped: it is refused with the message that says how to preview it.
+    private static string PreviewRefusesABinaryResource()
+    {
+        const string path = "user://gxaml-preview-binary-resource.res";
+        using var box = new StyleBoxFlat();
+        Error saved = ResourceSaver.Save(box, path);
+        if (saved != Error.Ok)
+        {
+            return $"setup: saving {path} gave {saved}";
+        }
+
+        try
+        {
+            return Failures(
+                XscnPreviewReferences.ClassifyFile(path) == PreviewReferenceKind.BinaryResource ? "" : $"{path} is not classified BinaryResource",
+                RefusedWith(
+                    path,
+                    $"{path} is a binary resource, which the preview cannot strip of scripts; save it as .tres or turn on "
+                        + "godot_xaml/preview_server/allow_scripts"
+                )
+            );
+        }
+        finally
+        {
+            File.Delete(ProjectSettings.GlobalizePath(path));
+        }
+    }
+
+    // A Resource() value naming a text scene in an instanced .tscn is loaded by its path, never a copy, so it is refused.
+    private static string PreviewRefusesAPathValueToAScene()
+    {
+        const string scene = CasesPath + "preview_inst_script.tscn";
+        string expected = $"{scene} is referenced by a Resource() value, which the preview cannot redirect to a stripped copy";
+        PreviewScene preview = XscnPreviewScene.Instantiate(
+            InstancingScene(CasesPath + "preview_path_scene.tscn"),
+            PreviewPath,
+            scriptsRequested: false
+        );
+        return Failures(
+            RefusedFailure(preview),
+            preview.Issues.Any(issue => issue.Message == expected) ? "" : $"the issues hold no [{expected}]: [{PreviewProblems(preview)}]"
+        );
+    }
+
+    // A node whose instance= is a Resource() path to a text scene is refused like any path value, since the text loader
+    // loads the path as it parses the tag: the scene's script neither runs nor loads.
+    private static string PreviewRefusesAPathInstance()
+    {
+        const string scene = CasesPath + "preview_inst_script.tscn";
+        string expected = $"{scene} is referenced by a Resource() value, which the preview cannot redirect to a stripped copy";
+        string failure = WithoutMarker(
+            PreviewInstancedFileRanMeta,
+            PreviewInstancedScriptPath,
+            () =>
+            {
+                PreviewScene preview = XscnPreviewScene.Instantiate(
+                    InstancingScene(CasesPath + "preview_path_instance.tscn"),
+                    PreviewPath,
+                    scriptsRequested: false
+                );
+                return Failures(
+                    RefusedFailure(preview),
+                    preview.Issues.Any(issue => issue.Message == expected) ? "" : $"the issues hold no [{expected}]: [{PreviewProblems(preview)}]"
+                );
+            }
+        );
+        return Failures(
+            failure,
+            ResourceLoader.HasCached(PreviewInstancedScriptPath) ? $"{PreviewInstancedScriptPath} is cached after the stripped preview" : ""
+        );
+    }
+
+    // A tag field the model does not hold, on a node or in the header, is dropped from the stripped copy: the text loader
+    // parses it as a value, so its Resource() path would load the script.
+    private static string PreviewDropsUnknownTagFields() => PreviewRunsNoPathValueScript("preview_tag_node.tscn", "preview_tag_header.tscn");
+
+    // A referenced .tres that is itself a GDScript is a script: no copy is written, its static initializer does not run,
+    // and the reference is null.
+    private static string PreviewNullsAResourceThatIsAScript()
+    {
+        const string resource = CasesPath + "preview_res_is_script.tres";
+        return WithoutMarker(
+            "gx_preview_res_is_script",
+            $"{resource}'s source",
+            () =>
+                WithPreview(
+                    ReferencingResource(resource),
+                    PreviewPath,
+                    scriptsRequested: false,
+                    root =>
+                    {
+                        using Variant value = root.GetMeta("r", default(Variant));
+                        return value.VariantType == Variant.Type.Nil ? "" : $"metadata/r is a {value.VariantType}, not null";
+                    }
+                )
+        );
+    }
+
+    // The markers: the static initializers and the _init of the scripts the text's Object() values build.
+    private const string PreviewObjectBareMeta = "gx_preview_object_bare";
+    private const string PreviewObjectStaticMeta = "gx_preview_object_static";
+    private const string PreviewObjectInitMeta = "gx_preview_object_init";
+
+    // A @tool GDScript source, as escaped value text, whose static initializer sets one meta and whose _init another.
+    private static string PreviewObjectSource(string extends, string staticMeta, string initMeta) =>
+        $"@tool\\nextends {extends}\\n\\nstatic func _static_init():\\n\\tEngine.set_meta(\\\"{staticMeta}\\\", true)\\n\\n"
+        + $"func _init():\\n\\tEngine.set_meta(\\\"{initMeta}\\\", true)\\n";
+
+    // The bare GDScript's source, and the source of the one that scripts a Resource.
+    private static readonly string PreviewObjectBareSource = PreviewObjectSource("RefCounted", PreviewObjectBareMeta, PreviewObjectBareMeta);
+    private static readonly string PreviewObjectScriptedSource = PreviewObjectSource("Resource", PreviewObjectStaticMeta, PreviewObjectInitMeta);
+
+    // "script/source" makes Godot compile the GDScript and run its static initializer as the text loads
+    // (gdscript.cpp, GDScript::_set and reload), and "script" then gives the Resource an instance (object.cpp, set_script).
+    private static readonly string PreviewObjectScriptScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + $"  <x:Prop Name=\"metadata/g\" Value='Object(GDScript, \"script/source\": \"{PreviewObjectBareSource}\")' />\n"
+        + "  <x:Prop Name=\"metadata/s\" Value='Object(Resource, \"script\": "
+        + $"Object(GDScript, \"script/source\": \"{PreviewObjectScriptedSource}\"))' />\n"
+        + "</Control>\n";
+
+    private static readonly string[] PreviewObjectMetas = [PreviewObjectBareMeta, PreviewObjectStaticMeta, PreviewObjectInitMeta];
+
+    private static void ClearPreviewObjectMetas()
+    {
+        foreach (string meta in PreviewObjectMetas)
+        {
+            Engine.Singleton.RemoveMeta(meta);
+        }
+    }
+
+    // A GDScript built by an Object() value runs no code in a stripped preview, the Resource it scripted staying unscripted;
+    // with scripts allowed it runs.
+    private static string PreviewObjectValueScriptDoesNotRun()
+    {
+        using var previous = new PreviewSettingScope();
+        Godot.GodotObject engine = Engine.Singleton;
+        try
+        {
+            ClearPreviewObjectMetas();
+            ProjectSettings.SetSetting(PreviewScriptsSetting, false);
+            string stripped = WithPreview(
+                PreviewObjectScriptScene,
+                PreviewPath,
+                scriptsRequested: true,
+                root =>
+                {
+                    using Variant value = root.GetMeta("s", default(Variant));
+                    if (value.AsGodotObject() is not Resource kept)
+                    {
+                        return "metadata/s is not a Resource";
+                    }
+
+                    using Variant script = kept.GetScript();
+                    return script.VariantType == Variant.Type.Nil ? "" : "metadata/s is a scripted Resource";
+                }
+            );
+            string[] ranStripped = [.. PreviewObjectMetas.Where(meta => engine.HasMeta(meta))];
+            ClearPreviewObjectMetas();
+            ProjectSettings.SetSetting(PreviewScriptsSetting, true);
+            string allowed = WithPreview(PreviewObjectScriptScene, PreviewPath, scriptsRequested: true, _ => "");
+            bool ranAllowed = PreviewObjectMetas.All(meta => engine.HasMeta(meta));
+            return Failures(
+                stripped,
+                ranStripped.Length > 0 ? $"an Object() value's script ran in a stripped preview: {string.Join(", ", ranStripped)}" : "",
+                allowed,
+                ranAllowed ? "" : "an Object() value's script did not run with scripts allowed"
+            );
+        }
+        finally
+        {
+            ClearPreviewObjectMetas();
+        }
+    }
+
+    // A Resource(uid, path) value is classified by both files, since the text loader loads the path when the uid's file
+    // does not load: with the uid unregistered, and with it registered to a missing file, the script the path names is
+    // made null.
+    private static string PreviewClassifiesAPathValuesUidAndPath()
+    {
+        const string script = CasesPath + "preview_path_value.gd";
+        const string scene = "user://gxaml-preview-uid-fallback.tscn";
+        long unregistered = ResourceUid.CreateId();
+        long missing = ResourceUid.CreateId();
+        ResourceUid.AddId(missing, CasesPath + "preview_missing_uid_target.png");
+        try
+        {
+            return Failures([
+                .. new[] { unregistered, missing }.Select(id =>
+                {
+                    File.WriteAllText(
+                        ProjectSettings.GlobalizePath(scene),
+                        "[gd_scene format=3]\n\n[node name=\"Inst\" type=\"Control\"]\n"
+                            + $"metadata/s = Resource(\"{ResourceUid.IdToText(id)}\", \"{script}\")\n"
+                    );
+                    string which = id == missing ? "a uid registered to a missing file" : "an unregistered uid";
+                    return Failures(
+                        WithoutMarker(
+                            "gx_preview_path_value",
+                            $"{which}'s {script}",
+                            () => WithPreview(InstancingScene(scene), PreviewPath, scriptsRequested: false, root => HasNode(root, "Inst"))
+                        ),
+                        ResourceLoader.HasCached(script) ? $"{which}: {script} is cached after the stripped preview" : ""
+                    );
+                }),
+            ]);
+        }
+        finally
+        {
+            ResourceUid.RemoveId(missing);
+            File.Delete(ProjectSettings.GlobalizePath(scene));
+        }
+    }
+
+    // A .tres a typed property names is copied as a .tres, which the property's type hint loads by its extension.
+    private static string PreviewCopiesAResourceForATypedProperty()
+    {
+        const string theme = CasesPath + "preview_res_theme.tres";
+        string text = $"<Control Name=\"Root\" Theme=\"{theme}\" />\n";
+        return WithPreview(
+            text,
+            PreviewPath,
+            scriptsRequested: false,
+            root => root is Control { Theme: { DefaultFontSize: 21 } } ? "" : $"the root's theme is not {theme}'s copy"
+        );
+    }
+
+    // A Resource() value naming a file that is neither a script, a scene nor a resource to strip is kept as written.
+    private static string PreviewKeepsAPathValueToAnInertFile() =>
+        WithPreview(
+            InstancingScene(CasesPath + "preview_path_inert.tscn"),
+            PreviewPath,
+            scriptsRequested: false,
+            root =>
+            {
+                if (root.GetNodeOrNull("Inst") is not { } inst)
+                {
+                    return "the root has no node Inst";
+                }
+
+                using Variant value = inst.GetMeta("k", default(Variant));
+                return value.AsGodotObject() is Shader ? "" : $"metadata/k is a {value.VariantType}, not the kept Shader";
+            }
+        );
+
+    // A Resource() value naming a script by its uid alone is made null: the script neither runs nor loads.
+    private static string PreviewNullsAPathValueByItsUid() => PreviewRunsNoPathValueScript("preview_path_uid.tscn");
 
     // Keeps the preview setting as found and puts it back on dispose; a Nil value erases it, so a run that had none leaves none.
     private sealed class PreviewSettingScope : IDisposable

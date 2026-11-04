@@ -1,0 +1,10 @@
+[gd_resource type="GDScript" format=3]
+
+[resource]
+script/source = "@tool
+extends RefCounted
+
+
+static func _static_init():
+	Engine.set_meta(\"gx_preview_res_is_script\", true)
+"

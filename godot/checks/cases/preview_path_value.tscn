@@ -1,0 +1,4 @@
+[gd_scene format=3]
+
+[node name="Inst" type="Control"]
+metadata/s = Resource("res://checks/cases/preview_path_value.gd")

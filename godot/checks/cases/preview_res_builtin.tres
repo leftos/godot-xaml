@@ -1,0 +1,13 @@
+[gd_resource type="Resource" format=3]
+
+[sub_resource type="GDScript" id="GDScript_m"]
+script/source = "@tool
+extends Resource
+
+
+static func _static_init():
+	Engine.set_meta(\"gx_preview_res_builtin\", true)
+"
+
+[resource]
+script = SubResource("GDScript_m")

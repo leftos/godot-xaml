@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[sub_resource type="GDScript" id="GDScript_d"]
+script/source = "@tool
+extends Control
+
+
+static func _static_init():
+	Engine.set_meta(\"gx_preview_res_depth\", true)
+"
+
+[node name="Depth" type="Control"]
+script = SubResource("GDScript_d")

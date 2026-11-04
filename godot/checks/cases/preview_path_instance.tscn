@@ -1,0 +1,5 @@
+[gd_scene format=3]
+
+[node name="Inst" type="Control"]
+
+[node name="Child" parent="." instance=Resource("res://checks/cases/preview_inst_script.tscn")]

@@ -410,7 +410,7 @@ Stripping (`XscnPreviewScene.WithoutScripts`, on the converted text before the l
 
 Connection paths are compared after Godot's own simplification (`.` dropped, `name/..` collapsed).
 
-The allowing setting is `godot_xaml/preview_server/allow_scripts`. With scripts off, the strip covers the text's own scripts, every scene file the text or its scenes reference at any depth, and the script types of typed containers. A resource file the text references that carries a script (a `.tres` or `.xres`) is not stripped yet and still loads its script (GXAML-184).
+The allowing setting is `godot_xaml/preview_server/allow_scripts`. With scripts off, nothing the previewed text references loads a script: the strip covers the text's own scripts, every scene and text resource file the text or its files reference at any depth, and the script types of typed containers.
 
 A socket that hands text to an in-editor instantiate would otherwise run any `[Tool]` script class of the project, with the text choosing which and with which properties (a C# class without `[Tool]` is a placeholder in the editor; `modules/mono/csharp_script.h`, `is_tool`).
 
@@ -423,9 +423,15 @@ Every ext_resource, in the text and in each stripped copy, is classified by the 
   A `res` whose header cannot be read (compressed, truncated, no `RSRC` magic) fails too, with "the binary resource's class cannot be read, so it may hold a scene"; a `res` that does not exist is kept, for Godot to report as missing.
 - An imported scene: an extension a scene importer claims (`glb`, `gltf`, `fbx`, `blend`, `dae`, `obj`), or a file whose editor class is a `PackedScene` beside a `.import` sidecar. It is refused for now, with GXC0121 "an imported scene cannot be previewed with scripts off; allow scripts to preview it"; the owner's ruling is to accept clean ones later.
 - Another file whose class is a `PackedScene`, or one declared a `PackedScene` that would otherwise be kept: GXC0121 "<path> is not a text scene".
-- Anything else is kept.
+- A text resource (`tres`, `xres`): loaded from a stripped copy, like a text scene. One whose header type is a Script class counts as a script: no copy is made and the reference becomes null, and an ext_resource declared as a Script class is never copied.
+- A binary resource that is not a scene (`res`): refused with GXC0121 "<path> is a binary resource, which the preview cannot strip of scripts; save it as .tres or turn on godot_xaml/preview_server/allow_scripts". The owner's ruling: "With scripts off, a project-authored binary resource the previewed text reaches … is refused with GXC0121 naming the file … Turning on `godot_xaml/preview_server/allow_scripts` previews it. Imported assets are unaffected."
+- Anything else is kept. Telling a file's kind by its content for other extensions, remaps, `.import` sidecars, `.gdextension` and unknown extensions are open (GXAML-189).
 
-Each text scene is read from its file (an `.xscn` converted, a `.tscn` read), stripped the same way, written to the addon's temp folder and loaded from there, its ext_resource's uid dropped since a registered uid wins over the path (`XscnPreviewInstances`); the copies are deleted once the load is done. That covers an instance, an inherited root, an exported scene property and a `metadata/` value alike.
+Each text scene or resource is read from its file (an `.xscn` or `.xres` converted, a `.tscn` or `.tres` read), stripped the same way, written to the addon's temp folder and loaded from there, recursively and with cycles handled (`XscnPreviewInstances`); the copy's extension comes from the document read (`.tres` for a `gd_resource`, `.tscn` for a `gd_scene`), and its ext_resource's uid is dropped since a registered uid wins over the path. The copies are deleted once the load is done, so a referenced resource has the copy's `ResourcePath`. That covers an instance, an inherited root, an exported scene or resource property and a `metadata/` value alike, and a node's `instance=` value, which goes through the same path-value walk. Each resolved path is classified once per preview.
+
+A `Resource("path")` value in an unconverted text (a referenced `.tscn` or `.tres`) or inside an `Object(...)` value is classified the same way: a script becomes null, a file proven inert is kept, and any other kind is refused with GXC0121 "<path> is referenced by a Resource() value, which the preview cannot redirect to a stripped copy", or with the kind's own refusal message. A `Resource("uid://…", path)` value is classified by both files. A tag field of a stripped copy that the model does not hold is dropped from every section.
+
+An `Object(...)` value whose class is a Script class becomes null. Godot fact (4.7.2): `Object(GDScript, "script/source": …)` compiles and runs the script's `_static_init` (`GDScript::_set` calls `reload`), while `"source_code"` only stores the text; the strip therefore cannot leave such a value to load (GXAML-191).
 
 A connection from or to a node of an instanced scene that lost its script is dropped, as one of the text's own stripped nodes is, unless the instance detaches its scene's script itself (`Script="{x:Null}"`), which a preview with scripts allowed would do as well.
 

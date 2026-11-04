@@ -34,7 +34,7 @@ $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env
 }
 
 $project = $PSScriptRoot
-$expectedChecks = 104
+$expectedChecks = 120
 
 $built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror --no-incremental }
 if (-not $built) {

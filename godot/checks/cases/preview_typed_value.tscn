@@ -1,0 +1,4 @@
+[gd_scene format=3]
+
+[node name="Inst" type="Control"]
+metadata/map = Dictionary[int, Resource("res://checks/cases/preview_typed.gd")]({})

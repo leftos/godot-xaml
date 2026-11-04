@@ -1,0 +1,4 @@
+[gd_scene format=3]
+
+[node name="Inst" type="Control"]
+metadata/list = Array[Resource("res://checks/cases/preview_typed.gd")]([])

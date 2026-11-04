@@ -121,28 +121,43 @@ internal static class XscnPreviewScene
     /// <summary>
     /// The document with no script from its own text: no <c>script</c> property that names a script (an explicit null
     /// stays), no Script-class sub-resource, no ext_resource whose resolved file is a script
-    /// (<see cref="XscnPreviewReferences.Classify"/>) or whose type is a Script class, and no connection from or to a node
-    /// whose script was removed.
+    /// (<see cref="XscnPreviewReferences.Classify(TscnExtResource, Func{string, PreviewReferenceKind})"/>) or whose type is a
+    /// Script class, no tag field the model does not hold, and no connection from or to a node whose script was removed.
     /// Every other property stays: Godot sets each stored node property with <c>node->set</c> and is silent on one the class
     /// lacks (packed_scene.cpp:372-383), so a script's exported values stay where the class has them. The scenes the
     /// document instances are stripped apart (<see cref="XscnPreviewInstances"/>).
     /// </summary>
+    /// <remarks>
+    /// A test seam: each file is classified afresh and no path value is reported, so every <c>Resource()</c> value of a
+    /// kind the preview refuses is kept as written. The preview strips through the overload that takes a classification
+    /// and a path-value callback.
+    /// </remarks>
     /// <param name="document">The converted scene.</param>
     /// <returns>
-    /// The stripped scene. A reference to a removed resource in a property value or a bind becomes <c>null</c>; as a typed
-    /// container's element, key or value type it becomes <c>Object</c>, the values kept, since the text loader loads every
-    /// script a type names and a GDScript runs its static initializer as it loads.
+    /// The stripped scene. A reference to a removed resource, a <c>Resource()</c> value whose file is a script, or an
+    /// <c>Object()</c> value whose class is a Script class, in a property value, a node's <c>instance</c>, a bind or an
+    /// <c>Object()</c> value's property becomes <c>null</c>; as a typed container's element, key or value type it becomes
+    /// <c>Object</c>, the values kept, since the text loader loads every script a type names and a GDScript runs its static
+    /// initializer as it loads. A <c>Resource()</c> type becomes <c>Object</c> whatever it names.
     /// </returns>
-    internal static TscnDocument WithoutScripts(TscnDocument document) => WithoutScripts(document, new HashSet<string>(StringComparer.Ordinal));
+    internal static TscnDocument WithoutScripts(TscnDocument document) =>
+        WithoutScripts(document, new HashSet<string>(StringComparer.Ordinal), XscnPreviewReferences.ClassifyFile, (_, _) => { });
 
     /// <summary>
     /// The document with no script from its own text, as <see cref="WithoutScripts(TscnDocument)"/> gives it, and no
     /// connection from or to a node that lost its script in a scene the document instances.
     /// </summary>
-    /// <param name="document">The converted scene.</param>
+    /// <param name="document">The converted scene or resource.</param>
     /// <param name="lostScripts">The paths from the root, simplified, of the instanced nodes whose script was removed.</param>
-    /// <returns>The stripped scene.</returns>
-    internal static TscnDocument WithoutScripts(TscnDocument document, IReadOnlySet<string> lostScripts)
+    /// <param name="kindOf">What the preview makes of a resolved path, read for every ext_resource and path value.</param>
+    /// <param name="pathValue">Called with each <c>Resource()</c> value's resolved path and kind, the strip's own answer.</param>
+    /// <returns>The stripped document.</returns>
+    internal static TscnDocument WithoutScripts(
+        TscnDocument document,
+        IReadOnlySet<string> lostScripts,
+        Func<string, PreviewReferenceKind> kindOf,
+        Action<string, PreviewReferenceKind> pathValue
+    )
     {
         // The text loader loads every ext_resource and sub_resource, and a built-in script runs its static initializer as
         // its source is set (modules/gdscript/gdscript.cpp), so a script must leave the text, not only the nodes.
@@ -150,7 +165,7 @@ internal static class XscnPreviewScene
             // An ext is a script by the file it resolves to (XscnPreviewReferences); its declared type, the converter's guess,
             // can only add one.
             document
-                .ExtResources.Where(ext => IsScriptClass(ext.Type) || XscnPreviewReferences.Classify(ext) == PreviewReferenceKind.Script)
+                .ExtResources.Where(ext => IsScriptClass(ext.Type) || XscnPreviewReferences.Classify(ext, kindOf) == PreviewReferenceKind.Script)
                 .Select(ext => ext.Id),
             StringComparer.Ordinal
         );
@@ -172,31 +187,61 @@ internal static class XscnPreviewScene
             AddScriptReferences(sub.Properties, removedExts, removedSubs);
         }
 
-        var removed = new RemovedResources(removedExts, removedSubs);
-        return document with
-        {
-            ExtResources = [.. document.ExtResources.Where(ext => !removedExts.Contains(ext.Id))],
-            SubResources =
-            [
-                .. document
-                    .SubResources.Where(sub => !removedSubs.Contains(sub.Id))
-                    .Select(sub => sub with { Properties = Stripped(sub.Properties, removed) }),
-            ],
-            ResourceProperties = Stripped(document.ResourceProperties, removed),
-            Nodes = [.. document.Nodes.Select(node => node with { Properties = Stripped(node.Properties, removed) })],
-            // Godot logs an error for each connection whose signal or method went with the script (object.cpp:1529,1550).
-            Connections =
-            [
-                .. document
-                    .Connections.Where(connection =>
-                        !strippedNodes.Contains(Simplified(connection.From)) && !strippedNodes.Contains(Simplified(connection.To))
-                    )
-                    .Select(connection => connection with { Binds = [.. connection.Binds.Select(bind => Nulled(bind, removed))] }),
-            ],
-        };
+        AddScriptReferences(document.ResourceProperties, removedExts, removedSubs);
+        var removed = new RemovedResources(removedExts, removedSubs, kindOf, pathValue);
+        return WithoutUnknownFields(
+            document with
+            {
+                ExtResources = [.. document.ExtResources.Where(ext => !removedExts.Contains(ext.Id))],
+                SubResources =
+                [
+                    .. document
+                        .SubResources.Where(sub => !removedSubs.Contains(sub.Id))
+                        .Select(sub => sub with { Properties = Stripped(sub.Properties, removed) }),
+                ],
+                ResourceProperties = Stripped(document.ResourceProperties, removed),
+                // The text loader parses a node's instance= as a value too, a Resource() path loading as it is parsed.
+                Nodes =
+                [
+                    .. document.Nodes.Select(node =>
+                        node with
+                        {
+                            Properties = Stripped(node.Properties, removed),
+                            Instance = node.Instance is { } instance ? Nulled(instance, removed) : null,
+                        }
+                    ),
+                ],
+                // Godot logs an error for each connection whose signal or method went with the script (object.cpp:1529,1550).
+                Connections =
+                [
+                    .. document
+                        .Connections.Where(connection =>
+                            !strippedNodes.Contains(Simplified(connection.From)) && !strippedNodes.Contains(Simplified(connection.To))
+                        )
+                        .Select(connection => connection with { Binds = [.. connection.Binds.Select(bind => Nulled(bind, removed))] }),
+                ],
+            }
+        );
     }
 
-    private static bool IsScriptClass(string type)
+    // The document with no tag field the model does not hold, in any section. The text loader parses every tag field as a
+    // value, a Resource() path loading as it is parsed (variant_parser.cpp, _parse_tag, with no Resource( hook set by
+    // resource_format_text.cpp), and the model holds every field Godot reads.
+    private static TscnDocument WithoutUnknownFields(TscnDocument document) =>
+        document with
+        {
+            Header = document.Header with { Extra = [] },
+            ExtResources = [.. document.ExtResources.Select(ext => ext with { Extra = [] })],
+            SubResources = [.. document.SubResources.Select(sub => sub with { Extra = [] })],
+            Nodes = [.. document.Nodes.Select(node => node with { Extra = [] })],
+            Connections = [.. document.Connections.Select(connection => connection with { Extra = [] })],
+            Editables = [.. document.Editables.Select(editable => editable with { Extra = [] })],
+        };
+
+    /// <summary>Whether the type is Script or a class that inherits it, by the addon's metadata.</summary>
+    /// <param name="type">A class name.</param>
+    /// <returns>True for a Script class.</returns>
+    internal static bool IsScriptClass(string type)
     {
         if (string.Equals(type, ScriptClass, StringComparison.Ordinal))
         {
@@ -274,11 +319,17 @@ internal static class XscnPreviewScene
     private static ImmutableArray<TscnProperty> Stripped(ImmutableArray<TscnProperty> properties, RemovedResources removed) =>
         [.. properties.Where(property => !IsScriptReference(property)).Select(property => property with { Value = Nulled(property.Value, removed) })];
 
-    // The value with each reference to a removed resource made null, inside containers and objects too.
+    // The value with each reference to a removed resource, each Resource() value whose file is a script, and each Object()
+    // value whose class is a Script class made null, inside containers and objects too: the text loader loads a
+    // Resource() value by its path as it parses it (variant_parser.cpp:1124-1176), inside an Object() value too
+    // (:1011-1085), and an Object(GDScript, "script/source": …) compiles its source and runs its static initializer as it
+    // is set (modules/gdscript/gdscript.cpp, GDScript::_set and reload).
     private static GodotValue Nulled(GodotValue value, RemovedResources removed) =>
         value switch
         {
             GodotResourceRef reference => removed.Contains(reference) ? GodotNull.Instance : value,
+            GodotPathRef reference => removed.RemovesPath(reference) ? GodotNull.Instance : value,
+            ObjectValue objectValue when IsScriptClass(objectValue.ClassName) => GodotNull.Instance,
             GodotArray array => new GodotArray([.. array.Items.Select(item => Nulled(item, removed))], Retyped(array.ElementType, removed)),
             GodotDictionary dictionary => new GodotDictionary(
                 [.. dictionary.Entries.Select(entry => new GodotEntry(Nulled(entry.Key, removed), Nulled(entry.Value, removed)))],
@@ -292,13 +343,40 @@ internal static class XscnPreviewScene
             _ => value,
         };
 
-    // A container type that names a removed script becomes Object, which every script's instance is.
+    // A container type that names a removed script becomes Object, which every script's instance is. A Resource() type
+    // becomes Object whatever it names, since the text loader loads its file as it parses the type
+    // (variant_parser.cpp:1217-1237, 1263-1283, 1354-1371) and types the container only by a script, which Object covers.
     private static GodotTypeRef? Retyped(GodotTypeRef? type, RemovedResources removed) =>
-        type?.Script is GodotResourceRef reference && removed.Contains(reference) ? ObjectType : type;
+        type?.Script switch
+        {
+            GodotResourceRef reference when removed.Contains(reference) => ObjectType,
+            GodotPathRef => ObjectType,
+            _ => type,
+        };
 
-    // The ext_resource and sub_resource ids the strip removes.
-    private sealed record RemovedResources(HashSet<string> Exts, HashSet<string> Subs)
+    // The ext_resource and sub_resource ids the strip removes, and the preview's answer for a Resource() value's file.
+    private sealed record RemovedResources(
+        HashSet<string> Exts,
+        HashSet<string> Subs,
+        Func<string, PreviewReferenceKind> KindOf,
+        Action<string, PreviewReferenceKind> PathValue
+    )
     {
         public bool Contains(GodotResourceRef reference) => (reference.Kind == GodotRefKind.External ? Exts : Subs).Contains(reference.Id);
+
+        // Whether either file the value may load is a script, each reported; a value that resolves to no path loads
+        // nothing and stays.
+        public bool RemovesPath(GodotPathRef reference)
+        {
+            bool script = false;
+            foreach (string resolved in XscnPreviewReferences.ResolvedPaths(reference))
+            {
+                PreviewReferenceKind kind = KindOf(resolved);
+                PathValue(resolved, kind);
+                script |= kind == PreviewReferenceKind.Script;
+            }
+
+            return script;
+        }
     }
 }

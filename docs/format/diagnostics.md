@@ -308,13 +308,17 @@ Warning. `x:Uids gives 'res://a.tres' more than one uid (uid://bbb, uid://aaa); 
 
 Error. `res://ui/legacy.scn: a binary scene cannot be previewed with scripts off`.
 
-With scripts off, the preview strips every scene the text references (an instance, an inherited root, or a scene in a property or metadata value), at any depth, before loading it, and this one could not be stripped: it is a binary scene (a `.scn`, or a `.res` holding a scene or whose class cannot be read), it holds a scene but is not a `.tscn` or `.xscn` (`<path> is not a text scene`), or it cannot be read, does not parse or does not convert.
+With scripts off, the preview strips every scene and text resource the text references (an instance, an inherited root, or a scene in a property or metadata value), at any depth, before loading it, and this one could not be stripped: it is a binary scene (a `.scn`, or a `.res` holding a scene or whose class cannot be read), it is a binary resource, it holds a scene but is not a `.tscn` or `.xscn` (`<path> is not a text scene`), or it cannot be read, does not parse or does not convert.
 
 The preview shows no scene.
 
 Fix the referenced scene (save a binary `.scn` as `.tscn` or `.xscn`), or allow scripts for the preview: the request asks for them and the project setting `godot_xaml/preview_server/allow_scripts` is on.
 
 An imported model (`.glb`, `.gltf`, `.fbx`, `.blend`, `.dae`, `.obj`, or another file the editor imports as a scene) gives `<path>: an imported scene cannot be previewed with scripts off; allow scripts to preview it`; allowing scripts is the only way to preview it.
+
+A referenced `.tres` or `.xres` is stripped the same way, and one that cannot be read, does not parse or does not convert says so as a resource: `<path>: the resource cannot be read: …`, `… does not parse: …`, `… does not convert: …`. A binary resource that is not a scene (a `.res`) gives `<path> is a binary resource, which the preview cannot strip of scripts; save it as .tres or turn on godot_xaml/preview_server/allow_scripts`.
+
+A `Resource("…")` value in a referenced `.tscn` or `.tres`, or inside an `Object(...)` value, that names a file the preview cannot redirect to a stripped copy gives `<path> is referenced by a Resource() value, which the preview cannot redirect to a stripped copy`, or the message of the file's own kind.
 
 ### GXC0122 Source file unreadable
 

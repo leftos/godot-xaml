@@ -105,7 +105,7 @@ Every other type is written exactly as Godot writes it in a `.tscn`:
 | `PackedColorArray` | `PackedColorArray(1, 0, 0, 1, 0, 0, 1, 1)`, flat components |
 | `RID` | `RID(12345)`, or `RID()` |
 | `Signal`, `Callable` | `Signal()` and `Callable()`, the only forms a saved file holds |
-| `Object` | `Object(Resource,"resource_name":"",…)` |
+| `Object` | `Object(Resource,"resource_name":"",…)`; the conversion does not enter it, so a `Resource("…")` inside is neither localized nor turned into an ext_resource |
 | `null` | `null` |
 | `String` (in value text) | `"text"` quoted, with `\"`, `\\`, `\n` and `\t` escapes |
 | `StringName` (in value text) | `&"name"` |

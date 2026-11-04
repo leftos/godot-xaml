@@ -5,6 +5,7 @@ using System.Text;
 using Godot;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
+using GodotXaml.Core.Values;
 using FileAccess = Godot.FileAccess;
 
 namespace GodotXaml.Addon;
@@ -12,7 +13,7 @@ namespace GodotXaml.Addon;
 /// <summary>What a preview with scripts off makes of a file the text references.</summary>
 internal enum PreviewReferenceKind
 {
-    /// <summary>Loaded as it is: neither a script nor a scene.</summary>
+    /// <summary>Loaded as it is: neither a script, a scene, a text resource nor a binary resource.</summary>
     Kept,
 
     /// <summary>A script, removed with every reference to it.</summary>
@@ -32,6 +33,12 @@ internal enum PreviewReferenceKind
 
     /// <summary>A scene the editor imports from a model (<c>.glb</c>, <c>.fbx</c>, …), which is not stripped.</summary>
     ImportedScene,
+
+    /// <summary>A text resource (<c>.tres</c> or <c>.xres</c>), loaded from a stripped copy.</summary>
+    TextResource,
+
+    /// <summary>A binary resource that is not a scene, which cannot be stripped and may hold a built-in or external script.</summary>
+    BinaryResource,
 }
 
 /// <summary>
@@ -69,12 +76,35 @@ internal static class XscnPreviewReferences
         return ext.Path.StartsWith(UidScheme, StringComparison.Ordinal) ? RegisteredPath(ext.Path) ?? ext.Path : ext.Path;
     }
 
-    /// <summary>What the preview makes of the file an ext_resource resolves to.</summary>
-    /// <param name="ext">The ext_resource, its path a resource path.</param>
-    /// <returns>The kind; a declared scene type only turns a file that would be kept into one that cannot be stripped.</returns>
-    internal static PreviewReferenceKind Classify(TscnExtResource ext)
+    /// <summary>
+    /// The paths the text loader may load a <c>Resource()</c> value from, as it parses the value: its registered uid's, and
+    /// its path made a resource path, which it loads when the uid's file does not load (variant_parser.cpp:1158-1171,
+    /// resource_loader.cpp:689-698).
+    /// </summary>
+    /// <param name="reference">The value.</param>
+    /// <returns>
+    /// The uid's path first, then the value's own, each once; empty when the value names no path and an unregistered uid,
+    /// which loads nothing.
+    /// </returns>
+    internal static IReadOnlyList<string> ResolvedPaths(GodotPathRef reference)
     {
-        PreviewReferenceKind kind = ClassifyFile(ResolvedPath(ext));
+        string?[] candidates = [UidPath(reference), reference.Path is { } path && !IsUid(path) ? ProjectSettings.LocalizePath(path) : null];
+        return [.. candidates.OfType<string>().Distinct(StringComparer.Ordinal)];
+    }
+
+    // The path a Resource() value's registered uid names, from its uid or a uid:// path; null when it has none registered.
+    private static string? UidPath(GodotPathRef reference) =>
+        (reference.Uid ?? (IsUid(reference.Path) ? reference.Path : null)) is { } uid ? RegisteredPath(uid) : null;
+
+    /// <summary>What the preview makes of the file an ext_resource resolves to, its file classified by the given function.</summary>
+    /// <param name="ext">The ext_resource, its path a resource path.</param>
+    /// <param name="classifyFile">
+    /// What the preview makes of a resolved path: <see cref="ClassifyFile"/>, or a preview's answer for the path.
+    /// </param>
+    /// <returns>The kind; a declared scene type only turns a file that would be kept into one that cannot be stripped.</returns>
+    internal static PreviewReferenceKind Classify(TscnExtResource ext, Func<string, PreviewReferenceKind> classifyFile)
+    {
+        PreviewReferenceKind kind = classifyFile(ResolvedPath(ext));
         // A text resource holding a scene has no class to read outside the editor, so a declared scene fails closed.
         return kind == PreviewReferenceKind.Kept && Inherits(ext.Type, PackedSceneClass) ? PreviewReferenceKind.OtherScene : kind;
     }
@@ -97,11 +127,13 @@ internal static class XscnPreviewReferences
     private static PreviewReferenceKind? ByExtension(string extension) =>
         ScriptExtensions().Contains(extension) ? PreviewReferenceKind.Script
         : IsAny(extension, "tscn", XscnLoading.SceneExtension) ? PreviewReferenceKind.TextScene
+        : IsAny(extension, "tres", XscnLoading.ResourceExtension) ? PreviewReferenceKind.TextResource
         : IsAny(extension, "scn") ? PreviewReferenceKind.BinaryScene
         : IsAny(extension, ImportedSceneExtensions) ? PreviewReferenceKind.ImportedScene
         : null;
 
-    // The class the editor records for the file, else, for a binary resource, the one its header names.
+    // The class the editor records for the file, else, for a binary resource, the one its header names. A binary resource
+    // of any other class may hold a built-in or external script, which a binary file cannot be stripped of.
     private static PreviewReferenceKind ByClass(string path, bool binary)
     {
         string? cls = GodotProjectLookups.Instance.ClassOf(path) ?? (binary ? BinaryResourceType(path) : null);
@@ -112,9 +144,11 @@ internal static class XscnPreviewReferences
             : binary ? PreviewReferenceKind.BinaryScene
             : PreviewReferenceKind.OtherScene,
             _ when Inherits(cls, ScriptClass) => PreviewReferenceKind.Script,
-            _ => PreviewReferenceKind.Kept,
+            _ => binary ? PreviewReferenceKind.BinaryResource : PreviewReferenceKind.Kept,
         };
     }
+
+    private static bool IsUid(string? path) => path?.StartsWith(UidScheme, StringComparison.Ordinal) == true;
 
     private static bool IsAny(string extension, params string[] candidates) =>
         candidates.Any(candidate => candidate.Equals(extension, StringComparison.OrdinalIgnoreCase));

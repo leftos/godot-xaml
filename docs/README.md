@@ -63,11 +63,13 @@
 - **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn`, and each `.tres` fixture and its converted `.xres`, in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
 - **Scene lookup**: the host's reader of another scene file's text (`ISceneFiles`), which the way back uses to learn the class of an instanced node or an override, and to read a shader's uniforms or a mesh's blend shapes from an external file.
 - **Scene namespace**: an XML namespace on the root binding a prefix to a `res://` folder (`xmlns:c="res://ui/"`), so a scene in that folder is instanced as a tag (`<c:Modal Name="Confirm" />`).
+- **Scripts off**: the preview's default mode, in which nothing the previewed text references loads a script; the request or the project setting `godot_xaml/preview_server/allow_scripts` turns it on.
 - **Seed scene**: the one-node scene `tools/scene-fixtures/` saves first so the inherited-scene case can be saved from it; a script cannot set up scene inheritance directly.
 - **Sidecar**: the `.uid` file beside a file that has no header to hold its uid (`main.xscn.uid`); `convert` moves a uid between a `.tscn` header and it.
 - **Site key**: where a sub-resource is used in an `.xscn` (its element path and property, nested), from which the way back mints its id, so ids do not shift when the file is edited elsewhere.
 - **Source orders**: `SourceOrders`, the per-conversion cache of the orders a `BySource` family reads from a shader's uniforms or a mesh's blend shapes, each file read once.
 - **Staging folder**: `<root>/.godot-xaml-staging/<stamp>-<8 hex>/`, where `convert --project` writes every output first; it is removed when the run ends, and a failed run leaves the project as it was.
+- **Stripped copy**: a scene or text resource a scripts-off preview reads from its file, strips of scripts and writes to the addon's temp folder, then loads from there instead; it is deleted after the preview.
 - **Sub-entry**: a numbered list inside one entry of a dynamic family (`settings/N/joints/M/` on a bone-chain setting), ranked at its list key's place among its outer entry's keys; `PropertyOrder` ranks a name by entry, key, sub-entry, sub-key, then the two deeper levels a `Ranked` family may use, layer and leaf (a TileData's occlusion, physics or navigation layer, and the number or property inside it).
 - **Takeover**: the addon saver's step on a save with `ReplaceSubresourcePaths` to a `res://` path, giving each built-in sub-resource the id and path `<file>::<id>` the next load mints.
 - **Tolerant parse**: a parse that always returns a document with its diagnostics and never throws on bad text (`XscnParser.Parse`).
