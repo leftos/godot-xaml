@@ -7,6 +7,7 @@
     <PackageVersion Include="GodotSharp" Version="4.7.2" />
     <PackageVersion Include="GodotSharpEditor" Version="4.7.2" />
     <PackageVersion Include="GuiLabs.Language.Xml" Version="1.2.120" />
+    <PackageVersion Include="StreamJsonRpc" Version="2.26.150" />
     <PackageVersion Include="System.CommandLine" Version="2.0.14" />
     <PackageVersion Include="xunit.v3" Version="4.0.1" />
   </ItemGroup>

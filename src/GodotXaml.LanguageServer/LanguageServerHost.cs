@@ -1,0 +1,325 @@
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using GodotXaml.Core.Metadata;
+using GodotXaml.Core.Xscn;
+using GodotXaml.LanguageServer.Protocol;
+using Microsoft.VisualStudio.Threading;
+using StreamJsonRpc;
+
+namespace GodotXaml.LanguageServer;
+
+/// <summary>Runs the language server over a pair of streams: LSP's <c>Content-Length</c> framing, JSON-RPC, and the server.</summary>
+internal static class LanguageServerHost
+{
+    /// <summary>The server's name, in <c>serverInfo</c> and as every diagnostic's <c>source</c>.</summary>
+    public const string ServerName = "godot-xaml";
+
+    /// <summary>The server's version: the assembly's informational version.</summary>
+    public static string Version { get; } =
+        typeof(LanguageServerHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+
+    /// <summary>Serves one client until it sends <c>exit</c> or closes the input.</summary>
+    /// <param name="input">What the client sends.</param>
+    /// <param name="output">Where the server answers; nothing else writes to it.</param>
+    /// <param name="scheduler">Waits out the debounce of a change.</param>
+    /// <param name="stderr">Where the logs go besides the client's log.</param>
+    /// <returns>The process's exit code: 0 after <c>shutdown</c> then <c>exit</c>, else 1.</returns>
+    public static Task<int> Run(Stream input, Stream output, IDebounceScheduler scheduler, TextWriter stderr) =>
+        Run(input, output, scheduler, stderr, ServerSeams.Default);
+
+    /// <summary>Serves one client with the seams a test replaces.</summary>
+    /// <param name="input">What the client sends.</param>
+    /// <param name="output">Where the server answers.</param>
+    /// <param name="scheduler">Waits out the debounce of a change.</param>
+    /// <param name="stderr">Where the logs go besides the client's log.</param>
+    /// <param name="seams">The metadata loader and the parser.</param>
+    /// <returns>The process's exit code.</returns>
+    public static async Task<int> Run(Stream input, Stream output, IDebounceScheduler scheduler, TextWriter stderr, ServerSeams seams)
+    {
+        var log = TextWriter.Synchronized(stderr);
+        using JsonRpc rpc = new(new HeaderDelimitedMessageHandler(output, input, CreateFormatter()));
+        ClientChannel client = new(rpc, log);
+        using DiagnosticsPublisher publisher = new(
+            new DocumentStore(log),
+            new ProjectCache(seams.LoadMetadata, client),
+            client,
+            scheduler,
+            seams.Parse
+        );
+        LanguageServerTarget server = new(client, publisher);
+
+        // The transport's own warnings and errors (a message it could not read or answer) go to stderr.
+        rpc.TraceSource = new TraceSource("godot-xaml.jsonrpc", SourceLevels.Warning);
+        rpc.TraceSource.Listeners.Clear();
+        rpc.TraceSource.Listeners.Add(new TextWriterTraceListener(log));
+
+        // LSP's notifications are ordered: a change must not overtake the open or the change before it.
+        rpc.SynchronizationContext = new NonConcurrentSynchronizationContext(sticky: false);
+        rpc.AddLocalRpcTarget(server, new JsonRpcTargetOptions { UseSingleObjectParameterDeserialization = true });
+        rpc.StartListening();
+        await Task.WhenAny(rpc.Completion, server.Exited);
+
+        // An exit without a shutdown still lets the running parses end before the connection goes.
+        await publisher.StopAsync();
+        return server.ExitCode;
+    }
+
+    /// <summary>The formatter both ends use: the source-generated LSP types, camelCase, no explicit nulls.</summary>
+    /// <returns>A new formatter.</returns>
+    public static SystemTextJsonFormatter CreateFormatter() =>
+        new()
+        {
+            JsonSerializerOptions = new JsonSerializerOptions
+            {
+                TypeInfoResolver = LspJsonContext.Default,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            },
+        };
+}
+
+/// <summary>Loads the metadata a project's Godot version names.</summary>
+/// <param name="projectVersion">The project's Godot minor version, or null when it names none or there is no project.</param>
+/// <returns>The metadata, the version loaded, and why it is not the project's.</returns>
+internal delegate LoadedMetadata MetadataLoader(string? projectVersion);
+
+/// <summary>Parses a document's text.</summary>
+/// <param name="text">The text.</param>
+/// <param name="kind">Scene or resource.</param>
+/// <param name="metadata">The metadata it is read with.</param>
+/// <returns>The parse.</returns>
+internal delegate XscnParseResult ParseFunction(string text, XscnDocumentKind kind, GodotMetadata metadata);
+
+/// <summary>A loaded metadata and the version it is.</summary>
+/// <param name="Metadata">The metadata.</param>
+/// <param name="Version">The Godot minor version loaded.</param>
+/// <param name="Warning">Why it is not the project's version, or null.</param>
+internal sealed record LoadedMetadata(GodotMetadata Metadata, string Version, string? Warning);
+
+/// <summary>What a test replaces in the server: the metadata loader and the parser.</summary>
+/// <param name="LoadMetadata">Loads a project's metadata.</param>
+/// <param name="Parse">Parses a document.</param>
+internal sealed record ServerSeams(MetadataLoader LoadMetadata, ParseFunction Parse)
+{
+    /// <summary>The bundled metadata and <see cref="XscnParser.Parse"/>.</summary>
+    public static ServerSeams Default { get; } = new(LoadBundled, XscnParser.Parse);
+
+    private static LoadedMetadata LoadBundled(string? projectVersion)
+    {
+        var metadata = GodotMetadata.LoadBundledForProject(projectVersion, out string version, out string? warning);
+        return new LoadedMetadata(metadata, version, warning);
+    }
+}
+
+/// <summary>What the server sends the client besides answers: logs, messages and diagnostics.</summary>
+internal interface IClientMessages
+{
+    /// <summary>Writes a line to the client's log and to stderr.</summary>
+    /// <param name="type">How it is meant.</param>
+    /// <param name="message">The line.</param>
+    /// <returns>The send.</returns>
+    Task LogAsync(MessageType type, string message);
+
+    /// <summary>Shows the user a message, and writes it to stderr.</summary>
+    /// <param name="type">How it is meant.</param>
+    /// <param name="message">The message.</param>
+    /// <returns>The send.</returns>
+    Task ShowAsync(MessageType type, string message);
+
+    /// <summary>Publishes a document's diagnostics.</summary>
+    /// <param name="parameters">The document and its diagnostics.</param>
+    /// <returns>The send.</returns>
+    Task PublishAsync(PublishDiagnosticsParams parameters);
+}
+
+/// <summary>Sends to the client over JSON-RPC; a send after the connection closed is dropped.</summary>
+internal sealed class ClientChannel(JsonRpc rpc, TextWriter stderr) : IClientMessages
+{
+    /// <inheritdoc/>
+    public Task LogAsync(MessageType type, string message)
+    {
+        stderr.WriteLine($"{type}: {message}");
+        return SendAsync("window/logMessage", new LogMessageParams(type, message));
+    }
+
+    /// <inheritdoc/>
+    public Task ShowAsync(MessageType type, string message)
+    {
+        stderr.WriteLine($"{type}: {message}");
+        return SendAsync("window/showMessage", new ShowMessageParams(type, message));
+    }
+
+    /// <inheritdoc/>
+    public Task PublishAsync(PublishDiagnosticsParams parameters) => SendAsync("textDocument/publishDiagnostics", parameters);
+
+    private async Task SendAsync(string method, object parameters)
+    {
+        try
+        {
+            await rpc.NotifyWithParameterObjectAsync(method, parameters);
+        }
+        catch (ObjectDisposedException exception)
+        {
+            // The client is gone; nothing reads a late message.
+            stderr.WriteLine($"Error: {method} not sent, the connection is closed: {exception.Message}");
+        }
+        catch (ConnectionLostException exception)
+        {
+            stderr.WriteLine($"Error: {method} not sent, the connection was lost: {exception.Message}");
+        }
+    }
+}
+
+/// <summary>The RPC methods: the lifecycle and its order rules, then the document notifications.</summary>
+internal sealed class LanguageServerTarget(IClientMessages client, DiagnosticsPublisher publisher)
+{
+    private readonly Lock gate = new();
+    private readonly TaskCompletionSource exited = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private bool initialized;
+    private bool shutDown;
+    private int exitCode = 1;
+
+    /// <summary>Completes when the client sends <c>exit</c>.</summary>
+    public Task Exited => exited.Task;
+
+    /// <summary>0 after <c>shutdown</c> then <c>exit</c>, else 1.</summary>
+    public int ExitCode
+    {
+        get
+        {
+            lock (gate)
+            {
+                return exitCode;
+            }
+        }
+    }
+
+    /// <summary>Answers <c>initialize</c> with the capabilities.</summary>
+    /// <param name="parameters">The client's parameters, unread.</param>
+    /// <returns>The capabilities and the server's name and version.</returns>
+    [JsonRpcMethod("initialize")]
+    public InitializeResult Initialize(InitializeParams parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        lock (gate)
+        {
+            if (shutDown || initialized)
+            {
+                throw Refused(LspErrorCodes.InvalidRequest, shutDown ? "The server has shut down." : "The server is already initialized.");
+            }
+            initialized = true;
+        }
+
+        return new InitializeResult(
+            new ServerCapabilities(new TextDocumentSyncOptions(OpenClose: true, Change: TextDocumentSyncKind.Full)),
+            new ServerInfo(LanguageServerHost.ServerName, LanguageServerHost.Version)
+        );
+    }
+
+    /// <summary>Logs that the server started.</summary>
+    /// <returns>The log's send.</returns>
+    [JsonRpcMethod("initialized")]
+    public Task InitializedAsync() =>
+        client.LogAsync(MessageType.Info, $"{LanguageServerHost.ServerName} language server {LanguageServerHost.Version} started");
+
+    /// <summary>Stops all work; after it, every request is refused and only <c>exit</c> is heard.</summary>
+    /// <returns>The shutdown.</returns>
+    [JsonRpcMethod("shutdown")]
+    public async Task ShutdownAsync()
+    {
+        lock (gate)
+        {
+            EnsureServing();
+            shutDown = true;
+        }
+        await client.LogAsync(MessageType.Info, $"{LanguageServerHost.ServerName} language server shutting down");
+        await publisher.StopAsync();
+    }
+
+    /// <summary>Ends the run, with 0 when <c>shutdown</c> came first and 1 when it did not.</summary>
+    [JsonRpcMethod("exit")]
+    public void Exit()
+    {
+        lock (gate)
+        {
+            exitCode = shutDown ? 0 : 1;
+        }
+        exited.TrySetResult();
+    }
+
+    /// <summary>Accepts <c>$/setTrace</c>; the server keeps no trace level.</summary>
+    /// <param name="parameters">The level, unread.</param>
+    [JsonRpcMethod("$/setTrace")]
+    [SuppressMessage("Performance", "CA1822", Justification = "An RPC method, called on the target instance.")]
+    public void SetTrace(JsonElement parameters) { }
+
+    /// <summary>Accepts <c>workspace/didChangeConfiguration</c>; the server reads no settings yet.</summary>
+    /// <param name="parameters">The settings, unread.</param>
+    [JsonRpcMethod("workspace/didChangeConfiguration")]
+    [SuppressMessage("Performance", "CA1822", Justification = "An RPC method, called on the target instance.")]
+    public void DidChangeConfiguration(JsonElement parameters) { }
+
+    /// <summary>Opens a buffer and publishes its diagnostics at once.</summary>
+    /// <param name="parameters">The document and its text.</param>
+    [JsonRpcMethod("textDocument/didOpen")]
+    public void DidOpen(DidOpenTextDocumentParams parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        if (Serving())
+        {
+            TextDocumentItem document = parameters.TextDocument;
+            publisher.Opened(document.Uri, document.Version, document.Text);
+        }
+    }
+
+    /// <summary>Replaces a buffer's text with the last change's; the diagnostics follow after the debounce.</summary>
+    /// <param name="parameters">The document, its version and the changes.</param>
+    [JsonRpcMethod("textDocument/didChange")]
+    public void DidChange(DidChangeTextDocumentParams parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        if (Serving() && parameters.ContentChanges is [.., TextDocumentContentChangeEvent last])
+        {
+            publisher.Changed(parameters.TextDocument.Uri, parameters.TextDocument.Version, last.Text);
+        }
+    }
+
+    /// <summary>Drops a buffer and clears its diagnostics.</summary>
+    /// <param name="parameters">The document.</param>
+    [JsonRpcMethod("textDocument/didClose")]
+    public void DidClose(DidCloseTextDocumentParams parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        if (Serving())
+        {
+            publisher.Closed(parameters.TextDocument.Uri);
+        }
+    }
+
+    // A notification is dropped before initialize and after shutdown.
+    private bool Serving()
+    {
+        lock (gate)
+        {
+            return initialized && !shutDown;
+        }
+    }
+
+    // Called under the gate: a request is refused before initialize and after shutdown.
+    private void EnsureServing()
+    {
+        if (shutDown)
+        {
+            throw Refused(LspErrorCodes.InvalidRequest, "The server has shut down.");
+        }
+        if (!initialized)
+        {
+            throw Refused(LspErrorCodes.ServerNotInitialized, "The server is not initialized.");
+        }
+    }
+
+    private static LocalRpcException Refused(int code, string message) => new(message) { ErrorCode = code };
+}

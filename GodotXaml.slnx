@@ -2,9 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/GodotXaml.Cli/GodotXaml.Cli.csproj" />
     <Project Path="src/GodotXaml.Core/GodotXaml.Core.csproj" />
+    <Project Path="src/GodotXaml.LanguageServer/GodotXaml.LanguageServer.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/GodotXaml.Cli.Tests/GodotXaml.Cli.Tests.csproj" />
     <Project Path="tests/GodotXaml.Core.Tests/GodotXaml.Core.Tests.csproj" />
+    <Project Path="tests/GodotXaml.LanguageServer.Tests/GodotXaml.LanguageServer.Tests.csproj" />
   </Folder>
 </Solution>

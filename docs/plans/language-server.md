@@ -12,7 +12,7 @@ Anchor: git root X:/dev/godot-xaml (main checkout). Line numbers below are again
 
 ## 0. Short answer
 
-- Nothing exists. No project, no csproj, no test project, no doc beyond a few sentences. `docs/ARCHITECTURE.md` says "the language server and the editor extensions are still to come" (line 3) and has no Task Index row and no Layers entry for it.
+- Step 5 is built: `src/GodotXaml.LanguageServer` and `tests/GodotXaml.LanguageServer.Tests` exist, with text sync and diagnostics, and `docs/ARCHITECTURE.md` has its Task Index row and Layers entry. Formatting, hover and completion are not built. The rest of this map describes the code before step 5.
 - The core gives a server diagnostics (with spans) and formatting almost for free. It gives completions and hover only in part. The gaps are all in "where is the cursor": the model keeps spans for elements only, and the syntax tree is not exposed.
 - Metadata has no doc text, so hover can show signatures (type, enum, default, hint) but no descriptions, unless a new data source is added.
 - The CLI's helpers (MetadataFile, ProjectConfig, ProjectRoot, SceneFiles) are all `internal` to `GodotXaml.Cli`, a net10.0 Exe. A server cannot reuse them without moving them into a shared library, or copying them.
@@ -49,7 +49,7 @@ Anchor: git root X:/dev/godot-xaml (main checkout). Line numbers below are again
 
 ### 1d. Diagnostics and LineMap
 
-- `XscnDiagnostic(Code, Severity, Message, Span)`, severities `Error` and `Warning` only: src/GodotXaml.Core/Diagnostics/XscnDiagnostic.cs:4-18. Codes `GX0001`-`GX0004` and `GX0101`-`GX0118` (:21-94). Every code has a heading in docs/format/diagnostics.md (checked by `DiagnosticsDocTests`).
+- `XscnDiagnostic(Code, Severity, Message, Span)`, severities `Error` and `Warning` only: src/GodotXaml.Core/Diagnostics/XscnDiagnostic.cs:4-18. Codes `GX0001`-`GX0004` and `GX0101`-`GX0119` (:21-94). Every code has a heading in docs/format/diagnostics.md (checked by `DiagnosticsDocTests`).
 - `LineMap(text).ZeroBased(offset)` returns a 0-based `LinePosition(Line, Column)` with the column in UTF-16 code units: src/GodotXaml.Core/Diagnostics/LineMap.cs:25-36. Those are the LSP default units. A line ends at LF, CR or CRLF (:48-59). There is NO inverse (position to offset), which completions and hover need. Gap: add `LineMap.Offset(line, column)`.
 - `ZeroBased` throws for an offset outside `[0, length]` (:31-32). A server mapping edits must clamp.
 - Beyond diagnostics, the parser also emits warnings the CLI prints (`GX0107` unknown class is the only warning per DECISIONS.md:183). `GXC`, `GXP`, `GXT` codes belong to conversion and CLI and are out of scope for a server.
@@ -286,7 +286,7 @@ Branch `feat/language-server`. Steps 1-4 are core work with plain unit tests. St
 4. Move or copy the project helpers behind a library API.
    - Files: ProjectRoot, a res:// to disk resolver (new), metadata selection (`MetadataFile`-like with exceptions), placed per decision 7; adjust src/GodotXaml.Cli to use them if moved; tests (CLI's existing ones must still pass; new tests for res:// to disk with casing).
    - Proof: `./run.ps1 test` green with unchanged CLI behaviour; new tests for the inverse resolver and the version choice from `project.godot`.
-5. Server project skeleton, transport, document store, diagnostics.
+5. Server project skeleton, transport, document store, diagnostics. DONE (GXAML-134); the 10,000-deep nested document in its proof overflows the stack in the core reader and waits on GXAML-172.
    - Files: src/GodotXaml.LanguageServer/ (csproj, Program.cs, document store, `DiagnosticsHandler`), tests/GodotXaml.LanguageServer.Tests/ (csproj), GodotXaml.slnx, Directory.Packages.props, docs/ARCHITECTURE.md (Layers entry, Task Index row, Test locations).
    - Proof: in-process test that `didOpen` of a broken fixture (tests/fixtures/xscn, or an inline text with `GX0104`) yields `publishDiagnostics` with the right code, severity, and a 0-based range matching `LineMap`; `didChange` replaces them; `didClose` clears; a hostile input (deeply nested XML, 10 000 elements) does not crash; a stdio round trip (initialize, shutdown, exit) over in-memory streams. `./run.ps1 build` passes with `-warnaserror` and CS1591 if documentation is on for the project.
 6. Formatting.
@@ -313,7 +313,7 @@ Size note: steps 3 and 8 are the large ones; 5 needs the LSP library decided; 1,
 - docs/ARCHITECTURE.md:35 names "the three csproj files" with GenerateDocumentationFile; a fourth project will join. Fix goes in ARCHITECTURE.md at the commit that adds the project.
 - docs/ARCHITECTURE.md:57 says a nesting cap exists "so a hostile text cannot overflow the stack of the language server or editor", but the cap is on the value grammar only (GodotValueReader); the XML element depth has no cap in src/GodotXaml.Core/Xscn (grep "depth": only XscnWriter.cs:49-69).
 
-  Which side is wrong: the doc over-promises for the whole parse path; unmeasured whether GuiLabs's parser or XscnTreeReader overflows. Owner of the fix: ARCHITECTURE.md (Value grammar bullet) or add a cap in code.
+  Which side is wrong: the doc over-promises for the whole parse path; unmeasured whether GuiLabs's parser or XscnTreeReader overflows. Owner of the fix: ARCHITECTURE.md (Value grammar bullet) or add a cap in code. The bullet now says the cap covers the value grammar only; the element-depth cap is GXAML-172.
 - docs/guide/limitations.md:27 says the server is "planned for later releases"; consistent with the code today. Becomes drift when step 9 lands.
 - docs/ARCHITECTURE.md:3 (not drift) says "the language server and the editor extensions are still to come". Consistent.
 
