@@ -8,9 +8,9 @@
 
 ## Core format
 
-- [ ] GXAML-175 Core: one public writer-refusal predicate for the CLI, the core and the language server
-- [ ] GXAML-187 Conversion back: FontFile size textures, glyphs and kerning in Godot's order
-- [ ] GXAML-188 Core: trim and AOT analyzers on the core project
+- [ ] GXAML-175 Core: one public writer-refusal predicate for the CLI, the core and the language server · release vNext
+- [ ] GXAML-187 Conversion back: FontFile size textures, glyphs and kerning in Godot's order · release vNext
+- [ ] GXAML-188 Core: trim and AOT analyzers on the core project · release vNext
 
 ## Godot addon
 
@@ -24,10 +24,10 @@
 - [ ] GXAML-190 Preview server: preview imported models whose import attaches no script
 - [ ] GXAML-181 Preview server: a connection to a stripped %Name target is dropped too
 - [ ] GXAML-179 Preview server: the previewed root names the document as its scene file
-- [ ] GXAML-174 Godot harnesses: fail the import steps and editor runs on a Fatal error line too
-- [ ] GXAML-207 Godot checks: a hung frame check is reported by name, not cut off by the frame budget
+- [ ] GXAML-174 Godot harnesses: fail the import steps and editor runs on a Fatal error line too · release vNext
+- [ ] GXAML-207 Godot checks: a hung frame check is reported by name, not cut off by the frame budget · release vNext
 - [ ] GXAML-211 Preview server: a text file remapped to another text file previews the original's content
-- [ ] GXAML-212 Gates: build the addon in an export configuration before every push and in CI
+- [ ] GXAML-212 Gates: build the addon in an export configuration before every push and in CI · release vNext
 
 ## Agent tooling
 
@@ -47,8 +47,8 @@
 
 ## Later
 
-- [ ] GXAML-18 Visual Studio: edit node properties from the Properties window · release vNext
-- [ ] GXAML-19 Visual Studio: full visual designer for .xscn · release vNext
+- [ ] GXAML-18 Visual Studio: edit node properties from the Properties window · release vNext+1
+- [ ] GXAML-19 Visual Studio: full visual designer for .xscn · release vNext+1
 - [ ] GXAML-159 Propose a scene-groups hook for custom loaders to Godot
 
 ## Backlog
