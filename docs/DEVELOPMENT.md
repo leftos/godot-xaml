@@ -93,6 +93,8 @@ pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/god
 
 The plugin writes its results to `.tmp/editor-checks/results/results.txt`, with a screenshot per check, and the script prints `EDITOR-CHECKS passed <p>, failed <f>, expected <n>`. The script also echoes each editor's error output live and fails the run on any engine line starting with `ERROR: `, even when every check passed and the editor exited 0: after that editor's exit line it prints `STEP editor-<mode> engine errors: <n>` and one `ENGINE-ERROR editor-<mode> <line>` per case. It scans rather than the plugin logging, because the errors at the editor's exit come after the plugin's `DONE`. Run it after a change to the addon's editor behaviour.
 
+Two traps in `tools/editor-checks/addons/editor_checks/editor_checks.gd`. A wait on `EditorFileSystem.is_scanning()` going false ends before the main thread applies a full scan after the first one (`is_scanning()` is false in the frame whose node pass applies it), so wait one more frame; the first scan and a changes scan stay true until after the apply. And a helper there must not reuse an `EditorPlugin` virtual's name (`_clear`, `_edit`, `_handles`): a mismatched signature fails the plugin's parse ("The function signature doesn't match the parent"), and a matching one parses and silently overrides the virtual.
+
 ```
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/editor-checks.log --slot heavy --timeout 1200 -- pwsh -NoProfile -File godot/editor-checks.ps1
 ```

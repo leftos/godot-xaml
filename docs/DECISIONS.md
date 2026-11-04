@@ -318,6 +318,16 @@ The constructor rebuild alone is not enough, from the Godot 4.7.2 source: at sta
 
 The plugin connects that hook by object and method name (`new Callable(this, MethodName.OnScriptClassesUpdated)`), not as a C# event. An assembly reload releases each C# delegate callable's handle before the domain reload and sets it again only after deserializing it (`modules/mono/csharp_script.cpp`, `CSharpLanguage::reload_assemblies`), so an emit in between logged `delegate_handle.value is null`, `Delegate::Invoke` and `script_classes_updated ... Method not found` errors, and the event's `-=` at exit no longer matched the restored connection. A by-name slot is skipped as invalid while the reload has the script removed (`core/variant/callable.cpp`, `Callable::is_valid`; `core/object/object.cpp`, `Object::emit_signalp`) and is called again once the reload gives the tool script a new instance. `_ExitTree` disconnects an equal callable when `IsConnected`.
 
+## The editor reads scene groups by loading every `.xscn`
+
+The addon documents the cost (`docs/guide/limitations.md`, "Projects") and adds no workaround, because Godot 4.7.2 leaves none.
+
+From the source: `PackedScene::get_scene_groups` (`scene/resources/packed_scene.cpp`) reads a scene as text only when its extension is exactly `tscn`, answers from `ResourceCache` when a `PackedScene` is already loaded at the path, and otherwise calls `ResourceLoader::load`. `ResourceFormatLoader` has no virtual about groups (`core/io/resource_loader.h`), and the cache's `ProjectSettings` methods are not bound (`core/config/project_settings.cpp`), so the addon cannot answer groups cheaply or add entries to the in-memory map.
+
+Rejected: writing `.godot/scene_groups_cache.cfg` from the plugin. `ProjectSettings` reads the file once at startup, before any plugin, and the next update rewrites it from memory, so the entries would be lost and Global Groups rename and remove would miss every scene. Rejected: returning a groups-only stub `PackedScene` from `_Load`. The engine's call is indistinguishable from any other load (`CACHE_MODE_REUSE`), and its result is cached at the path, so any load of that path in the frame would get the stub.
+
+A loader hook proposed to Godot (a `ResourceFormatLoader` virtual that `get_scene_groups` asks before its load) would remove the cost.
+
 ## Name
 
 The repo is `godot-xaml`, public at `github.com/leftos/godot-xaml`, MIT. Scenes are `.xscn`, resources `.xres`.

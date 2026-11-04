@@ -226,6 +226,9 @@ Each component gets an entry here in the commit that adds its project.
 - The `godot-xaml` editor plugin must be enabled in a game project, or an export ships the raw XML instead of binary copies. The loaders ship and register in the game either way (`DECISIONS.md`, "Exported games load binary through a remap"), but the exported game still loads that XML through the shipped loaders, several times slower than the binary copy and with a costly first load, and a game whose export drops the loaders' scripts cannot load it at all; it is a fallback, not a supported setup.
 - The loaders' `.cs` files still ship in an export (the game's assembly needs them); an include or exclude filter that drops them is reported by the plugin, and the filter must be fixed.
 - A file that fails to convert is skipped and the export dialog shows "Failed.", but headless `--export-pack` still exits 0: Godot 4.7.2 gives an export plugin no way to change it, so a script must read the log for `ERROR: godot-xaml:`.
+- The editor's scene-groups cache loads every non-`.tscn` scene in full: `PackedScene::get_scene_groups` (`scene/resources/packed_scene.cpp`) reads only an extension of exactly `tscn` as text and calls `ResourceLoader::load` for any other. It is called from `EditorFileSystem::_update_scene_groups` (`editor/file_system/editor_file_system.cpp`) on the main thread: at the first start without `.godot/scene_groups_cache.cfg`, after a scan, and on each save and `update_file`.
+
+  It never runs headless (`EditorFileSystem::_process_update_pending` skips it in `EditorNode::is_cmdline_mode`), so `checks.ps1` and `--import` never show it; the windowed editor checks do, at their start. `ResourceFormatLoader` has no hook for it in 4.7.2, and the cache's `ProjectSettings` methods are not bound. A sweep costs about ten times what the same scenes cost as `.tscn`, nearly all of it in `_Load`, and the walk's sub-resources stay alive after it until the GC runs. Why no workaround: `DECISIONS.md`, "The editor reads scene groups by loading every `.xscn`".
 
 ## Test locations
 
@@ -256,6 +259,8 @@ Each component gets an entry here in the commit that adds its project.
 - `godot/checks/`: headless checks inside Godot 4.7.2 (`Checks.cs` prints `CHECK <id> PASS|FAIL` and `DONE <passed>/<total>`).
 
   They cover the core and its XML library loading, the loader and saver registering and being chosen, a parse error failing a load, an absolute OS path loading, the extension lists of the two loaders, dependencies, renames (uids, relative paths), a threaded load, and the relative-spelling helper.
+
+  To act as an engine caller (the editor, GDScript), a check loads through `Engine.GetSingleton("ResourceLoader").Call("load", …)`, as `EngineDroppedSceneLeavesTheCache` does, so the check holds the scene only through a `Variant` it disposes and no C# wrapper keeps the result alive.
 
   They also cover saves of scenes and resources (the editor path and `ResourceSaver.Save`, kept keys including an edited keyed sub-resource with no `resource_name` (`EditingAKeyedResourceKeepsItsKey`), the `.uid` sidecar, failures), which clear `user://gx-saves/` first.
 
