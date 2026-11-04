@@ -119,7 +119,7 @@ internal static class FormatCommand
         {
             return XscnWriter.Write(result.Document, metadata);
         }
-        catch (Exception exception) when (CheckCommand.IsCoreRefusal(exception))
+        catch (Exception exception) when (WriterRefusal.Is(exception))
         {
             output.WriteLine(CheckCommand.CoreRefusal(file.Path, exception));
             return null;

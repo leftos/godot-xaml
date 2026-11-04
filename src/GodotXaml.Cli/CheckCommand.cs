@@ -63,12 +63,6 @@ internal static class CheckCommand
         return $"{path}({position.Line},{position.Column}): {severity} {diagnostic.Code}: {diagnostic.Message}";
     }
 
-    /// <summary>Whether an exception is the core refusing a document it cannot convert or write, rather than a bug.</summary>
-    /// <param name="exception">The exception.</param>
-    /// <returns>Whether it is a refusal the file's line reports.</returns>
-    internal static bool IsCoreRefusal(Exception exception) =>
-        exception is NotSupportedException or (ArgumentException and not ArgumentNullException);
-
     /// <summary>The line for a file the core refused.</summary>
     /// <param name="path">The path the output prints.</param>
     /// <param name="exception">The refusal.</param>

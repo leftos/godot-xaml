@@ -642,7 +642,7 @@ internal static class ConvertCommand
         {
             prepared = source.File.Kind.FromTscn ? FromTscn(source, metadata, options, tally, output) : FromXscn(source, metadata, tally, output);
         }
-        catch (Exception exception) when (CheckCommand.IsCoreRefusal(exception))
+        catch (Exception exception) when (WriterRefusal.Is(exception))
         {
             output.WriteLine(CheckCommand.CoreRefusal(source.File.Path, exception));
             tally.Errors++;
@@ -825,7 +825,7 @@ internal static class ConvertCommand
                 ? new Converted(TscnWriter.Write(result.Document), SidecarUid: null, result.Issues)
                 : null;
         }
-        catch (Exception exception) when (CheckCommand.IsCoreRefusal(exception))
+        catch (Exception exception) when (WriterRefusal.Is(exception))
         {
             output.WriteLine(CheckCommand.CoreRefusal(item.Source.File.Path, exception));
             tally.Errors++;

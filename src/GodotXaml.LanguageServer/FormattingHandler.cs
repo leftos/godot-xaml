@@ -80,7 +80,7 @@ internal sealed class FormattingHandler(DocumentStore store, ProjectCache projec
         {
             return new Written(false, XscnWriter.Write(result.Document, metadata), null);
         }
-        catch (Exception exception) when (exception is NotSupportedException or (ArgumentException and not ArgumentNullException))
+        catch (Exception exception) when (WriterRefusal.Is(exception))
         {
             return new Written(false, null, exception.Message);
         }

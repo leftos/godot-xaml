@@ -150,7 +150,7 @@ internal sealed class InstancedClasses(GodotMetadata metadata, ISceneFiles files
         {
             return Parsed.Failed($"line {exception.Line}, column {exception.Column}: {exception.Reason}");
         }
-        catch (Exception exception) when (exception is NotSupportedException or (ArgumentException and not ArgumentNullException))
+        catch (Exception exception) when (WriterRefusal.Is(exception))
         {
             return Parsed.Failed(exception.Message);
         }
