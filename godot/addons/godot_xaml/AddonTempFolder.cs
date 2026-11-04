@@ -161,9 +161,13 @@ internal static class AddonTempFolder
         }
     }
 
-    // On Unix CreateDirectory leaves an existing folder's mode alone, so the mode is set as well; only the owner may set it,
-    // which rejects a folder another account made.
-    private static void CreateOwnerOnly(string folder)
+    /// <summary>
+    /// Creates the folder, or keeps it, owner-only: on Unix CreateDirectory leaves an existing folder's mode alone, so the
+    /// mode is set as well; only the owner may set it, which rejects a folder another account made. On Windows the
+    /// profile's inherited ACL applies. The preview server's discovery folders are made the same way.
+    /// </summary>
+    /// <param name="folder">The folder, a full path.</param>
+    internal static void CreateOwnerOnly(string folder)
     {
         if (OperatingSystem.IsWindows())
         {

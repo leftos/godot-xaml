@@ -487,7 +487,23 @@ Back to front is the tree's pre-order (`XscnPreviewRects.Collect`); `z_index`, `
 
 A node inside an instanced scene has no element of its own, so it selects the instance's element. Each response carries the text version it rendered, and a client ignores a click on a rendering older than its text. A rotated or skewed Control has a `get_global_rect` that Godot calls not meaningful (`doc/classes/Control.xml`).
 
-**Tests.** The codec, token check, project refusal, text-to-scene instantiation and rectangle structure (containment, ordering, entry count, paths and classes, never values: headless text metrics are not real) run headless in `godot/checks.ps1`, in plain C# in the addon folder. Pixels, the discovery file's life, a request's PNG size and a hit-test run in `godot/editor-checks.ps1`, on a desktop.
+**Tests.** The codec, token check, project refusal, text-to-scene instantiation and rectangle structure (containment, ordering, entry count, paths and classes, never values: headless text metrics are not real) run headless in `godot/checks.ps1`, in plain C# in the addon folder. Pixels, a request's PNG size and a hit-test run in `godot/editor-checks.ps1`, on a desktop.
+
+The server itself (`XscnPreviewServer`, with `XscnPreviewFraming`, `XscnPreviewProtocol` and `XscnPreviewDiscovery`) is checked headless by a same-process client (C139 to C143): the discovery file, the first ping and the connection caps, malformed frames, renders and the path rule, latest-wins, cancel, the queue cap and the stop. The plugin's wiring (the setting, the start and the stop) has no headless check yet.
+
+**Server rulings.** The plugin starts the server when `godot_xaml/preview_server/enabled` is on, follows the setting live on `settings_changed`, and stops it in `_ExitTree` and before an assembly reload (`OnBeforeSerialize`, which also disconnects the setting hook). Restarting after a reload is GXAML-169's.
+
+The discovery file is `<LocalApplicationData>/godot-xaml/editors/<pid>-<32 hex>.json`, owner-only, written to a temporary name and moved into place without overwriting, and removed first when the server stops; a server removes only its own file.
+
+Every connection opens with `ping {token, project}`, answered within 10 seconds and within a 4 KiB body; the token is checked before the project. A frame is cut by its own limits (a small header block, 4 KiB before the ping and 16 MiB after), and the unauthenticated and authenticated connections are capped separately.
+
+`render {document, text, width, height, scripts?}` returns the rectangles, the diagnostics, the issues and `loaded`. Latest-wins is per connection and document, a queue holds a bounded number of documents per connection, and `$/cancelRequest` answers a queued render with the cancelled error. The error codes and messages are the server's own (`XscnPreviewProtocol`).
+
+Godot is called only on the main thread, from a pump the host node calls each frame; renders run one at a time and are held while the editor scans or imports. Each viewport side is clamped to 4096.
+
+The server does not prove itself to the client: the ping's token is the client's proof to the server only. The Visual Studio client (GXAML-17) checks the owning process of the discovery file's port against its pid before it sends any text.
+
+Booked, not done: a check of the pre-authentication deadline (GXAML-206), a check that a hung frame is cut off by the frame budget (GXAML-207), the image (GXAML-168), and the restart after a reload and the user docs (GXAML-169).
 
 ## Name
 

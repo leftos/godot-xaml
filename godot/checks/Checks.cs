@@ -4,9 +4,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Godot;
 using GodotXaml.Addon;
@@ -396,6 +399,8 @@ public partial class Checks : Node
             // With scripts off, a placeholder's scene is loaded by the editor's instantiation, so it is stripped and copied
             // too, and one that cannot be stripped is refused (GXAML-195).
             ("C138", PreviewStripsAnInstancePlaceholdersScene),
+            // The preview server's discovery file (GXAML-167).
+            ("C139", PreviewServerWritesAndRemovesItsDiscoveryFile),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -410,6 +415,11 @@ public partial class Checks : Node
             // The preview's Control rectangles and source spans (GXAML-166).
             ("C103", PreviewRectsFollowTheTreeAndSpans),
             ("C104", PreviewRectsSelectTheInstanceElement),
+            // The preview server, talked to over loopback while the frame loop pumps it (GXAML-167).
+            ("C140", async () => Failures(await PreviewServerAuthenticatesTheFirstPing(), await PreviewServerCapsConnections())),
+            ("C141", PreviewServerRefusesMalformedFrames),
+            ("C142", PreviewServerRendersRects),
+            ("C143", PreviewServerKeepsTheLatestRender),
         ];
         DeleteFolder(SavesFolder);
         int total = checks.Length + frameChecks.Length + 2;
@@ -6520,5 +6530,639 @@ public partial class Checks : Node
     {
         int count = held.Get("count").AsInt32();
         return count == 5 ? "" : $"its count is {count} {when}, not 5";
+    }
+
+    // GXAML-167: the preview server, in a discovery folder of its own under user://, talked to by a same-process client on
+    // the thread pool while the frame loop pumps it.
+    private const string PreviewDiscoveryFolder = "user://gx-preview-discovery/";
+
+    // A hang guard only: a passing check never waits it out.
+    private const ulong PreviewHangGuardMs = 60_000;
+
+    // Two Controls: a VBoxContainer root and its Button.
+    private const string PreviewServerScene = "<VBoxContainer Name=\"Root\">\n  <Button Name=\"Ok\" Text=\"Ok\" />\n</VBoxContainer>\n";
+
+    // Frames the server closes the connection on without a reply.
+    private static readonly (string What, string Frame)[] PreviewMalformedFrames =
+    [
+        ("a header over 1 KiB", "X-Pad: " + new string('a', 1100) + "\r\nContent-Length: 2\r\n\r\n{}"),
+        ("a non-digit Content-Length", "Content-Length: 1a\r\n\r\n{"),
+        ("an HTTP request line", "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 2\r\n\r\n{}"),
+    ];
+
+    // A rectangle's fields in a render result.
+    private static readonly string[] PreviewRectFields = ["x", "y", "width", "height"];
+
+    // What a check's client asks of the frame loop: hold the pump, or stop the server, both on the main thread.
+    private sealed class PreviewDriver
+    {
+        private TaskCompletionSource? pauseAcknowledged;
+
+        private volatile bool paused;
+
+        internal bool Paused
+        {
+            get => paused;
+            set => paused = value;
+        }
+
+        internal bool StopAsked { get; set; }
+
+        // The size of each SubViewport seen under the checks node, read each frame on the main thread.
+        internal List<Vector2I> ViewportSizes { get; } = [];
+
+        // Holds the pump; the task completes once the frame loop has seen the hold, so nothing the client sends after it
+        // can begin a render.
+        internal Task PauseAsync()
+        {
+            var acknowledged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            System.Threading.Volatile.Write(ref pauseAcknowledged, acknowledged);
+            paused = true;
+            return acknowledged.Task;
+        }
+
+        // Called by the frame loop on the main thread before it decides whether to pump.
+        internal void AcknowledgePause()
+        {
+            if (paused)
+            {
+                System.Threading.Interlocked.Exchange(ref pauseAcknowledged, null)?.TrySetResult();
+            }
+        }
+    }
+
+    // A client of the preview server; it never calls Godot, since it runs on the thread pool.
+    private sealed class PreviewClient : IDisposable
+    {
+        private readonly TcpClient client = new();
+
+        private XscnPreviewFrameReader? reader;
+
+        internal static async Task<PreviewClient> ConnectAsync(int port)
+        {
+            var preview = new PreviewClient();
+            try
+            {
+                await preview.client.ConnectAsync(IPAddress.Loopback, port).ConfigureAwait(false);
+                preview.reader = new XscnPreviewFrameReader(preview.client.GetStream());
+                return preview;
+            }
+            catch
+            {
+                preview.Dispose();
+                throw;
+            }
+        }
+
+        internal Task SendAsync(string json) => XscnPreviewFraming.WriteAsync(client.GetStream(), Encoding.UTF8.GetBytes(json), default);
+
+        // A server that closed the connection first may refuse the rest of the bytes, which is no failure here.
+        internal async Task SendRawAsync(byte[] bytes)
+        {
+            try
+            {
+                await client.GetStream().WriteAsync(bytes).ConfigureAwait(false);
+            }
+            catch (IOException) { }
+        }
+
+        // The next message, or null once the server closed the connection.
+        internal async Task<JsonElement?> ReceiveAsync()
+        {
+            try
+            {
+                byte[]? body = await reader!.ReadAsync(XscnPreviewFraming.MaxAuthenticatedBody, default).ConfigureAwait(false);
+                if (body is null)
+                {
+                    return null;
+                }
+
+                using var document = JsonDocument.Parse(body);
+                return document.RootElement.Clone();
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+        }
+
+        // The messages up to those with the ids, keyed by their ids' JSON text, added to the given ones; fewer when the
+        // server closes the connection first.
+        internal async Task<Dictionary<string, JsonElement>> ReceiveThroughAsync(int[] ids, Dictionary<string, JsonElement>? into = null)
+        {
+            Dictionary<string, JsonElement> replies = into ?? [];
+            while (!ids.All(id => replies.ContainsKey(PreviewIdText(id))) && await ReceiveAsync().ConfigureAwait(false) is { } message)
+            {
+                replies[message.TryGetProperty("id", out JsonElement id) ? id.GetRawText() : "null"] = message;
+            }
+
+            return replies;
+        }
+
+        public void Dispose() => client.Dispose();
+    }
+
+    private static string PreviewIdText(int id) => id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string PreviewJson(string value) => "\"" + JsonEncodedText.Encode(value) + "\"";
+
+    private static string PreviewPingJson(int id, string token, string project) =>
+        $"{{\"jsonrpc\":\"2.0\",\"id\":{id},\"method\":\"ping\",\"params\":{{\"token\":{PreviewJson(token)},\"project\":{PreviewJson(project)}}}}}";
+
+    private static string PreviewBarePingJson(int id) => $"{{\"jsonrpc\":\"2.0\",\"id\":{id},\"method\":\"ping\"}}";
+
+    private static string PreviewRenderJson(int id, string document, string text, int width, int height) =>
+        $"{{\"jsonrpc\":\"2.0\",\"id\":{id},\"method\":\"render\",\"params\":{{\"document\":{PreviewJson(document)},"
+        + $"\"text\":{PreviewJson(text)},\"width\":{width},\"height\":{height}}}}}";
+
+    private static string PreviewSceneRenderJson(int id) => PreviewRenderJson(id, PreviewPath, PreviewServerScene, 64, 64);
+
+    private static string PreviewCancelJson(int id) => $"{{\"jsonrpc\":\"2.0\",\"method\":\"$/cancelRequest\",\"params\":{{\"id\":{id}}}}}";
+
+    private static string PreviewDescribe(JsonElement? message) => message?.GetRawText() ?? "(the connection closed)";
+
+    private static JsonElement? PreviewReply(Dictionary<string, JsonElement> replies, int id) =>
+        replies.TryGetValue(PreviewIdText(id), out JsonElement message) ? message : null;
+
+    private static int? PreviewErrorCode(JsonElement? message) =>
+        message is { ValueKind: JsonValueKind.Object } reply && reply.TryGetProperty("error", out JsonElement error)
+            ? error.GetProperty("code").GetInt32()
+            : null;
+
+    private static string PreviewErrorFailure(Dictionary<string, JsonElement> replies, int id, int code, string what)
+    {
+        JsonElement? reply = PreviewReply(replies, id);
+        return PreviewErrorCode(reply) == code ? "" : $"{what} got {PreviewDescribe(reply)}, not error {code}";
+    }
+
+    private static string PreviewLoadedFailure(Dictionary<string, JsonElement> replies, int id, string what)
+    {
+        JsonElement? reply = PreviewReply(replies, id);
+        bool loaded = reply is { } message && message.TryGetProperty("result", out JsonElement result) && result.GetProperty("loaded").GetBoolean();
+        return loaded ? "" : $"{what} got {PreviewDescribe(reply)}, not a loaded result";
+    }
+
+    // Starts a server with a discovery folder of its own and the checks node as its host, runs the client on the thread
+    // pool while the frame loop pumps the server, then stops it.
+    private async Task<string> WithPreviewServer(
+        Func<XscnPreviewServer, PreviewDriver, Task<string>> client,
+        Func<PreviewDriver, string>? after = null
+    )
+    {
+        var server = new XscnPreviewServer(Globalized($"{PreviewDiscoveryFolder}{Guid.NewGuid():N}"), Globalized("res://"), this);
+        var driver = new PreviewDriver();
+        try
+        {
+            if (!server.Start())
+            {
+                return "the server did not start";
+            }
+
+            string failure = await PumpedUntil(server, driver, Task.Run(() => client(server, driver)));
+            return Failures(failure, after is null ? "" : after(driver));
+        }
+        finally
+        {
+            server.Dispose();
+            DeleteFolder(PreviewDiscoveryFolder);
+        }
+    }
+
+    // Pumps the server once a frame until the client is done; the main thread never blocks on the client.
+    private async Task<string> PumpedUntil(XscnPreviewServer server, PreviewDriver driver, Task<string> client)
+    {
+        ulong deadline = Time.GetTicksMsec() + PreviewHangGuardMs;
+        while (!client.IsCompleted)
+        {
+            if (Time.GetTicksMsec() > deadline)
+            {
+                return "hung";
+            }
+
+            if (driver.StopAsked)
+            {
+                server.Stop();
+            }
+
+            driver.AcknowledgePause();
+            if (!driver.Paused)
+            {
+                server.Pump();
+            }
+
+            driver.ViewportSizes.AddRange(GetChildren().OfType<SubViewport>().Select(viewport => viewport.Size));
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        return await client;
+    }
+
+    private static async Task<PreviewClient> OpenPreviewClientAsync(XscnPreviewServer server, string project)
+    {
+        PreviewClient client = await PreviewClient.ConnectAsync(server.Port).ConfigureAwait(false);
+        await client.SendAsync(PreviewPingJson(0, server.Token, project)).ConfigureAwait(false);
+        JsonElement? reply = await client.ReceiveAsync().ConfigureAwait(false);
+        if (reply is { } message && message.TryGetProperty("result", out _))
+        {
+            return client;
+        }
+
+        client.Dispose();
+        throw new InvalidOperationException($"the ping was refused: {PreviewDescribe(reply)}");
+    }
+
+    // A right ping answers the protocol, the editor's pid and its normalized project.
+    private static async Task<string> PreviewPingAnswersFailure(XscnPreviewServer server, string project)
+    {
+        using PreviewClient client = await PreviewClient.ConnectAsync(server.Port).ConfigureAwait(false);
+        await client.SendAsync(PreviewPingJson(1, server.Token, project)).ConfigureAwait(false);
+        JsonElement? reply = await client.ReceiveAsync().ConfigureAwait(false);
+        if (reply is not { } message || !message.TryGetProperty("result", out JsonElement result))
+        {
+            return $"the right ping got {PreviewDescribe(reply)}";
+        }
+
+        bool right =
+            result.GetProperty("protocol").GetInt32() == 1
+            && result.GetProperty("pid").GetInt32() == System.Environment.ProcessId
+            && result.GetProperty("project").GetString() == server.Project;
+        return right ? "" : $"the right ping got {result.GetRawText()}, not protocol 1, pid {System.Environment.ProcessId}, project {server.Project}";
+    }
+
+    // A refused first request answers the error, naming each given text in its message, and the connection is closed.
+    private static async Task<string> PreviewRefusedFirstFailure(XscnPreviewServer server, string what, string json, int code, params string[] named)
+    {
+        using PreviewClient client = await PreviewClient.ConnectAsync(server.Port).ConfigureAwait(false);
+        await client.SendAsync(json).ConfigureAwait(false);
+        JsonElement? reply = await client.ReceiveAsync().ConfigureAwait(false);
+        JsonElement? after = await client.ReceiveAsync().ConfigureAwait(false);
+        string message = PreviewErrorCode(reply) is null ? "" : reply!.Value.GetProperty("error").GetProperty("message").GetString() ?? "";
+        return Failures(
+            PreviewErrorCode(reply) == code ? "" : $"{what} got {PreviewDescribe(reply)}, not error {code}",
+            named.All(name => message.Contains(name, StringComparison.Ordinal))
+                ? ""
+                : $"{what}'s message [{message}] does not name [{string.Join(", ", named)}]",
+            after is null ? "" : $"{what} left the connection open: it then got {PreviewDescribe(after)}"
+        );
+    }
+
+    private static async Task<string> PreviewClosedWithoutReplyFailure(XscnPreviewServer server, string what, byte[] frame)
+    {
+        using PreviewClient client = await PreviewClient.ConnectAsync(server.Port).ConfigureAwait(false);
+        await client.SendRawAsync(frame).ConfigureAwait(false);
+        JsonElement? reply = await client.ReceiveAsync().ConfigureAwait(false);
+        return reply is null ? "" : $"{what} got {PreviewDescribe(reply)} rather than a closed connection";
+    }
+
+    // C139: one discovery file with the server's values once it starts, none once it stops; a second stop changes nothing.
+    private string PreviewServerWritesAndRemovesItsDiscoveryFile()
+    {
+        string folder = Globalized($"{PreviewDiscoveryFolder}{Guid.NewGuid():N}");
+        var server = new XscnPreviewServer(folder, Globalized("res://"), this);
+        try
+        {
+            if (!server.Start())
+            {
+                return "the server did not start";
+            }
+
+            string written = PreviewDiscoveryFailure(folder, server);
+            server.Stop();
+            string removed = PreviewFolderEmptyFailure(folder, "after the stop");
+            server.Stop();
+            return Failures(written, removed, PreviewFolderEmptyFailure(folder, "after a second stop"));
+        }
+        finally
+        {
+            server.Dispose();
+            DeleteFolder(PreviewDiscoveryFolder);
+        }
+    }
+
+    private static string PreviewDiscoveryFailure(string folder, XscnPreviewServer server)
+    {
+        string[] files = [.. Directory.GetFiles(folder).Select(Path.GetFileName).OfType<string>()];
+        string prefix = $"{System.Environment.ProcessId}-";
+        if (files.Length != 1 || !IsPreviewDiscoveryName(files[0], prefix))
+        {
+            return $"the folder holds [{string.Join(", ", files)}], not one {prefix}<32 hex>.json";
+        }
+
+        using var document = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(folder, files[0])));
+        JsonElement root = document.RootElement;
+        string names = string.Join(", ", root.EnumerateObject().Select(property => property.Name));
+        return names == "port, token, pid, project"
+            ? PreviewDiscoveryValuesFailure(root, server)
+            : $"the file holds [{names}], not [port, token, pid, project]";
+    }
+
+    private static string PreviewDiscoveryValuesFailure(JsonElement root, XscnPreviewServer server)
+    {
+        bool same =
+            root.GetProperty("port").GetInt32() == server.Port
+            && root.GetProperty("token").GetString() == server.Token
+            && root.GetProperty("pid").GetInt32() == System.Environment.ProcessId
+            && root.GetProperty("project").GetString() == server.Project;
+        return same
+            ? ""
+            : $"the file holds port {root.GetProperty("port")}, pid {root.GetProperty("pid")}, project {root.GetProperty("project")} and "
+                + $"a token that {(root.GetProperty("token").GetString() == server.Token ? "matches" : "does not match")}; the server has "
+                + $"port {server.Port}, pid {System.Environment.ProcessId}, project {server.Project}";
+    }
+
+    private static bool IsPreviewDiscoveryName(string name, string prefix) =>
+        name.StartsWith(prefix, StringComparison.Ordinal)
+        && name.EndsWith(".json", StringComparison.Ordinal)
+        && name.Length == prefix.Length + 32 + ".json".Length
+        && name[prefix.Length..^".json".Length].All(char.IsAsciiHexDigitLower);
+
+    private static string PreviewFolderEmptyFailure(string folder, string when) =>
+        Directory.Exists(folder) && Directory.GetFiles(folder).Length > 0
+            ? $"{when} the folder holds [{string.Join(", ", Directory.GetFiles(folder).Select(Path.GetFileName))}]"
+            : "";
+
+    // C140: the first request must be a ping with the token and the project.
+    private Task<string> PreviewServerAuthenticatesTheFirstPing()
+    {
+        string project = Globalized("res://");
+        string other = Path.Combine(Path.GetTempPath(), "gx-other-project");
+        return WithPreviewServer(
+            async (server, _) =>
+                Failures(
+                    await PreviewPingAnswersFailure(server, project).ConfigureAwait(false),
+                    await PreviewRefusedFirstFailure(server, "a render first", PreviewSceneRenderJson(1), XscnPreviewProtocol.NotAuthenticated)
+                        .ConfigureAwait(false),
+                    await PreviewRefusedFirstFailure(
+                            server,
+                            "a wrong token",
+                            PreviewPingJson(1, new string('0', 64), project),
+                            XscnPreviewProtocol.NotAuthenticated
+                        )
+                        .ConfigureAwait(false),
+                    await PreviewRefusedFirstFailure(
+                            server,
+                            "another project",
+                            PreviewPingJson(1, server.Token, other),
+                            XscnPreviewProtocol.OtherProject,
+                            server.Project,
+                            XscnPreviewServer.NormalizeProject(other)
+                        )
+                        .ConfigureAwait(false)
+                )
+        );
+    }
+
+    // C140, on a server of its own so no connection an earlier case closed still holds a slot: a fifth unauthenticated
+    // connection is closed while four are open, and a ninth authenticated one while eight are. The accept loop admits in
+    // order, so the four are counted before the fifth is.
+    private Task<string> PreviewServerCapsConnections()
+    {
+        string project = Globalized("res://");
+        return WithPreviewServer(
+            async (server, _) =>
+            {
+                string ping = PreviewPingJson(1, server.Token, project);
+                var open = new List<PreviewClient>();
+                try
+                {
+                    for (int index = 0; index < 4; index++)
+                    {
+                        open.Add(await PreviewClient.ConnectAsync(server.Port).ConfigureAwait(false));
+                    }
+
+                    string fifth = await PreviewClosedWithoutReplyFailure(server, "a fifth unauthenticated connection", PreviewFrame(ping))
+                        .ConfigureAwait(false);
+                    string promoted = await PreviewPingAllFailure(open, ping).ConfigureAwait(false);
+                    for (int index = 0; index < 4; index++)
+                    {
+                        open.Add(await OpenPreviewClientAsync(server, project).ConfigureAwait(false));
+                    }
+
+                    string ninth = await PreviewClosedWithoutReplyFailure(server, "a ninth authenticated connection", PreviewFrame(ping))
+                        .ConfigureAwait(false);
+                    return Failures(fifth, promoted, ninth);
+                }
+                finally
+                {
+                    open.ForEach(client => client.Dispose());
+                }
+            }
+        );
+    }
+
+    // Authenticates each open connection.
+    private static async Task<string> PreviewPingAllFailure(List<PreviewClient> open, string ping)
+    {
+        foreach (PreviewClient client in open)
+        {
+            await client.SendAsync(ping).ConfigureAwait(false);
+            JsonElement? reply = await client.ReceiveAsync().ConfigureAwait(false);
+            if (reply is not { } message || !message.TryGetProperty("result", out _))
+            {
+                return $"an unauthenticated connection's ping got {PreviewDescribe(reply)}";
+            }
+        }
+
+        return "";
+    }
+
+    private static byte[] PreviewFrame(string json) => XscnPreviewFraming.Frame(Encoding.UTF8.GetBytes(json));
+
+    // C141: malformed frames close their connections, a batch and a repeated token key are refused, and a good connection
+    // still works after them.
+    private Task<string> PreviewServerRefusesMalformedFrames()
+    {
+        string project = Globalized("res://");
+        return WithPreviewServer(
+            async (server, _) =>
+            {
+                string ping = PreviewPingJson(1, server.Token, project);
+                // The right token second, so a parser that kept the last key would let the ping in.
+                string duplicate =
+                    "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\",\"params\":{\"token\":\"wrong\","
+                    + $"\"token\":{PreviewJson(server.Token)},\"project\":{PreviewJson(project)}}}}}";
+                var failures = new List<string>();
+                foreach ((string what, string frame) in PreviewMalformedFrames)
+                {
+                    failures.Add(await PreviewClosedWithoutReplyFailure(server, what, Encoding.ASCII.GetBytes(frame)).ConfigureAwait(false));
+                }
+
+                // A right ping padded with JSON whitespace to one byte over the cap: without the cap it would be answered.
+                string padded = ping + new string(' ', XscnPreviewFraming.MaxUnauthenticatedBody + 1 - ping.Length);
+                failures.Add(
+                    await PreviewClosedWithoutReplyFailure(server, "a 4097-byte ping before authentication", PreviewFrame(padded))
+                        .ConfigureAwait(false)
+                );
+
+                failures.Add(
+                    await PreviewRefusedFirstFailure(server, "a batch", $"[{ping}]", XscnPreviewProtocol.InvalidRequest).ConfigureAwait(false)
+                );
+                failures.Add(
+                    await PreviewRefusedFirstFailure(server, "a repeated token key", duplicate, XscnPreviewProtocol.ParseError).ConfigureAwait(false)
+                );
+                failures.Add(await PreviewPingAnswersFailure(server, project).ConfigureAwait(false));
+                return Failures([.. failures]);
+            }
+        );
+    }
+
+    // C142: a render answers the rectangles a direct collect of the same text gives, an invalid path is refused, and a
+    // render over the cap gets a clamped SubViewport.
+    private async Task<string> PreviewServerRendersRects()
+    {
+        ImmutableArray<PreviewRect> direct = [];
+        string directFailure = await WithPreviewRects(
+            PreviewServerScene,
+            (_, rects) =>
+            {
+                direct = rects;
+                return "";
+            }
+        );
+        if (directFailure.Length > 0)
+        {
+            return $"the direct collect failed: {directFailure}";
+        }
+
+        string[] expected =
+        [
+            .. direct.Select(rect =>
+                PreviewRectText(
+                    rect.Path,
+                    rect.Class,
+                    rect.Kind,
+                    [rect.Rect.Position.X, rect.Rect.Position.Y, rect.Rect.Size.X, rect.Rect.Size.Y],
+                    rect.SpanStart,
+                    rect.SpanLength
+                )
+            ),
+        ];
+        string project = Globalized("res://");
+        const string invalidPath = "res://checks/../checks/cases/preview.xscn";
+        const string backslashPath = "res://checks\\cases/preview.xscn";
+        const string nulPath = "res://checks/cases/pre\0view.xscn";
+        return await WithPreviewServer(
+            async (server, _) =>
+            {
+                using PreviewClient client = await OpenPreviewClientAsync(server, project).ConfigureAwait(false);
+                await client.SendAsync(PreviewRenderJson(2, PreviewPath, PreviewServerScene, 640, 480)).ConfigureAwait(false);
+                await client.SendAsync(PreviewRenderJson(3, invalidPath, PreviewServerScene, 640, 480)).ConfigureAwait(false);
+                await client.SendAsync(PreviewRenderJson(5, backslashPath, PreviewServerScene, 640, 480)).ConfigureAwait(false);
+                await client.SendAsync(PreviewRenderJson(6, nulPath, PreviewServerScene, 640, 480)).ConfigureAwait(false);
+                await client
+                    .SendAsync(PreviewRenderJson(4, CasesPath + "preview_large.xscn", PreviewServerScene, 10000, 10000))
+                    .ConfigureAwait(false);
+                Dictionary<string, JsonElement> replies = await client.ReceiveThroughAsync([2, 3, 4, 5, 6]).ConfigureAwait(false);
+                return Failures(
+                    PreviewRectsReplyFailure(PreviewReply(replies, 2), expected),
+                    PreviewErrorFailure(replies, 3, XscnPreviewProtocol.InvalidDocument, $"a render of {invalidPath}"),
+                    PreviewErrorFailure(replies, 5, XscnPreviewProtocol.InvalidDocument, "a render of a path with a backslash"),
+                    PreviewErrorFailure(replies, 6, XscnPreviewProtocol.InvalidDocument, "a render of a path with a NUL"),
+                    PreviewLoadedFailure(replies, 4, "the 10000x10000 render")
+                );
+            },
+            driver =>
+                driver.ViewportSizes.Contains(new Vector2I(XscnPreviewServer.MaxSide, XscnPreviewServer.MaxSide))
+                    ? ""
+                    : $"no SubViewport of 4096x4096 was seen, only [{string.Join(", ", driver.ViewportSizes.Distinct())}]"
+        );
+    }
+
+    private static string PreviewRectText(string? path, string? engineClass, string? kind, float[] rect, int start, int length) =>
+        string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{path} {engineClass} {kind} ({rect[0]}, {rect[1]}, {rect[2]}, {rect[3]}) {start}+{length}"
+        );
+
+    private static string PreviewRectsReplyFailure(JsonElement? reply, string[] expected)
+    {
+        if (reply is not { } message || !message.TryGetProperty("result", out JsonElement result))
+        {
+            return $"the 640x480 render got {PreviewDescribe(reply)}";
+        }
+
+        string[] rects =
+        [
+            .. result
+                .GetProperty("rects")
+                .EnumerateArray()
+                .Select(rect =>
+                    PreviewRectText(
+                        rect.GetProperty("path").GetString(),
+                        rect.GetProperty("class").GetString(),
+                        rect.GetProperty("kind").GetString(),
+                        [.. PreviewRectFields.Select(name => rect.GetProperty(name).GetSingle())],
+                        rect.GetProperty("spanStart").GetInt32(),
+                        rect.GetProperty("spanLength").GetInt32()
+                    )
+                ),
+        ];
+        return Failures(
+            result.GetProperty("loaded").GetBoolean() ? "" : "the 640x480 render was not loaded",
+            expected.Length == 2 && rects.SequenceEqual(expected)
+                ? ""
+                : $"the render's rects are [{string.Join("; ", rects)}], expected the direct collect's two [{string.Join("; ", expected)}]"
+        );
+    }
+
+    // C143: only the newest render per connection and document runs; a cancelled one, a seventeenth queued document and
+    // one queued at the stop are answered with their errors. The pump is held, and the hold acknowledged by the frame
+    // loop, before requests queue, and a ping after them proves they are queued.
+    private Task<string> PreviewServerKeepsTheLatestRender()
+    {
+        string project = Globalized("res://");
+        return WithPreviewServer(
+            async (server, driver) =>
+            {
+                await driver.PauseAsync().ConfigureAwait(false);
+                using PreviewClient one = await OpenPreviewClientAsync(server, project).ConfigureAwait(false);
+                using PreviewClient two = await OpenPreviewClientAsync(server, project).ConfigureAwait(false);
+                await one.SendAsync(PreviewSceneRenderJson(1)).ConfigureAwait(false);
+                await one.SendAsync(PreviewSceneRenderJson(2)).ConfigureAwait(false);
+                await one.SendAsync(PreviewBarePingJson(3)).ConfigureAwait(false);
+                Dictionary<string, JsonElement> superseded = await one.ReceiveThroughAsync([1, 3]).ConfigureAwait(false);
+                driver.Paused = false;
+                await one.ReceiveThroughAsync([2], superseded).ConfigureAwait(false);
+
+                await driver.PauseAsync().ConfigureAwait(false);
+                await one.SendAsync(PreviewSceneRenderJson(4)).ConfigureAwait(false);
+                await one.SendAsync(PreviewBarePingJson(5)).ConfigureAwait(false);
+                Dictionary<string, JsonElement> first = await one.ReceiveThroughAsync([5]).ConfigureAwait(false);
+                await two.SendAsync(PreviewSceneRenderJson(1)).ConfigureAwait(false);
+                await two.SendAsync(PreviewBarePingJson(2)).ConfigureAwait(false);
+                Dictionary<string, JsonElement> second = await two.ReceiveThroughAsync([2]).ConfigureAwait(false);
+                driver.Paused = false;
+                await one.ReceiveThroughAsync([4], first).ConfigureAwait(false);
+                await two.ReceiveThroughAsync([1], second).ConfigureAwait(false);
+
+                await driver.PauseAsync().ConfigureAwait(false);
+                await one.SendAsync(PreviewSceneRenderJson(6)).ConfigureAwait(false);
+                await one.SendAsync(PreviewCancelJson(6)).ConfigureAwait(false);
+                await one.SendAsync(PreviewBarePingJson(7)).ConfigureAwait(false);
+                Dictionary<string, JsonElement> cancelled = await one.ReceiveThroughAsync([6, 7]).ConfigureAwait(false);
+
+                // Sixteen documents queued on one connection, then a seventeenth, which is refused at once.
+                await one.SendAsync(PreviewSceneRenderJson(8)).ConfigureAwait(false);
+                for (int index = 1; index <= 16; index++)
+                {
+                    string document = CasesPath + $"queued{index}.xscn";
+                    await one.SendAsync(PreviewRenderJson(100 + index, document, PreviewServerScene, 64, 64)).ConfigureAwait(false);
+                }
+
+                await one.SendAsync(PreviewBarePingJson(9)).ConfigureAwait(false);
+                Dictionary<string, JsonElement> stopped = await one.ReceiveThroughAsync([9]).ConfigureAwait(false);
+                driver.StopAsked = true;
+                await one.ReceiveThroughAsync([8], stopped).ConfigureAwait(false);
+                return Failures(
+                    PreviewErrorFailure(superseded, 1, XscnPreviewProtocol.Cancelled, "the superseded render"),
+                    PreviewLoadedFailure(superseded, 2, "the newer render of the document"),
+                    PreviewLoadedFailure(first, 4, "the first connection's render"),
+                    PreviewLoadedFailure(second, 1, "the second connection's render of the same document"),
+                    PreviewErrorFailure(cancelled, 6, XscnPreviewProtocol.Cancelled, "the cancelled render"),
+                    PreviewErrorFailure(stopped, 116, XscnPreviewProtocol.Cancelled, "the seventeenth queued document"),
+                    PreviewErrorFailure(stopped, 8, XscnPreviewProtocol.Stopping, "the render queued at the stop")
+                );
+            }
+        );
     }
 }

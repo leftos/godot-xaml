@@ -4,7 +4,10 @@ using Godot;
 
 namespace GodotXaml.Addon;
 
-/// <summary>The addon's editor plugin; it registers the export plugin and keeps the global class snapshot current.</summary>
+/// <summary>
+/// The addon's editor plugin; it registers the export plugin, keeps the global class snapshot current and runs the preview
+/// server.
+/// </summary>
 /// <remarks>
 /// The loader and saver register as global classes, never from here. Godot builds the loaders at startup from the previous
 /// session's class cache (<c>main/main.cpp:4494</c>), before the editor's first scan stores the fresh list
@@ -19,11 +22,22 @@ namespace GodotXaml.Addon;
 /// engine skips the slot as invalid (<c>core/variant/callable.cpp:153-158</c>, <c>core/object/object.cpp:1255-1257</c>), and
 /// once the reload gives the tool script a new instance (<c>modules/mono/csharp_script.cpp:943-951</c>) the same connection
 /// calls it again.
+/// <para>
+/// The plugin owns the preview server (<see cref="XscnPreviewServer"/>): it runs while
+/// <see cref="XscnPreviewServer.EnabledSetting"/> is on, starting and stopping as the setting changes, is pumped from
+/// <see cref="_Process"/>, and stops when the plugin leaves the tree and before an assembly reload, which never calls
+/// <see cref="_ExitTree"/> (<c>modules/mono/csharp_script.cpp:768</c>, <c>943-951</c>).
+/// </para>
 /// </remarks>
 [Tool]
-public partial class XscnEditorPlugin : EditorPlugin
+public partial class XscnEditorPlugin : EditorPlugin, ISerializationListener
 {
     private XscnExportPlugin? exportPlugin;
+
+    private XscnPreviewServer? previewServer;
+
+    // Set when a start failed, so each settings change does not warn again; cleared when the setting turns off.
+    private bool previewStartFailed;
 
     /// <inheritdoc/>
     public override void _EnterTree()
@@ -36,11 +50,32 @@ public partial class XscnEditorPlugin : EditorPlugin
             .Connect(EditorFileSystem.SignalName.ScriptClassesUpdated, new Callable(this, MethodName.OnScriptClassesUpdated));
         exportPlugin = new XscnExportPlugin();
         AddExportPlugin(exportPlugin);
+        RegisterPreviewSetting();
+        ProjectSettings.Singleton.Connect(ProjectSettings.SignalName.SettingsChanged, new Callable(this, MethodName.OnSettingsChanged));
+        FollowPreviewSetting();
     }
+
+    /// <inheritdoc/>
+    public override void _Process(double delta) => previewServer?.Pump();
+
+    /// <summary>
+    /// Stops the preview server before an assembly reload unloads this class, and disconnects the settings hook, so nothing
+    /// starts it again until the plugin re-enters the tree.
+    /// </summary>
+    public void OnBeforeSerialize()
+    {
+        DisconnectSettingsHook();
+        StopPreviewServer();
+    }
+
+    /// <summary>Does nothing yet: the server is not restarted after a reload.</summary>
+    public void OnAfterDeserialize() { }
 
     /// <inheritdoc/>
     public override void _ExitTree()
     {
+        DisconnectSettingsHook();
+        StopPreviewServer();
         EditorFileSystem fileSystem = EditorInterface.Singleton.GetResourceFilesystem();
         var hook = new Callable(this, MethodName.OnScriptClassesUpdated);
         if (fileSystem.IsConnected(EditorFileSystem.SignalName.ScriptClassesUpdated, hook))
@@ -60,5 +95,68 @@ public partial class XscnEditorPlugin : EditorPlugin
     // An instance method, so the engine finds it on this object by name.
     [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Godot calls it through a Callable on this object.")]
     private void OnScriptClassesUpdated() => GlobalClassSnapshot.Rebuild();
+
+    // The setting is a bool in the Project Settings dialog, off by default; a project that never sets it saves nothing.
+    private static void RegisterPreviewSetting()
+    {
+        if (!ProjectSettings.HasSetting(XscnPreviewServer.EnabledSetting))
+        {
+            ProjectSettings.SetSetting(XscnPreviewServer.EnabledSetting, false);
+        }
+
+        ProjectSettings.SetInitialValue(XscnPreviewServer.EnabledSetting, false);
+        using var info = new Godot.Collections.Dictionary { { "name", XscnPreviewServer.EnabledSetting }, { "type", (int)Variant.Type.Bool } };
+        ProjectSettings.AddPropertyInfo(info);
+    }
+
+    private static bool PreviewServerEnabled()
+    {
+        using Variant fallback = false;
+        using Variant setting = ProjectSettings.GetSetting(XscnPreviewServer.EnabledSetting, fallback);
+        return setting.AsBool();
+    }
+
+    // Connected by name, as the class hook is, so the engine finds it on this object.
+    private void OnSettingsChanged() => FollowPreviewSetting();
+
+    private void FollowPreviewSetting()
+    {
+        if (!PreviewServerEnabled())
+        {
+            previewStartFailed = false;
+            StopPreviewServer();
+            return;
+        }
+
+        if (previewServer is not null || previewStartFailed)
+        {
+            return;
+        }
+
+        var server = new XscnPreviewServer(XscnPreviewDiscovery.DefaultFolder(), ProjectSettings.GlobalizePath("res://"), this);
+        if (server.Start())
+        {
+            previewServer = server;
+            return;
+        }
+
+        previewStartFailed = true;
+        server.Dispose();
+    }
+
+    private void DisconnectSettingsHook()
+    {
+        var settingsHook = new Callable(this, MethodName.OnSettingsChanged);
+        if (ProjectSettings.Singleton.IsConnected(ProjectSettings.SignalName.SettingsChanged, settingsHook))
+        {
+            ProjectSettings.Singleton.Disconnect(ProjectSettings.SignalName.SettingsChanged, settingsHook);
+        }
+    }
+
+    private void StopPreviewServer()
+    {
+        previewServer?.Stop();
+        previewServer = null;
+    }
 }
 #endif
