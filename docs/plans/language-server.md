@@ -143,7 +143,7 @@ Gap summary (new core API work, in priority order):
 4. `LineMap` inverse (position to offset).
 5. `res://` to disk path and project file listing.
 6. Scene lookup for instances (class of an instanced scene), reusing `ISceneFiles`/`InstancedClasses`.
-7. Documentation text for hover (data work, section 8).
+7. Documentation text for hover (data work, section 8). Done: the docs file `metadata/docs/godot-4.7.json` (GXAML-137, `tools/class-docs/`); nothing reads it yet.
 
 ## 4. Build and repo facts
 
@@ -220,7 +220,7 @@ It is bigger than one commit and it blocks two other items, so sub-steps should 
 - Decision 5, metadata version (owner): option B, the project's Godot version read from `project.godot`'s `config/features`, its bundled metadata loaded, the newest bundled one with a warning when it is not bundled, and the version in use shown to the user.
 - Decision 7, shared helpers (owner): moved into the core (it stays Godot-free); the CLI's tests follow the move.
 - Decision 8, scope (owner): diagnostics, formatting, hover and completions; GXAML-15 (VS Code) starts once diagnostics work, beside hover and completions. Document symbols, go to definition, code actions and rename are backlog items.
-- Decision 9, hover (owner): option C, full descriptions, from a docs file generated per Godot version from Godot's `doc/classes/*.xml` (BBCode converted) and shipped beside the metadata, with the attribution Godot's docs licence asks for (checked before it ships). Its own issue.
+- Decision 9, hover (owner): option C, full descriptions, from a docs file generated per Godot version from Godot's `doc/classes/*.xml` (BBCode converted) and shipped beside the metadata, with Godot's licence notice (Expat, MIT; checked, carried in the file). Its own issue; the docs file is done by GXAML-137.
 - Branch (owner): the core additions (proposed steps 1-4) land on `main` as they pass; the server, its packaging and CI (steps 5-9) go on `feat/language-server` with a draft PR, merged once it works end to end.
 - Decision 2, sync (orchestrator): full-text sync, a parse on each change with a debounce, a stale parse cancelled.
 - Decision 6, project discovery (orchestrator): per document, a walk up for `project.godot` cached per folder, the workspace folders as a fallback; a document outside any project gets `res://` checks off and a hint; path completions list the folder on demand.
@@ -261,8 +261,8 @@ Each option with what the code makes realistic and its cost.
    The owner chooses whether GXAML-15/16 may start after step 3 or must wait for completions. Features not in the title that LSP clients expect to be absent or present: semantic tokens, go to definition (`res://`, `{Key}`, scene tags), document symbols (outline from the node tree: cheap with the model's `Children`), code actions (quick fixes for common GX codes), rename of `x:Key` or node names: all out of the title, none mentioned in docs. A decision for scope.
 9. Hover documentation.
    - A. No docs: signature and default only (zero data work).
-   - B. Extend the metadata dump to emit descriptions: the dump (GDScript on `ClassDB`) cannot read docs unless Godot's docs are built in (unmeasured); the file would grow from 1.9 MB (ARCHITECTURE.md:88).
-   - C. Generate a separate `docs` file from `F:\Godot\src-4.7.2\doc\classes\*.xml` with a new tool (C# or script) and ship it beside the metadata; license: Godot's docs are CC-BY 3.0, so attribution applies (unverified here; check before shipping). BBCode conversion needed.
+   - B. Extend the metadata dump to emit descriptions: the dump (GDScript on `ClassDB`) cannot read docs unless Godot's docs are built in (unmeasured); the metadata file (over 2 MB) would grow.
+   - C. Generate a separate `docs` file from `F:\Godot\src-4.7.2\doc\classes\*.xml` with a new tool (C# or script) and ship it beside the metadata; license: the class XML is under the engine's Expat (MIT) licence (`COPYRIGHT.txt`, `Files: *`), so the notice travels with the file (its `license` field and `metadata/docs/LICENSE-godot.txt`). BBCode conversion needed. Done by GXAML-137: `tools/class-docs/generate.ps1` writes `metadata/docs/godot-4.7.json`.
    - D. A link to the online docs page per class/property in hover (cheapest after A).
    - The data format must also be versioned per Godot minor, like the metadata.
 10. Diagnostic mapping details: only Error and Warning exist (map to LSP Error/Warning); `code` = `GX....` (stable, documented in docs/format/diagnostics.md); a `codeDescription.href` to the heading is possible. Whether to surface `GXC`/`GXP` is not relevant. When the metadata file fails to load, the server needs a way to say so (the CLI exits 2; a server should start with a window message).
