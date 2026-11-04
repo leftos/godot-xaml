@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Converting back to `.tres`, a VisualShader's `flags/` keep the order Godot saves for its shader mode, not always Spatial's.
 - Converting back to `.tscn`, a Control inside a Container gets the `layout_mode` Godot saves for it, and a TabContainer's tabs and a GraphNode's slots keep Godot's order past the tenth.
 - Converting back to `.tscn`, the items of a TabBar, PopupMenu, ItemList, OptionButton, MenuButton or FileDialog keep Godot's order past the tenth, each item's keys in the order Godot writes them.
 - A `.xscn` or `.xres` nested more than 512 elements deep reports `GX0120` instead of crashing whatever reads it.

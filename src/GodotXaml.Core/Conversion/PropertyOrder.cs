@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using GodotXaml.Core.Metadata;
+using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
 
 namespace GodotXaml.Core.Conversion;
@@ -18,7 +19,10 @@ namespace GodotXaml.Core.Conversion;
 /// in any order, or whose entries a count property ranked before it sizes first, loads that way. A family whose entries
 /// Godot creates on one key goes entry by entry in numeric order, each entry's keys in the declaring class's order,
 /// creating key first; a sized family whose keys reset one another does the same. A family can order one nested level the
-/// same way: inside a key, its sub-entries in numeric order, each sub-entry's keys in the declaring class's order.
+/// same way: inside a key, its sub-entries in numeric order, each sub-entry's keys in the declaring class's order. A family
+/// whose key order depends on a sibling property (a VisualShader's flags/, listed in the order its mode registers them)
+/// reads that property from the section once per sort: the last one holding an integer, else 0; a value the family has no
+/// order for keeps source order.
 /// </summary>
 internal sealed class PropertyOrder(GodotMetadata metadata)
 {
@@ -62,11 +66,12 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
             tables.Add(cls.Name, order);
         }
 
-        return [.. properties.OrderBy(property => RankOf(order, property.GodotName))];
+        RankContext context = new(properties);
+        return [.. properties.OrderBy(property => RankOf(order, property.GodotName, context))];
     }
 
     // The exact name, then the chain's dynamic families base first (Godot lists the base class first), then the name's shape.
-    private static Rank RankOf(ClassOrder order, string name)
+    private static Rank RankOf(ClassOrder order, string name, RankContext context)
     {
         if (order.Listed.TryGetValue(name, out Rank rank))
         {
@@ -75,7 +80,7 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
 
         foreach ((DynamicPropertyFamilies.DynamicFamily family, Rank slot) in order.Families)
         {
-            if (RankIn(family, slot, name) is { } matched)
+            if (RankIn(family, slot, name, context) is { } matched)
             {
                 return matched;
             }
@@ -96,7 +101,7 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
 
     // The family's rank for a name, or null when the family does not name it. A family the pattern alone names by one literal
     // matches by an ordinal comparison, which costs less than its regex.
-    private static Rank? RankIn(DynamicPropertyFamilies.DynamicFamily family, Rank slot, string name)
+    private static Rank? RankIn(DynamicPropertyFamilies.DynamicFamily family, Rank slot, string name, RankContext context)
     {
         if (family.Literal is { } literal)
         {
@@ -108,7 +113,7 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
             ? slot with
             {
                 Entry = EntryOf(match, "index"),
-                Key = KeyOf(family.KeyLookup, match, "key"),
+                Key = KeyOf(KeyLookupOf(family, context), match, "key"),
                 SubEntry = EntryOf(match, "subindex"),
                 SubKey = SubKeyOf(family, match),
             }
@@ -132,6 +137,19 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         }
 
         return int.TryParse(index.ValueSpan, NumberStyles.None, CultureInfo.InvariantCulture, out int entry) ? entry : int.MaxValue;
+    }
+
+    // The family's key lookup; for a family whose order a sibling property chooses, the order for the section's value of it,
+    // or an empty one for a value the family has none for, which keeps every key in source order.
+    private static ImmutableArray<(string Key, int Index)> KeyLookupOf(DynamicPropertyFamilies.DynamicFamily family, RankContext context)
+    {
+        if (family.ModeBy is not { } modeBy)
+        {
+            return family.KeyLookup;
+        }
+
+        long mode = context.ModeOf(modeBy);
+        return mode >= 0 && mode < family.ModeKeyLookups.Length ? family.ModeKeyLookups[(int)mode] : [];
     }
 
     // The place in the key order of the named key group (key, or subkey for a nested entry); a key the order lacks, or a
@@ -237,6 +255,41 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         Dictionary<string, Rank> Listed,
         ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot)> Families
     );
+
+    // The section one sort ranks, for a family whose key order a sibling property chooses; the sibling is read on first need
+    // only, so a section whose names no such family places never reads it.
+    private sealed class RankContext(ImmutableArray<XscnProperty> properties)
+    {
+        private string? modeBy;
+        private long mode;
+
+        // The integer value of the last property of that name holding one, since each set replaces the last (a VisualShader's
+        // set_mode also clears its flags); else 0 (a VisualShader with no mode is Spatial).
+        public long ModeOf(string property)
+        {
+            if (!string.Equals(modeBy, property, StringComparison.Ordinal))
+            {
+                mode = Read(property);
+                modeBy = property;
+            }
+
+            return mode;
+        }
+
+        private long Read(string property)
+        {
+            for (int index = properties.Length - 1; index >= 0; index--)
+            {
+                XscnProperty candidate = properties[index];
+                if (candidate.GodotName == property && candidate.Value is XscnScalar { Value: GodotInt { Value: long value } })
+                {
+                    return value;
+                }
+            }
+
+            return 0;
+        }
+    }
 
     // Entry and Key order a dynamic family's names: entry by entry in numeric order, each entry's keys in the class's order.
     // SubEntry and SubKey order one nested level inside a key the same way (a setting's joints, each joint's keys).

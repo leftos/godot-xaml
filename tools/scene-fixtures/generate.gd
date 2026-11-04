@@ -78,6 +78,7 @@ func _run() -> String:
 		FamilyCases.tile_set_layers.bind(self),
 		FamilyCases.gui_item_arrays.bind(self),
 		FamilyCases.gui_tabs_graph.bind(self),
+		FamilyCases.visual_shader_modes.bind(self),
 	]
 	for step in steps:
 		var error: String = step.call()

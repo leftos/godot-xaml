@@ -183,6 +183,63 @@ public sealed class DynamicPropertyFamiliesTests
         );
     }
 
+    // A by-mode family places each name by its key in the order its sibling property's value picks, so it names a key and no
+    // entry, and carries a distinct order per listed value, and no other row carries a sibling or orders.
+    [Fact]
+    public void AByModeFamilyNamesItsKeyAndAnOrderPerMode()
+    {
+        Assert.Contains(All, row => row.Family.Creation == EntryCreation.ByMode);
+        Assert.Empty(
+            Offenders(row =>
+                row.Family.Creation == EntryCreation.ByMode
+                    ? !IsKeyedByMode(row.Family)
+                    : row.Family.ModeBy is not null || !row.Family.ModeKeyOrders.IsEmpty
+            )
+        );
+    }
+
+    // A by-mode family's order is chosen by a property its class ranks before it: one the metadata lists for the class or an
+    // ancestor, or one an earlier row of its class matches in full.
+    [Fact]
+    public void AByModeFamilyIsChosenByAPropertyRankedBeforeIt()
+    {
+        List<(string Class, DynamicFamily Family)> rows = [.. All];
+        List<string> offenders = [];
+        for (int index = 0; index < rows.Count; index++)
+        {
+            (string cls, DynamicFamily family) = rows[index];
+            if (family.Creation == EntryCreation.ByMode && !IsRankedBefore(rows, index, family.ModeBy))
+            {
+                offenders.Add($"{cls} {family.Pattern} chosen by {family.ModeBy ?? "null"}");
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
+    private static bool IsRankedBefore(List<(string Class, DynamicFamily Family)> rows, int index, string? property)
+    {
+        string cls = rows[index].Class;
+        return property is not null
+            && (IsListed(cls, property) || rows.Take(index).Any(earlier => earlier.Class == cls && MatchesInFull(earlier.Family, property)));
+    }
+
+    // A key group and no entry, nested level, single key order or count property.
+    private static bool IsKeyedByMode(DynamicFamily family) =>
+        Has(family, "key")
+        && !Has(family, "index")
+        && !IsNested(family)
+        && family.KeyOrder.IsEmpty
+        && family.SizedBy is null
+        && HasModeOrders(family);
+
+    // A sibling property, an order per value with at least one listed, each distinct, and a lookup per order.
+    private static bool HasModeOrders(DynamicFamily family) =>
+        family.ModeBy is not null
+        && family.ModeKeyOrders.Any(order => !order.IsEmpty)
+        && family.ModeKeyOrders.All(IsDistinct)
+        && family.ModeKeyLookups.Length == family.ModeKeyOrders.Length;
+
     // Whether the row names nested entries or keys, or carries a nested key order.
     private static bool IsNested(DynamicFamily family) => Has(family, "subindex") || Has(family, "subkey") || !family.SubKeyOrder.IsEmpty;
 

@@ -27,7 +27,10 @@ public sealed class ResourceForwardTests
             "skeleton_modification_singles",
             "tile_set_layers",
             "tile_set_patterns",
+            "visual_shader_canvas_item",
             "visual_shader_nodes",
+            "visual_shader_particles",
+            "visual_shader_sky",
             "visual_shader_types"
         );
 

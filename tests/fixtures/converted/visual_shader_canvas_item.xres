@@ -1,0 +1,7 @@
+<VisualShader
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Flags.light_only="true"
+    Flags.skip_vertex_transform="true"
+    Flags.unshaded="true"
+    Flags.world_vertex_coords="true"
+    mode="1" />

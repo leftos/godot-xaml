@@ -1,4 +1,6 @@
 using GodotXaml.Core.Tscn;
+using GodotXaml.Core.Values;
+using GodotXaml.Core.Xscn;
 using static GodotXaml.Core.Tests.Conversion.BackHelpers;
 
 namespace GodotXaml.Core.Tests.Conversion;
@@ -306,8 +308,8 @@ public sealed class PropertyOrderTests
         );
     }
 
-    // VisualShader::_get_property_list lists flags/ in the order ShaderTypes registers the Spatial render modes
-    // (shader_types.cpp:240-260), depth_test_disabled at depth_test's place.
+    // VisualShader::_get_property_list lists flags/ in the order ShaderTypes registers the shader mode's render modes
+    // (shader_types.cpp:238-260 for Spatial), depth_test_disabled at depth_test's place; a shader with no mode is Spatial.
     [Fact]
     public void VisualShaderFlagsComeInTheShaderTypesOrder()
     {
@@ -339,6 +341,163 @@ public sealed class PropertyOrderTests
             ],
             PropertyNames(resource.ResourceProperties)
         );
+        Assert.Equal(SpatialFlags, FlagOrder("", [.. SpatialFlags.Order(StringComparer.Ordinal)]));
+    }
+
+    [Fact]
+    public void EverySpatialFlagComesInTheSpatialOrderWhenModeIsSpatial() =>
+        Assert.Equal(SpatialFlags, FlagOrder("mode=\"0\"", [.. SpatialFlags.Order(StringComparer.Ordinal)]));
+
+    [Fact]
+    public void ASpatialShaderListsUnshadedBeforeSkipVertexTransform() =>
+        Assert.Equal(["unshaded", "skip_vertex_transform"], FlagOrder("mode=\"0\"", "skip_vertex_transform", "unshaded"));
+
+    // shader_types.cpp:359-363: CanvasItem registers skip_vertex_transform before unshaded, the other way from Spatial.
+    [Fact]
+    public void ACanvasItemShaderListsSkipVertexTransformBeforeUnshaded() =>
+        Assert.Equal(["skip_vertex_transform", "unshaded"], FlagOrder("mode=\"1\"", "skip_vertex_transform", "unshaded"));
+
+    [Fact]
+    public void CanvasItemFlagsComeInTheCanvasItemOrder() =>
+        Assert.Equal(
+            ["skip_vertex_transform", "unshaded", "light_only", "world_vertex_coords"],
+            FlagOrder("mode=\"1\"", "world_vertex_coords", "light_only", "unshaded", "skip_vertex_transform")
+        );
+
+    // shader_types.cpp:453-456.
+    [Fact]
+    public void ParticlesFlagsComeInTheParticlesOrder() =>
+        Assert.Equal(
+            ["collision_use_scale", "disable_force", "disable_velocity", "keep_data"],
+            FlagOrder("mode=\"2\"", "keep_data", "collision_use_scale", "disable_velocity", "disable_force")
+        );
+
+    // shader_types.cpp:504-507.
+    [Fact]
+    public void SkyFlagsComeInTheSkyOrder() =>
+        Assert.Equal(
+            ["use_half_res_pass", "use_quarter_res_pass", "disable_fog", "use_debanding"],
+            FlagOrder("mode=\"3\"", "use_debanding", "disable_fog", "use_quarter_res_pass", "use_half_res_pass")
+        );
+
+    // Fog registers no render modes, so it lists no flag; the names keep source order.
+    [Fact]
+    public void FogFlagsKeepSourceOrder() => Assert.Equal(["wireframe", "unshaded"], FlagOrder("mode=\"4\"", "wireframe", "unshaded"));
+
+    // TextureBlit registers only blend, which has options, so it lists no flag either.
+    [Fact]
+    public void TextureBlitFlagsKeepSourceOrder() => Assert.Equal(["wireframe", "unshaded"], FlagOrder("mode=\"5\"", "wireframe", "unshaded"));
+
+    [Fact]
+    public void FlagsOfAModeGodotLacksKeepSourceOrder() => Assert.Equal(["wireframe", "unshaded"], FlagOrder("mode=\"9\"", "wireframe", "unshaded"));
+
+    // wireframe is Spatial's only: a CanvasItem shader lists unshaded, and the unlisted flag keeps source order after it.
+    [Fact]
+    public void AFlagTheModeDoesNotListComesAfterTheListedFlags() =>
+        Assert.Equal(["unshaded", "wireframe"], FlagOrder("mode=\"1\"", "wireframe", "unshaded"));
+
+    // The rank reads the section's mode, wherever the source holds it.
+    [Fact]
+    public void AModeWrittenAfterTheFlagsStillChoosesTheirOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <VisualShader {{X}}>
+              <x:Prop Name="flags/unshaded" Value="true" />
+              <x:Prop Name="flags/skip_vertex_transform" Value="true" />
+              <x:Prop Name="mode" Value="1" />
+            </VisualShader>
+            """
+        );
+
+        Assert.Equal(["mode", "flags/skip_vertex_transform", "flags/unshaded"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // Each VisualShader::set_mode clears the flags (visual_shader.cpp:1446), so the last mode set is the one the flags follow.
+    [Fact]
+    public void TheLastModeChoosesTheFlagOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <VisualShader {{X}} mode="1">
+              <x:Prop Name="flags/use_debanding" Value="true" />
+              <x:Prop Name="flags/use_half_res_pass" Value="true" />
+              <x:Prop Name="mode" Value="3" />
+            </VisualShader>
+            """
+        );
+
+        Assert.Equal(
+            ["flags/use_half_res_pass", "flags/use_debanding"],
+            PropertyNames(resource.ResourceProperties).Where(name => name.StartsWith("flags/", StringComparison.Ordinal))
+        );
+    }
+
+    // A flag name holding a newline is still a flag: unlisted, so after the listed ones, and before the stencil keys.
+    [Fact]
+    public void AFlagHoldingANewlineRanksAmongTheFlags()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <VisualShader {{X}} mode="0">
+              <x:Prop Name="flags/a&#10;b" Value="true" />
+              <x:Prop Name="flags/unshaded" Value="true" />
+              <x:Prop Name="stencil/enabled" Value="true" />
+            </VisualShader>
+            """
+        );
+
+        Assert.Equal(["mode", "flags/unshaded", "flags/a\nb", "stencil/enabled"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // The forward writes mode as a plain attribute (mode="1"; ClassDB lists no mode property, so it has no enum name); the
+    // parser reads it as the integer the rank reads.
+    [Fact]
+    public void AModeAttributeParsesAsTheIntegerTheRankReads()
+    {
+        XscnParseResult parsed = XscnParser.Parse($"<VisualShader {X} mode=\"1\" />", XscnDocumentKind.Resource, TestMetadata);
+        Assert.Empty(parsed.Diagnostics);
+        XscnResource root = Assert.IsType<XscnResource>(parsed.Document.Root);
+        XscnProperty mode = Assert.Single(root.Properties, property => property.GodotName == "mode");
+        Assert.Equal(new XscnScalar(new GodotInt(1)), mode.Value);
+
+        Assert.Equal(["skip_vertex_transform", "unshaded"], FlagOrder("mode=\"1\"", "unshaded", "skip_vertex_transform"));
+    }
+
+    // shader_types.cpp:238-260: the Spatial render modes without options, depth_test_disabled at depth_test's place.
+    private static readonly string[] SpatialFlags =
+    [
+        "depth_prepass_alpha",
+        "depth_test_disabled",
+        "sss_mode_skin",
+        "unshaded",
+        "wireframe",
+        "skip_vertex_transform",
+        "world_vertex_coords",
+        "ensure_correct_normals",
+        "shadows_disabled",
+        "ambient_light_disabled",
+        "shadow_to_opacity",
+        "vertex_lighting",
+        "particle_trails",
+        "alpha_to_coverage",
+        "alpha_to_coverage_and_one",
+        "debug_shadow_splits",
+        "fog_disabled",
+        "specular_occlusion_disabled",
+    ];
+
+    // The flags/ keys of a VisualShader with the given mode attribute (empty for none) and each flag true, in source order.
+    private static string[] FlagOrder(string mode, params string[] flags)
+    {
+        string props = string.Concat(flags.Select(flag => $"  <x:Prop Name=\"flags/{flag}\" Value=\"true\" />\n"));
+        TscnDocument resource = BackResource($"<VisualShader {X} {mode}>\n{props}</VisualShader>");
+        return
+        [
+            .. PropertyNames(resource.ResourceProperties)
+                .Where(name => name.StartsWith("flags/", StringComparison.Ordinal))
+                .Select(name => name["flags/".Length..]),
+        ];
     }
 
     // VisualShader::_set reads a graph type it does not know as vertex, so its node must still come first.

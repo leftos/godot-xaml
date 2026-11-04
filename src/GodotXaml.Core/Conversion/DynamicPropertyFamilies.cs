@@ -12,7 +12,8 @@ namespace GodotXaml.Core.Conversion;
 /// <c>InstancePlaceholder</c> and the theme overrides of Control and Window are left out, and so is
 /// <c>OpenXRCompositionLayer</c>, which adds any slash name a GDExtension supplies (the engine ships none). Every row states
 /// how Godot creates its entries on load (<see cref="EntryCreation"/>): in any order; sized first by a count property ranked
-/// before the family, named on the row; or on one key. Godot creates an entry only on one key (the creating key), so each
+/// before the family, named on the row; on one key; or in any order but listed in a key order a sibling property's value
+/// chooses (a VisualShader's flags/ by its mode). Godot creates an entry only on one key (the creating key), so each
 /// entry's names come creating key first, and entries in numeric order, which a family that appends at the next index
 /// (Animation tracks, replication properties, TileSet patterns) needs. Such a pattern names each entry's number in an
 /// <c>index</c> group and any key after it in a <c>key</c> group, and the row carries the declaring class's key order. A
@@ -68,28 +69,42 @@ internal static class DynamicPropertyFamilies
     // registers two of these in another order.
     private static readonly string[] VisualShaderModes = ["blend", "depth_draw", "depth_test", "cull", "diffuse", "specular"];
 
-    // The same list's flags/: the Spatial render modes without options in ShaderTypes::ShaderTypes order, with
-    // depth_test_disabled at depth_test's place.
-    private static readonly string[] VisualShaderFlags =
+    // The same list's flags/, which depend on the shader's mode: the render modes without options that ShaderTypes::ShaderTypes
+    // registers for the mode, in its order, with Spatial's depth_test_disabled at depth_test's place. Indexed by
+    // Shader::Mode (scene/resources/shader.h); Fog registers no render modes and TextureBlit only blend, so neither lists a flag.
+    private static readonly string[][] VisualShaderFlags =
     [
-        "depth_prepass_alpha",
-        "depth_test_disabled",
-        "sss_mode_skin",
-        "unshaded",
-        "wireframe",
-        "skip_vertex_transform",
-        "world_vertex_coords",
-        "ensure_correct_normals",
-        "shadows_disabled",
-        "ambient_light_disabled",
-        "shadow_to_opacity",
-        "vertex_lighting",
-        "particle_trails",
-        "alpha_to_coverage",
-        "alpha_to_coverage_and_one",
-        "debug_shadow_splits",
-        "fog_disabled",
-        "specular_occlusion_disabled",
+        // Spatial
+        [
+            "depth_prepass_alpha",
+            "depth_test_disabled",
+            "sss_mode_skin",
+            "unshaded",
+            "wireframe",
+            "skip_vertex_transform",
+            "world_vertex_coords",
+            "ensure_correct_normals",
+            "shadows_disabled",
+            "ambient_light_disabled",
+            "shadow_to_opacity",
+            "vertex_lighting",
+            "particle_trails",
+            "alpha_to_coverage",
+            "alpha_to_coverage_and_one",
+            "debug_shadow_splits",
+            "fog_disabled",
+            "specular_occlusion_disabled",
+        ],
+        // CanvasItem
+        ["skip_vertex_transform", "unshaded", "light_only", "world_vertex_coords"],
+        // Particles
+        ["collision_use_scale", "disable_force", "disable_velocity", "keep_data"],
+        // Sky
+        ["use_half_res_pass", "use_quarter_res_pass", "disable_fog", "use_debanding"],
+        // Fog
+        [],
+        // TextureBlit
+        [],
     ];
 
     // modules/visual_shader/visual_shader.cpp, type_string: VisualShader::_get_property_list lists the graphs in this order,
@@ -584,8 +599,7 @@ internal static class DynamicPropertyFamilies
         Row.AnyOrder("VisualShader", @"^mode\z"),
         .. VisualShaderModes.Select(mode => Row.AnyOrder("VisualShader", $@"^modes/{mode}\z")),
         Row.AnyOrder("VisualShader", @"^modes/"),
-        .. VisualShaderFlags.Select(flag => Row.AnyOrder("VisualShader", $@"^flags/{flag}\z")),
-        Row.AnyOrder("VisualShader", @"^flags/"),
+        Row.ByMode("VisualShader", @"^flags/(?<key>[\s\S]*)\z", "mode", VisualShaderFlags),
         Row.AnyOrder("VisualShader", @"^stencil/(?:enabled|reference)\z"),
         Row.AnyOrder("VisualShader", @"^stencil_modes/"),
         Row.AnyOrder("VisualShader", @"^stencil_flags/"),
@@ -689,7 +703,10 @@ internal static class DynamicPropertyFamilies
             [.. entry.SubKeyOrder],
             KeyLookup(entry.KeyOrder),
             KeyLookup(entry.SubKeyOrder),
-            LiteralOf(entry)
+            LiteralOf(entry),
+            entry.ModeBy,
+            [.. entry.ModeKeyOrders.Select(order => order.ToImmutableArray())],
+            [.. entry.ModeKeyOrders.Select(KeyLookup)]
         );
     }
 
@@ -776,6 +793,14 @@ internal static class DynamicPropertyFamilies
         /// patterns) needs.
         /// </summary>
         OnKey,
+
+        /// <summary>
+        /// Each name sets its value on its own, as in <see cref="AnyOrder"/>, but Godot lists the keys in an order a sibling
+        /// property chooses (a VisualShader's flags/ by its mode). The row names the sibling and one key order per value of it;
+        /// a value with no order, or one past them, keeps source order, and so does a key the chosen order lacks, after the
+        /// listed keys.
+        /// </summary>
+        ByMode,
     }
 
     /// <summary>How a family's literal names a property, for a row the pattern alone names by one literal.</summary>
@@ -815,6 +840,15 @@ internal static class DynamicPropertyFamilies
     /// The pattern's whole literal when the pattern is a prefix or an exact name, with how it names the property, which the
     /// ranker compares ordinally instead of running the pattern; null for a family the pattern alone decides.
     /// </param>
+    /// <param name="ModeBy">
+    /// The sibling property whose integer value chooses the key order of a <see cref="EntryCreation.ByMode"/> family; null
+    /// otherwise.
+    /// </param>
+    /// <param name="ModeKeyOrders">
+    /// The key orders of a <see cref="EntryCreation.ByMode"/> family, one per value of <paramref name="ModeBy"/> from 0; empty
+    /// otherwise.
+    /// </param>
+    /// <param name="ModeKeyLookups">Each order of <paramref name="ModeKeyOrders"/> as a lookup sorted by key.</param>
     internal readonly record struct DynamicFamily(
         Regex Pattern,
         EntryCreation Creation,
@@ -823,14 +857,27 @@ internal static class DynamicPropertyFamilies
         ImmutableArray<string> SubKeyOrder,
         ImmutableArray<(string Key, int Index)> KeyLookup,
         ImmutableArray<(string Key, int Index)> SubKeyLookup,
-        (string Text, LiteralMatch Kind)? Literal
+        (string Text, LiteralMatch Kind)? Literal,
+        string? ModeBy,
+        ImmutableArray<ImmutableArray<string>> ModeKeyOrders,
+        ImmutableArray<ImmutableArray<(string Key, int Index)>> ModeKeyLookups
     );
 
     // A table row: a class, its family's pattern and how Godot creates the family's entries. Only the factories make one, so
-    // every row states its kind: in any order, sized first by a named count property, or on one key with its key order.
+    // every row states its kind: in any order, sized first by a named count property, on one key with its key order, or in
+    // an order a sibling property chooses.
     private sealed record Row
     {
-        private Row(string cls, string pattern, EntryCreation creation, string? sizedBy, string[] keyOrder, string[] subKeyOrder)
+        private Row(
+            string cls,
+            string pattern,
+            EntryCreation creation,
+            string? sizedBy,
+            string[] keyOrder,
+            string[] subKeyOrder,
+            string? modeBy,
+            string[][] modeKeyOrders
+        )
         {
             Class = cls;
             Pattern = pattern;
@@ -838,7 +885,13 @@ internal static class DynamicPropertyFamilies
             SizedBy = sizedBy;
             KeyOrder = keyOrder;
             SubKeyOrder = subKeyOrder;
+            ModeBy = modeBy;
+            ModeKeyOrders = modeKeyOrders;
         }
+
+        public string? ModeBy { get; }
+
+        public string[][] ModeKeyOrders { get; }
 
         public string Class { get; }
 
@@ -853,7 +906,7 @@ internal static class DynamicPropertyFamilies
         public string[] SubKeyOrder { get; }
 
         // A family whose names Godot sets in any order.
-        public static Row AnyOrder(string cls, string pattern) => new(cls, pattern, EntryCreation.AnyOrder, null, [], []);
+        public static Row AnyOrder(string cls, string pattern) => new(cls, pattern, EntryCreation.AnyOrder, null, [], [], null, []);
 
         // A family whose entries a count property, ranked before it, sizes first.
         public static Row SizedFirst(string cls, string pattern, string sizedBy) => SizedFirst(cls, pattern, sizedBy, [], []);
@@ -861,9 +914,15 @@ internal static class DynamicPropertyFamilies
         // A sized family whose keys reset one another, with the declaring class's key order and, for one nested level, its
         // nested key order (empty for nested entries without keys).
         public static Row SizedFirst(string cls, string pattern, string sizedBy, string[] keyOrder, string[] subKeyOrder) =>
-            new(cls, pattern, EntryCreation.SizedFirst, sizedBy, keyOrder, subKeyOrder);
+            new(cls, pattern, EntryCreation.SizedFirst, sizedBy, keyOrder, subKeyOrder, null, []);
 
         // A family Godot creates entry by entry on one key; an empty key order for a family with no key group.
-        public static Row OnKey(string cls, string pattern, string[] keyOrder) => new(cls, pattern, EntryCreation.OnKey, null, keyOrder, []);
+        public static Row OnKey(string cls, string pattern, string[] keyOrder) =>
+            new(cls, pattern, EntryCreation.OnKey, null, keyOrder, [], null, []);
+
+        // A family whose names Godot sets in any order but lists in the key order the sibling property's integer value picks,
+        // one order per value from 0; the pattern names the key in a key group.
+        public static Row ByMode(string cls, string pattern, string modeBy, string[][] modeKeyOrders) =>
+            new(cls, pattern, EntryCreation.ByMode, null, [], [], modeBy, modeKeyOrders);
     }
 }

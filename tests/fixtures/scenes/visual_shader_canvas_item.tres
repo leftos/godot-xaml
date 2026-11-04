@@ -1,0 +1,8 @@
+[gd_resource type="VisualShader" format=3]
+
+[resource]
+mode = 1
+flags/skip_vertex_transform = true
+flags/unshaded = true
+flags/light_only = true
+flags/world_vertex_coords = true

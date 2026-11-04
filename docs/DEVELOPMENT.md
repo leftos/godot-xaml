@@ -37,6 +37,8 @@ Call it bare, `./run.ps1 <verb>` or `pwsh -NoProfile -File run.ps1 <verb>`, neve
 | `format-check` | `dotnet tool restore`, then `dotnet csharpier check .`, changing nothing | `.tmp/format.log` | light, 300 s |
 | `format` | `dotnet tool restore`, then `dotnet csharpier format .` | `.tmp/format.log` | light, 300 s |
 
+To run one test class after a build, go through the gate: `tools/gate.ps1 run` with `dotnet test --project tests/GodotXaml.Core.Tests/GodotXaml.Core.Tests.csproj -c Release --no-build --filter-class "<namespace>.<Class>"`.
+
 ## Hooks
 
 `.pre-commit-config.yaml` installs both hook types (`prek install`); `prek run --all-files` runs the pre-commit hooks over the whole repo.

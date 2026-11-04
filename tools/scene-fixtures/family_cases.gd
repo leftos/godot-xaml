@@ -222,6 +222,39 @@ static func gui_tabs_graph(generator) -> String:
 	return generator._save_scene("gui_tabs_graph", root)
 
 
+## A VisualShader per mode other than spatial that registers flags (canvas item, particles,
+## sky), each with every flag of its mode set: VisualShader::_get_property_list
+## (visual_shader.cpp) lists flags/ in the order ShaderTypes::ShaderTypes (shader_types.cpp)
+## registers the mode's render modes, which is not name order and differs between modes.
+static func visual_shader_modes(generator) -> String:
+	var cases: Array = [
+		[
+			"visual_shader_canvas_item.tres",
+			Shader.MODE_CANVAS_ITEM,
+			["skip_vertex_transform", "unshaded", "light_only", "world_vertex_coords"],
+		],
+		[
+			"visual_shader_particles.tres",
+			Shader.MODE_PARTICLES,
+			["collision_use_scale", "disable_force", "disable_velocity", "keep_data"],
+		],
+		[
+			"visual_shader_sky.tres",
+			Shader.MODE_SKY,
+			["use_half_res_pass", "use_quarter_res_pass", "disable_fog", "use_debanding"],
+		],
+	]
+	for case: Array in cases:
+		var shader := VisualShader.new()
+		shader.set_mode(case[1])
+		for flag: String in case[2]:
+			shader.set("flags/" + flag, true)
+		var error: String = generator._save(case[0], shader)
+		if not error.is_empty():
+			return error
+	return ""
+
+
 ## The texture the cases' icons share, its own and its gradient's sub-resource ids pinned.
 static func _icon() -> GradientTexture2D:
 	var gradient := Gradient.new()

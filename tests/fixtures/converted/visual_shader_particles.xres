@@ -1,0 +1,7 @@
+<VisualShader
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    Flags.collision_use_scale="true"
+    Flags.disable_force="true"
+    Flags.disable_velocity="true"
+    Flags.keep_data="true"
+    mode="2" />
