@@ -1,4 +1,5 @@
 # Files in Godot's own source or output, not in this repo.
+modules/mono/glue/GodotSharp/GodotSharp/Core/DisposablesTracker.cs
 extension_api.json
 GodotTools/*
 godot-xaml.json
