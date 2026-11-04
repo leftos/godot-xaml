@@ -9,16 +9,21 @@ Copies the fixtures (tests/fixtures/scenes/*.tscn and *.tres), their converted g
 (tests/fixtures/converted/*.xscn and *.xres) into godot/cases/, recreated on each run, and the scripts the fixtures name
 (holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the
 fixtures' res:// paths point. Then builds the godot/ project as a full rebuild (--no-incremental), imports it headless
-(which registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless. The expected pair count is the number of fixtures in
-tests/fixtures/scenes (its .tscn and .tres files), passed to the scene as --expected-pairs=<n>. The scene prints
+(which registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless. The
+expected pair count is the number of fixtures in tests/fixtures/scenes (its .tscn and .tres files), passed to the
+scene as --expected-pairs=<n>. The scene prints
 COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is left in
 godot/cases/<name>.tscn.dump and <name>.xscn.dump, or <name>.tres.dump and <name>.xres.dump.
+
+Godot's lines are printed as Godot writes them, so the gate's stall watchdog sees the run progress. The documented
+command passes --stall 600 because a run starved by outside load can go two minutes without enough CPU to count as
+progress.
 
 Godot is $env:GODOT_PATH, else $env:GODOT_BIN. The script exits 0 only when every step exited 0, no fixture failed,
 every expected fixture passed and the scene printed DONE with all of them.
 
 .EXAMPLE
-pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-compare.log --slot light --timeout 1500 `
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-compare.log --slot light --timeout 1500 `
     -- pwsh -NoProfile -File godot/compare.ps1
 #>
 [CmdletBinding()]
@@ -94,12 +99,16 @@ if (-not $reimported) {
 }
 
 [Console]::Out.WriteLine('STEP compare')
+# Each line is printed as it arrives, so the gate's stall watchdog sees the comparison progress.
 $lines = @(
     & $godot --headless --path $project --scene 'res://compare/Compare.tscn' --quit-after 600 `
-        -- "--expected-pairs=$expectedFixtures" 2>&1 | ForEach-Object { "$_" }
+        -- "--expected-pairs=$expectedFixtures" 2>&1 | ForEach-Object {
+        $line = "$_"
+        [Console]::Out.WriteLine($line)
+        $line
+    }
 )
 $compareExit = $LASTEXITCODE
-$lines | ForEach-Object { [Console]::Out.WriteLine($_) }
 [Console]::Out.WriteLine("STEP compare exit $compareExit")
 
 $passes = @($lines | Where-Object { $_ -match '^COMPARE \S+ PASS$' }).Count

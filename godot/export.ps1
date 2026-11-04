@@ -27,11 +27,15 @@ A godot-xaml export error is a message, not an exit status: Godot's headless --e
 plugin adds an error message (editor/editor_node.cpp, the export_defer branch), so an "ERROR: godot-xaml:" line is what
 marks an export as failed.
 
+Godot's lines are printed as Godot writes them, so the gate's stall watchdog sees the run progress. The documented
+command passes --stall 600 because a run starved by outside load can go two minutes without enough CPU to count as
+progress.
+
 Godot is $env:GODOT_PATH, else $env:GODOT_BIN. Prints EXPORT <id> PASS|FAIL <detail> and PROBE <id> PASS|FAIL <detail>
 lines and DONE <passed>/<total>; exits 0 only when every expected line passed.
 
 .EXAMPLE
-pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-export.log --slot heavy --timeout 1800 `
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-export.log --slot heavy --timeout 1800 `
     -- pwsh -NoProfile -File godot/export.ps1
 #>
 [CmdletBinding()]
@@ -65,13 +69,17 @@ function Invoke-Step {
     return $code -eq 0
 }
 
-# Runs Godot, echoes every line it prints, and returns the lines with its exit status.
+# Runs Godot, echoes every line as Godot prints it, and returns the lines with its exit status.
 function Invoke-Godot {
     param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][string[]] $Arguments)
     [Console]::Out.WriteLine("STEP $Name")
-    $lines = @(& $godot @Arguments 2>&1 | ForEach-Object { "$_" })
+    # Each line is printed as it arrives, so the gate's stall watchdog sees the export progress.
+    $lines = @(& $godot @Arguments 2>&1 | ForEach-Object {
+            $line = "$_"
+            [Console]::Out.WriteLine($line)
+            $line
+        })
     $code = $LASTEXITCODE
-    $lines | ForEach-Object { [Console]::Out.WriteLine($_) }
     [Console]::Out.WriteLine("STEP $Name exit $code")
     return [pscustomobject]@{ Lines = $lines; Exit = $code }
 }

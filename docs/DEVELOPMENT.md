@@ -62,21 +62,21 @@ Each script builds the `godot/` project as a full rebuild (`--no-incremental`, s
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-checks.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/checks.ps1
 ```
 
-`--stall 600` because a run starved by outside load can go two minutes without enough CPU for the gate to count it as progress. `checks.ps1` writes each scene line as Godot emits it, so the gate's log shows the `CHECK` lines live. `pwsh -NoProfile -File godot/test-checks.ps1 [-HangGuardSeconds <n>]` tests that against a stub Godot (its gated command is in `docs/ARCHITECTURE.md`, Test locations).
+`--stall 600` because a run starved by outside load can go two minutes without enough CPU for the gate to count it as progress. `checks.ps1` writes each scene line as Godot emits it, so the gate's log shows the `CHECK` lines live. `pwsh -NoProfile -File godot/test-checks.ps1 [-HangGuardSeconds <n>]` tests that, and the same for `compare.ps1` and `export.ps1`, against a stub Godot (its gated command is in `docs/ARCHITECTURE.md`, Test locations).
 
 When the gate reports STALLED:
 
 - It writes `<log>.stall.txt` beside the log, with every thread's state: `Ready` means starved, `Waiting UserRequest` means an idle wait. It is the only record that tells the two apart, so copy it into the issue before the worktree is removed.
 - To place a stalled Godot, read its CPU from the gate journal's `children` (`%LOCALAPPDATA%\gate\v1\events.jsonl`) and compare it with the idle milestones of the current checks scene: about 0.47 s of CPU at `CHECK C1`, about 1.84 s at C68, about 1.92 s at `DONE`.
 - To starve a short-lived Godot with the suspend rig, freeze `pwsh` too (`-Freeze pwsh,Godot,Godot_console`), so `Godot_console` and `Godot` are frozen from birth.
-- `compare.ps1` and `export.ps1` still hold back Godot's output until it exits (GXAML-154), so their gate logs show nothing until the run ends.
+- `compare.ps1` and `export.ps1` print each of Godot's lines as it arrives, like `checks.ps1`, so their gate logs show them live.
 
 ### Scene and resource comparison
 
 `godot/compare.ps1` copies each scene and `.tres` fixture and its converted `.xscn` or `.xres` golden into `godot/cases/` (recreated each run, gitignored), runs `res://compare/Compare.tscn` headless and prints `COMPARE <name> PASS|FAIL` per fixture and `DONE <passed>/<total>`. Each side's dump is left beside the case as `<name>.tscn.dump` and `<name>.xscn.dump`, or `<name>.tres.dump` and `<name>.xres.dump`.
 
 ```
-pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-compare.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/compare.ps1
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-compare.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/compare.ps1
 ```
 
 ### Export proof
@@ -84,7 +84,7 @@ pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-compare.l
 `godot/export.ps1` exports each preset of `godot/export_presets.cfg` to `.tmp/export/`, then runs `tools/export-probe/`, a GDScript-only project with no addon, against the packs, and prints `EXPORT <id> PASS|FAIL`, `PROBE <id> PASS|FAIL` and `DONE <passed>/<total>`. Godot's headless `--export-pack` exits 0 when an export plugin reports an error, so an `ERROR: godot-xaml:` line is what marks an export as failed.
 
 ```
-pwsh -NoProfile -File tools/gate.ps1 run --no-markers --log .tmp/godot-export.log --slot heavy --timeout 1800 -- pwsh -NoProfile -File godot/export.ps1
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-export.log --slot heavy --timeout 1800 -- pwsh -NoProfile -File godot/export.ps1
 ```
 
 ### Editor checks
