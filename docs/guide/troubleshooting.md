@@ -26,6 +26,10 @@ The Output panel names the file, the line and column, and each problem with a `G
 
 When Godot's text loader rejects the converted text, the message names the temporary file kept for inspection. Kept files over a day old are removed on the next failed load.
 
+## A warning says the temp folder cannot be used
+
+`godot-xaml: the temp folder <path> cannot be used (<reason>); using <folder> for this process.` The addon writes its temporary files in a private folder of yours (`~/.cache/godot-xaml` on Linux, `~/Library/Caches/godot-xaml` on macOS, `%TEMP%\godot-xaml` on Windows) and could not use it, so it used a fresh folder in the system temp folder for that run. Loading and saving still work. A folder another account made, or one left by a run under `sudo`, is the usual cause: remove it. Also check that `HOME` is set.
+
 ## A uid reference breaks after a move
 
 A file whose `.uid` sidecar was not committed gets a new uid. Commit every `*.xscn.uid` and `*.xres.uid`, and move and rename files in the FileSystem dock, which rewrites the references to them ([Uids and sidecars](editor.md#uids-and-uid-sidecars)).

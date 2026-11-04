@@ -32,7 +32,7 @@ $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env
 }
 
 $project = $PSScriptRoot
-$expectedChecks = 69
+$expectedChecks = 70
 
 function Invoke-Step {
     param([Parameter(Mandatory)][string] $Name, [Parameter(Mandatory)][scriptblock] $Command)

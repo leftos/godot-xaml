@@ -14,14 +14,12 @@ namespace GodotXaml.Addon;
 
 /// <summary>
 /// Saves a resource as <c>.xscn</c> or <c>.xres</c>: Godot's own text saver writes it to a uniquely named <c>.tscn</c> or
-/// <c>.tres</c> in the OS temp folder, outside the project, so no uid is minted for it; the text is converted forward,
-/// keeping the <c>x:Resources</c> keys of the file it replaces, written to a hidden staging file beside the target, and
-/// renamed over the target.
+/// <c>.tres</c> in the addon's per-user temp folder (<see cref="AddonTempFolder"/>), outside the project, so no uid is
+/// minted for it; the text is converted forward, keeping the <c>x:Resources</c> keys of the file it replaces, written to a
+/// hidden staging file beside the target, and renamed over the target.
 /// </summary>
 internal static class XscnSaveRoute
 {
-    private static readonly string Folder = Path.Combine(Path.GetTempPath(), "godot-xaml");
-
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
     /// <summary>Saves the resource to the path in the canonical layout.</summary>
@@ -263,13 +261,12 @@ internal static class XscnSaveRoute
     private static Error SaveAsText(Resource resource, string path, uint flags, bool isScene, out string text)
     {
         text = "";
-        string tempPath = Path.Combine(Folder, $"{Guid.NewGuid():N}.{(isScene ? "tscn" : "tres")}").Replace('\\', '/');
+        string tempPath = Path.Combine(AddonTempFolder.Get(), $"{Guid.NewGuid():N}.{(isScene ? "tscn" : "tres")}").Replace('\\', '/');
         // Relative paths would be computed against the temp file, which shares no folder with the project, so they would
         // come out absolute.
         ResourceSaver.SaverFlags textFlags = (ResourceSaver.SaverFlags)flags & ~ResourceSaver.SaverFlags.RelativePaths;
         try
         {
-            Directory.CreateDirectory(Folder);
             Error error = ResourceSaver.Save(resource, tempPath, textFlags);
             if (error != Error.Ok)
             {

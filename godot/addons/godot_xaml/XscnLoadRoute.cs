@@ -11,12 +11,11 @@ namespace GodotXaml.Addon;
 
 /// <summary>
 /// Loads converted <c>.tscn</c> or <c>.tres</c> text through Godot's own text loader, which reads only files: the text
-/// goes to a uniquely named file in the OS temp folder, outside the project, so no uid is minted for it.
+/// goes to a uniquely named file in the addon's per-user temp folder (<see cref="AddonTempFolder"/>), outside the project,
+/// so no uid is minted for it.
 /// </summary>
 internal static class XscnLoadRoute
 {
-    private static readonly string Folder = Path.Combine(Path.GetTempPath(), "godot-xaml");
-
     // A kept file is never one a live load or save is using: each deletes its own file within the call that made it, so a
     // file this old is a leftover from a process that died.
     private static readonly TimeSpan KeptFileRetention = TimeSpan.FromHours(24);
@@ -54,8 +53,8 @@ internal static class XscnLoadRoute
     /// <returns>The loaded resource, or <see cref="Error.FileCorrupt"/> when Godot could not load the text.</returns>
     public static Variant Load(string path, string text, bool isScene, string typeHint, ResourceFormatLoader.CacheMode cacheMode)
     {
-        Directory.CreateDirectory(Folder);
-        string tempPath = Path.Combine(Folder, $"{Guid.NewGuid():N}.{(isScene ? "tscn" : "tres")}").Replace('\\', '/');
+        string folder = AddonTempFolder.Get();
+        string tempPath = Path.Combine(folder, $"{Guid.NewGuid():N}.{(isScene ? "tscn" : "tres")}").Replace('\\', '/');
         if (RecordTempPaths)
         {
             TempPaths.Enqueue(tempPath);
@@ -81,7 +80,7 @@ internal static class XscnLoadRoute
             if (loaded is null)
             {
                 keep = true;
-                PruneKeptFiles(tempPath);
+                PruneKeptFiles(folder, tempPath);
                 GD.PushError($"{path}: Godot could not load the converted text; it is kept at {tempPath}.");
                 return (int)Error.FileCorrupt;
             }
@@ -114,18 +113,18 @@ internal static class XscnLoadRoute
 
     // Deletes every *.tscn and *.tres file left in the folder more than a day ago, never the file a failed load is keeping. A
     // file that cannot be removed, or a folder that cannot be listed, is a warning: nothing may throw out of the load path.
-    private static void PruneKeptFiles(string keeping)
+    private static void PruneKeptFiles(string folder, string keeping)
     {
         string kept = Path.GetFileName(keeping);
         DateTime cutoff = DateTime.UtcNow - KeptFileRetention;
         string[] files;
         try
         {
-            files = Directory.GetFiles(Folder);
+            files = Directory.GetFiles(folder);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            GD.PushWarning($"godot-xaml: could not list the kept files in {Folder}: {exception.Message}");
+            GD.PushWarning($"godot-xaml: could not list the kept files in {folder}: {exception.Message}");
             return;
         }
 

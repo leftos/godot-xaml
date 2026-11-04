@@ -143,9 +143,11 @@ public partial class XscnExportPlugin : EditorExportPlugin
             return "the file did not load; the errors above say why.";
         }
 
-        string tempDir = Path.Combine(Path.GetTempPath(), "godot-xaml-export");
-        Directory.CreateDirectory(tempDir);
-        string tempPath = Path.Combine(tempDir, $"{Guid.NewGuid():N}.{binaryExtension}").Replace('\\', '/');
+        // Where Godot saves its own export conversions (editor_export_platform.cpp:1090, 1481), not the shared OS temp folder. The
+        // saver gets the absolute path: for a res:// one the editor's save callback writes a folding file in .godot/editor/ that
+        // is never removed (resource_saver.cpp:146), and an absolute path is no resource file, so no uid is minted for it.
+        string tempPath = ProjectSettings.GlobalizePath($"{ExportFolder}{Guid.NewGuid():N}.{binaryExtension}");
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(ExportFolder));
         try
         {
             Error saved = ResourceSaver.Save(resource, tempPath);

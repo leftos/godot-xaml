@@ -71,6 +71,8 @@ When the gate reports STALLED:
 - To starve a short-lived Godot with the suspend rig, freeze `pwsh` too (`-Freeze pwsh,Godot,Godot_console`), so `Godot_console` and `Godot` are frozen from birth.
 - `compare.ps1` and `export.ps1` print each of Godot's lines as it arrives, like `checks.ps1`, so their gate logs show them live.
 
+The checks also run on Linux under WSL, which proves the Unix temp folder rule. Use Godot 4.7.2 .NET for Linux x86_64 from the official release and a Linux SDK matching the feature band in `global.json`, or a scratch copy's `global.json` lowered to the installed SDK. Copy the tree into the Linux file system first: git in WSL cannot read a worktree's Windows `.git` path.
+
 ### Scene and resource comparison
 
 `godot/compare.ps1` copies each scene and `.tres` fixture and its converted `.xscn` or `.xres` golden into `godot/cases/` (recreated each run, gitignored), runs `res://compare/Compare.tscn` headless and prints `COMPARE <name> PASS|FAIL` per fixture and `DONE <passed>/<total>`. Each side's dump is left beside the case as `<name>.tscn.dump` and `<name>.xscn.dump`, or `<name>.tres.dump` and `<name>.xres.dump`.

@@ -6,6 +6,10 @@
 
 - `XresFormatLoader.RefreshGlobalClasses()`, called after mounting a pack, lets `.xres` files whose script is one of the pack's global classes report and load as that class.
 
+### Changed
+
+- On Linux and macOS, the addon's temporary converted files live in your own private cache folder instead of the temp folder every account shares.
+
 ## 0.2.1 - 2026-11-03
 
 ### Changed

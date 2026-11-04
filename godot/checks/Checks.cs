@@ -121,8 +121,6 @@ public partial class Checks : Node
         + "  <Panel />\n"
         + "</Control>\n";
 
-    private static readonly string LoaderTempFolder = Path.Combine(Path.GetTempPath(), "godot-xaml");
-
     private static readonly string[] ResourceTypesToHandle = ["StyleBox", "Theme"];
 
     // A hang guard, not a time budget: the threaded load of two small scenes takes a few frames, and checks.ps1 quits the
@@ -202,6 +200,8 @@ public partial class Checks : Node
             ("C67", XresReportsItsScriptClass),
             ("C68", XresScriptClassOffTheMainThread),
             ("C69", HandlesGlobalResourceClasses),
+            // A temp folder in the shared /tmp let another account block or read every conversion (GXAML-149).
+            ("C71", TempFolderIsPerUser),
         ];
         (string Id, Func<Task<string>> Run)[] frameChecks =
         [
@@ -384,12 +384,12 @@ public partial class Checks : Node
     private static string FailedLoadPrunesOldKeptFiles()
     {
         const string copyPath = OutFolder + "prune.xscn";
-        string oldFile = Path.Combine(LoaderTempFolder, $"{Guid.NewGuid():N}.tscn");
-        string recentFile = Path.Combine(LoaderTempFolder, $"{Guid.NewGuid():N}.tres");
+        string loaderTempFolder = AddonTempFolder.Get();
+        string oldFile = Path.Combine(loaderTempFolder, $"{Guid.NewGuid():N}.tscn");
+        string recentFile = Path.Combine(loaderTempFolder, $"{Guid.NewGuid():N}.tres");
         int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
         try
         {
-            Directory.CreateDirectory(LoaderTempFolder);
             File.WriteAllText(oldFile, "");
             File.WriteAllText(recentFile, "");
             File.SetLastWriteTimeUtc(oldFile, DateTime.UtcNow - TimeSpan.FromDays(2));
@@ -956,7 +956,198 @@ public partial class Checks : Node
         }
 
         string[] left = [.. recorded.Where(File.Exists)];
-        return left.Length == 0 ? "" : $"temp files left behind: [{string.Join(", ", left)}]";
+        string folder = AddonTempFolder.Get();
+        StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return Failures([
+            left.Length == 0 ? "" : $"temp files left behind: [{string.Join(", ", left)}]",
+            .. recorded.Where(p => !p.StartsWith(folder, comparison)).Select(p => $"temp file {p} is not in the addon's temp folder {folder}"),
+        ]);
+    }
+
+    private static string TempFolderIsPerUser()
+    {
+        string projectRoot = ProjectSettings.GlobalizePath("res://");
+        string checkFolder = ProjectSettings.GlobalizePath("user://gx-tempfolder-check");
+        try
+        {
+            return Failures([
+                .. PrimaryFolderFailures(),
+                UnusablePrimaryFailure(projectRoot, Path.Combine(checkFolder, "primary")),
+                PrimaryInsideTheProjectFailure(projectRoot),
+                NoPrimaryFailure(projectRoot),
+                UsablePrimaryFailure(projectRoot, Path.Combine(checkFolder, "ok")),
+                NoProjectFolderFailure(Path.Combine(checkFolder, "exported")),
+                CachedFolderFailure(),
+                RemovedPrimaryFailure(Path.Combine(checkFolder, "removed")),
+                RemovedFallbackFailure(Path.Combine(checkFolder, "fallback-file")),
+            ]);
+        }
+        finally
+        {
+            AddonTempFolder.ResetForChecks(null);
+            if (Directory.Exists(checkFolder))
+            {
+                Directory.Delete(checkFolder, recursive: true);
+            }
+        }
+    }
+
+    // One row per input state of the rule: the platform, then XDG_CACHE_HOME and HOME (null when unset).
+    private static IEnumerable<string> PrimaryFolderFailures()
+    {
+        (string Case, TempFolderPlatform Platform, string? Xdg, string? Home, string? Expected)[] cases =
+        [
+            ("Windows", TempFolderPlatform.Windows, null, null, Path.Combine("C:/T/", "godot-xaml")),
+            ("Linux with XDG_CACHE_HOME", TempFolderPlatform.Linux, "/x/cache", "/home/u", "/x/cache/godot-xaml"),
+            ("Linux with a relative XDG_CACHE_HOME", TempFolderPlatform.Linux, "rel/cache", "/home/u", "/home/u/.cache/godot-xaml"),
+            ("Linux with HOME only", TempFolderPlatform.Linux, null, "/home/u", "/home/u/.cache/godot-xaml"),
+            ("Linux with neither", TempFolderPlatform.Linux, null, null, null),
+            ("Linux with a relative HOME", TempFolderPlatform.Linux, null, "relative", null),
+            ("macOS with HOME", TempFolderPlatform.MacOS, null, "/Users/u", "/Users/u/Library/Caches/godot-xaml"),
+            ("macOS without HOME", TempFolderPlatform.MacOS, null, null, null),
+        ];
+        foreach ((string name, TempFolderPlatform platform, string? xdg, string? home, string? expected) in cases)
+        {
+            string? actual = AddonTempFolder.PrimaryFolder(
+                platform,
+                variable =>
+                    variable switch
+                    {
+                        "XDG_CACHE_HOME" => xdg,
+                        "HOME" => home,
+                        _ => null,
+                    },
+                "C:/T/"
+            );
+            if (actual != expected)
+            {
+                yield return $"{name}: the per-user folder is {actual ?? "null"}, not {expected ?? "null"}";
+            }
+        }
+    }
+
+    // A primary that is a file cannot be used: the resolver falls back to a fresh private folder and says why.
+    private static string UnusablePrimaryFailure(string projectRoot, string primary)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(primary)!);
+        File.WriteAllText(primary, "");
+        (string folder, string? reason) = AddonTempFolder.ResolveFrom(primary, projectRoot);
+        try
+        {
+            return Failures(
+                SameFolder(folder, primary) ? $"a file as the primary was used as the folder: {folder}" : "",
+                Directory.Exists(folder) ? "" : $"the fallback for a file as the primary does not exist: {folder}",
+                Path.IsPathFullyQualified(folder) ? "" : $"the fallback for a file as the primary is not absolute: {folder}",
+                reason is not null ? "" : "a file as the primary fell back without a reason"
+            );
+        }
+        finally
+        {
+            DeleteFallback(folder, primary);
+            File.Delete(primary);
+        }
+    }
+
+    // A folder inside the project would be imported and could ship; the resolver must not even create it.
+    private static string PrimaryInsideTheProjectFailure(string projectRoot)
+    {
+        string inside = Path.Combine(projectRoot, "gx-temp-inside");
+        (string folder, string? reason) = AddonTempFolder.ResolveFrom(inside, projectRoot);
+        DeleteFallback(folder, inside);
+        return Failures(
+            reason is not null ? "" : $"a primary inside the project was used: {folder}",
+            Directory.Exists(inside) || File.Exists(inside) ? $"a primary inside the project was created: {inside}" : ""
+        );
+    }
+
+    private static string NoPrimaryFailure(string projectRoot)
+    {
+        (string folder, string? reason) = AddonTempFolder.ResolveFrom(null, projectRoot);
+        DeleteFallback(folder, null);
+        return reason is not null ? "" : $"no primary fell back to {folder} without a reason";
+    }
+
+    // The Linux branch runs only on Linux: there the folder must be the owner's alone.
+    private static string UsablePrimaryFailure(string projectRoot, string primary)
+    {
+        (string folder, string? reason) = AddonTempFolder.ResolveFrom(primary, projectRoot);
+        const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+        string modeFailure = "";
+        if (OperatingSystem.IsLinux() && SameFolder(folder, primary) && File.GetUnixFileMode(folder) != ownerOnly)
+        {
+            modeFailure = $"the usable primary's mode is {File.GetUnixFileMode(folder)}, not {ownerOnly}";
+        }
+
+        DeleteFallback(folder, primary);
+        return Failures(
+            SameFolder(folder, primary) ? "" : $"the usable primary {primary} was not used: {folder}",
+            reason is null ? "" : $"the usable primary fell back: {reason}",
+            modeFailure
+        );
+    }
+
+    private static string CachedFolderFailure()
+    {
+        string first = AddonTempFolder.Get();
+        string second = AddonTempFolder.Get();
+        return Failures(
+            first == second ? "" : $"the temp folder changed between two calls: {first}, then {second}",
+            Directory.Exists(second) ? "" : $"the temp folder does not exist: {second}"
+        );
+    }
+
+    // An exported game globalizes res:// to "", so the under-the-project rule cannot apply and must not throw.
+    private static string NoProjectFolderFailure(string primary)
+    {
+        (string folder, string? reason) = AddonTempFolder.ResolveFrom(primary, "");
+        DeleteFallback(folder, primary);
+        return Failures(
+            SameFolder(folder, primary) ? "" : $"with no project folder the usable primary {primary} was not used: {folder}",
+            reason is null ? "" : $"with no project folder the usable primary fell back: {reason}"
+        );
+    }
+
+    // A primary the OS removed is created again under the same path. Staged, so the folder other processes share stays.
+    private static string RemovedPrimaryFailure(string primary)
+    {
+        AddonTempFolder.ResetForChecks(primary);
+        string first = AddonTempFolder.Get();
+        Directory.Delete(first, recursive: true);
+        string second = AddonTempFolder.Get();
+        return Failures(
+            SameFolder(first, primary) ? "" : $"the staged primary {primary} was not used: {first}",
+            first == second ? "" : $"after the primary was removed the temp folder changed: {first}, then {second}",
+            Directory.Exists(second) ? "" : $"the removed primary was not created again: {second}"
+        );
+    }
+
+    // A fallback is never recreated by name: once removed, a fresh one is resolved.
+    private static string RemovedFallbackFailure(string unusablePrimary)
+    {
+        File.WriteAllText(unusablePrimary, "");
+        AddonTempFolder.ResetForChecks(unusablePrimary);
+        string first = AddonTempFolder.Get();
+        Directory.Delete(first, recursive: true);
+        string second = AddonTempFolder.Get();
+        bool recreated = Directory.Exists(first);
+        DeleteFallback(second, unusablePrimary);
+        return Failures(
+            SameFolder(first, unusablePrimary) ? $"a file as the staged primary was used as the folder: {first}" : "",
+            first == second ? $"the removed fallback was used again: {second}" : "",
+            recreated ? $"the removed fallback was created again by name: {first}" : ""
+        );
+    }
+
+    private static bool SameFolder(string a, string b) =>
+        string.Equals(Path.GetFullPath(a).TrimEnd('/', '\\'), Path.GetFullPath(b).TrimEnd('/', '\\'), StringComparison.OrdinalIgnoreCase);
+
+    // Removes a fallback folder a resolve made, never the primary it was given.
+    private static void DeleteFallback(string folder, string? primary)
+    {
+        if ((primary is null || !SameFolder(folder, primary)) && Directory.Exists(folder))
+        {
+            Directory.Delete(folder, recursive: true);
+        }
     }
 
     private static string SubResourcesNameTheXscn()
@@ -973,7 +1164,7 @@ public partial class Checks : Node
             return $"loading {themePath} did not return a Theme";
         }
 
-        string tempFolder = LoaderTempFolder.Replace('\\', '/');
+        string tempFolder = AddonTempFolder.Get();
         IEnumerable<string> failures = new[]
         {
             PathUnderFailure("the inline StyleBoxFlat", InlineStyleBoxPath(scene), scenePath),
