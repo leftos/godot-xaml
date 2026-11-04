@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-11-04
+
+### Added
+
+- A language server, a native executable for Windows, Linux and macOS on each release, gives `.xscn` and `.xres` diagnostics, formatting, hover and completions.
+- With the project setting `godot_xaml/preview_server/enabled` on, the Godot editor runs a local preview server that renders unsaved `.xscn` text, scripts off.
 
 ### Fixed
 
