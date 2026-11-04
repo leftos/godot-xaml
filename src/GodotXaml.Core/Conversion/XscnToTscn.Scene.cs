@@ -113,7 +113,7 @@ public static partial class XscnToTscn
             // sort NodeProperties uses, so the two agree.
             ImmutableArray<XscnProperty> sorted = SortedProperties(placed.Element);
             GodotClassInfo? cls = NodeClass(placed, sorted, location);
-            DiscoverInOrder((placed.Element as XscnNode)?.Type, order.Sort(cls, RestoreLayoutMode(placed, sorted)), location, placed.Path);
+            DiscoverInOrder((placed.Element as XscnNode)?.Type, order.Sort(cls, RestoreLayoutMode(placed, sorted), sources), location, placed.Path);
         }
 
         private void DiscoverBinds(PlacedElement placed)

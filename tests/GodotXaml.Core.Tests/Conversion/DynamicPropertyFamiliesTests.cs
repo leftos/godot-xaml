@@ -232,6 +232,48 @@ public sealed class DynamicPropertyFamiliesTests
         );
     }
 
+    // A by-name family places each name by its place among the section's names of the family sorted by code point, so its
+    // pattern is a literal prefix, and it carries no key order, nested order, count property, sibling or ranker.
+    [Fact]
+    public void AByNameFamilyIsALiteralPrefixWithNoKeyOrderSiblingOrRanker()
+    {
+        Assert.Contains(All, row => row.Family.Creation == EntryCreation.ByName);
+        Assert.Empty(Offenders(row => row.Family.Creation == EntryCreation.ByName && !IsLiteralPrefixAlone(row.Family)));
+    }
+
+    private static bool IsLiteralPrefixAlone(DynamicFamily family) =>
+        family.Literal is { Kind: LiteralMatch.Prefix } && !Has(family, "index") && !Has(family, "key") && !IsNested(family) && HasNoOrders(family);
+
+    // A by-source family places each name by its place in a list read from a sibling property's value (a ShaderMaterial's
+    // shader, a MeshInstance3D's mesh), so its pattern is a literal prefix, it names a sibling its class ranks before it and
+    // what to read there, and carries no key order, nested order, count property, mode sibling or ranker; no other row
+    // carries a source sibling.
+    [Fact]
+    public void ABySourceFamilyIsReadFromASiblingRankedBeforeIt()
+    {
+        Assert.Contains(All, row => row.Family.Creation == EntryCreation.BySource);
+        List<(string Class, DynamicFamily Family)> rows = [.. All];
+        List<string> offenders = [];
+        for (int index = 0; index < rows.Count; index++)
+        {
+            (string cls, DynamicFamily family) = rows[index];
+            bool fails =
+                family.Creation == EntryCreation.BySource
+                    ? !IsLiteralPrefixAlone(family) || family.SourceRead is null || !IsRankedBefore(rows, index, family.SourceBy)
+                    : family.SourceBy is not null || family.SourceRead is not null;
+            if (fails)
+            {
+                offenders.Add($"{cls} {family.Pattern} read from {family.SourceBy ?? "null"}");
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
+    // No key order, count property, sibling or ranker.
+    private static bool HasNoOrders(DynamicFamily family) =>
+        family.KeyOrder.IsEmpty && family.SizedBy is null && HasNoModeOrders(family) && family.Ranker is null && family.ListedBy is null;
+
     // A ranker reading a Godot class when it reads a class list at all, and no key order, nested order, count property or sibling.
     private static bool IsRankedAlone(DynamicFamily family) =>
         family.Ranker is not null

@@ -101,6 +101,7 @@ public static partial class XscnToTscn
         private readonly ConversionOptions options;
         private readonly Func<string, ulong> siteHash;
         private readonly PropertyOrder order;
+        private readonly SourceOrders sources;
         private readonly InstancedClasses? instancedClasses;
         private readonly HashSet<(string Reference, string Reason)> unreadableScenes = [];
         private readonly Dictionary<string, XscnResource> table = new(StringComparer.Ordinal);
@@ -120,6 +121,7 @@ public static partial class XscnToTscn
             this.options = options;
             this.siteHash = siteHash;
             order = new PropertyOrder(metadata);
+            sources = new SourceOrders(table, options.SceneFiles, options.SourceKey, DeclaredUidOf);
             instancedClasses = options.SceneFiles is { } files && options.SourceKey is { } key ? new InstancedClasses(metadata, files, key) : null;
             IndexTable();
         }
@@ -343,7 +345,11 @@ public static partial class XscnToTscn
         }
 
         // x:Uids first, else a uid written with the path in value text.
-        private string? UidOf(string path) => document.Uids.FirstOrDefault(uid => uid.Path == path)?.Uid ?? textUids.GetValueOrDefault(path);
+        private string? UidOf(string path) => DeclaredUidOf(path) ?? textUids.GetValueOrDefault(path);
+
+        // The uid x:Uids gives the path, without the uids discovery collects as it goes, so a lookup made before discovery
+        // and one made after it give the same answer.
+        private string? DeclaredUidOf(string path) => document.Uids.FirstOrDefault(uid => uid.Path == path)?.Uid;
 
         // Each distinct uid the path's x:Uids entries give, in first-seen order; two make the ext_resource's choice worth
         // a warning, and it keeps the first.
@@ -403,7 +409,7 @@ public static partial class XscnToTscn
         private ImmutableArray<TscnProperty> Properties(GodotClassInfo? cls, ImmutableArray<XscnProperty> source, string location)
         {
             ImmutableArray<TscnProperty>.Builder properties = ImmutableArray.CreateBuilder<TscnProperty>();
-            foreach (XscnProperty property in order.Sort(cls, source))
+            foreach (XscnProperty property in order.Sort(cls, source, sources))
             {
                 if (Value(property.Value, location + "." + property.GodotName) is { } value)
                 {

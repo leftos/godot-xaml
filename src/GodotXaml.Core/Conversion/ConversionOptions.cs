@@ -48,9 +48,10 @@ public sealed record ConversionOptions
     public IReadOnlyDictionary<string, string>? OwnedSubResourceIds { get; init; }
 
     /// <summary>
-    /// The host's reader of the scenes the document instances, which gives the way back the class of an instanced node,
-    /// an inherited root or an <c>x:Override</c>, so their properties come back in Godot's order; with this or
-    /// <see cref="SourceKey"/> null, those sections keep source order.
+    /// The host's reader of the files the way back reads: the scenes the document instances, which give the class of an
+    /// instanced node, an inherited root or an <c>x:Override</c>, and a <c>.gdshader</c> or a text <c>.tres</c> mesh, which
+    /// give the order of a ShaderMaterial's parameters or a MeshInstance3D's blend shapes, so those properties come back in
+    /// Godot's order; with this or <see cref="SourceKey"/> null, those sections keep source order.
     /// </summary>
     public ISceneFiles? SceneFiles { get; init; }
 

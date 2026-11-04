@@ -462,11 +462,14 @@ internal static class DynamicPropertyFamilies
         // scene/3d/audio_stream_player_3d.cpp, AudioStreamPlayer3D::_get_property_list (AudioStreamPlayerInternal::get_property_list)
         Row.AnyOrder("AudioStreamPlayer3D", @"^parameters/"),
         // scene/main/canvas_item.cpp, CanvasItem::_get_property_list
-        Row.AnyOrder("CanvasItem", @"^instance_shader_parameters/"),
-        // scene/3d/visual_instance_3d.cpp, GeometryInstance3D::_get_property_list
-        Row.AnyOrder("GeometryInstance3D", @"^instance_shader_parameters/"),
+        // Sorted by name: InstanceUniforms::get_property_list (servers/rendering/instance_uniforms.cpp) ends in
+        // sort_custom<StringName::AlphCompare>().
+        Row.ByName("CanvasItem", @"^instance_shader_parameters/"),
+        // scene/3d/visual_instance_3d.cpp, GeometryInstance3D::_get_property_list (InstanceUniforms::get_property_list, by name)
+        Row.ByName("GeometryInstance3D", @"^instance_shader_parameters/"),
         // scene/3d/mesh_instance_3d.cpp, MeshInstance3D::_get_property_list
-        Row.AnyOrder("MeshInstance3D", @"^blend_shapes/"),
+        // In the mesh's blend shape order, mesh->get_blend_shape_name(i), which an ArrayMesh stores as _blend_shape_names.
+        Row.BySource("MeshInstance3D", @"^blend_shapes/", "mesh", SourceRead.BlendShapeNames),
         Row.SizedFirst("MeshInstance3D", @"^surface_material_override/[0-9]+\z", "mesh"),
         // scene/gui/graph_node.cpp, GraphNode::_get_property_list
         Row.OnKey("GraphNode", @"^slot/(?<index>[0-9]+)/(?<key>.*)\z", SlotKeys),
@@ -484,8 +487,9 @@ internal static class DynamicPropertyFamilies
         Row.SizedFirst("MenuButton", @"^popup/item_(?<index>[0-9]+)/(?<key>.*)\z", "item_count", PopupItemKeys, []),
         // scene/gui/file_dialog.cpp, FileDialog::_bind_methods (PropertyListHelper registration)
         Row.SizedFirst("FileDialog", @"^option_(?<index>[0-9]+)/(?<key>.*)\z", "option_count", DialogOptionKeys, []),
-        // scene/main/shader_globals_override.cpp, ShaderGlobalsOverride::_get_property_list
-        Row.AnyOrder("ShaderGlobalsOverride", @"^params/"),
+        // scene/main/shader_globals_override.cpp, ShaderGlobalsOverride::_get_property_list; by name, since
+        // global_shader_parameter_get_list (material_storage.cpp) ends in sort_custom<StringName::AlphCompare>().
+        Row.ByName("ShaderGlobalsOverride", @"^params/"),
         // scene/2d/skeleton_2d.cpp, Skeleton2D::_get_property_list
         Row.AnyOrder("Skeleton2D", @"^modification_stack\z"),
         // scene/2d/skeleton_2d.cpp, Bone2D::_get_property_list
@@ -699,7 +703,8 @@ internal static class DynamicPropertyFamilies
         // Each entry is one modification, the entries in numeric order.
         Row.SizedFirst("SkeletonModificationStack2D", @"^(?<key>modifications)/(?<index>[0-9]+)\z", "modification_count", ["modifications"], []),
         // scene/resources/material.cpp, ShaderMaterial::_get_property_list
-        Row.AnyOrder("ShaderMaterial", @"^shader_parameter/"),
+        // In the shader's local uniform order, regrouped by group_uniforms (see ShaderUniforms).
+        Row.BySource("ShaderMaterial", @"^shader_parameter/", "shader", SourceRead.ShaderUniforms),
         // scene/resources/animation.cpp, Animation::_get_property_list
         Row.AnyOrder("Animation", @"^_compression\z"),
         Row.AnyOrder("Animation", @"^markers\z"),
@@ -739,7 +744,9 @@ internal static class DynamicPropertyFamilies
             [.. entry.ModeKeyOrders.Select(order => order.ToImmutableArray())],
             [.. entry.ModeKeyOrders.Select(KeyLookup)],
             entry.Ranker,
-            entry.ListedBy
+            entry.ListedBy,
+            entry.SourceBy,
+            entry.SourceRead
         );
     }
 
@@ -1164,6 +1171,34 @@ internal static class DynamicPropertyFamilies
         /// <see cref="DynamicFamily.ListedBy"/>, which is null for a ranker that reads no class list.
         /// </summary>
         Ranked,
+
+        /// <summary>
+        /// Each name sets its value on its own, as in <see cref="AnyOrder"/>, but Godot lists the names sorted by
+        /// <c>StringName::AlphCompare</c>, a code point comparison (an instance's shader parameters, a ShaderGlobalsOverride's
+        /// params/). The row's pattern is a literal prefix, and a name ranks by its place among the section's own names of the
+        /// family, sorted by code point; the row carries no key order, sibling or ranker.
+        /// </summary>
+        ByName,
+
+        /// <summary>
+        /// Each name sets its value on its own, as in <see cref="AnyOrder"/>, but Godot lists the names in the order of a list
+        /// another resource holds: a ShaderMaterial's parameters in its shader's uniform order, a MeshInstance3D's blend shapes
+        /// in its mesh's blend shape order. The row's pattern is a literal prefix; it names the sibling property that holds the
+        /// resource in <see cref="DynamicFamily.SourceBy"/> and what to read from it in <see cref="DynamicFamily.SourceRead"/>.
+        /// A name ranks by its index in the list, a name the list lacks after the listed ones, and a section whose list cannot
+        /// be read keeps source order; the row carries no key order, mode sibling or ranker.
+        /// </summary>
+        BySource,
+    }
+
+    /// <summary>What a <see cref="EntryCreation.BySource"/> family reads from its sibling property's resource.</summary>
+    internal enum SourceRead
+    {
+        /// <summary>A Shader's local uniforms, scanned from its <c>code</c> by <see cref="ShaderUniforms"/>.</summary>
+        ShaderUniforms,
+
+        /// <summary>An ArrayMesh's blend shape names, its <c>_blend_shape_names</c>.</summary>
+        BlendShapeNames,
     }
 
     /// <summary>The levels a ranker places a name at inside its family's place, compared in order.</summary>
@@ -1227,6 +1262,10 @@ internal static class DynamicPropertyFamilies
     /// The class whose class list the <paramref name="Ranker"/> places keys by (TileData for an atlas tile's alternatives);
     /// null for a family without a ranker or whose ranker reads no class list.
     /// </param>
+    /// <param name="SourceBy">
+    /// The sibling property whose resource gives a <see cref="EntryCreation.BySource"/> family's order; null otherwise.
+    /// </param>
+    /// <param name="SourceRead">What a <see cref="EntryCreation.BySource"/> family reads from that resource; null otherwise.</param>
     internal readonly record struct DynamicFamily(
         Regex Pattern,
         EntryCreation Creation,
@@ -1240,12 +1279,15 @@ internal static class DynamicPropertyFamilies
         ImmutableArray<ImmutableArray<string>> ModeKeyOrders,
         ImmutableArray<ImmutableArray<(string Key, int Index)>> ModeKeyLookups,
         Ranker? Ranker,
-        string? ListedBy
+        string? ListedBy,
+        string? SourceBy,
+        SourceRead? SourceRead
     );
 
     // A table row: a class, its family's pattern and how Godot creates the family's entries. Only the factories make one, so
     // every row states its kind: in any order, sized first by a named count property, on one key with its key order, in an
-    // order a sibling property chooses, or placed by its own ranker.
+    // order a sibling property chooses, placed by its own ranker, sorted by name, or in the order of a list another resource
+    // holds.
     private sealed record Row
     {
         private Row(
@@ -1276,6 +1318,10 @@ internal static class DynamicPropertyFamilies
         public Ranker? Ranker { get; }
 
         public string? ListedBy { get; }
+
+        public string? SourceBy { get; private init; }
+
+        public SourceRead? SourceRead { get; private init; }
 
         public string? ModeBy { get; }
 
@@ -1317,5 +1363,13 @@ internal static class DynamicPropertyFamilies
         // the class list of the named class, or null for a ranker that reads no class list.
         public static Row Ranked(string cls, string pattern, Ranker ranker, string? listedBy) =>
             new(cls, pattern, EntryCreation.Ranked, null, [], [], null, [], ranker, listedBy);
+
+        // A family whose names Godot sets in any order but lists sorted by code point; the pattern is a literal prefix.
+        public static Row ByName(string cls, string pattern) => new(cls, pattern, EntryCreation.ByName, null, [], [], null, [], null, null);
+
+        // A family whose names Godot sets in any order but lists in the order of a list read from the resource the sibling
+        // property holds; the pattern is a literal prefix, and the name after it is looked up in the list.
+        public static Row BySource(string cls, string pattern, string sourceBy, SourceRead read) =>
+            new(cls, pattern, EntryCreation.BySource, null, [], [], null, [], null, null) { SourceBy = sourceBy, SourceRead = read };
     }
 }

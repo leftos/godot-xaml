@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Converting back to `.tscn` or `.tres`, shader parameters, instance shader parameters, global shader overrides and blend shapes keep the order Godot saves them in.
 - Converting back to `.tres`, audio bus layouts, EQ bands, stream randomizers, label outlines, skins, skeleton profiles and font caches keep Godot's order past the tenth entry.
 - Converting back to `.tres`, a TileSetAtlasSource keeps each tile's keys together in Godot's order, tiles by coordinates and alternatives by id.
 - Converting back to `.tres`, a VisualShader's `flags/` keep the order Godot saves for its shader mode, not always Spatial's.

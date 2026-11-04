@@ -199,7 +199,7 @@ internal sealed class GodotKeyOrder : IComparer<GodotValue>, IEqualityComparer<G
     // str_compare (core/string/ustring.h:108-121) compares code points. UTF-16 order differs from it only where a
     // surrogate (0xD800-0xDFFF) meets a unit at or above 0xE000, so moving the surrogates above that range gives code
     // point order unit by unit.
-    private static int CompareCodePoints(string left, string right)
+    internal static int CompareCodePoints(string left, string right)
     {
         int length = Math.Min(left.Length, right.Length);
         for (int i = 0; i < length; i++)

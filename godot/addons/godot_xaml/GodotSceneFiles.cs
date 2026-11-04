@@ -5,7 +5,8 @@ using FileAccess = Godot.FileAccess;
 namespace GodotXaml.Addon;
 
 /// <summary>
-/// The scenes a load's conversion reads for the class of an instanced node, keyed by <c>res://</c> path. A known uid
+/// The files a load's conversion reads, keyed by <c>res://</c> path: a scene for the class of an instanced node, and a
+/// shader's or a mesh's file for the order of a material's parameters or a node's blend shapes. A known uid
 /// names the file before the path, as Godot's text loader resolves an ext_resource (resource_format_text.cpp:491-496).
 /// It reads the text with <c>FileAccess</c>, whose open error is per thread (core/io/file_access.h:146) and which is
 /// silent on a missing file when asked for the error (file_access.cpp:922-927), so loader threads can read at once; it

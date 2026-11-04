@@ -99,6 +99,85 @@ public sealed class PropertyOrderTests
         Assert.Equal(["instance_shader_parameters/p", "texture"], PropertyNames(scene.Nodes[0].Properties));
     }
 
+    // InstanceUniforms::get_property_list (servers/rendering/instance_uniforms.cpp) sorts the names with StringName::AlphCompare.
+    [Fact]
+    public void ACanvasItemListsItsInstanceShaderParametersByName()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <ColorRect {{X}} Name="Root">
+              <x:Prop Name="instance_shader_parameters/b" Value="1.0" />
+              <x:Prop Name="instance_shader_parameters/a" Value="2.0" />
+            </ColorRect>
+            """
+        );
+
+        Assert.Equal(["instance_shader_parameters/a", "instance_shader_parameters/b"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    [Fact]
+    public void AGeometryInstanceListsItsInstanceShaderParametersByName()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <x:Prop Name="instance_shader_parameters/b" Value="1.0" />
+              <x:Prop Name="instance_shader_parameters/a" Value="2.0" />
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["instance_shader_parameters/a", "instance_shader_parameters/b"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // global_shader_parameter_get_list (material_storage.cpp) sorts the global names with StringName::AlphCompare.
+    [Fact]
+    public void AShaderGlobalsOverrideListsItsParamsByName()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <ShaderGlobalsOverride {{X}} Name="Root">
+              <x:Prop Name="params/z" Value="1.0" />
+              <x:Prop Name="params/a" Value="2.0" />
+            </ShaderGlobalsOverride>
+            """
+        );
+
+        Assert.Equal(["params/a", "params/z"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // AlphCompare is str_compare, a code point difference, so an upper-case B (U+0042) sorts before a (U+0061).
+    [Fact]
+    public void InstanceShaderParametersSortByCodePointNotByCulture()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <ColorRect {{X}} Name="Root">
+              <x:Prop Name="instance_shader_parameters/a" Value="1.0" />
+              <x:Prop Name="instance_shader_parameters/B" Value="2.0" />
+            </ColorRect>
+            """
+        );
+
+        Assert.Equal(["instance_shader_parameters/B", "instance_shader_parameters/a"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // U+FF5E is below U+1F600 by code point, while UTF-16 ordinal order puts U+1F600's high surrogate (U+D83D) first.
+    [Fact]
+    public void InstanceShaderParametersSortByCodePointNotByUtf16Unit()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <ColorRect {{X}} Name="Root">
+              <x:Prop Name="instance_shader_parameters/😀" Value="1.0" />
+              <x:Prop Name="instance_shader_parameters/～" Value="2.0" />
+            </ColorRect>
+            """
+        );
+
+        Assert.Equal(["instance_shader_parameters/～", "instance_shader_parameters/😀"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
     // Node2D does not inherit AnimationMixer, so libraries/ there is a script's own name.
     [Fact]
     public void AFamilyOfAClassOutsideTheChainStaysAfterTheScript()
@@ -132,6 +211,675 @@ public sealed class PropertyOrderTests
 
         Assert.Equal(["render_priority", "shader", "shader_parameter/c", "script"], PropertyNames(Assert.Single(scene.SubResources).Properties));
     }
+
+    // ShaderMaterial::_get_property_list (material.cpp) lists the shader's local uniforms in declaration order.
+    [Fact]
+    public void AShaderMaterialListsItsParametersInAnInlineShadersOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial>
+                  <ShaderMaterial.Shader><Shader Code="uniform float b; uniform vec4 a;" /></ShaderMaterial.Shader>
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+    }
+
+    [Fact]
+    public void AShaderMaterialListsItsParametersInAKeyedShadersOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <x:Resources>
+                <Shader x:Key="Shaded" Code="uniform float b; uniform vec4 a;" />
+              </x:Resources>
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial Shader="{Shaded}">
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+    }
+
+    // A stored name the shader does not declare has no place in Godot's list, so it follows the declared ones.
+    [Fact]
+    public void AShaderParameterTheShaderLacksFollowsTheDeclaredOnes()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial>
+                  <ShaderMaterial.Shader><Shader Code="uniform float b; uniform vec4 a;" /></ShaderMaterial.Shader>
+                  <x:Prop Name="shader_parameter/z" Value="2.0" />
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(
+            ["shader", "shader_parameter/b", "shader_parameter/a", "shader_parameter/z"],
+            PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties)
+        );
+    }
+
+    // No preprocessor runs, so an #include could add a uniform the scan cannot see: the stored order stays.
+    [Fact]
+    public void AShaderWithAnIncludeKeepsTheSourceOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial>
+                  <ShaderMaterial.Shader>
+                    <Shader Code="#include &quot;res://i.gdshaderinc&quot;&#10;uniform float b; uniform vec4 a;" />
+                  </ShaderMaterial.Shader>
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+    }
+
+    // With no file reader an external .gdshader cannot be read, so the stored order stays.
+    [Fact]
+    public void AShaderMaterialOnAShaderFileKeepsTheSourceOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial Shader="res://s.gdshader">
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(Assert.Single(scene.SubResources).Properties));
+    }
+
+    // MeshInstance3D::_get_property_list (mesh_instance_3d.cpp) lists blend_shapes/ by the mesh's blend shape index.
+    [Fact]
+    public void AMeshInstanceListsItsBlendShapesInAnInlineMeshsOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.Mesh>
+                <ArrayMesh>
+                  <x:Prop Name="_blend_shape_names" Value='PackedStringArray("z", "a")' />
+                </ArrayMesh>
+              </MeshInstance3D.Mesh>
+              <x:Prop Name="blend_shapes/a" Value="0.5" />
+              <x:Prop Name="blend_shapes/z" Value="0.25" />
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    [Fact]
+    public void AMeshInstanceListsItsBlendShapesInAKeyedMeshsOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root" Mesh="{Shapes}">
+              <x:Resources>
+                <ArrayMesh x:Key="Shapes">
+                  <x:Prop Name="_blend_shape_names" Value='PackedStringArray("z", "a")' />
+                </ArrayMesh>
+              </x:Resources>
+              <x:Prop Name="blend_shapes/a" Value="0.5" />
+              <x:Prop Name="blend_shapes/z" Value="0.25" />
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // A BoxMesh holds no blend shape names, so the stored order stays.
+    [Fact]
+    public void AMeshWithNoBlendShapeNamesKeepsTheSourceOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.Mesh><BoxMesh /></MeshInstance3D.Mesh>
+              <x:Prop Name="blend_shapes/z" Value="0.25" />
+              <x:Prop Name="blend_shapes/a" Value="0.5" />
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // A .gdshader's whole text is Shader::code, read through the host's file reader.
+    [Fact]
+    public void AShaderMaterialListsItsParametersInAShaderFilesOrder()
+    {
+        MemoryFiles files = new(("res://s.gdshader", "uniform float b; uniform vec4 a;"));
+
+        TscnDocument scene = BackReading(ShaderOnFile("res://s.gdshader"), files);
+
+        Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+    }
+
+    [Fact]
+    public void AShaderFileByARelativePathGivesItsOrder()
+    {
+        MemoryFiles files = new(("s.gdshader", "uniform float b; uniform vec4 a;"));
+
+        // .xscn text reads a file attribute only from a res:// path, so a relative one is Resource("…") value text.
+        TscnDocument scene = BackReading(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial>
+                  <x:Prop Name="shader" Value='Resource("s.gdshader")' />
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """,
+            files
+        );
+
+        Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+        Assert.Equal([("res://cases/s.xscn", "s.gdshader", (string?)null)], files.Calls);
+    }
+
+    // Both materials ask for the same file, which the conversion reads once.
+    [Fact]
+    public void TwoMaterialsOnOneShaderFileReadItOnce()
+    {
+        MemoryFiles files = new(("res://s.gdshader", "uniform float b; uniform vec4 a;"));
+
+        TscnDocument scene = BackReading(
+            $$"""
+            <Node3D {{X}} Name="Root">
+              <MeshInstance3D Name="One">
+                <MeshInstance3D.MaterialOverride>
+                  <ShaderMaterial Shader="res://s.gdshader">
+                    <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                    <x:Prop Name="shader_parameter/b" Value="1.0" />
+                  </ShaderMaterial>
+                </MeshInstance3D.MaterialOverride>
+              </MeshInstance3D>
+              <MeshInstance3D Name="Two">
+                <MeshInstance3D.MaterialOverride>
+                  <ShaderMaterial Shader="res://s.gdshader">
+                    <x:Prop Name="shader_parameter/a" Value="Vector4(1, 1, 1, 1)" />
+                    <x:Prop Name="shader_parameter/b" Value="2.0" />
+                  </ShaderMaterial>
+                </MeshInstance3D.MaterialOverride>
+              </MeshInstance3D>
+            </Node3D>
+            """,
+            files
+        );
+
+        Assert.All(
+            scene.SubResources.Where(resource => resource.Type == "ShaderMaterial"),
+            material => Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(material.Properties))
+        );
+        Assert.Equal(1, files.Reads);
+    }
+
+    [Fact]
+    public void AnUnreadableShaderFileKeepsTheSourceOrder()
+    {
+        MemoryFiles files = new();
+
+        TscnDocument scene = BackReading(ShaderOnFile("res://s.gdshader"), files);
+
+        Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+        Assert.Equal(1, files.Reads);
+    }
+
+    // A conversion with no reader, or no key for the file the references sit in, cannot read a file.
+    [Fact]
+    public void NoReaderOrNoSourceKeyKeepsTheSourceOrderAndReadsNothing()
+    {
+        MemoryFiles files = new(("res://s.gdshader", "uniform float b; uniform vec4 a;"));
+
+        TscnDocument noReader = BackReading(ShaderOnFile("res://s.gdshader"), null);
+        TscnDocument noKey = BackReading(ShaderOnFile("res://s.gdshader"), files, sourceKey: null);
+
+        Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(SubResourceOf(noReader, "ShaderMaterial").Properties));
+        Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(SubResourceOf(noKey, "ShaderMaterial").Properties));
+        Assert.Equal(0, files.Reads);
+    }
+
+    [Fact]
+    public void AShaderFileWithAnIncludeKeepsTheSourceOrder()
+    {
+        MemoryFiles files = new(("res://s.gdshader", "#include \"res://i.gdshaderinc\"\nuniform float b; uniform vec4 a;"));
+
+        TscnDocument scene = BackReading(ShaderOnFile("res://s.gdshader"), files);
+
+        Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+    }
+
+    // A text .tres ArrayMesh stores its blend shape names in its [resource] section's _blend_shape_names.
+    [Fact]
+    public void AMeshInstanceListsItsBlendShapesInAMeshFilesOrder()
+    {
+        MemoryFiles files = new(
+            (
+                "res://m.tres",
+                """
+                [gd_resource type="ArrayMesh" format=3]
+
+                [resource]
+                _blend_shape_names = PackedStringArray("z", "a")
+
+                """
+            )
+        );
+
+        TscnDocument scene = BackReading(BlendShapesOnFile("res://m.tres"), files);
+
+        Assert.Equal(["mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // A binary .res or an imported .glb cannot be read as text, so the reader is not asked.
+    [Theory]
+    [InlineData("res://m.res")]
+    [InlineData("res://m.glb")]
+    public void ABinaryOrImportedMeshKeepsTheSourceOrderAndIsNotRead(string path)
+    {
+        MemoryFiles files = new((path, "not text"));
+
+        TscnDocument scene = BackReading(BlendShapesOnFile(path), files);
+
+        Assert.Equal(["mesh", "blend_shapes/a", "blend_shapes/z"], PropertyNames(scene.Nodes[0].Properties));
+        Assert.Equal(0, files.Reads);
+    }
+
+    // The reference's own uid keys the read when x:Uids has none, so both sorts of the node ask one question.
+    [Fact]
+    public void AMeshReferenceWithItsOwnUidIsReadOnceWithThatUid()
+    {
+        MemoryFiles files = new(("m.tres", ArrayMeshText("z", "a")));
+
+        TscnDocument scene = BackReading(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <x:Prop Name="mesh" Value='Resource("uid://abc", "m.tres")' />
+              <x:Prop Name="blend_shapes/a" Value="0.5" />
+              <x:Prop Name="blend_shapes/z" Value="0.25" />
+            </MeshInstance3D>
+            """,
+            files
+        );
+
+        Assert.Equal(["mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+        Assert.Equal([("res://cases/s.xscn", "m.tres", (string?)"uid://abc")], files.Calls);
+    }
+
+    // x:Uids' uid for the path keys the read, for a file attribute and ahead of a Resource("uid://…", path)'s own uid.
+    [Theory]
+    [InlineData("Shader=\"res://s.gdshader\"", "")]
+    [InlineData("", "<x:Prop Name=\"shader\" Value='Resource(\"uid://other\", \"res://s.gdshader\")' />")]
+    public void TheDocumentsUidForAShaderPathKeysTheRead(string attribute, string property)
+    {
+        MemoryFiles files = new(("res://s.gdshader", "uniform float a; uniform float b;"))
+        {
+            ByUid = { ["uid://xyz"] = "uniform float b; uniform float a;" },
+        };
+
+        TscnDocument scene = BackReading(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial {{attribute}}>
+                  {{property}}
+                  <x:Prop Name="shader_parameter/a" Value="1.0" />
+                  <x:Prop Name="shader_parameter/b" Value="2.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+              <x:Uids>
+                <x:Uid Path="res://s.gdshader" Value="uid://xyz" />
+              </x:Uids>
+            </MeshInstance3D>
+            """,
+            files
+        );
+
+        Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+        Assert.Equal([("res://cases/s.xscn", "res://s.gdshader", (string?)"uid://xyz")], files.Calls);
+    }
+
+    // A uid another reference carries in its value text never keys a file attribute's read, so the material on the
+    // attribute follows the uid-less read in both its sorts, before and after discovery meets that uid.
+    [Fact]
+    public void AUidDiscoveryMeetsDoesNotKeyAnotherReferencesRead()
+    {
+        MemoryFiles files = new(("res://s.gdshader", "uniform float b; uniform float a;"))
+        {
+            ByUid = { ["uid://abc"] = "uniform float a; uniform float b;" },
+        };
+
+        TscnDocument scene = BackReading(
+            $$"""
+            <Node3D {{X}} Name="Root">
+              <MeshInstance3D Name="One">
+                <MeshInstance3D.MaterialOverride>
+                  <ShaderMaterial Shader="res://s.gdshader">
+                    <x:Prop Name="shader_parameter/a" Value="1.0" />
+                    <x:Prop Name="shader_parameter/b" Value="2.0" />
+                  </ShaderMaterial>
+                </MeshInstance3D.MaterialOverride>
+              </MeshInstance3D>
+              <MeshInstance3D Name="Two">
+                <MeshInstance3D.MaterialOverride>
+                  <ShaderMaterial>
+                    <x:Prop Name="shader" Value='Resource("uid://abc", "res://s.gdshader")' />
+                    <x:Prop Name="shader_parameter/b" Value="3.0" />
+                    <x:Prop Name="shader_parameter/a" Value="4.0" />
+                  </ShaderMaterial>
+                </MeshInstance3D.MaterialOverride>
+              </MeshInstance3D>
+            </Node3D>
+            """,
+            files
+        );
+
+        TscnSubResource[] materials = [.. scene.SubResources.Where(resource => resource.Type == "ShaderMaterial")];
+        Assert.Equal(2, materials.Length);
+        TscnSubResource one = Assert.Single(materials, material => material.Properties.Any(property => property.Value is GodotFloat { Value: 1.0 }));
+        TscnSubResource two = Assert.Single(materials, material => material.Properties.Any(property => property.Value is GodotFloat { Value: 3.0 }));
+        Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(one.Properties));
+        Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(two.Properties));
+    }
+
+    // A node is sorted twice, once to discover its references and once to write it; the file is read once.
+    [Fact]
+    public void AMeshFileIsReadOnceAcrossANodesTwoSorts()
+    {
+        MemoryFiles files = new(("res://m.tres", ArrayMeshText("z", "a")));
+
+        TscnDocument scene = BackReading(BlendShapesOnFile("res://m.tres"), files);
+
+        Assert.Equal(["mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+        Assert.Equal(1, files.Reads);
+    }
+
+    // A null read is cached as well, so a file the reader cannot give is asked for once.
+    [Fact]
+    public void AnUnreadableFileOfTwoMaterialsIsAskedForOnce()
+    {
+        MemoryFiles files = new();
+
+        TscnDocument scene = BackReading(
+            $$"""
+            <Node3D {{X}} Name="Root">
+              <MeshInstance3D Name="One">
+                <MeshInstance3D.MaterialOverride>
+                  <ShaderMaterial Shader="res://s.gdshader">
+                    <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                    <x:Prop Name="shader_parameter/b" Value="1.0" />
+                  </ShaderMaterial>
+                </MeshInstance3D.MaterialOverride>
+              </MeshInstance3D>
+              <MeshInstance3D Name="Two">
+                <MeshInstance3D.MaterialOverride>
+                  <ShaderMaterial Shader="res://s.gdshader">
+                    <x:Prop Name="shader_parameter/a" Value="Vector4(1, 1, 1, 1)" />
+                    <x:Prop Name="shader_parameter/b" Value="2.0" />
+                  </ShaderMaterial>
+                </MeshInstance3D.MaterialOverride>
+              </MeshInstance3D>
+            </Node3D>
+            """,
+            files
+        );
+
+        Assert.All(
+            scene.SubResources.Where(resource => resource.Type == "ShaderMaterial"),
+            material => Assert.Equal(["shader", "shader_parameter/a", "shader_parameter/b"], PropertyNames(material.Properties))
+        );
+        Assert.Equal(1, files.Reads);
+    }
+
+    // Each set of a property replaces the last, so the last shader of a section gives the order.
+    [Fact]
+    public void TheLastShaderOfASectionGivesTheOrder()
+    {
+        MemoryFiles files = new(
+            ("res://first.gdshader", "uniform vec4 a; uniform float b;"),
+            ("res://last.gdshader", "uniform float b; uniform vec4 a;")
+        );
+
+        TscnDocument scene = BackReading(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial>
+                  <x:Prop Name="shader" Value='Resource("res://first.gdshader")' />
+                  <x:Prop Name="shader" Value='Resource("res://last.gdshader")' />
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """,
+            files
+        );
+
+        Assert.Equal(
+            ["shader", "shader", "shader_parameter/b", "shader_parameter/a"],
+            PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties)
+        );
+    }
+
+    [Fact]
+    public void TheLastCodeOfAShaderGivesTheOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial>
+                  <ShaderMaterial.Shader>
+                    <Shader>
+                      <x:Prop Name="code" Value='"uniform vec4 a; uniform float b;"' />
+                      <x:Prop Name="code" Value='"uniform float b; uniform vec4 a;"' />
+                    </Shader>
+                  </ShaderMaterial.Shader>
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+    }
+
+    [Fact]
+    public void TheLastMeshOfASectionGivesTheOrder()
+    {
+        MemoryFiles files = new(("res://first.tres", ArrayMeshText("a", "z")), ("res://last.tres", ArrayMeshText("z", "a")));
+
+        TscnDocument scene = BackReading(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <x:Prop Name="mesh" Value='Resource("res://first.tres")' />
+              <x:Prop Name="mesh" Value='Resource("res://last.tres")' />
+              <x:Prop Name="blend_shapes/a" Value="0.5" />
+              <x:Prop Name="blend_shapes/z" Value="0.25" />
+            </MeshInstance3D>
+            """,
+            files
+        );
+
+        Assert.Equal(["mesh", "mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    [Fact]
+    public void TheLastBlendShapeNamesOfAMeshGiveTheOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.Mesh>
+                <ArrayMesh>
+                  <x:Prop Name="_blend_shape_names" Value='PackedStringArray("a", "z")' />
+                  <x:Prop Name="_blend_shape_names" Value='PackedStringArray("z", "a")' />
+                </ArrayMesh>
+              </MeshInstance3D.Mesh>
+              <x:Prop Name="blend_shapes/a" Value="0.5" />
+              <x:Prop Name="blend_shapes/z" Value="0.25" />
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(["mesh", "blend_shapes/z", "blend_shapes/a"], PropertyNames(scene.Nodes[0].Properties));
+    }
+
+    // Only a text resource file whose [resource] section is an ArrayMesh holds blend shape names.
+    [Theory]
+    [InlineData("[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n")]
+    [InlineData("[gd_resource type=\"BoxMesh\" format=3]\n\n[resource]\n_blend_shape_names = PackedStringArray(\"z\", \"a\")\n")]
+    [InlineData("[gd_resource type=\"ArrayMesh\" format=3]\n\n[resource]\n_blend_shape_names = PackedStringArray(\"z\", \n")]
+    public void AMeshFileThatIsNoTextArrayMeshKeepsTheSourceOrder(string text)
+    {
+        MemoryFiles files = new(("res://m.tres", text));
+
+        TscnDocument scene = BackReading(BlendShapesOnFile("res://m.tres"), files);
+
+        Assert.Equal(["mesh", "blend_shapes/a", "blend_shapes/z"], PropertyNames(scene.Nodes[0].Properties));
+        Assert.Equal(1, files.Reads);
+    }
+
+    // recognize_path compares extensions with nocasecmp (resource_loader.cpp).
+    [Fact]
+    public void AnUpperCaseShaderExtensionIsRead()
+    {
+        MemoryFiles files = new(("res://S.GDSHADER", "uniform float b; uniform vec4 a;"));
+
+        TscnDocument scene = BackReading(ShaderOnFile("res://S.GDSHADER"), files);
+
+        Assert.Equal(["shader", "shader_parameter/b", "shader_parameter/a"], PropertyNames(SubResourceOf(scene, "ShaderMaterial").Properties));
+    }
+
+    // A repeated by-name property holds one place, so the stable sort keeps both copies in source order.
+    [Fact]
+    public void ARepeatedByNamePropertyKeepsBothCopiesInSourceOrder()
+    {
+        TscnDocument scene = Back(
+            $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <x:Prop Name="instance_shader_parameters/b" Value="1" />
+              <x:Prop Name="instance_shader_parameters/a" Value="2" />
+              <x:Prop Name="instance_shader_parameters/a" Value="3" />
+            </MeshInstance3D>
+            """
+        );
+
+        Assert.Equal(
+            ["instance_shader_parameters/a", "instance_shader_parameters/a", "instance_shader_parameters/b"],
+            PropertyNames(scene.Nodes[0].Properties)
+        );
+        Assert.Equal([new GodotInt(2), new GodotInt(3), new GodotInt(1)], scene.Nodes[0].Properties.Select(property => property.Value));
+    }
+
+    private static string ArrayMeshText(params string[] names) =>
+        "[gd_resource type=\"ArrayMesh\" format=3]\n\n[resource]\n"
+        + $"_blend_shape_names = PackedStringArray({string.Join(", ", names.Select(name => $"\"{name}\""))})\n";
+
+    private static string ShaderOnFile(string path) =>
+        $$"""
+            <MeshInstance3D {{X}} Name="Root">
+              <MeshInstance3D.MaterialOverride>
+                <ShaderMaterial Shader="{{path}}">
+                  <x:Prop Name="shader_parameter/a" Value="Vector4(0, 0, 0, 0)" />
+                  <x:Prop Name="shader_parameter/b" Value="1.0" />
+                </ShaderMaterial>
+              </MeshInstance3D.MaterialOverride>
+            </MeshInstance3D>
+            """;
+
+    private static string BlendShapesOnFile(string path) =>
+        $$"""
+            <MeshInstance3D {{X}} Name="Root" Mesh="{{path}}">
+              <x:Prop Name="blend_shapes/a" Value="0.5" />
+              <x:Prop Name="blend_shapes/z" Value="0.25" />
+            </MeshInstance3D>
+            """;
+
+    // Parses a scene and converts it with a file reader and the scene's key, with no issue.
+    private static TscnDocument BackReading(string text, ISceneFiles? files, string? sourceKey = "res://cases/s.xscn")
+    {
+        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, TestMetadata);
+        Assert.Empty(parsed.Diagnostics);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(
+            parsed.Document,
+            TestMetadata,
+            Options with
+            {
+                SceneFiles = files,
+                SourceKey = sourceKey,
+            }
+        );
+        Assert.Empty(back.Issues);
+        return back.Document;
+    }
+
+    // Files held in memory by the uid that names them, else by the reference; keeps every read's referrer, reference and uid.
+    private sealed class MemoryFiles(params (string Path, string Text)[] files) : ISceneFiles
+    {
+        public int Reads => Calls.Count;
+
+        public List<(string Referrer, string Reference, string? Uid)> Calls { get; } = [];
+
+        public Dictionary<string, string> ByUid { get; } = new(StringComparer.Ordinal);
+
+        public SceneFile? Read(string referrer, string reference, string? uid)
+        {
+            Calls.Add((referrer, reference, uid));
+            if (uid is not null && ByUid.TryGetValue(uid, out string? text))
+            {
+                return new SceneFile(reference, text);
+            }
+
+            return files.Where(file => file.Path == reference).Select(file => new SceneFile(file.Path, file.Text)).FirstOrDefault();
+        }
+    }
+
+    private static TscnSubResource SubResourceOf(TscnDocument scene, string type) =>
+        Assert.Single(scene.SubResources, resource => resource.Type == type);
 
     [Fact]
     public void MetadataAndExportsStayLast()
@@ -1164,7 +1912,7 @@ public sealed class PropertyOrderTests
         );
         GodotClassInfo atlas = Assert.IsType<GodotClassInfo>(metadata.FindClass("TileSetAtlasSource"));
 
-        InvalidDataException error = Assert.Throws<InvalidDataException>(() => new PropertyOrder(metadata).Sort(atlas, []));
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() => new PropertyOrder(metadata).Sort(atlas, [], SourceOrders.Empty()));
 
         Assert.Contains("TileData", error.Message, StringComparison.Ordinal);
         Assert.Contains("TileSetAtlasSource", error.Message, StringComparison.Ordinal);

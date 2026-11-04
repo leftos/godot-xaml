@@ -4,7 +4,8 @@ using GodotXaml.Core.Projects;
 namespace GodotXaml.Cli;
 
 /// <summary>
-/// The scenes a convert run's way back reads for the class of an instanced node, keyed by full OS path. A reference to a
+/// The files a convert run's way back reads, keyed by full OS path: a scene for the class of an instanced node, and a
+/// shader's or a mesh's file for the order of a material's parameters or a node's blend shapes. A reference to a
 /// file this run converts reads that file's source, from memory: on a <c>--back</c> run a rewritten reference names an
 /// output that is not on disk yet. Only the sources the run converts stand in for their outputs; the output of a refused
 /// or failed source is read from disk. Any other file is read from disk once per run. The uid is not used: a run's paths

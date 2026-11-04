@@ -66,7 +66,7 @@ Each result carries its `ConversionIssue`s (a `GXC` code, a severity, a message 
 
 - `Seed`: the seed new ids are drawn from;
 - `Previous`: the file a save replaces, so its `x:Resources` keys and comments are kept;
-- `SceneFiles`: a lookup that reads instanced scenes, so properties come back in Godot's order;
+- `SceneFiles`: a lookup that reads the files the conversion needs (instanced scenes, and the `.gdshader` or text `.tres` mesh a shader material or a mesh instance refers to), so properties come back in Godot's order;
 - `ScriptClassOf`: a script's global class name.
 
 `TscnReader.Read` throws `TscnParseException`, with Godot's own error text, for a file Godot's loader would refuse.

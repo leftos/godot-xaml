@@ -24,7 +24,10 @@ namespace GodotXaml.Core.Conversion;
 /// reads that property from the section once per sort: the last one holding an integer, else 0; a value the family has no
 /// order for keeps source order. A family whose order runs deeper than that (a TileSetAtlasSource's tiles, alternatives and
 /// TileData keys, an AudioBusLayout's buses and effects) is placed by its row's ranker, which reads the class list of the
-/// class the row names when it names one; the metadata must hold that class only then.
+/// class the row names when it names one; the metadata must hold that class only then. A family Godot lists sorted by name
+/// (an instance's shader parameters) goes by code point among the section's names of it, and a family Godot lists in
+/// another resource's order (a ShaderMaterial's parameters, a MeshInstance3D's blend shapes) goes in the list the
+/// conversion's <see cref="SourceOrders"/> reads from its sibling's resource, keeping source order when there is none.
 /// </summary>
 internal sealed class PropertyOrder(GodotMetadata metadata)
 {
@@ -54,8 +57,9 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
     /// <summary>The properties in Godot's order; a stable sort, so a repeated name keeps its order.</summary>
     /// <param name="cls">The section's class, or null when no class is known, which keeps source order.</param>
     /// <param name="properties">The section's properties.</param>
+    /// <param name="sources">The conversion's lists a by-source family is ordered by.</param>
     /// <returns>The sorted properties.</returns>
-    public ImmutableArray<XscnProperty> Sort(GodotClassInfo? cls, ImmutableArray<XscnProperty> properties)
+    public ImmutableArray<XscnProperty> Sort(GodotClassInfo? cls, ImmutableArray<XscnProperty> properties, SourceOrders sources)
     {
         if (cls is null)
         {
@@ -68,7 +72,7 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
             tables.Add(cls.Name, order);
         }
 
-        RankContext context = new(properties);
+        RankContext context = new(properties, sources);
         return [.. properties.OrderBy(property => RankOf(order, property.GodotName, context))];
     }
 
@@ -103,8 +107,35 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
 
     // The family's rank for a name, or null when the family does not name it. A family the pattern alone names by one literal
     // matches by an ordinal comparison, which costs less than its regex. A ranked family's ranker places the name, from the
-    // match and its row's class list.
+    // match and its row's class list. A by-name family's literal prefix names it, and its place among the section's names
+    // of the family places it. A by-source family's literal prefix names it too, and the place of the rest of the name in
+    // the list its sibling's resource holds places it.
     private static Rank? RankIn(
+        DynamicPropertyFamilies.DynamicFamily family,
+        Rank slot,
+        ImmutableArray<(string Key, int Index)> classKeys,
+        string name,
+        RankContext context
+    ) =>
+        family.Creation switch
+        {
+            DynamicPropertyFamilies.EntryCreation.ByName => RankByName(family, slot, name, context),
+            DynamicPropertyFamilies.EntryCreation.BySource => RankBySource(family, slot, name, context),
+            _ => RankByPattern(family, slot, classKeys, name, context),
+        };
+
+    private static Rank? RankByName(DynamicPropertyFamilies.DynamicFamily family, Rank slot, string name, RankContext context) =>
+        family.Literal is { } prefix && MatchesLiteral(prefix, name) ? slot with { Entry = context.NamePlaceOf(prefix, name) } : null;
+
+    private static Rank? RankBySource(DynamicPropertyFamilies.DynamicFamily family, Rank slot, string name, RankContext context) =>
+        family is { Literal: { } prefix, SourceBy: { } sourceBy, SourceRead: { } read } && MatchesLiteral(prefix, name)
+            ? slot with
+            {
+                Entry = context.SourcePlaceOf(sourceBy, read, name[prefix.Text.Length..]),
+            }
+            : null;
+
+    private static Rank? RankByPattern(
         DynamicPropertyFamilies.DynamicFamily family,
         Rank slot,
         ImmutableArray<(string Key, int Index)> classKeys,
@@ -307,12 +338,75 @@ internal sealed class PropertyOrder(GodotMetadata metadata)
         ImmutableArray<(DynamicPropertyFamilies.DynamicFamily Family, Rank Slot, ImmutableArray<(string Key, int Index)> ClassKeys)> Families
     );
 
-    // The section one sort ranks, for a family whose key order a sibling property chooses; the sibling is read on first need
-    // only, so a section whose names no such family places never reads it.
-    private sealed class RankContext(ImmutableArray<XscnProperty> properties)
+    // The section one sort ranks, for a family whose key order a sibling property chooses, a family sorted by name and a
+    // family ordered by a list its sibling's resource holds; each is read on first need only, so a section whose names no
+    // such family places never reads it.
+    private sealed class RankContext(ImmutableArray<XscnProperty> properties, SourceOrders sources)
     {
         private string? modeBy;
         private long mode;
+        private Dictionary<string, Dictionary<string, int>>? namePlaces;
+        private string? sourceBy;
+        private SourceList? sourceList;
+
+        // The name's place in the list the last property of that name gives, since each set replaces the last; 0 for every
+        // name when there is no such property or it gives no list, which keeps them in source order.
+        public int SourcePlaceOf(string property, DynamicPropertyFamilies.SourceRead read, string name)
+        {
+            if (!string.Equals(sourceBy, property, StringComparison.Ordinal))
+            {
+                sourceList = LastValue(property) is { } value ? sources.ListOf(value, read) : null;
+                sourceBy = property;
+            }
+
+            return sourceList?.PlaceOf(name) ?? 0;
+        }
+
+        private XscnValue? LastValue(string property)
+        {
+            for (int index = properties.Length - 1; index >= 0; index--)
+            {
+                if (properties[index].GodotName == property)
+                {
+                    return properties[index].Value;
+                }
+            }
+
+            return null;
+        }
+
+        // The name's place among the section's names the literal prefix names, sorted by code point as StringName::AlphCompare
+        // (str_compare) sorts them; a repeated name holds one place, so the stable sort keeps its copies in source order.
+        public int NamePlaceOf((string Text, DynamicPropertyFamilies.LiteralMatch Kind) prefix, string name)
+        {
+            namePlaces ??= new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
+            if (!namePlaces.TryGetValue(prefix.Text, out Dictionary<string, int>? places))
+            {
+                places = PlacesByName(prefix);
+                namePlaces.Add(prefix.Text, places);
+            }
+
+            return places[name];
+        }
+
+        private Dictionary<string, int> PlacesByName((string Text, DynamicPropertyFamilies.LiteralMatch Kind) prefix)
+        {
+            List<string> names =
+            [
+                .. properties
+                    .Select(property => property.GodotName)
+                    .Where(name => MatchesLiteral(prefix, name))
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(Comparer<string>.Create(GodotKeyOrder.CompareCodePoints)),
+            ];
+            Dictionary<string, int> places = new(names.Count, StringComparer.Ordinal);
+            for (int index = 0; index < names.Count; index++)
+            {
+                places.Add(names[index], index);
+            }
+
+            return places;
+        }
 
         // The integer value of the last property of that name holding one, since each set replaces the last (a VisualShader's
         // set_mode also clears its flags); else 0 (a VisualShader with no mode is Spatial).
