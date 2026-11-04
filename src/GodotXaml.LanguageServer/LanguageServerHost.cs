@@ -185,8 +185,8 @@ internal sealed class LanguageServerTarget(
     CompletionHandler completion
 )
 {
-    // The characters that open a tag, a prefix's name, a property element's name and an attribute.
-    private static readonly string[] CompletionTriggers = ["<", ":", ".", " "];
+    // The characters that open a tag, a prefix's name, a property element's name, an attribute, a value and a flags part.
+    private static readonly string[] CompletionTriggers = ["<", ":", ".", " ", "\"", ","];
 
     private readonly Lock gate = new();
     private readonly TaskCompletionSource exited = new(TaskCreationOptions.RunContinuationsAsynchronously);

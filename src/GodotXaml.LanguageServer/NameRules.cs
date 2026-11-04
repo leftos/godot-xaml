@@ -42,10 +42,16 @@ internal static partial class NameRules
     {
         List<string> allowed = [.. Allowed(hint)];
         List<string> excluded = [.. Excluded(hint)];
-        return metadata.Classes.Where(c =>
-            c.Instantiable && allowed.Any(a => metadata.Inherits(c, a)) && !excluded.Any(e => metadata.Inherits(c, e))
-        );
+        return metadata.Classes.Where(c => c.Instantiable && Takes(metadata, allowed, excluded, c));
     }
+
+    /// <summary>Whether a hint takes a class: it inherits an allowed class and no excluded one.</summary>
+    /// <param name="metadata">The metadata.</param>
+    /// <param name="hint">The class name or list.</param>
+    /// <param name="cls">The class.</param>
+    /// <returns>True when the hint takes it.</returns>
+    public static bool Takes(GodotMetadata metadata, string hint, GodotClassInfo cls) =>
+        Takes(metadata, [.. Allowed(hint)], [.. Excluded(hint)], cls);
 
     /// <summary>Whether a hint allows a resource: any of its allowed classes inherits Resource.</summary>
     /// <param name="metadata">The metadata.</param>
@@ -72,6 +78,9 @@ internal static partial class NameRules
             "Nil" => "Variant",
             _ => variantType,
         };
+
+    private static bool Takes(GodotMetadata metadata, List<string> allowed, List<string> excluded, GodotClassInfo cls) =>
+        allowed.Any(a => metadata.Inherits(cls, a)) && !excluded.Any(e => metadata.Inherits(cls, e));
 
     private static string[] Entries(string hint) => hint.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 

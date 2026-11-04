@@ -8,10 +8,11 @@ using GodotXaml.LanguageServer.Protocol;
 namespace GodotXaml.LanguageServer;
 
 /// <summary>
-/// Answers a completion with the element or attribute names the cursor's context takes: Godot classes, property elements and
-/// <c>x:</c> elements in a tag name; properties, signals, theme overrides and the format's attributes in a start tag. Each
-/// item replaces the token at the cursor; the list holds every name the context takes, and the client filters it. Values,
-/// content, comments and end tags get no list.
+/// Answers a completion with the names or values the cursor's context takes: Godot classes, property elements and
+/// <c>x:</c> elements in a tag name; properties, signals, theme overrides and the format's attributes in a start tag; enum
+/// and flags members, <c>True</c>/<c>False</c> and <c>{Key}</c> references in a property's value. Each item replaces the
+/// token at the cursor (a flags value's part); the list holds every candidate the context takes, and the client filters it.
+/// Other values, content, comments and end tags get no list.
 /// </summary>
 internal sealed class CompletionHandler(DocumentStore store, ProjectCache projects)
 {
@@ -47,7 +48,7 @@ internal sealed class CompletionHandler(DocumentStore store, ProjectCache projec
 /// <summary>A name a completion may offer, before it is filtered by what is typed.</summary>
 /// <param name="Label">The name.</param>
 /// <param name="Kind">What it is.</param>
-/// <param name="Detail">A type, <c>signal</c> or a parent class, or null.</param>
+/// <param name="Detail">A type, <c>signal</c>, a parent class, an enum member's integer or an entry's class, or null.</param>
 internal sealed record CompletionCandidate(string Label, CompletionItemKind Kind, string? Detail);
 
 /// <summary>What an element's tag makes it.</summary>
@@ -114,13 +115,18 @@ internal sealed partial class CompletionScope
     {
         int offset = lines.ClampedOffset(new LinePosition(position.Line, position.Character));
         XscnCursorContext context = ContextAt(offset);
+        if (context.Kind == XscnCursorKind.AttributeValue)
+        {
+            return new ValueCompletions(this, context, offset).Candidates() is { } value ? List(value.Replace, value.Candidates) : null;
+        }
+
         IEnumerable<CompletionCandidate>? candidates = context.Kind switch
         {
             XscnCursorKind.TagName => new TagCompletions(this, context).Candidates(),
             XscnCursorKind.AttributeName or XscnCursorKind.BetweenAttributes => new AttributeCompletions(this, context).Candidates(),
             _ => null,
         };
-        return candidates is null ? null : List(context, candidates);
+        return candidates is null ? null : List(context.Replace, candidates);
     }
 
     /// <summary>The context at an offset of the text.</summary>
@@ -219,10 +225,10 @@ internal sealed partial class CompletionScope
         new(cls.CSharpName, CompletionItemKind.Class, cls.Parent is { } parent ? NameRules.CSharpClassName(Metadata, parent) : null);
 
     // Each label once (the first candidate of a label wins), sorted by label; the client filters by what is typed.
-    private CompletionList List(XscnCursorContext context, IEnumerable<CompletionCandidate> candidates)
+    private CompletionList List(TextSpan replace, IEnumerable<CompletionCandidate> candidates)
     {
-        LinePosition start = lines.ZeroBased(context.Replace.Start);
-        LinePosition end = lines.ZeroBased(context.Replace.End);
+        LinePosition start = lines.ZeroBased(replace.Start);
+        LinePosition end = lines.ZeroBased(replace.End);
         LspRange range = new(new LspPosition(start.Line, start.Column), new LspPosition(end.Line, end.Column));
         HashSet<string> seen = new(StringComparer.Ordinal);
         CompletionItem[] items =

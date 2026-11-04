@@ -17,7 +17,7 @@ internal sealed record CompletionList(bool IsIncomplete, CompletionItem[] Items)
 /// <summary>One completion.</summary>
 /// <param name="Label">The name it writes.</param>
 /// <param name="Kind">What the name is.</param>
-/// <param name="Detail">A type, <c>signal</c> or a parent class shown beside the label, or null.</param>
+/// <param name="Detail">A type, <c>signal</c>, a parent class, an enum member's integer or an entry's class shown beside the label, or null.</param>
 /// <param name="TextEdit">The edit that writes the label over the token at the cursor.</param>
 internal sealed record CompletionItem(string Label, CompletionItemKind Kind, string? Detail, TextEdit TextEdit);
 
@@ -30,8 +30,17 @@ internal enum CompletionItemKind
     /// <summary>A property, a theme override or a property element.</summary>
     Property = 10,
 
+    /// <summary>A bool value, <c>True</c> or <c>False</c>.</summary>
+    Value = 12,
+
     /// <summary>A name of the format: an <c>x:</c> element or attribute, <c>Name</c>, <c>Script</c>.</summary>
     Keyword = 14,
+
+    /// <summary>A <c>{Key}</c> reference to an <c>x:Resources</c> entry.</summary>
+    Reference = 18,
+
+    /// <summary>An enum or flags member in a value.</summary>
+    EnumMember = 20,
 
     /// <summary>A signal.</summary>
     Event = 23,

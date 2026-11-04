@@ -18,7 +18,7 @@ public sealed class LifecycleTests
             capabilities.EnumerateObject().Select(p => p.Name)
         );
         Assert.Equal(
-            ["<", ":", ".", " "],
+            ["<", ":", ".", " ", "\"", ","],
             capabilities.GetProperty("completionProvider").GetProperty("triggerCharacters").EnumerateArray().Select(c => c.GetString())
         );
         JsonElement sync = capabilities.GetProperty("textDocumentSync");

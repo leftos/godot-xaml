@@ -242,12 +242,238 @@ public sealed class CompletionTests
     [InlineData("<!-- a no|te -->")]
     [InlineData("<Label Name=\"L\">hel|lo</Label>")]
     [InlineData("<Label Name=\"L\">hello</La|bel>")]
-    [InlineData("<Button MouseFilter=\"St|op\" />")]
-    public async Task NothingIsOfferedOutsideNames(string inner)
+    [InlineData("<Label Text=\"St|op\" />")]
+    public async Task NothingIsOfferedOutsideNamesAndValues(string inner)
     {
         JsonElement result = await CompleteAsync(Root(inner));
 
         Assert.Equal(JsonValueKind.Null, result.ValueKind);
+    }
+
+    [Fact]
+    public async Task AnEnumValueOffersItsMembers()
+    {
+        string source = Root("<Control MouseFilter=\"|\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.Equal(["Ignore", "Pass", "Stop"], Labels(result));
+        JsonElement pass = Item(result, "Pass");
+        Assert.Equal(20, pass.GetProperty("kind").GetInt32());
+        Assert.Equal("1", pass.GetProperty("detail").GetString());
+        AssertEveryEdit(result, WholeValue(source));
+    }
+
+    [Fact]
+    public async Task AClassEnumValueOffersItsMembers()
+    {
+        string source = Root("<BoxContainer Alignment=\"|\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.Equal(["Begin", "Center", "End"], Labels(result));
+        AssertEveryEdit(result, WholeValue(source));
+    }
+
+    // A flags value replaces the part at the cursor and leaves out the members the other parts already hold.
+    [Fact]
+    public async Task AFlagsValueOffersTheMembersNotYetWritten()
+    {
+        string source = Root("<Control SizeFlagsHorizontal=\"Expand, |\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.Equal(["ExpandFill", "Fill", "ShrinkBegin", "ShrinkCenter", "ShrinkEnd"], Labels(result));
+        Assert.Equal(20, Item(result, "Fill").GetProperty("kind").GetInt32());
+        AssertEveryEdit(result, AtMarker(source));
+    }
+
+    [Fact]
+    public async Task AFlagsPartUnderTheCursorIsReplacedWhole()
+    {
+        string source = Root("<Control SizeFlagsHorizontal=\"Exp|and\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.Equal(["Expand", "ExpandFill", "Fill", "ShrinkBegin", "ShrinkCenter", "ShrinkEnd"], Labels(result));
+        AssertEveryEdit(result, WholeValue(source));
+    }
+
+    // The range holds the cursor: a cursor in the spaces around a part, or before it, inserts at the cursor.
+    [Theory]
+    [InlineData("Expand,| Fill")]
+    [InlineData("Fill |, Expand")]
+    [InlineData("Expand |")]
+    [InlineData("Expand,  |  ")]
+    [InlineData("| Expand")]
+    public async Task AFlagsCursorBesideAPartInsertsAtTheCursor(string value)
+    {
+        string source = Root($"<Control SizeFlagsHorizontal=\"{value}\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        AssertEveryEdit(result, AtMarker(source));
+    }
+
+    [Fact]
+    public async Task AFlagsPartBeforeAnotherIsReplacedAlone()
+    {
+        string source = Root("<Control SizeFlagsHorizontal=\"Exp|and, Fill\" />");
+        int cursor = source.IndexOf('|', StringComparison.Ordinal);
+        string text = source.Remove(cursor, 1);
+        int start = cursor - "Exp".Length;
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.DoesNotContain("Fill", Labels(result));
+        AssertEveryEdit(result, new LspRange(PositionOf(text, start), PositionOf(text, start + "Expand".Length)));
+    }
+
+    [Fact]
+    public async Task AFlagsValueAtTheEndOfTheDocumentOffersItsMembers()
+    {
+        JsonElement result = await CompleteAsync($"<Control xmlns:x=\"{FormatNamespace}\" Name=\"Root\">\n  <Control SizeFlagsHorizontal=\"|");
+
+        Assert.Equal(["Expand", "ExpandFill", "Fill", "ShrinkBegin", "ShrinkCenter", "ShrinkEnd"], Labels(result));
+    }
+
+    // An unterminated value runs on to the next quote; its range stops at the cursor's line end.
+    [Fact]
+    public async Task AValueRangeStaysOnTheCursorsLine()
+    {
+        string source = Root("<Control MouseFilter=\"|\n  Name=\"C\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.Equal(["Ignore", "Pass", "Stop"], Labels(result));
+        AssertEveryEdit(result, AtMarker(source));
+    }
+
+    // A resource entry cannot refer to itself.
+    [Fact]
+    public async Task AnEntryIsNotOfferedItsOwnKey()
+    {
+        JsonElement result = await CompleteAsync(
+            Root("<x:Resources>\n    <ShaderMaterial x:Key=\"N\" />\n    <ShaderMaterial x:Key=\"M\" NextPass=\"|\" />\n  </x:Resources>")
+        );
+
+        Assert.Equal(["{N}"], Labels(result));
+    }
+
+    [Fact]
+    public async Task ASubclassEntryIsOffered()
+    {
+        JsonElement result = await CompleteAsync(
+            Root(
+                "<x:Resources>\n    <ImageTexture x:Key=\"I\" />\n    <Theme x:Key=\"T\" />\n  </x:Resources>\n"
+                    + "  <Sprite2D Name=\"S\" Texture=\"|\" />"
+            )
+        );
+
+        Assert.Equal(["{I}"], Labels(result));
+        Assert.Equal("ImageTexture", Item(result, "{I}").GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public async Task AnEntryOfAnExcludedClassIsNotOffered()
+    {
+        JsonElement result = await CompleteAsync(
+            Root(
+                "<x:Resources>\n    <AnimatedTexture x:Key=\"A\" />\n    <ImageTexture x:Key=\"I\" />\n  </x:Resources>\n"
+                    + "  <Decal Name=\"D\" TextureAlbedo=\"|\" />"
+            )
+        );
+
+        Assert.Equal(["{I}"], Labels(result));
+    }
+
+    [Fact]
+    public async Task AnEntryOfUnknownClassIsOffered()
+    {
+        JsonElement result = await CompleteAsync(
+            Root("<x:Resources>\n    <MyTheme x:Key=\"U\" />\n  </x:Resources>\n  <Control Name=\"C\" Theme=\"|\" />")
+        );
+
+        Assert.Equal(["{U}"], Labels(result));
+        Assert.Equal("MyTheme", Item(result, "{U}").GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public async Task AKeylessEntryIsNotOffered()
+    {
+        JsonElement result = await CompleteAsync(
+            Root("<x:Resources>\n    <Theme />\n    <Theme x:Key=\"A\" />\n  </x:Resources>\n  <Control Name=\"C\" Theme=\"|\" />")
+        );
+
+        Assert.Equal(["{A}"], Labels(result));
+    }
+
+    [Fact]
+    public async Task ABoolValueOffersTrueAndFalse()
+    {
+        string source = Root("<Control Visible=\"|\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.Equal(["False", "True"], Labels(result));
+        Assert.Equal(12, Item(result, "True").GetProperty("kind").GetInt32());
+        AssertEveryEdit(result, WholeValue(source));
+    }
+
+    // Only the entries whose class the property's type takes are offered.
+    [Fact]
+    public async Task AResourceValueOffersTheKeysOfItsClass()
+    {
+        string source = Root(
+            "<x:Resources>\n    <Theme x:Key=\"A\" />\n    <StyleBoxFlat x:Key=\"B\" />\n  </x:Resources>\n  <Control Name=\"C\" Theme=\"|\" />"
+        );
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.Equal(["{A}"], Labels(result));
+        JsonElement a = Item(result, "{A}");
+        Assert.Equal(18, a.GetProperty("kind").GetInt32());
+        Assert.Equal("Theme", a.GetProperty("detail").GetString());
+        AssertEveryEdit(result, WholeValue(source));
+    }
+
+    [Theory]
+    [InlineData("<Label Text=\"|\" />")]
+    [InlineData("<MyWidget MouseFilter=\"|\" />")]
+    public async Task AValueOfNoListedTypeOrAnUnknownClassGetsNothing(string inner)
+    {
+        JsonElement result = await CompleteAsync(Root(inner));
+
+        Assert.Equal(JsonValueKind.Null, result.ValueKind);
+    }
+
+    // The range of the value between the quotes around the marker.
+    private static LspRange WholeValue(string source)
+    {
+        int cursor = source.IndexOf('|', StringComparison.Ordinal);
+        string text = source.Remove(cursor, 1);
+        int start = text.LastIndexOf('"', cursor - 1) + 1;
+        int end = text.IndexOf('"', cursor);
+        return new LspRange(PositionOf(text, start), PositionOf(text, end));
+    }
+
+    // The empty range at the marker.
+    private static LspRange AtMarker(string source)
+    {
+        int cursor = source.IndexOf('|', StringComparison.Ordinal);
+        LspPosition at = PositionOf(source.Remove(cursor, 1), cursor);
+        return new LspRange(at, at);
+    }
+
+    private static void AssertEveryEdit(JsonElement result, LspRange range)
+    {
+        Assert.NotEmpty(result.GetProperty("items").EnumerateArray());
+        foreach (JsonElement item in result.GetProperty("items").EnumerateArray())
+        {
+            JsonElement edit = item.GetProperty("textEdit");
+            Assert.Equal(range, RangeOf(edit.GetProperty("range")));
+            Assert.Equal(item.GetProperty("label").GetString(), edit.GetProperty("newText").GetString());
+        }
     }
 
     // A scene whose root holds the inner text, the cursor marked '|'.
