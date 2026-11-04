@@ -404,9 +404,32 @@ The listener uses the .NET runtime (`System.Net.Sockets`) on its own thread, sin
 
 Godot facts (4.7.2): a `SubViewport` that is not on screen is not visible, so its `render_target_update_mode` is set to once rather than the default when visible; the texture is only right after `RenderingServer.frame_post_draw` (`doc/classes/Viewport.xml`), and `Image.save_png_to_buffer` encodes without a file. Headless Godot cannot produce an image: the dummy renderer's `render_target_get_texture` returns an empty RID (`servers/rendering/dummy/storage/texture_storage.h`), so only a windowed editor renders pixels.
 
-**Scripts.** Scripts are stripped from the previewed scene, with the exported property values kept where the node class has them, unless the request asks for scripts and the project setting allows it; the default is off. Stripping (`XscnPreviewScene.WithoutScripts`, on the converted text before the load) removes every `script` property that names a script (an explicit `Script="{x:Null}"` stays), every Script-class sub_resource and ext_resource (built-in scripts included) and anything a removed `script` pointed to, sets every reference to a removed resource to null, and drops each connection whose From or To node lost its script; every other property stays, which is how the exported values survive. Connection paths are compared after Godot's own simplification (`.` dropped, `name/..` collapsed).
+**Scripts.** Scripts are stripped from the previewed scene, with the exported property values kept where the node class has them, unless the request asks for scripts and the project setting allows it; the default is off.
 
-The allowing setting is `godot_xaml/preview_server/allow_scripts`. A scene the text instances still loads its own scripts; the owner's ruling is to strip those too (GXAML-177). A socket that hands text to an in-editor instantiate would otherwise run any `[Tool]` script class of the project, with the text choosing which and with which properties (a C# class without `[Tool]` is a placeholder in the editor; `modules/mono/csharp_script.h`, `is_tool`).
+Stripping (`XscnPreviewScene.WithoutScripts`, on the converted text before the load) removes every `script` property that names a script (an explicit `Script="{x:Null}"` stays), every Script-class sub_resource and ext_resource (built-in scripts included) and anything a removed `script` pointed to, sets every reference to a removed resource to null, and drops each connection whose From or To node lost its script; every other property stays, which is how the exported values survive.
+
+Connection paths are compared after Godot's own simplification (`.` dropped, `name/..` collapsed).
+
+The allowing setting is `godot_xaml/preview_server/allow_scripts`. With scripts off, the strip covers the text's own scripts, every scene file the text or its scenes reference at any depth, and the script types of typed containers. A resource file the text references that carries a script (a `.tres` or `.xres`) is not stripped yet and still loads its script (GXAML-184).
+
+A socket that hands text to an in-editor instantiate would otherwise run any `[Tool]` script class of the project, with the text choosing which and with which properties (a C# class without `[Tool]` is a placeholder in the editor; `modules/mono/csharp_script.h`, `is_tool`).
+
+Every ext_resource, in the text and in each stripped copy, is classified by the file it resolves to, not by its type, which is the converter's guess (`XscnPreviewReferences`). The file is the one a registered uid names (the text sets uids through `x:Uids`), else the path, a `uid://` path resolved. Extensions compare in any letter case, as Godot picks a loader.
+
+- A script: an extension only a script loader claims (`ResourceLoader.get_recognized_extensions_for_type("Script")` less those claimed for `Resource`, since every resource loader claims its own for any class), or a file whose class, from the editor's filesystem, is a `Script`. It is removed and every reference to it made null, as a `Script`-typed ext_resource always is.
+- A text scene (`tscn`, `xscn`): loaded from a stripped copy.
+- A binary scene: a `scn`, or a `res` whose class (the editor's, else the binary header's type string, read as `ResourceLoaderBinary::recognize` does) is a `PackedScene`. It cannot be stripped: no root, and error GXC0121 "a binary scene cannot be previewed with scripts off".
+
+  A `res` whose header cannot be read (compressed, truncated, no `RSRC` magic) fails too, with "the binary resource's class cannot be read, so it may hold a scene"; a `res` that does not exist is kept, for Godot to report as missing.
+- An imported scene: an extension a scene importer claims (`glb`, `gltf`, `fbx`, `blend`, `dae`, `obj`), or a file whose editor class is a `PackedScene` beside a `.import` sidecar. It is refused for now, with GXC0121 "an imported scene cannot be previewed with scripts off; allow scripts to preview it"; the owner's ruling is to accept clean ones later.
+- Another file whose class is a `PackedScene`, or one declared a `PackedScene` that would otherwise be kept: GXC0121 "<path> is not a text scene".
+- Anything else is kept.
+
+Each text scene is read from its file (an `.xscn` converted, a `.tscn` read), stripped the same way, written to the addon's temp folder and loaded from there, its ext_resource's uid dropped since a registered uid wins over the path (`XscnPreviewInstances`); the copies are deleted once the load is done. That covers an instance, an inherited root, an exported scene property and a `metadata/` value alike.
+
+A connection from or to a node of an instanced scene that lost its script is dropped, as one of the text's own stripped nodes is, unless the instance detaches its scene's script itself (`Script="{x:Null}"`), which a preview with scripts allowed would do as well.
+
+A typed array or dictionary whose element, key or value type is a removed script is typed `Object` instead, its values kept, since the text loader loads every script a type names and a GDScript runs its static initializer as it loads.
 
 **Errors.** When the text does not parse or convert, the server returns the last good image for that document, marked stale, with the new diagnostics. It holds the last good rendering per document, and returns diagnostics in the response rather than pushing them to Godot's log, which a keystroke stream would flood. A document with no good rendering yet returns the diagnostics and no image.
 

@@ -1,0 +1,5 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="UidMeta">
+  <Control.script>
+    <GDScript Script.source='"@tool&#10;extends Control&#10;&#10;static func _static_init():&#10;&#9;Engine.set_meta(\"gx_preview_uid_meta\", true)&#10;"' />
+  </Control.script>
+</Control>

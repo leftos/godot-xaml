@@ -304,6 +304,18 @@ Error. `The property name "metadata/a\u0001b" holds a character XML cannot hold;
 
 Warning. `x:Uids gives 'res://a.tres' more than one uid (uid://bbb, uid://aaa); its ext_resource keeps 'uid://bbb'.` Two `x:Uid` entries name one path with different uids, written so or made so when `convert` rewrites one file's path onto another's. The `.tscn` keeps the first uid; check which file the path should name, and remove the other entry.
 
+### GXC0121 Instance not stripped
+
+Error. `res://ui/legacy.scn: a binary scene cannot be previewed with scripts off`.
+
+With scripts off, the preview strips every scene the text references (an instance, an inherited root, or a scene in a property or metadata value), at any depth, before loading it, and this one could not be stripped: it is a binary scene (a `.scn`, or a `.res` holding a scene or whose class cannot be read), it holds a scene but is not a `.tscn` or `.xscn` (`<path> is not a text scene`), or it cannot be read, does not parse or does not convert.
+
+The preview shows no scene.
+
+Fix the referenced scene (save a binary `.scn` as `.tscn` or `.xscn`), or allow scripts for the preview: the request asks for them and the project setting `godot_xaml/preview_server/allow_scripts` is on.
+
+An imported model (`.glb`, `.gltf`, `.fbx`, `.blend`, `.dae`, `.obj`, or another file the editor imports as a scene) gives `<path>: an imported scene cannot be previewed with scripts off; allow scripts to preview it`; allowing scripts is the only way to preview it.
+
 ### GXC0122 Source file unreadable
 
 Warning. `The file "res://s.gdshader" could not be read (not found), so this section keeps its written property order.` An external `.gdshader` or mesh file that a by-source family is ordered by could not be read: `not found` when the host cannot give it, or `line L, column C: <reason>` when a mesh file does not parse. Reported once per file and reason, at the first section that meets it, which keeps its written property order rather than Godot's. Silent with no lookup or no source key, for a shader only the preprocessor could read, and for a file that is not an ArrayMesh or holds no blend shape names.

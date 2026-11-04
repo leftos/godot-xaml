@@ -1,0 +1,3 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Inner">
+  <Control Name="Emitter" Script="res://checks/cases/preview_signals.gd" />
+</Control>

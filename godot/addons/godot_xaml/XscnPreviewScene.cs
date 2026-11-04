@@ -16,7 +16,8 @@ namespace GodotXaml.Addon;
 /// <summary>What a preview of <c>.xscn</c> text gave.</summary>
 /// <param name="Root">
 /// The instantiated scene, which the caller owns and frees; null when the text has a parse error, the conversion an error,
-/// or Godot could not load or instantiate the converted text (its reason is then in Godot's log).
+/// a stripped preview cannot read or strip a scene the text instances (an issue names it), or Godot could not load or
+/// instantiate the converted text (its reason is then in Godot's log).
 /// </param>
 /// <param name="Diagnostics">The parse's diagnostics, never pushed to Godot's log.</param>
 /// <param name="Issues">The conversion's issues, never pushed to Godot's log; empty when the text did not parse.</param>
@@ -25,7 +26,8 @@ internal sealed record PreviewScene(Node? Root, ImmutableArray<XscnDiagnostic> D
 /// <summary>
 /// Turns <c>.xscn</c> text, saved or not, into an instantiated scene for the preview server: parsed, converted, loaded
 /// through Godot's text loader with the cache ignored, and instantiated. The text is written only to the load route's own
-/// temp file, never to the document's path. Main thread only: it calls Godot.
+/// temp file, and a stripped preview's instanced scenes only to their copies in the same folder, never under the project.
+/// Main thread only: it calls Godot.
 /// </summary>
 internal static class XscnPreviewScene
 {
@@ -36,6 +38,8 @@ internal static class XscnPreviewScene
 
     // The base of every script class; outside the editor the conversion types a script's ext_resource with it.
     private const string ScriptClass = "Script";
+
+    private static readonly GodotTypeRef ObjectType = new("Object");
 
     /// <summary>Parses, converts, loads and instantiates the text as the scene at <paramref name="resPath"/>.</summary>
     /// <param name="text">The <c>.xscn</c> text.</param>
@@ -63,12 +67,17 @@ internal static class XscnPreviewScene
         {
             ExtResources = [.. result.Document.ExtResources.Select(ext => ext with { Path = XscnLoading.Localized(resPath, ext.Path) })],
         };
-        if (!(scriptsRequested && ScriptsAllowed()))
+        if (scriptsRequested && ScriptsAllowed())
         {
-            converted = WithoutScripts(converted);
+            return new PreviewScene(LoadAndInstantiate(resPath, converted), parsed.Diagnostics, result.Issues);
         }
 
-        return new PreviewScene(LoadAndInstantiate(resPath, converted), parsed.Diagnostics, result.Issues);
+        // Each scene the text instances, at any depth, is loaded from a stripped copy, deleted once the load is done.
+        using var instances = new XscnPreviewInstances();
+        TscnDocument stripped = instances.Stripped(converted);
+        return instances.Issues.Count > 0
+            ? new PreviewScene(null, parsed.Diagnostics, [.. result.Issues, .. instances.Issues])
+            : new PreviewScene(LoadAndInstantiate(resPath, stripped), parsed.Diagnostics, result.Issues);
     }
 
     private static bool ScriptsAllowed()
@@ -102,29 +111,45 @@ internal static class XscnPreviewScene
 
     /// <summary>
     /// The document with no script from its own text: no <c>script</c> property that names a script (an explicit null
-    /// stays), no Script-class sub-resource or ext_resource, and no connection from or to a node whose script was removed.
+    /// stays), no Script-class sub-resource, no ext_resource whose resolved file is a script
+    /// (<see cref="XscnPreviewReferences.Classify"/>) or whose type is a Script class, and no connection from or to a node
+    /// whose script was removed.
     /// Every other property stays: Godot sets each stored node property with <c>node->set</c> and is silent on one the class
-    /// lacks (packed_scene.cpp:372-383), so a script's exported values stay where the class has them. Instanced scenes keep
-    /// their own scripts.
+    /// lacks (packed_scene.cpp:372-383), so a script's exported values stay where the class has them. The scenes the
+    /// document instances are stripped apart (<see cref="XscnPreviewInstances"/>).
     /// </summary>
     /// <param name="document">The converted scene.</param>
     /// <returns>
-    /// The stripped scene. A reference to a removed resource in a property value or a bind becomes <c>null</c>; one as a typed
-    /// container's element type is left, and the load then fails.
+    /// The stripped scene. A reference to a removed resource in a property value or a bind becomes <c>null</c>; as a typed
+    /// container's element, key or value type it becomes <c>Object</c>, the values kept, since the text loader loads every
+    /// script a type names and a GDScript runs its static initializer as it loads.
     /// </returns>
-    internal static TscnDocument WithoutScripts(TscnDocument document)
+    internal static TscnDocument WithoutScripts(TscnDocument document) => WithoutScripts(document, new HashSet<string>(StringComparer.Ordinal));
+
+    /// <summary>
+    /// The document with no script from its own text, as <see cref="WithoutScripts(TscnDocument)"/> gives it, and no
+    /// connection from or to a node that lost its script in a scene the document instances.
+    /// </summary>
+    /// <param name="document">The converted scene.</param>
+    /// <param name="lostScripts">The paths from the root, simplified, of the instanced nodes whose script was removed.</param>
+    /// <returns>The stripped scene.</returns>
+    internal static TscnDocument WithoutScripts(TscnDocument document, IReadOnlySet<string> lostScripts)
     {
         // The text loader loads every ext_resource and sub_resource, and a built-in script runs its static initializer as
         // its source is set (modules/gdscript/gdscript.cpp), so a script must leave the text, not only the nodes.
         var removedExts = new HashSet<string>(
-            document.ExtResources.Where(ext => IsScriptClass(ext.Type)).Select(ext => ext.Id),
+            // An ext is a script by the file it resolves to (XscnPreviewReferences); its declared type, the converter's guess,
+            // can only add one.
+            document
+                .ExtResources.Where(ext => IsScriptClass(ext.Type) || XscnPreviewReferences.Classify(ext) == PreviewReferenceKind.Script)
+                .Select(ext => ext.Id),
             StringComparer.Ordinal
         );
         var removedSubs = new HashSet<string>(
             document.SubResources.Where(sub => IsScriptClass(sub.Type)).Select(sub => sub.Id),
             StringComparer.Ordinal
         );
-        var strippedNodes = new HashSet<string>(StringComparer.Ordinal);
+        var strippedNodes = new HashSet<string>(lostScripts, StringComparer.Ordinal);
         foreach (TscnNode node in document.Nodes)
         {
             if (AddScriptReferences(node.Properties, removedExts, removedSubs))
@@ -194,14 +219,32 @@ internal static class XscnPreviewScene
     private static bool IsScriptReference(TscnProperty property) =>
         string.Equals(property.Name, ScriptProperty, StringComparison.Ordinal) && property.Value is GodotResourceRef or GodotPathRef;
 
-    // A node's path from the root, as a connection's from and to name it: "." for the root.
-    private static string NodePath(TscnNode node) =>
+    /// <summary>The paths of the document's nodes whose script the strip removes.</summary>
+    /// <param name="document">The converted scene.</param>
+    /// <returns>Each path from the root, simplified.</returns>
+    internal static IEnumerable<string> ScriptedNodePaths(TscnDocument document) =>
+        document.Nodes.Where(node => node.Properties.Any(IsScriptReference)).Select(NodePath);
+
+    /// <summary>Whether the node sets its script to something other than a script, as an instance does to detach its scene's.</summary>
+    /// <param name="node">The node.</param>
+    /// <returns>True when a <c>script</c> property names no script.</returns>
+    internal static bool DetachesScript(TscnNode node) =>
+        node.Properties.Any(property => string.Equals(property.Name, ScriptProperty, StringComparison.Ordinal) && !IsScriptReference(property));
+
+    /// <summary>A node's path from the root, as a connection's from and to name it: "." for the root.</summary>
+    /// <param name="node">The node.</param>
+    /// <returns>The path, simplified.</returns>
+    internal static string NodePath(TscnNode node) =>
         node.Parent is null ? "." : Simplified(node.Parent == "." ? node.Name : node.Parent + "/" + node.Name);
 
-    // A relative path simplified as NodePath::simplify does (core/string/node_path.cpp): empty and "." segments are dropped,
-    // a ".." removes itself and the segment before it unless that segment is another "..", when both stay; nothing left is
-    // ".".
-    private static string Simplified(string path)
+    /// <summary>
+    /// A relative path simplified as NodePath::simplify does (core/string/node_path.cpp): empty and "." segments are dropped,
+    /// a ".." removes itself and the segment before it unless that segment is another "..", when both stay; nothing left is
+    /// ".".
+    /// </summary>
+    /// <param name="path">The path.</param>
+    /// <returns>The simplified path.</returns>
+    internal static string Simplified(string path)
     {
         var segments = new List<string>();
         foreach (string segment in path.Split('/').Where(segment => segment.Length > 0 && segment != "."))
@@ -227,11 +270,11 @@ internal static class XscnPreviewScene
         value switch
         {
             GodotResourceRef reference => removed.Contains(reference) ? GodotNull.Instance : value,
-            GodotArray array => new GodotArray([.. array.Items.Select(item => Nulled(item, removed))], array.ElementType),
+            GodotArray array => new GodotArray([.. array.Items.Select(item => Nulled(item, removed))], Retyped(array.ElementType, removed)),
             GodotDictionary dictionary => new GodotDictionary(
                 [.. dictionary.Entries.Select(entry => new GodotEntry(Nulled(entry.Key, removed), Nulled(entry.Value, removed)))],
-                dictionary.KeyType,
-                dictionary.ValueType
+                Retyped(dictionary.KeyType, removed),
+                Retyped(dictionary.ValueType, removed)
             ),
             ObjectValue objectValue => new ObjectValue(
                 objectValue.ClassName,
@@ -239,6 +282,10 @@ internal static class XscnPreviewScene
             ),
             _ => value,
         };
+
+    // A container type that names a removed script becomes Object, which every script's instance is.
+    private static GodotTypeRef? Retyped(GodotTypeRef? type, RemovedResources removed) =>
+        type?.Script is GodotResourceRef reference && removed.Contains(reference) ? ObjectType : type;
 
     // The ext_resource and sub_resource ids the strip removes.
     private sealed record RemovedResources(HashSet<string> Exts, HashSet<string> Subs)

@@ -1,0 +1,3 @@
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="A">
+  <x:Instance Scene="preview_deep_b.xscn" Name="B" />
+</Control>

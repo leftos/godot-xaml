@@ -136,6 +136,12 @@ public static class ConversionCodes
     public const string UidsDisagree = "GXC0120";
 
     /// <summary>
+    /// With scripts off, the preview could not strip a scene the text references (binary, unreadable, unparsable or failing
+    /// conversion); the preview gives no scene.
+    /// </summary>
+    public const string InstanceNotStripped = "GXC0121";
+
+    /// <summary>
     /// An external <c>.gdshader</c> or text mesh file that a by-source family is ordered by
     /// (<see cref="ConversionOptions.SceneFiles"/>) could not be read (not found, or it does not parse); the section keeps
     /// its written property order.
