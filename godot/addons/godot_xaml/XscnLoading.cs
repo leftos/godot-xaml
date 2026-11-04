@@ -135,42 +135,68 @@ internal static class XscnLoading
         }
     }
 
-    /// <summary>The class an <c>.xres</c> file's root tag names, read without parsing the rest; <c>Resource</c> when it names none.</summary>
-    /// <param name="path">The <c>.xres</c>.</param>
+    /// <summary>
+    /// The class an <c>.xres</c> file's root tag names, read without parsing the rest; <c>Resource</c> when it names none.
+    /// </summary>
+    /// <param name="path">The <c>.xres</c>, read through Godot's <c>FileAccess</c> so a file a mounted pack holds is read.</param>
     /// <returns>The class name.</returns>
     public static string XresRootClass(string path)
     {
         var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, IgnoreComments = true };
+        byte[] bytes = ReadFileBytes(path);
+        if (bytes.Length == 0)
+        {
+            return "Resource";
+        }
+
         try
         {
-            using FileStream stream = File.OpenRead(ProjectSettings.GlobalizePath(path));
+            using var stream = new MemoryStream(bytes, writable: false);
             using var reader = XmlReader.Create(stream, settings);
             bool named = reader.MoveToContent() == XmlNodeType.Element && reader.Prefix.Length == 0 && IsResourceClass(reader.LocalName);
             return named ? reader.LocalName : "Resource";
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException)
+        catch (XmlException)
         {
             return "Resource";
         }
     }
 
-    /// <summary>The script an <c>.xres</c> file's root tag names, read without parsing the rest, as a <c>res://</c> path.</summary>
+    /// <summary>
+    /// The script an <c>.xres</c> file's root tag names, read without parsing the rest, as a <c>res://</c> path through Godot's
+    /// <c>FileAccess</c>, so a file a mounted pack holds is read.
+    /// </summary>
     /// <param name="path">The <c>.xres</c>.</param>
     /// <returns>The script's <c>res://</c> path, or null when the root names none.</returns>
     internal static string? XresRootScript(string path)
     {
         var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, IgnoreComments = true };
+        byte[] bytes = ReadFileBytes(path);
+        if (bytes.Length == 0)
+        {
+            return null;
+        }
+
         try
         {
-            using FileStream stream = File.OpenRead(ProjectSettings.GlobalizePath(path));
+            using var stream = new MemoryStream(bytes, writable: false);
             using var reader = XmlReader.Create(stream, settings);
             string? script = reader.MoveToContent() == XmlNodeType.Element ? reader.GetAttribute("Script") : null;
             return script is null || script.Length == 0 ? null : Localized(path, script);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException)
+        catch (XmlException)
         {
             return null;
         }
+    }
+
+    // Godot's FileAccess serves a file a mounted pack holds, which System.IO would miss; an open error leaves an empty array,
+    // as GetFileAsString's callers read it (GodotSceneFiles.Read). The static call makes no object to dispose: the bytes are
+    // managed.
+    private static byte[] ReadFileBytes(string path)
+    {
+        byte[] bytes = FileAccess.GetFileAsBytes(path);
+        return FileAccess.GetOpenError() == Error.Ok ? bytes : [];
     }
 
     /// <summary>Converts a parsed document to the text loader's form, minting its sub-resource ids as every load does.</summary>

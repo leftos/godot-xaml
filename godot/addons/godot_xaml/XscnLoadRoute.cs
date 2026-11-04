@@ -43,7 +43,8 @@ internal static class XscnLoadRoute
     /// <summary>
     /// Writes the text to a temp file and loads it through Godot's text loader: with the cache ignored, or on a reuse or a
     /// replace in that mode, with the live sub-resources; then deletes the file unless the load failed, in which case it is
-    /// kept and every kept file over a day old in the folder is removed.
+    /// kept and every kept file over a day old in the folder is removed, with the backup-save leftovers of one the save route's
+    /// save through Godot can leave beside them.
     /// </summary>
     /// <param name="path">The <c>.xscn</c> or <c>.xres</c> being loaded, for the error message and its sub-resources' paths.</param>
     /// <param name="text">The converted text.</param>
@@ -111,8 +112,9 @@ internal static class XscnLoadRoute
         }
     }
 
-    // Deletes every *.tscn and *.tres file left in the folder more than a day ago, never the file a failed load is keeping. A
-    // file that cannot be removed, or a folder that cannot be listed, is a warning: nothing may throw out of the load path.
+    // Deletes every *.tscn and *.tres file left in the folder more than a day ago, and every backup-save leftover of one, which
+    // the save route leaves when Godot saves its temp file, never the file a failed load is keeping. A file that cannot be
+    // removed, or a folder that cannot be listed, is a warning: nothing may throw out of the load path.
     private static void PruneKeptFiles(string folder, string keeping)
     {
         string kept = Path.GetFileName(keeping);
@@ -130,7 +132,8 @@ internal static class XscnLoadRoute
 
         foreach (string file in files)
         {
-            if (Path.GetExtension(file) is not (".tscn" or ".tres") || string.Equals(Path.GetFileName(file), kept, StringComparison.Ordinal))
+            string name = Path.GetFileName(file);
+            if (!IsOurs(name) || string.Equals(name, kept, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -147,6 +150,81 @@ internal static class XscnLoadRoute
                 GD.PushWarning($"godot-xaml: could not remove the old kept file {file}: {exception.Message}");
             }
         }
+    }
+
+    // A plain *.tscn or *.tres is taken by its extension alone, whoever wrote it. A suffixed name is taken only as a backup-save
+    // leftover of one the routes write: "<32 lowercase hex>.tscn" or ".tres" gains "-XXXXXX", six characters from mkstemp
+    // (drivers/unix/file_access_unix.cpp), or "<ticks>.tmp" (drivers/windows/file_access_windows.cpp). The 32-hex stem is
+    // required of those suffixed names only, so another file's "anything.tscn-AbC123" is left alone, however old.
+    private static bool IsOurs(string name)
+    {
+        if (Path.GetExtension(name) is ".tscn" or ".tres")
+        {
+            return true;
+        }
+
+        return HasOurStem(name.AsSpan(), out ReadOnlySpan<char> suffix) && (IsMkstempSuffix(suffix) || IsWindowsTempSuffix(suffix));
+    }
+
+    // Splits a name at its stem of ours and the ".tscn" or ".tres" after it, leaving what the backup save appended.
+    private static bool HasOurStem(ReadOnlySpan<char> name, out ReadOnlySpan<char> suffix)
+    {
+        const int stemLength = 32;
+        suffix = name;
+        if (name.Length <= stemLength || !IsLowerHex(name[..stemLength]))
+        {
+            return false;
+        }
+
+        suffix = name[stemLength..];
+        if (!(suffix.StartsWith(".tscn") || suffix.StartsWith(".tres")))
+        {
+            return false;
+        }
+
+        suffix = suffix[5..];
+        return true;
+    }
+
+    // "<path>-XXXXXX", the six characters mkstemp replaced its template with.
+    private static bool IsMkstempSuffix(ReadOnlySpan<char> suffix) => suffix.Length == 7 && suffix[0] == '-' && IsAsciiLetterOrDigit(suffix[1..]);
+
+    // "<path><ticks>.tmp", one or more digits before the extension.
+    private static bool IsWindowsTempSuffix(ReadOnlySpan<char> suffix)
+    {
+        int digits = 0;
+        while (digits < suffix.Length && char.IsAsciiDigit(suffix[digits]))
+        {
+            digits++;
+        }
+
+        return digits > 0 && suffix[digits..].SequenceEqual(".tmp");
+    }
+
+    private static bool IsLowerHex(ReadOnlySpan<char> text)
+    {
+        foreach (char character in text)
+        {
+            if (!char.IsAsciiHexDigitLower(character))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsAsciiLetterOrDigit(ReadOnlySpan<char> text)
+    {
+        foreach (char character in text)
+        {
+            if (!char.IsAsciiLetterOrDigit(character))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // Only the reuse and replace modes reach the cache: they reuse the objects moved under the temp file's name.

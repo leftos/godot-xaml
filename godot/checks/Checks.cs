@@ -138,6 +138,11 @@ public partial class Checks : Node
 
     private static int tempPathsBefore;
 
+    // A mounted pack cannot be unmounted, and Godot re-reads its files when the class list is refreshed: a folder removed under
+    // a mounted pack makes each later read from it log a failure, and C73 reads the class cache C70's pack holds. The run removes
+    // every pack's folder once no check needs a pack.
+    private static readonly List<string> PackTempFolders = [];
+
     /// <inheritdoc/>
     public override async void _Ready()
     {
@@ -220,7 +225,7 @@ public partial class Checks : Node
             ("C57", EngineDroppedSceneLeavesTheCache),
         ];
         DeleteFolder(SavesFolder);
-        int total = checks.Length + frameChecks.Length + 1;
+        int total = checks.Length + frameChecks.Length + 2;
         XscnLoadRoute.RecordTempPaths = true;
         tempPathsBefore = XscnLoadRoute.TempPaths.Count;
         int passed = 0;
@@ -238,11 +243,14 @@ public partial class Checks : Node
                 passed += Report(id, () => failure) ? 1 : 0;
             }
 
-            // Last, because a mounted pack cannot be unmounted and freezes res:// for the rest of the process.
+            // Last, because a mounted pack cannot be unmounted and freezes res:// for the rest of the process. C73 mounts the
+            // second pack and reads a file only it holds.
             passed += Report("C70", RefreshSeesAMountedPacksClasses) ? 1 : 0;
+            passed += Report("C73", RawXresInAMountedPackHasItsScriptClass) ? 1 : 0;
         }
         finally
         {
+            RemovePackTempFolders();
             GD.Print($"DONE {passed}/{total}");
             GetTree().Quit(passed == total ? 0 : 1);
         }
@@ -384,21 +392,36 @@ public partial class Checks : Node
         }
     }
 
-    // A failed load that keeps its temp file prunes the folder: an old kept file goes, a recent one stays, and the error still
-    // names this load's own file.
+    // A failed load that keeps its temp file prunes the folder: an old kept file goes, a recent one stays, the old
+    // backup-save leftovers of one go too, a name that only looks like one stays, and the error still names this load's own
+    // file.
     private static string FailedLoadPrunesOldKeptFiles()
     {
         const string copyPath = OutFolder + "prune.xscn";
         string loaderTempFolder = AddonTempFolder.Get();
-        string oldFile = Path.Combine(loaderTempFolder, $"{Guid.NewGuid():N}.tscn");
-        string recentFile = Path.Combine(loaderTempFolder, $"{Guid.NewGuid():N}.tres");
+        static string Temp(string folder, string suffix) => Path.Combine(folder, $"{Guid.NewGuid():N}{suffix}");
+        (string File, TimeSpan Age, bool Pruned)[] planted =
+        [
+            // The kept file's own name, old and recent.
+            (Temp(loaderTempFolder, ".tscn"), TimeSpan.FromDays(2), true),
+            (Temp(loaderTempFolder, ".tres"), TimeSpan.FromHours(1), false),
+            // Godot's backup save renames the target to "<path>-XXXXXX" (unix, mkstemp) or writes "<path><ticks>.tmp" beside
+            // it (windows), so a leftover carries the kept file's stem and a suffix; an old one is pruned like the kept file.
+            (Temp(loaderTempFolder, ".tscn-AbC123"), TimeSpan.FromDays(2), true),
+            (Temp(loaderTempFolder, ".tres1234567890.tmp"), TimeSpan.FromDays(2), true),
+            (Temp(loaderTempFolder, ".tscn-XyZ789"), TimeSpan.FromHours(1), false),
+            // Old names that reach for the same shape and must stay: no guid stem, another extension, an uppercase stem, a
+            // five-character suffix, and no digits before ".tmp".
+            (Path.Combine(loaderTempFolder, "notaguid.tscn-AbC123"), TimeSpan.FromDays(2), false),
+            (Temp(loaderTempFolder, ".txt-AbC123"), TimeSpan.FromDays(2), false),
+            (Path.Combine(loaderTempFolder, "0123456789ABCDEF0123456789ABCDEF.tscn-AbC123"), TimeSpan.FromDays(2), false),
+            (Temp(loaderTempFolder, ".tscn-AbC12"), TimeSpan.FromDays(2), false),
+            (Temp(loaderTempFolder, ".tscn.tmp"), TimeSpan.FromDays(2), false),
+        ];
         int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
         try
         {
-            File.WriteAllText(oldFile, "");
-            File.WriteAllText(recentFile, "");
-            File.SetLastWriteTimeUtc(oldFile, DateTime.UtcNow - TimeSpan.FromDays(2));
-            File.SetLastWriteTimeUtc(recentFile, DateTime.UtcNow - TimeSpan.FromHours(1));
+            PlantFiles(planted);
             DeleteFolder(OutFolder);
             Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
             string holder = File.ReadAllText(ProjectSettings.GlobalizePath(HolderPath));
@@ -408,23 +431,47 @@ public partial class Checks : Node
             );
             WarningLog log = LoadLogged(copyPath).Log;
             string[] kept = [.. XscnLoadRoute.TempPaths.Skip(tempPathsBeforeLoad).Where(File.Exists)];
-            return Failures(
-                File.Exists(oldFile) ? $"the file kept two days was not pruned: {oldFile}" : "",
-                File.Exists(recentFile) ? "" : $"the file kept an hour was pruned: {recentFile}",
+            var failures = new List<string>(PruneFailures(planted))
+            {
                 kept.Length > 0 ? "" : "the failed load kept no temp file",
-                kept.Any(file => Logged(log.Entries, Logger.ErrorType.Error, file)) ? "" : $"no error names the kept file [{string.Join(", ", kept)}]"
-            );
+                kept.Any(file => Logged(log.Entries, Logger.ErrorType.Error, file))
+                    ? ""
+                    : $"no error names the kept file [{string.Join(", ", kept)}]",
+            };
+            return Failures([.. failures]);
         }
         finally
         {
-            File.Delete(recentFile);
+            RemovePlantedFiles(planted);
             DeleteKeptTempFiles(tempPathsBeforeLoad);
-            if (File.Exists(oldFile))
-            {
-                File.Delete(oldFile);
-            }
-
             DeleteFolder(OutFolder);
+        }
+    }
+
+    // Each planted file, written empty and aged, so the prune's day-old cutoff decides it.
+    private static void PlantFiles((string File, TimeSpan Age, bool Pruned)[] planted)
+    {
+        foreach ((string file, TimeSpan age, _) in planted)
+        {
+            File.WriteAllText(file, "");
+            File.SetLastWriteTimeUtc(file, DateTime.UtcNow - age);
+        }
+    }
+
+    // Each planted name's fate: the prune removes the ones it must and leaves the others.
+    private static IEnumerable<string> PruneFailures((string File, TimeSpan Age, bool Pruned)[] planted) =>
+        planted
+            .Where(entry => File.Exists(entry.File) == entry.Pruned)
+            .Select(entry => entry.Pruned ? $"the old file was not pruned: {entry.File}" : $"a file the prune must leave alone went: {entry.File}");
+
+    private static void RemovePlantedFiles((string File, TimeSpan Age, bool Pruned)[] planted)
+    {
+        foreach ((string file, _, _) in planted)
+        {
+            if (File.Exists(file))
+            {
+                File.Delete(file);
+            }
         }
     }
 
@@ -806,8 +853,7 @@ public partial class Checks : Node
 
         // A loader made after the mount would rebuild the snapshot in its constructor and hide the fault.
         using var loader = new XresFormatLoader();
-        string temp = Path.Combine(Path.GetTempPath(), "gx-check-pack-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(temp);
+        string temp = NewPackTempFolder();
         Directory.CreateDirectory(xresFolder);
         try
         {
@@ -860,20 +906,62 @@ public partial class Checks : Node
         finally
         {
             DeleteFolder(OutFolder);
-            RemoveTempFolder(temp);
         }
     }
 
-    // The pack's sources are scratch files outside the project, so a folder left behind is worth a warning, not a failure.
-    private static void RemoveTempFolder(string folder)
+    // A pack holds files that exist only in it, and Godot's FileAccess serves them; System.IO does not. The raw .xres goes to
+    // the scratch folder and into the pack at a res:// path with no file on disk, so the root-tag reads behind
+    // _GetResourceScriptClass and _GetResourceType have to go through FileAccess. It runs after C70, whose refresh put the
+    // pack's global class in the snapshot the script is looked up in.
+    private static string RawXresInAMountedPackHasItsScriptClass()
     {
-        try
+        // C70's script and class: the pack's class cache already maps the script to the class.
+        const string dlcScriptPath = "res://checks/dlc/dlc_checked.gd";
+        const string dlcClass = "DlcCheckedResource";
+        const string scriptedPath = "res://checks/dlc/only_in_pack.xres";
+        const string nativePath = "res://checks/dlc/native_only_in_pack.xres";
+        using var loader = new XresFormatLoader();
+        string temp = NewPackTempFolder();
+        string scriptedFile = Path.Combine(temp, "only_in_pack.xres");
+        File.WriteAllText(scriptedFile, $"<Resource xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Script=\"{dlcScriptPath}\" />\n");
+        string nativeFile = Path.Combine(temp, "native_only_in_pack.xres");
+        File.WriteAllText(nativeFile, $"<Gradient xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" />\n");
+        string mountFailure = MountPack(Path.Combine(temp, "raw.pck"), [(scriptedPath, scriptedFile), (nativePath, nativeFile)]);
+        if (mountFailure.Length > 0)
         {
-            Directory.Delete(folder, recursive: true);
+            return mountFailure;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+
+        string scriptClass = loader._GetResourceScriptClass(scriptedPath);
+        string type = loader._GetResourceType(nativePath);
+        return Failures(
+            scriptClass == dlcClass ? "" : $"the pack's {scriptedPath} reports script class \"{scriptClass}\", not \"{dlcClass}\"",
+            type == "Gradient" ? "" : $"the pack's {nativePath} reports type \"{type}\", not \"Gradient\""
+        );
+    }
+
+    // A pack's sources are scratch files outside the project, kept until the run is done with every pack and a folder left behind
+    // is worth a warning, not a failure.
+    private static string NewPackTempFolder()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "gx-check-pack-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        PackTempFolders.Add(folder);
+        return folder;
+    }
+
+    private static void RemovePackTempFolders()
+    {
+        foreach (string folder in PackTempFolders)
         {
-            GD.PushWarning($"C70 could not remove its temp folder {folder}: {exception.Message}");
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                GD.PushWarning($"the checks could not remove their temp folder {folder}: {exception.Message}");
+            }
         }
     }
 

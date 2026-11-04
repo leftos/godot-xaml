@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- A raw `.xres` inside a pack a game mounts reports its class and script class, as one on disk does.
+- The addon's temp folder no longer keeps the half-written files a save interrupted by a crash leaves behind.
 - Converting back to `.tscn`, a Skeleton3D bone's Godot 3 keys come after its other keys, `pose` before `bound_children`, as Godot reads them.
 
 ## 0.3.0 - 2026-11-03
