@@ -1,3 +1,5 @@
+`DynamicFamilyCoverageTests` now holds the live coverage list, so the snapshot tables below are history.
+
 PROTOCOL: 1 overlay: docs/agents/explore.md absent, read CLAUDE.md (a router); 2 README: not read (CLAUDE.md names it; the Task Index rows I needed were in ARCHITECTURE.md); 3 Task Index: read the "Add a scene fixture" and "resource fixture" rows (docs/ARCHITECTURE.md) and the Integration Footguns fixture paragraph; 4 design docs: none read (DECISIONS.md not opened, the issue does not ask why); 5 source: done (core, tests, generator, Godot 4.7.2 at F:\Godot\src-4.7.2); 6 tree search: done for fixture names and Godot property lists, no doc covers coverage of the family table.
 
 Anchored at X:/dev/godot-xaml (git rev-parse), HEAD ed84773. Nothing was run (no Godot, no build).

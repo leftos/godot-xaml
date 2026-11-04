@@ -1276,7 +1276,10 @@ internal static class DynamicPropertyFamilies
     /// </param>
     /// <param name="Creation">How Godot creates the family's entries on load.</param>
     /// <param name="SizedBy">The count property's name for a <see cref="EntryCreation.SizedFirst"/> family; null otherwise.</param>
-    /// <param name="KeyOrder">The keys of one entry in the declaring class's order, creating key first; empty for a family without keys.</param>
+    /// <param name="KeyOrder">
+    /// The keys of one entry in the declaring class's order (for a one-key <see cref="EntryCreation.OnKey"/> family, the creating
+    /// key first); empty for a family without keys.
+    /// </param>
     /// <param name="SubKeyOrder">
     /// The keys of one nested entry in the declaring class's order; empty for a family without nested keys.
     /// </param>
