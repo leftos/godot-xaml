@@ -73,7 +73,11 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
 
     private static readonly TimeSpan LastBackoff = TimeSpan.FromSeconds(2);
 
+#if NET9_0_OR_GREATER
+    private readonly System.Threading.Lock gate = new();
+#else
     private readonly object gate = new();
+#endif
 
     private readonly Dictionary<(Connection Connection, string Document), PendingRender> pending = [];
 
@@ -1021,7 +1025,11 @@ internal sealed class XscnPreviewServer(string discoveryFolder, string project, 
     {
         private const int OutboxCapacity = 64;
 
+#if NET9_0_OR_GREATER
+        private readonly System.Threading.Lock sync = new();
+#else
         private readonly object sync = new();
+#endif
 
         private bool disposed;
 

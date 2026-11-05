@@ -26,7 +26,11 @@ internal static class AddonTempFolder
 {
     private const string FolderName = "godot-xaml";
 
+#if NET9_0_OR_GREATER
+    private static readonly System.Threading.Lock Gate = new();
+#else
     private static readonly object Gate = new();
+#endif
 
     private static string? cached;
 

@@ -15,7 +15,11 @@ internal static class SubResourceOrigins
     // again. Loads may run on loader threads, so every access holds the lock.
     private static readonly Dictionary<ulong, (string File, string Id)> Origins = [];
 
+#if NET9_0_OR_GREATER
+    private static readonly System.Threading.Lock Gate = new();
+#else
     private static readonly object Gate = new();
+#endif
 
     /// <summary>
     /// Records that each of one load's sub-resources was loaded from the file with its id; first drops the entries of freed

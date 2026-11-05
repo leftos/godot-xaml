@@ -17,6 +17,7 @@
 - Saving a `.xscn` the writer cannot write fails with `Error.InvalidData` and an error naming the file, whatever the writer refused.
 - A hover on a `{Key}` reference finds an `x:Resources` entry whose key holds an escaped character such as `&amp;`.
 - Flags completion treats each space-separated word as its own part, so completing after a word no longer replaces it.
+- The addon's lock fields no longer fail a host project's info-level `dotnet format` check (IDE0330).
 - Completion and hover follow the reader's namespace rules, and a typed space offers completions only between attributes or in a flags value.
 - `convert --project` no longer warns about the addon's own files, and its summary counts every warning a roll-up line stands for.
 - Converting back to `.tres`, a font's baked textures, glyphs and kerning pairs keep Godot's order, each glyph's keys in the order Godot writes them.
