@@ -1,3 +1,5 @@
+// Explicit, so the copy compare-project.ps1 installs builds in a project that does not enable nullable references.
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -17,6 +19,17 @@ namespace GodotXaml.Addon.Compare;
 /// <c>DONE &lt;passed&gt;/&lt;total&gt;</c>, and quits with exit code 0 only when every fixture passed. The expected pair
 /// count is the <c>--expected-pairs=&lt;n&gt;</c> user argument, which <c>godot/compare.ps1</c> passes from the number of
 /// fixture files it copied.
+/// <para>
+/// With the user argument <c>--dump-tree=&lt;absolute folder&gt;</c> it dumps a whole project instead, for
+/// <c>godot/compare-project.ps1</c>: every <c>.tscn</c>, <c>.xscn</c>, <c>.tres</c> and <c>.xres</c> under <c>res://</c>
+/// (but <c>res://addons</c>, dot folders, folders holding a <c>.gdignore</c> or their own <c>project.godot</c>,
+/// <c>bin</c> and <c>obj</c> beside a <c>.csproj</c>, links and this scene's own folder) is written to
+/// <c>&lt;folder&gt;/&lt;relative path without extension&gt;.scene.dump</c> or <c>.resource.dump</c>, with a
+/// <c>DUMP &lt;relative path&gt; OK</c> or <c>DUMP &lt;relative path&gt; FAIL &lt;reason&gt;</c> line per file, then
+/// <c>DUMPED &lt;ok&gt;/&lt;total&gt;</c>. A second file with the same dump path fails as
+/// <c>collides with &lt;first relative path&gt;</c>. It quits with exit code 0 only when at least one file was found
+/// and every file dumped.
+/// </para>
 /// </summary>
 /// <remarks>
 /// The dump normalises exactly two things: a path's <c>.tscn</c>, <c>.xscn</c>, <c>.tres</c> or <c>.xres</c> extension
@@ -27,6 +40,11 @@ namespace GodotXaml.Addon.Compare;
 public partial class Compare : Node
 {
     private const string CasesPath = "res://cases/";
+    private const string ResRoot = "res://";
+    private const string DumpPrefix = "--dump-tree=";
+
+    // The files the dump mode dumps.
+    private static readonly string[] DumpedExtensions = [".tscn", ".xscn", ".tres", ".xres"];
 
     // Each pair kind's source and golden extension, paired as the two sides of one dump.
     private static readonly (PairKind Kind, string Source, string Converted)[] Kinds =
@@ -47,6 +65,12 @@ public partial class Compare : Node
     /// <inheritdoc/>
     public override void _Ready()
     {
+        if (DumpArgument() is string dumpArgument)
+        {
+            RunDump(dumpArgument);
+            return;
+        }
+
         int expected = ExpectedPairs();
         int passed = 0;
         try
@@ -78,6 +102,137 @@ public partial class Compare : Node
             GC.WaitForPendingFinalizers();
             GetTree().Quit(passed == expected && expected > 0 ? 0 : 1);
         }
+    }
+
+    // The whole --dump-tree=<folder> user argument, or null when the run is the pair mode.
+    private static string? DumpArgument() =>
+        OS.GetCmdlineUserArgs().FirstOrDefault(argument => argument.StartsWith(DumpPrefix, StringComparison.Ordinal));
+
+    // The dump mode: every scene and resource file of the project, dumped under the argument's folder.
+    private void RunDump(string argument)
+    {
+        bool ready = false;
+        int dumped = 0;
+        int total = 0;
+        try
+        {
+            string? folder = DumpFolder(argument);
+            if (folder is null)
+            {
+                return;
+            }
+
+            string[] files = [.. ProjectFiles(ResRoot, SceneFilePath.GetBaseDir())];
+            total = files.Length;
+            ready = true;
+            var written = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string file in files)
+            {
+                dumped += DumpFile(file, folder, written) ? 1 : 0;
+            }
+        }
+        finally
+        {
+            GD.Print($"DUMPED {dumped}/{total}");
+
+            // The pair mode's finalizer crash workaround, for the same reason.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GetTree().Quit(ready && total > 0 && dumped == total ? 0 : 1);
+        }
+    }
+
+    // The argument's folder, created when missing, or null after a setup FAIL line when it is not an absolute path.
+    private static string? DumpFolder(string argument)
+    {
+        string folder = argument[DumpPrefix.Length..];
+        if (!Path.IsPathFullyQualified(folder))
+        {
+            GD.Print($"DUMP setup FAIL {DumpPrefix}<folder> needs an absolute folder, got `{folder}`");
+            return null;
+        }
+
+        Directory.CreateDirectory(folder);
+        return folder;
+    }
+
+    // Every scene and resource file under folder, depth first: a folder's files, then its subfolders, each in ordinal order.
+    private static IEnumerable<string> ProjectFiles(string folder, string compareFolder)
+    {
+        IEnumerable<string> files = DirAccess
+            .GetFilesAt(folder)
+            .Where(file => DumpedExtensions.Any(extension => file.EndsWith(extension, StringComparison.OrdinalIgnoreCase)))
+            .Order(StringComparer.Ordinal);
+        foreach (string file in files)
+        {
+            yield return JoinPath(folder, file);
+        }
+
+        foreach (string name in DirAccess.GetDirectoriesAt(folder).Order(StringComparer.Ordinal))
+        {
+            string child = JoinPath(folder, name);
+            if (WalkSkips(child, name, compareFolder) || OutsideProject(folder, child, name))
+            {
+                continue;
+            }
+
+            foreach (string file in ProjectFiles(child, compareFolder))
+            {
+                yield return file;
+            }
+        }
+    }
+
+    // The folders the walk leaves out: res://addons, dot folders, folders holding a .gdignore and the Compare scene's own.
+    private static bool WalkSkips(string folder, string name, string compareFolder) =>
+        name.StartsWith('.')
+        || string.Equals(folder, ResRoot + "addons", StringComparison.Ordinal)
+        || string.Equals(folder, compareFolder, StringComparison.Ordinal)
+        || Godot.FileAccess.FileExists(folder + "/.gdignore");
+
+    // The folders that are not this project's own files, skipped as the CLI's convert walk and Godot's scan skip them: a
+    // folder holding its own project.godot, bin and obj beside a .csproj, and a link or junction.
+    private static bool OutsideProject(string parent, string folder, string name) =>
+        Godot.FileAccess.FileExists(folder + "/project.godot")
+        || (name is "bin" or "obj" && DirAccess.GetFilesAt(parent).Any(file => file.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)))
+        || File.GetAttributes(ProjectSettings.GlobalizePath(folder)).HasFlag(FileAttributes.ReparsePoint);
+
+    private static string JoinPath(string folder, string name) => folder.EndsWith('/') ? folder + name : $"{folder}/{name}";
+
+    // Loads and dumps one file, writes its dump (or its LOAD FAIL line) under folder, and prints its DUMP line. A file
+    // whose dump path an earlier file of the run already wrote (a/x.tscn and a/x.xscn) fails and writes nothing.
+    private static bool DumpFile(string path, string folder, Dictionary<string, string> written)
+    {
+        string relative = path[ResRoot.Length..];
+        string extension = Path.GetExtension(relative);
+        bool scene = extension.Equals(".tscn", StringComparison.OrdinalIgnoreCase) || extension.Equals(".xscn", StringComparison.OrdinalIgnoreCase);
+        string dumpPath = relative[..^extension.Length] + (scene ? ".scene.dump" : ".resource.dump");
+        if (!written.TryAdd(dumpPath, relative))
+        {
+            GD.Print($"DUMP {relative} FAIL collides with {written[dumpPath]}");
+            return false;
+        }
+
+        string failure;
+        List<string> lines;
+        try
+        {
+            failure = scene ? DumpScene(path, extension[1..], out lines) : LoadResourceDump(path, extension[1..], out lines);
+        }
+        // A file that throws fails with the exception's text, as in the pair mode; the remaining files still run.
+#pragma warning disable CA1031
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            failure = $"threw {exception.GetType().Name}: {exception.Message}";
+            lines = [];
+        }
+
+        string target = Path.Combine(folder, dumpPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.WriteAllLines(target, failure.Length == 0 ? lines : [$"LOAD FAIL {failure}"]);
+        GD.Print(failure.Length == 0 ? $"DUMP {relative} OK" : $"DUMP {relative} FAIL {failure}");
+        return failure.Length == 0;
     }
 
     // The expected pair count, from the compare script's --expected-pairs=<n> user argument, or 0 when absent or invalid.

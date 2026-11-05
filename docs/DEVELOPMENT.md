@@ -19,7 +19,7 @@ How to build, test and check godot-xaml on a development machine, from the repo 
 
 | Script | Godot it runs |
 |---|---|
-| `godot/checks.ps1`, `godot/compare.ps1`, `godot/export.ps1`, `godot/editor-checks.ps1` | `$env:GODOT_PATH`, else `$env:GODOT_BIN`; with neither set it stops with `GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary` |
+| `godot/checks.ps1`, `godot/compare.ps1`, `godot/compare-project.ps1`, `godot/test-compare-project.ps1`, `godot/export.ps1`, `godot/editor-checks.ps1` | `$env:GODOT_PATH`, else `$env:GODOT_BIN`; with neither set it stops with `GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary` |
 | `tools/metadata-dump/dump.ps1`, `tools/value-fixtures/generate.ps1`, `tools/scene-fixtures/generate.ps1` | `-Godot`, else `$env:GODOT_BIN`; they never read `GODOT_PATH` |
 
 ## run.ps1
@@ -84,6 +84,14 @@ The checks also run on Linux under WSL, which proves the Unix temp folder rule. 
 
 ```
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-compare.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/compare.ps1
+```
+
+### Project comparison
+
+`godot/compare-project.ps1 -Project <root> -Out <folder>` dumps every scene and resource of a whole Godot project as Godot loads it (a stage); `-Left <stage> -Right <stage>` diffs two stages. Run it on a project before conversion, after it and after converting back. Its dump mode, the files it installs into the project and its refusals are described in `docs/ARCHITECTURE.md`, Test locations. Its self-test is a real Godot run on a generated project:
+
+```
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 900 --log .tmp/test-compare-project.log --slot heavy --timeout 2400 -- pwsh -NoProfile -File godot/test-compare-project.ps1
 ```
 
 ### Export proof

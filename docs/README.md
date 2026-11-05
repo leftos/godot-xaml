@@ -28,6 +28,7 @@
 - **Discovery file**: the per-user JSON file `<LocalApplicationData>/godot-xaml/editors/<pid>-<32 hex>.json` in which an editor's preview server records its port, token, pid and project for a client to find it; removed when the server stops.
 - **Doc example**: a fenced block in the docs whose info string is `xml xscn` or `xml xres`, optionally with `canonical` or `invalid <code>`; the docs tests parse every one.
 - **Document store**: `DocumentStore` in `src/GodotXaml.LanguageServer/`, the text of the buffers the editor has open; it overlays the disk for the scene lookup (`ISceneFiles`).
+- **Dump**: the canonical text of one loaded scene or resource that the scene comparison and the project comparison diff.
 - **Editor checks**: `godot/editor-checks.ps1`, which runs the real addon in a real Godot editor on a hidden desktop and checks opening, editing, saving, running, instancing, a save after an assembly reload and the FileSystem dock, Paste and Save As (`tools/editor-checks/`).
 - **Effective default**: a property's default for a given class, as Godot saves against it: none for a class Godot keeps no defaults for (a virtual class such as `BaseButton`); else the class's own declaration's default (none when it declares the property without one); else its override; else its parent's effective default. `GodotMetadata.FindDefault`.
 - **Entry kind**: how Godot creates a dynamic family's entries on load, stated by each row of `DynamicPropertyFamilies`: `AnyOrder` (each name sets its value on its own, or any key creates the entry), `SizedFirst` (a named count property, ranked before the family, sizes the entries; a row may carry the declaring class's key order and a nested level), `OnKey` (only the creating key creates an entry), `ByMode`, `Ranked`, `ByName` (Godot lists the names in code-point order) or `BySource` (the order comes from a sibling property's shader or mesh).
@@ -57,6 +58,7 @@
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
 - **Preview server**: the listener in the open Godot editor's addon that renders the `.xscn` text a client sends and returns an image and each node's rectangle; off unless `godot_xaml/preview_server/enabled` is set.
 - **Previous document**: the file a save replaces, parsed before the save (`ConversionOptions.Previous`); its keys and comments carry onto the new document.
+- **Project comparison**: `godot/compare-project.ps1`, which dumps every scene and resource of a whole Godot project as Godot loads it into a stage and diffs two stages; the trial of the round trip on a real project.
 - **Project root**: the folder holding the nearest `project.godot` above a file; `res://` paths are relative to it, and `convert` rewrites references only within one project root (`ProjectRoot`).
 - **Property element**: an element named `<Owner.Property>` that holds one inline resource as a property's value (`<Button.Theme><Theme … /></Button.Theme>`), where `Owner` is the parent element's own tag.
 - **Rank**: the sort key `PropertyOrder` gives a property name (tier, declaring class, list position, then entry, key, sub-entry, sub-key, layer, leaf for a dynamic family); a rank may read a sibling property of the same section (`RankContext`), as `ByMode` does.
@@ -71,6 +73,7 @@
 - **Sidecar**: the `.uid` file beside a file that has no header to hold its uid (`main.xscn.uid`); `convert` moves a uid between a `.tscn` header and it.
 - **Site key**: where a sub-resource is used in an `.xscn` (its element path and property, nested), from which the way back mints its id, so ids do not shift when the file is edited elsewhere.
 - **Source orders**: `SourceOrders`, the per-conversion cache of the orders a `BySource` family reads from a shader's uniforms or a mesh's blend shapes, each file read once.
+- **Stage**: the folder `compare-project.ps1 -Out` fills with one dump per scene or resource of a project (`<relative path>.scene.dump` or `.resource.dump`), and `stage.status`; two stages are diffed by relative path.
 - **Staging folder**: `<root>/.godot-xaml-staging/<stamp>-<8 hex>/`, where `convert --project` writes every output first; it is removed when the run ends, and a failed run leaves the project as it was.
 - **Stale**: a preview result's `stale` flag, true when its `image` is the document's last good image, sent with the new diagnostics because the text did not parse or convert; false for a fresh render, including one that loads with issues.
 - **Stripped copy**: a scene or text resource a scripts-off preview reads from its file, strips of scripts and writes to the addon's temp folder, then loads from there instead; it is deleted after the preview.
