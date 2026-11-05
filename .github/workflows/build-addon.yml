@@ -1,9 +1,9 @@
 name: Build the addon for export
 
-# Builds the Godot addon project in ExportRelease, the configuration a game export compiles, where code under #if TOOLS
-# is absent: a non-TOOLS file that reaches an editor-only symbol builds in Debug, which every local gate but the
-# godot-export-build pre-push hook uses, and fails only in a user's export. The build needs the Godot .NET SDK and
-# GodotSharp packages from nuget.org, not a Godot binary.
+# Builds the Godot addon project in ExportDebug and ExportRelease, the configurations a game export compiles, where code
+# under #if TOOLS is absent: a non-TOOLS file that reaches an editor-only symbol builds in Debug, which every local gate
+# but the godot-export-build pre-push hook uses, and fails only in a user's export. The builds need the Godot .NET SDK
+# and GodotSharp packages from nuget.org, not a Godot binary.
 on:
   push:
     branches: [main]
@@ -29,9 +29,13 @@ concurrency:
 
 jobs:
   build:
-    name: Build the addon in ExportRelease
+    name: Build the addon in ${{ matrix.configuration }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [ExportDebug, ExportRelease]
     permissions:
       contents: read # actions/checkout reads the repository
     steps:
@@ -45,5 +49,5 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Build godot/GodotXaml.Addon.csproj in ExportRelease
-        run: dotnet build godot/GodotXaml.Addon.csproj -c ExportRelease -warnaserror
+      - name: Build godot/GodotXaml.Addon.csproj in ${{ matrix.configuration }}
+        run: dotnet build godot/GodotXaml.Addon.csproj -c ${{ matrix.configuration }} -warnaserror

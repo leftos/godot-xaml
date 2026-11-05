@@ -271,6 +271,7 @@ public partial class Checks : Node
             ("C25", SetUidRefusesOtherExtensions),
             ("C26", SavingOverUnparsableTextWritesAParsableFile),
             ("C27", SaveToAMissingFolderWritesNothing),
+            ("C144", SaveOfARefusedDocumentPushesTheErrorAndWritesNothing),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -742,6 +743,21 @@ public partial class Checks : Node
         try
         {
             return (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore), log);
+        }
+        finally
+        {
+            OS.RemoveLogger(log);
+        }
+    }
+
+    // Saves the resource with a logger added around the save, and hands back what it returned and what it logged.
+    private static (Error Error, WarningLog Log) SaveLogged(Resource resource, string path)
+    {
+        var log = new WarningLog();
+        OS.AddLogger(log);
+        try
+        {
+            return (ResourceSaver.Save(resource, path), log);
         }
         finally
         {
@@ -5193,6 +5209,53 @@ public partial class Checks : Node
             failures.Add($"{savedPath} exists");
         }
 
+        if (staging.Length > 0)
+        {
+            failures.Add($"staging files left in {SavesFolder}: [{string.Join(", ", staging)}]");
+        }
+
+        return string.Join("; ", failures);
+    }
+
+    // godot-xaml refuses a document its writer cannot write (GXAML-216): the save reports InvalidData, pushes the reason
+    // once, and leaves neither the file nor a staging file behind.
+    private static string SaveOfARefusedDocumentPushesTheErrorAndWritesNothing()
+    {
+        const string savedPath = SavesFolder + "refused.xscn";
+        // A character XML 1.0 cannot hold, so the core's writer refuses the converted document with an ArgumentException.
+        var root = new Node { Name = "A\u0001B" };
+        var scene = new PackedScene();
+        Error packError = scene.Pack(root);
+        root.Free();
+        if (packError != Error.Ok)
+        {
+            return $"PackedScene.Pack returned {packError}";
+        }
+
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        (Error error, WarningLog log) = SaveLogged(scene, savedPath);
+        var failures = new List<string>();
+        if (error != Error.InvalidData)
+        {
+            failures.Add($"ResourceSaver.Save({savedPath}) returned {error}, not InvalidData");
+        }
+
+        int refusals = log.Entries.Count(entry =>
+            entry.Type == Logger.ErrorType.Error
+            && entry.Text.Contains("refused.xscn", StringComparison.Ordinal)
+            && entry.Text.Contains("cannot write the converted document", StringComparison.Ordinal)
+        );
+        if (refusals != 1)
+        {
+            failures.Add($"the log holds {refusals} Error entries naming the path and the refusal, not one: [{LogText(log.Entries)}]");
+        }
+
+        if (File.Exists(ProjectSettings.GlobalizePath(savedPath)))
+        {
+            failures.Add($"{savedPath} exists");
+        }
+
+        string[] staging = Directory.GetFiles(ProjectSettings.GlobalizePath(SavesFolder), "*.tmp");
         if (staging.Length > 0)
         {
             failures.Add($"staging files left in {SavesFolder}: [{string.Join(", ", staging)}]");

@@ -14,7 +14,8 @@ commands run there; pre-commit runs csharpier on the staged files itself.
   help                prints this usage; the verb a run without one uses
   build               dotnet build GodotXaml.slnx in Release, warnings as errors; .tmp/build.log, ceiling 600 s
   godot-build         dotnet build godot/GodotXaml.Addon.csproj in Debug, warnings as errors; .tmp/godot-build.log, ceiling 600 s
-  godot-export-build  dotnet build godot/GodotXaml.Addon.csproj in ExportRelease, warnings as errors; .tmp/godot-export-build.log, ceiling 600 s
+  godot-export-build  dotnet build godot/GodotXaml.Addon.csproj in ExportDebug, then ExportRelease, warnings as errors;
+                      .tmp/godot-export-debug-build.log and .tmp/godot-export-build.log, ceiling 600 s each
   test                build, then dotnet test of the solution in Release without building it again; .tmp/test.log, ceiling 600 s
   format-check        dotnet tool restore, then dotnet csharpier check on the repo, changing nothing; .tmp/format.log
   format              dotnet tool restore, then dotnet csharpier format on the repo; .tmp/format.log
@@ -56,7 +57,7 @@ function Show-Help {
     Write-Host '  help                prints this usage'
     Write-Host '  build               dotnet build GodotXaml.slnx -c Release -warnaserror (.tmp/build.log)'
     Write-Host '  godot-build         dotnet build godot/GodotXaml.Addon.csproj -c Debug -warnaserror (.tmp/godot-build.log)'
-    Write-Host '  godot-export-build  dotnet build godot/GodotXaml.Addon.csproj -c ExportRelease -warnaserror (.tmp/godot-export-build.log)'
+    Write-Host '  godot-export-build  dotnet build godot/GodotXaml.Addon.csproj -c ExportDebug, then -c ExportRelease -warnaserror (.tmp/godot-export-*-build.log)'
     Write-Host '  test                build, then dotnet test the solution -c Release --no-build (.tmp/test.log)'
     Write-Host '  format-check        dotnet csharpier check . (.tmp/format.log)'
     Write-Host '  format              dotnet csharpier format . (.tmp/format.log)'
@@ -87,9 +88,14 @@ function Invoke-GodotBuildVerb {
         'dotnet', 'build', 'godot/GodotXaml.Addon.csproj', '-c', 'Debug', '-warnaserror')
 }
 
-# The Godot addon project in ExportRelease, the configuration a game export builds, where code under #if TOOLS is absent,
-# so a non-TOOLS file reaching an editor-only symbol fails here instead of in a user's export.
+# The Godot addon project in ExportDebug and in ExportRelease, the configurations a game export builds, where code under
+# #if TOOLS is absent, so a non-TOOLS file reaching an editor-only symbol fails here instead of in a user's export.
 function Invoke-GodotExportBuildVerb {
+    $status = Invoke-Gated -Log '.tmp/godot-export-debug-build.log' -Slot 'heavy' -TimeoutSeconds 600 -Command @(
+        'dotnet', 'build', 'godot/GodotXaml.Addon.csproj', '-c', 'ExportDebug', '-warnaserror')
+    if ($status -ne 0) {
+        return $status
+    }
     return Invoke-Gated -Log '.tmp/godot-export-build.log' -Slot 'heavy' -TimeoutSeconds 600 -Command @(
         'dotnet', 'build', 'godot/GodotXaml.Addon.csproj', '-c', 'ExportRelease', '-warnaserror')
 }

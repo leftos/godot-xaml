@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using Godot;
 using GodotXaml.Core.Conversion;
+using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Xscn;
 using FileAccess = Godot.FileAccess;
@@ -71,7 +72,7 @@ internal static class XscnSaveRoute
         {
             text = XscnWriter.Write(converted.Document, XscnMetadata.Value);
         }
-        catch (ArgumentException exception)
+        catch (Exception exception) when (WriterRefusal.Is(exception))
         {
             GD.PushError($"{path}: godot-xaml cannot write the converted document: {exception.Message}");
             return Error.InvalidData;

@@ -23,7 +23,7 @@ linear: godot-xaml
 
 - `build`: `dotnet build GodotXaml.slnx -c Release -warnaserror`.
 - `godot-build`: `dotnet build godot/GodotXaml.Addon.csproj -c Debug -warnaserror`, the Godot addon project the solution leaves out (its build needs the Godot SDK, whose configurations are Debug, ExportDebug and ExportRelease).
-- `godot-export-build`: `dotnet build godot/GodotXaml.Addon.csproj -c ExportRelease -warnaserror`, which catches a file outside `#if TOOLS` reaching an editor-only symbol that the Debug build hides; CI runs it as `.github/workflows/build-addon.yml`.
+- `godot-export-build`: `dotnet build godot/GodotXaml.Addon.csproj -warnaserror` in `-c ExportDebug`, then in `-c ExportRelease`, stopping at the first failure; it catches a file outside `#if TOOLS` reaching an editor-only symbol that the Debug build hides; CI runs both as a matrix in `.github/workflows/build-addon.yml`.
 - `test`: the build, then `dotnet test --solution GodotXaml.slnx -c Release --no-build`.
 - `format-check`: `dotnet csharpier check .`.
 - `format`: `dotnet csharpier format .`.
@@ -31,6 +31,6 @@ linear: godot-xaml
 Where each runs (`.pre-commit-config.yaml`):
 
 - pre-commit: `csharpier check` on the staged C# files, the 150-character line check (`tools/linelength.py`), and gdformat and gdlint on the metadata dump tool's GDScript.
-- pre-push: `run.ps1 build`, then `run.ps1 godot-export-build`, then `run.ps1 godot-build` (Debug last, so the restore left in `godot/obj/` is Debug's).
+- pre-push: `run.ps1 build`, then `run.ps1 godot-export-build`, then `run.ps1 godot-build` (Debug last, so the restore left in `godot/obj/` is Debug's); the two addon builds run only for changes under `godot/`, `src/GodotXaml.Core/`, `metadata/` and the root build config files (`Directory.Build.props`, `Directory.Packages.props`, `.editorconfig`, `CodeMetricsConfig.txt`, `global.json`).
 - By hand: `run.ps1 test`, which no hook runs, and `run.ps1 format-check` for the whole repo.
 - By hand, after a change to the addon's editor behaviour: the editor checks, `godot/editor-checks.ps1` (command in `docs/ARCHITECTURE.md`, Test locations), routed to a builder's hidden desktop.

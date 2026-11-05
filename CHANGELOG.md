@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Saving a `.xscn` the writer cannot write fails with `Error.InvalidData` and an error naming the file, whatever the writer refused.
 - Converting back to `.tres`, a font's baked textures, glyphs and kerning pairs keep Godot's order, each glyph's keys in the order Godot writes them.
 
 ## 0.4.0 - 2026-11-04

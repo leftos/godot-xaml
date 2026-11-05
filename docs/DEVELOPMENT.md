@@ -33,7 +33,7 @@ Call it bare, `./run.ps1 <verb>` or `pwsh -NoProfile -File run.ps1 <verb>`, neve
 | `help` | prints the usage; the verb a run without one uses | none | none |
 | `build` | `dotnet build GodotXaml.slnx -c Release -warnaserror` | `.tmp/build.log` | heavy, 600 s |
 | `godot-build` | `dotnet build godot/GodotXaml.Addon.csproj -c Debug -warnaserror`, the addon project the solution leaves out because its build needs the Godot SDK | `.tmp/godot-build.log` | heavy, 600 s |
-| `godot-export-build` | `dotnet build godot/GodotXaml.Addon.csproj -c ExportRelease -warnaserror`, which compiles without the `#if TOOLS` code that only the Debug build holds | `.tmp/godot-export-build.log` | heavy, 600 s |
+| `godot-export-build` | `dotnet build godot/GodotXaml.Addon.csproj -warnaserror` in `-c ExportDebug`, then in `-c ExportRelease`, stopping at the first failure; both compile without the `#if TOOLS` code that only the Debug build holds | `.tmp/godot-export-debug-build.log`, `.tmp/godot-export-build.log` | heavy, 600 s |
 | `test` | `build`, then `dotnet test --solution GodotXaml.slnx -c Release --no-build`, so the runner never builds a configuration of its own | `.tmp/build.log`, then `.tmp/test.log` | heavy, 600 s each |
 | `format-check` | `dotnet tool restore`, then `dotnet csharpier check .`, changing nothing | `.tmp/format.log` | light, 300 s |
 | `format` | `dotnet tool restore`, then `dotnet csharpier format .` | `.tmp/format.log` | light, 300 s |
@@ -50,7 +50,7 @@ To run one test class after a build, go through the gate: `tools/gate.ps1 run` w
   - `dotnet csharpier check` on the staged C# files, and the 150-character line check (`tools/linelength.py`), which catches the comments CSharpier does not wrap.
   - `gdformat --check` and `gdlint` on the GDScript under `tools/metadata-dump/`, `tools/value-fixtures/`, `tools/scene-fixtures/`, `tools/export-probe/` and `tools/editor-checks/`.
   - The Agent Mail lease guard (`tools/agent-mail-guard.ps1`).
-- **pre-push**: `run.ps1 build`, then `run.ps1 godot-export-build`, then `run.ps1 godot-build` (Debug last, because Godot.NET.Sdk references GodotSharpEditor only in Debug, so the restore left in `godot/obj/` is Debug's), when the push touches a `.cs`, `.csproj`, `.props`, `.slnx` or `.editorconfig` file or `global.json`.
+- **pre-push**: `run.ps1 build`, then `run.ps1 godot-export-build`, then `run.ps1 godot-build` (Debug last, because Godot.NET.Sdk references GodotSharpEditor only in Debug, so the restore left in `godot/obj/` is Debug's); the two addon builds run only when the push touches `godot/`, `src/GodotXaml.Core/`, `metadata/`, `Directory.Build.props`, `Directory.Packages.props`, the root `.editorconfig`, `CodeMetricsConfig.txt` or `global.json` (the paths `build-addon.yml` triggers on), and `run.ps1 build` when it touches a `.cs`, `.csproj`, `.props`, `.slnx` or `.editorconfig` file or `global.json`.
 - **By hand**: no hook runs a test suite, so `run.ps1 test` runs by hand, and so does `run.ps1 format-check` for the whole repo.
 
 ## Godot-side harnesses

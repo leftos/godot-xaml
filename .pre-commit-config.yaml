@@ -1,8 +1,8 @@
 # prek hooks (prek install; prek run --all-files). Only checks scoped to the staged files run at pre-commit: CSharpier
 # on the staged C# files, the 150-character line check that catches the comments CSharpier does not wrap, the GDScript
 # format and lint checks of the tools/ GDScript, and the Agent Mail guard. The warnings-as-errors builds of the
-# solution and of the godot/ addon project, in Debug and in ExportRelease, join at pre-push. No hook runs a test
-# suite: `run.ps1 test` runs by hand, and `run.ps1 format-check` checks the whole repo by hand.
+# solution and of the godot/ addon project, in Debug, in ExportDebug and in ExportRelease, join at pre-push. No hook
+# runs a test suite: `run.ps1 test` runs by hand, and `run.ps1 format-check` checks the whole repo by hand.
 default_install_hook_types: [pre-commit, pre-push]
 default_stages: [pre-commit]
 repos:
@@ -52,18 +52,18 @@ repos:
         stages: [pre-push]
       # Debug last: Godot.NET.Sdk adds GodotSharpEditor only in Debug, so the restore left in godot/obj/ is Debug's.
       - id: godot-export-build
-        name: dotnet build godot/ addon in ExportRelease -warnaserror
+        name: dotnet build godot/ addon in ExportDebug and ExportRelease -warnaserror
         entry: pwsh -NoProfile -File run.ps1 godot-export-build
         language: system
         pass_filenames: false
-        files: \.(cs|csproj|props|slnx|editorconfig)$|^global\.json$
+        files: '^(godot/|src/GodotXaml\.Core/|metadata/|Directory\.(Build|Packages)\.props$|\.editorconfig$|CodeMetricsConfig\.txt$|global\.json$)'
         stages: [pre-push]
       - id: godot-build
         name: dotnet build godot/ addon -warnaserror
         entry: pwsh -NoProfile -File run.ps1 godot-build
         language: system
         pass_filenames: false
-        files: \.(cs|csproj|props|slnx|editorconfig)$|^global\.json$
+        files: '^(godot/|src/GodotXaml\.Core/|metadata/|Directory\.(Build|Packages)\.props$|\.editorconfig$|CodeMetricsConfig\.txt$|global\.json$)'
         stages: [pre-push]
       - id: gdformat
         name: gdformat check
