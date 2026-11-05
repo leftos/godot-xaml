@@ -148,13 +148,7 @@ internal static partial class UnorderedNames
 
     // Size order only: the run's blocks of one FontFile size each, ordered by size, each with its glyphs and kerning pairs
     // reordered. A size written in two separate blocks leaves the run as it is.
-    private static List<TscnProperty> ReorderFontSizes(List<TscnProperty> run)
-    {
-        List<List<TscnProperty>> sizes = Blocks(run, FontSizeOf);
-        return IsRepeated(sizes, FontSizeOf)
-            ? run
-            : [.. sizes.Select(ReorderFontSizeContents).OrderBy(size => FontSizeOf(size[0]), StringComparer.Ordinal).SelectMany(size => size)];
-    }
+    private static List<TscnProperty> ReorderFontSizes(List<TscnProperty> run) => ReorderBlocks(run, FontSizeOf, ReorderFontSizeContents);
 
     // One size's names with its run of glyphs reordered by glyph, then its run of kerning pairs sorted by name (a pair is one
     // name, so whole pairs move); every other name keeps its place.
@@ -184,11 +178,7 @@ internal static partial class UnorderedNames
 
     // Glyph order only: a run of glyph names' blocks (each glyph's keys) by glyph; a glyph in two separate blocks leaves the
     // run as it is.
-    private static List<TscnProperty> ReorderGlyphs(List<TscnProperty> run)
-    {
-        List<List<TscnProperty>> glyphs = Blocks(run, GlyphOf);
-        return IsRepeated(glyphs, GlyphOf) ? run : [.. glyphs.OrderBy(glyph => GlyphOf(glyph[0]), StringComparer.Ordinal).SelectMany(glyph => glyph)];
-    }
+    private static List<TscnProperty> ReorderGlyphs(List<TscnProperty> run) => ReorderBlocks(run, GlyphOf, block => block);
 
     // A FontFile cache name's size: cache/<entry>/<size>/<outline>/.
     private static string FontSizeOf(TscnProperty property) => FontSizeKey().Match(property.Name).Value;
@@ -198,13 +188,7 @@ internal static partial class UnorderedNames
 
     // Tile order only: the run's blocks of one tile each, ordered by tile, each with its alternatives reordered. A tile written
     // in two separate blocks (its names interleaved with another tile's) leaves the run as it is, so the interleaving shows.
-    private static List<TscnProperty> ReorderTiles(List<TscnProperty> run)
-    {
-        List<List<TscnProperty>> tiles = Blocks(run, TileOf);
-        return IsRepeated(tiles, TileOf)
-            ? run
-            : [.. tiles.Select(ReorderAlternatives).OrderBy(tile => TileOf(tile[0]), StringComparer.Ordinal).SelectMany(tile => tile)];
-    }
+    private static List<TscnProperty> ReorderTiles(List<TscnProperty> run) => ReorderBlocks(run, TileOf, ReorderAlternatives);
 
     // Alternative order only: a tile's alternative blocks (each its marker and its keys) by id, in the places the alternatives
     // held, so the tile's own keys keep theirs; an alternative or the own keys in two separate blocks leave the tile as it is.
@@ -220,6 +204,20 @@ internal static partial class UnorderedNames
             blocks.Where(block => AlternativeOf(block[0]).Length > 0).OrderBy(block => AlternativeOf(block[0]), StringComparer.Ordinal)
         );
         return [.. blocks.SelectMany(block => AlternativeOf(block[0]).Length > 0 ? alternatives.Dequeue() : block)];
+    }
+
+    // A run's blocks of one key each, each block reordered by inner, then ordered by key; a key written in two separate blocks
+    // leaves the run as it is, so the interleaving shows.
+    private static List<TscnProperty> ReorderBlocks(
+        List<TscnProperty> run,
+        Func<TscnProperty, string> keyOf,
+        Func<List<TscnProperty>, List<TscnProperty>> inner
+    )
+    {
+        List<List<TscnProperty>> blocks = Blocks(run, keyOf);
+        return IsRepeated(blocks, keyOf)
+            ? run
+            : [.. blocks.Select(inner).OrderBy(block => keyOf(block[0]), StringComparer.Ordinal).SelectMany(block => block)];
     }
 
     // The maximal runs of consecutive properties with one key.
