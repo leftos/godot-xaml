@@ -583,7 +583,12 @@ public sealed partial class CliProgramTests
     {
         using var output = new StringWriter();
         using var error = new StringWriter();
-        int exitCode = CliProgram.Run(args, output, error, path => Directory.EnumerateFiles(path), workingDirectory);
+        int exitCode = CliProgram.Run(
+            args,
+            output,
+            error,
+            new CliSeams(path => Directory.EnumerateFiles(path), workingDirectory, MetadataVersions.Bundled)
+        );
         return new RunResult(exitCode, output.ToString(), error.ToString());
     }
 }

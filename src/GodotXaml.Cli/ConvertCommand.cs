@@ -51,8 +51,9 @@ internal static class ConvertCommand
     /// <summary>The command, its paths argument and its options.</summary>
     /// <param name="enumerate">The files directly in a folder.</param>
     /// <param name="workingDirectory">The folder the search for <c>godot-xaml.json</c> starts from.</param>
+    /// <param name="versions">The Godot versions this run carries, and how it loads one's metadata.</param>
     /// <returns>The command.</returns>
-    internal static Command Create(Func<string, IEnumerable<string>> enumerate, string workingDirectory)
+    internal static Command Create(Func<string, IEnumerable<string>> enumerate, string workingDirectory, MetadataVersions versions)
     {
         var options = new ConvertOptions(
             CheckCommand.PathsArgument("A .tscn, .tres, .xscn or .xres file, or a folder searched recursively for all four."),
@@ -75,11 +76,17 @@ internal static class ConvertCommand
         command.Options.Add(options.Project);
         command.Options.Add(options.Back);
         command.Options.Add(options.NoBackup);
-        command.SetAction(parseResult => Run(parseResult, options, enumerate, workingDirectory));
+        command.SetAction(parseResult => Run(parseResult, options, enumerate, workingDirectory, versions));
         return command;
     }
 
-    private static int Run(ParseResult parseResult, ConvertOptions options, Func<string, IEnumerable<string>> enumerate, string workingDirectory)
+    private static int Run(
+        ParseResult parseResult,
+        ConvertOptions options,
+        Func<string, IEnumerable<string>> enumerate,
+        string workingDirectory,
+        MetadataVersions versions
+    )
     {
         InvocationConfiguration invocation = parseResult.InvocationConfiguration;
         string? root = parseResult.GetValue(options.Project);
@@ -96,7 +103,7 @@ internal static class ConvertCommand
         List<InputFile<ConvertSource>>? files = project is null
             ? InputFiles.Collect(paths, Accepted, invocation.Error, enumerate)
             : ProjectSources(project.Root, project.Back, invocation.Output, invocation.Error);
-        return files is null ? 2 : LoadAndConvert(parseResult, options, files, project, workingDirectory);
+        return files is null ? 2 : LoadAndConvert(parseResult, options, files, project, workingDirectory, versions);
     }
 
     private static string FullRoot(string root) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
@@ -106,12 +113,13 @@ internal static class ConvertCommand
         ConvertOptions options,
         List<InputFile<ConvertSource>> files,
         ProjectSettings? project,
-        string workingDirectory
+        string workingDirectory,
+        MetadataVersions versions
     )
     {
         InvocationConfiguration invocation = parseResult.InvocationConfiguration;
-        GodotMetadata? loaded = MetadataFile.TryLoad(parseResult.GetValue(options.Metadata), invocation.Error);
-        if (loaded is null)
+        var choice = MetadataChoice.For(parseResult.GetValue(options.Metadata), versions, invocation.Error, invocation.Output);
+        if (choice is null)
         {
             return 2;
         }
@@ -120,7 +128,7 @@ internal static class ConvertCommand
         {
             return 2;
         }
-        return Convert(files, loaded, parseResult.GetValue(options.Force) || configOverwrite.Value, project, invocation);
+        return Convert(files, choice, parseResult.GetValue(options.Force) || configOverwrite.Value, project, invocation);
     }
 
     private static string? RootlessUsageError(ParseResult parseResult, ConvertOptions options, bool hasPaths)
@@ -222,7 +230,7 @@ internal static class ConvertCommand
     // which sources it converts, the references their documents hold and the project roots those references live in.
     private static int Convert(
         List<InputFile<ConvertSource>> files,
-        GodotMetadata metadata,
+        MetadataChoice choice,
         bool overwrite,
         ProjectSettings? project,
         InvocationConfiguration invocation
@@ -240,18 +248,18 @@ internal static class ConvertCommand
             Project = project is not null,
             SceneFiles = new RunSceneFiles(sources.Select(source => (source.File.Path, source.Text))),
         };
-        List<Planned> planned = Plan(sources, inputs, metadata, tally, invocation.Output);
+        List<Planned> planned = Plan(sources, inputs, choice, tally, invocation.Output);
         tally.SceneFiles.Converting(planned.Select(item => (item.Source.File.Path, item.Output)));
         Dictionary<string, Dictionary<string, string>> renames = Renames(planned, tally, invocation.Output);
         Rewrite(planned, renames, tally, invocation.Output);
         if (project is null)
         {
-            FinishPlain(planned, metadata, tally, invocation);
+            FinishPlain(planned, tally, invocation);
         }
         else
         {
             Dictionary<string, string> map = renames.GetValueOrDefault(project.Root) ?? new Dictionary<string, string>(StringComparer.Ordinal);
-            FinishProject(new ProjectRun(project, tally, invocation), sources.Count, planned, map, metadata);
+            FinishProject(new ProjectRun(project, tally, invocation), sources.Count, planned, map);
         }
         invocation.Output.WriteLine($"{tally.Converted} converted, {tally.Refused} refused, {tally.Errors} error(s), {tally.Warnings} warning(s)");
         if (tally.WriteErrors > 0)
@@ -261,14 +269,14 @@ internal static class ConvertCommand
         return tally.Errors > 0 || tally.Refused > 0 ? 1 : 0;
     }
 
-    private static void FinishPlain(List<Planned> planned, GodotMetadata metadata, Tally tally, InvocationConfiguration invocation)
+    private static void FinishPlain(List<Planned> planned, Tally tally, InvocationConfiguration invocation)
     {
         foreach (Planned item in planned)
         {
-            Place(item, metadata, tally, invocation);
+            Place(item, tally, invocation);
         }
         ReportSharedUids(planned, tally, invocation.Output);
-        ReportFailedWrites(planned, metadata, tally, invocation.Output);
+        ReportFailedWrites(planned, tally, invocation.Output);
         Scan(planned, tally, invocation, []);
     }
 
@@ -276,13 +284,7 @@ internal static class ConvertCommand
     // the staging folder goes and the project is as it was. Otherwise the originals are backed up, the outputs moved
     // in, the scripts edited and the originals removed, in that order. The staging folder never outlives the run. A
     // project with no source makes no backup and says so.
-    private static void FinishProject(
-        ProjectRun run,
-        int sourceCount,
-        List<Planned> planned,
-        IReadOnlyDictionary<string, string> renames,
-        GodotMetadata metadata
-    )
+    private static void FinishProject(ProjectRun run, int sourceCount, List<Planned> planned, IReadOnlyDictionary<string, string> renames)
     {
         if (sourceCount == 0)
         {
@@ -291,7 +293,7 @@ internal static class ConvertCommand
         }
         try
         {
-            bool converted = Stage(run, planned, metadata) && planned.Count == sourceCount;
+            bool converted = Stage(run, planned) && planned.Count == sourceCount;
             List<ScriptEdit>? edits = FindEdits(run, renames);
             if (!converted || edits is null)
             {
@@ -312,7 +314,7 @@ internal static class ConvertCommand
     }
 
     // Writes every output to the staging folder, each at its path under the root; true when every one was written.
-    private static bool Stage(ProjectRun run, List<Planned> planned, GodotMetadata metadata)
+    private static bool Stage(ProjectRun run, List<Planned> planned)
     {
         if (planned.Count == 0)
         {
@@ -329,7 +331,7 @@ internal static class ConvertCommand
         foreach (Planned item in planned)
         {
             item.Staged = Path.Combine(staging, Path.GetRelativePath(run.Root, item.Output));
-            Place(item, metadata, run.Tally, run.Invocation);
+            Place(item, run.Tally, run.Invocation);
         }
         return planned.All(item => item.Written);
     }
@@ -597,7 +599,7 @@ internal static class ConvertCommand
 
     // A pair clash or an existing output refuses a source before any conversion runs; a document the core refuses
     // drops it with its own error. Only the sources left are converted, and only they enter the rename map.
-    private static List<Planned> Plan(List<Source> sources, HashSet<string> inputs, GodotMetadata metadata, Tally tally, TextWriter output)
+    private static List<Planned> Plan(List<Source> sources, HashSet<string> inputs, MetadataChoice choice, Tally tally, TextWriter output)
     {
         var outputCounts = new Dictionary<string, int>(InputFiles.PathComparer);
         foreach (Source source in sources)
@@ -623,7 +625,7 @@ internal static class ConvertCommand
         List<Planned> planned = [];
         foreach ((Source source, string outputPath) in candidates)
         {
-            Planned? item = Prepare(source, outputPath, metadata, tally, output);
+            Planned? item = Prepare(source, outputPath, choice, tally, output);
             if (item is not null)
             {
                 planned.Add(item);
@@ -633,9 +635,15 @@ internal static class ConvertCommand
     }
 
     // Converts one source to its document and the text it writes, which the run keeps; null when the core refused it or
-    // reported an error.
-    private static Planned? Prepare(Source source, string outputPath, GodotMetadata metadata, Tally tally, TextWriter output)
+    // reported an error. A .tscn or .tres has no marker, so it takes the unmarked choice; a .xscn or .xres its own.
+    private static Planned? Prepare(Source source, string outputPath, MetadataChoice choice, Tally tally, TextWriter output)
     {
+        (GodotMetadata Metadata, bool Warned) chosen = source.File.Kind.FromTscn ? choice.Unmarked : choice.Of(source.File.Path, source.Text);
+        if (chosen.Warned)
+        {
+            tally.Warnings++;
+        }
+        GodotMetadata metadata = chosen.Metadata;
         var options = new ConversionOptions { Seed = SeedOf(SeedKeyOf(source.File.Path, outputPath)), Uid = source.Uid };
         (XscnDocument? Document, string? Uid) prepared;
         try
@@ -652,11 +660,11 @@ internal static class ConvertCommand
         {
             return null;
         }
-        var item = new Planned(source, outputPath, prepared.Document, prepared.Uid);
+        var item = new Planned(source, outputPath, prepared.Document, prepared.Uid, metadata);
         // The text is produced once with the unrewritten document, so a document the writer refuses or a conversion
         // that reports an error drops the source before the rename map is built from it. It is kept: a document the
         // rewrite leaves as it was is not produced again.
-        item.Checked = Text(item, metadata, tally, output, check: true);
+        item.Checked = Text(item, tally, output, check: true);
         return item.Checked is null ? null : item;
     }
 
@@ -746,9 +754,9 @@ internal static class ConvertCommand
     // before the output, so an output never stands beside a sidecar of an earlier conversion. A write that fails
     // counts as an error of the run, which goes on with the rest. A staged output is written to the staging folder, and
     // counts as converted only once it is moved into place.
-    private static void Place(Planned item, GodotMetadata metadata, Tally tally, InvocationConfiguration invocation)
+    private static void Place(Planned item, Tally tally, InvocationConfiguration invocation)
     {
-        Converted? converted = Produce(item, metadata, tally, invocation);
+        Converted? converted = Produce(item, tally, invocation);
         if (converted is null)
         {
             return;
@@ -783,14 +791,14 @@ internal static class ConvertCommand
     }
 
     // The text to write for a source: the plan's kept text, whose issues the run reports now, or a fresh conversion.
-    private static Converted? Produce(Planned item, GodotMetadata metadata, Tally tally, InvocationConfiguration invocation)
+    private static Converted? Produce(Planned item, Tally tally, InvocationConfiguration invocation)
     {
         if (item.Checked is { } kept)
         {
             Report(item.Source.File.Path, kept.Issues, tally, invocation.Output, errorsOnly: false);
             return kept;
         }
-        return Text(item, metadata, tally, invocation.Output, check: false);
+        return Text(item, tally, invocation.Output, check: false);
     }
 
     private static bool TryWriteOutput(Planned item, string target, string text, TextWriter error) =>
@@ -805,13 +813,13 @@ internal static class ConvertCommand
 
     // The text to write; null when the core refused the document or a conversion issue is an error, so nothing is
     // written. A check reports only errors, since the run reports every issue when it writes the file.
-    private static Converted? Text(Planned item, GodotMetadata metadata, Tally tally, TextWriter output, bool check)
+    private static Converted? Text(Planned item, Tally tally, TextWriter output, bool check)
     {
         try
         {
             if (item.Source.File.Kind.FromTscn)
             {
-                return new Converted(XscnWriter.Write(item.Document, metadata), item.Uid, []);
+                return new Converted(XscnWriter.Write(item.Document, item.Metadata), item.Uid, []);
             }
             var options = new ConversionOptions
             {
@@ -820,7 +828,7 @@ internal static class ConvertCommand
                 SceneFiles = tally.SceneFiles,
                 SourceKey = Path.GetFullPath(item.Source.File.Path),
             };
-            ConversionResult<TscnDocument> result = XscnToTscn.Convert(item.Document, metadata, options);
+            ConversionResult<TscnDocument> result = XscnToTscn.Convert(item.Document, item.Metadata, options);
             return Report(item.Source.File.Path, result.Issues, tally, output, errorsOnly: check)
                 ? new Converted(TscnWriter.Write(result.Document), SidecarUid: null, result.Issues)
                 : null;
@@ -851,7 +859,7 @@ internal static class ConvertCommand
 
     // A written file that refers to the output of a file this run could not write: the reference would break, and the
     // old file is still there.
-    private static void ReportFailedWrites(List<Planned> planned, GodotMetadata metadata, Tally tally, TextWriter output)
+    private static void ReportFailedWrites(List<Planned> planned, Tally tally, TextWriter output)
     {
         foreach (Planned written in planned.Where(item => item.Written))
         {
@@ -863,7 +871,7 @@ internal static class ConvertCommand
             foreach (Planned failed in planned.Where(item => item.WriteFailed && InputFiles.PathComparer.Equals(item.Root, root)))
             {
                 string failedPath = GodotProject.ResPath(root, failed.Output);
-                if (!RefersTo(written.Document, failedPath, metadata))
+                if (!RefersTo(written.Document, failedPath, written.Metadata))
                 {
                     continue;
                 }
@@ -1232,11 +1240,14 @@ internal static class ConvertCommand
 
     // A source the run will convert: where its output goes, the document to write, the uid the output carries, the
     // project root its references are rewritten within, whether it was written and the text written for it.
-    private sealed class Planned(Source source, string output, XscnDocument document, string? uid)
+    private sealed class Planned(Source source, string output, XscnDocument document, string? uid, GodotMetadata metadata)
     {
         public Source Source { get; } = source;
 
         public string Output { get; } = output;
+
+        // The metadata the whole item is planned, converted and written with, chosen from its source's marker.
+        public GodotMetadata Metadata { get; } = metadata;
 
         public XscnDocument Document { get; set; } = document;
 

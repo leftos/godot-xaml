@@ -26,7 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\metadata\godot-4.7.json" Link="metadata\godot-4.7.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 

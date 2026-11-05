@@ -489,7 +489,7 @@ public sealed partial class CliProgramTests : IDisposable
     {
         using var output = new StringWriter();
         using var error = new StringWriter();
-        int exitCode = CliProgram.Run(args, output, error, enumerate, Environment.CurrentDirectory);
+        int exitCode = CliProgram.Run(args, output, error, new CliSeams(enumerate, Environment.CurrentDirectory, MetadataVersions.Bundled));
         return new RunResult(exitCode, output.ToString(), error.ToString());
     }
 

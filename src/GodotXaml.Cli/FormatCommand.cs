@@ -13,8 +13,9 @@ internal static class FormatCommand
 
     /// <summary>The command, its paths argument and its options.</summary>
     /// <param name="enumerate">The files directly in a folder.</param>
+    /// <param name="versions">The Godot versions this run carries, and how it loads one's metadata.</param>
     /// <returns>The command.</returns>
-    internal static Command Create(Func<string, IEnumerable<string>> enumerate)
+    internal static Command Create(Func<string, IEnumerable<string>> enumerate, MetadataVersions versions)
     {
         Argument<string[]> paths = CheckCommand.PathsArgument("A .xscn or .xres file, or a folder searched recursively for both.");
         Option<string> metadata = CheckCommand.MetadataOption();
@@ -31,17 +32,17 @@ internal static class FormatCommand
             {
                 return 2;
             }
-            GodotMetadata? loaded = MetadataFile.TryLoad(parseResult.GetValue(metadata), invocation.Error);
-            if (loaded is null)
+            var choice = MetadataChoice.For(parseResult.GetValue(metadata), versions, invocation.Error, invocation.Output);
+            if (choice is null)
             {
                 return 2;
             }
-            return Format(files, loaded, parseResult.GetValue(check), invocation);
+            return Format(files, choice, parseResult.GetValue(check), invocation);
         });
         return command;
     }
 
-    private static int Format(List<InputFile<XscnDocumentKind>> files, GodotMetadata metadata, bool checkOnly, InvocationConfiguration invocation)
+    private static int Format(List<InputFile<XscnDocumentKind>> files, MetadataChoice choice, bool checkOnly, InvocationConfiguration invocation)
     {
         List<(InputFile<XscnDocumentKind> File, string Text)>? read = InputFiles.ReadAll(files, invocation.Error);
         if (read is null)
@@ -51,7 +52,7 @@ internal static class FormatCommand
         List<FileOutcome> outcomes = [];
         foreach ((InputFile<XscnDocumentKind> file, string text) in read)
         {
-            FileOutcome outcome = FormatOne(file, text, metadata, checkOnly, invocation);
+            FileOutcome outcome = FormatOne(file, text, choice, checkOnly, invocation);
             if (outcome == FileOutcome.WriteFailed)
             {
                 return 2;
@@ -75,12 +76,12 @@ internal static class FormatCommand
     private static FileOutcome FormatOne(
         InputFile<XscnDocumentKind> file,
         string text,
-        GodotMetadata metadata,
+        MetadataChoice choice,
         bool checkOnly,
         InvocationConfiguration invocation
     )
     {
-        string? canonical = CanonicalOf(file, text, metadata, invocation.Output);
+        string? canonical = CanonicalOf(file, text, choice, invocation.Output);
         if (canonical is null)
         {
             return FileOutcome.Error;
@@ -102,16 +103,18 @@ internal static class FormatCommand
         return FileOutcome.Changed;
     }
 
-    // The file's canonical text, or null when it has an error or the writer refuses it; every problem is printed.
-    private static string? CanonicalOf(InputFile<XscnDocumentKind> file, string text, GodotMetadata metadata, TextWriter output)
+    // The file's canonical text, or null when it has an error, the choice refuses to write it, or the writer refuses it;
+    // every problem is printed.
+    private static string? CanonicalOf(InputFile<XscnDocumentKind> file, string text, MetadataChoice choice, TextWriter output)
     {
+        GodotMetadata metadata = choice.Of(file.Path, text).Metadata;
         XscnParseResult result = XscnParser.Parse(text, file.Kind, metadata);
         LineMap map = new(text);
         foreach (XscnDiagnostic diagnostic in result.Diagnostics)
         {
             output.WriteLine(CheckCommand.Format(file.Path, map, diagnostic));
         }
-        if (result.HasErrors)
+        if (result.HasErrors || !choice.CanWrite(file.Path, text))
         {
             return null;
         }

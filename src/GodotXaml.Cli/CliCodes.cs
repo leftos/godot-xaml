@@ -35,4 +35,10 @@ internal static class CliCodes
 
     /// <summary>A <c>.tres</c> holding a scene or a <c>.tscn</c> holding a resource; the file is not converted.</summary>
     internal const string KindMismatch = "GXT0003";
+
+    /// <summary>A file whose <c>x:Godot</c> marker names a Godot version this tool does not carry; it is read with the newest it carries.</summary>
+    internal const string MarkerNotCarried = "GXT0004";
+
+    /// <summary>A file whose <c>x:Godot</c> marker names a Godot version this tool does not carry; it is not written.</summary>
+    internal const string MarkerNotWritten = "GXT0005";
 }

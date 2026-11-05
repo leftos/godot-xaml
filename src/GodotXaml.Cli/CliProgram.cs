@@ -4,6 +4,16 @@ using System.CommandLine.Parsing;
 
 namespace GodotXaml.Cli;
 
+/// <summary>The parts of a run a caller can replace: the folder enumeration, the working directory and the metadata versions.</summary>
+/// <param name="Enumerate">The files directly in a folder.</param>
+/// <param name="WorkingDirectory">The folder the search for <c>godot-xaml.json</c> starts from.</param>
+/// <param name="Versions">The Godot versions the run carries, and how it loads one's metadata.</param>
+internal sealed record CliSeams(Func<string, IEnumerable<string>> Enumerate, string WorkingDirectory, MetadataVersions Versions)
+{
+    /// <summary>The real file system, the process's current working directory, and this build's bundled metadata.</summary>
+    internal static CliSeams Default => new(folder => Directory.EnumerateFiles(folder), Environment.CurrentDirectory, MetadataVersions.Bundled);
+}
+
 /// <summary>The tool's command line: a command per way of using it, runnable in process so tests own the writers.</summary>
 public static class CliProgram
 {
@@ -12,27 +22,24 @@ public static class CliProgram
     /// <param name="output">Where help and results go.</param>
     /// <param name="error">Where usage problems and failures go.</param>
     /// <returns>0 when no file has an error, 1 when one does or is refused, 2 for a usage or I/O error.</returns>
-    public static int Run(string[] args, TextWriter output, TextWriter error) =>
-        Run(args, output, error, folder => Directory.EnumerateFiles(folder), Environment.CurrentDirectory);
+    public static int Run(string[] args, TextWriter output, TextWriter error) => Run(args, output, error, CliSeams.Default);
 
-    /// <summary>Runs the tool, with the folder enumeration and the working directory a caller can replace.</summary>
+    /// <summary>Runs the tool, with the seams a caller can replace.</summary>
     /// <param name="args">The command line, without the program's own name.</param>
     /// <param name="output">Where help and results go.</param>
     /// <param name="error">Where usage problems and failures go.</param>
-    /// <param name="enumerate">The files directly in a folder.</param>
-    /// <param name="workingDirectory">The folder the search for <c>godot-xaml.json</c> starts from.</param>
+    /// <param name="seams">The folder enumeration, the working directory and the metadata versions the run uses.</param>
     /// <returns>The exit code.</returns>
-    internal static int Run(string[] args, TextWriter output, TextWriter error, Func<string, IEnumerable<string>> enumerate, string workingDirectory)
+    internal static int Run(string[] args, TextWriter output, TextWriter error, CliSeams seams)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(error);
-        ArgumentNullException.ThrowIfNull(enumerate);
-        ArgumentNullException.ThrowIfNull(workingDirectory);
+        ArgumentNullException.ThrowIfNull(seams);
         try
         {
             // Response files are off: a token starting with @ is a path like any other.
-            ParseResult parseResult = Build(enumerate, workingDirectory).Parse(args, new ParserConfiguration { ResponseFileTokenReplacer = null });
+            ParseResult parseResult = Build(seams).Parse(args, new ParserConfiguration { ResponseFileTokenReplacer = null });
             if (parseResult.Errors.Count > 0)
             {
                 foreach (ParseError parseError in parseResult.Errors)
@@ -104,12 +111,12 @@ public static class CliProgram
         return after;
     }
 
-    private static RootCommand Build(Func<string, IEnumerable<string>> enumerate, string workingDirectory)
+    private static RootCommand Build(CliSeams seams)
     {
         var root = new RootCommand("Checks, converts and formats Godot scenes and resources written as XAML.");
-        root.Subcommands.Add(CheckCommand.Create(enumerate));
-        root.Subcommands.Add(ConvertCommand.Create(enumerate, workingDirectory));
-        root.Subcommands.Add(FormatCommand.Create(enumerate));
+        root.Subcommands.Add(CheckCommand.Create(seams.Enumerate, seams.Versions));
+        root.Subcommands.Add(ConvertCommand.Create(seams.Enumerate, seams.WorkingDirectory, seams.Versions));
+        root.Subcommands.Add(FormatCommand.Create(seams.Enumerate, seams.Versions));
         return root;
     }
 }

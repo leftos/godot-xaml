@@ -8,7 +8,9 @@ public sealed partial class CliProgramTests
 {
     private const string NonCanonicalScene = "<Control  Name=\"Root\"/>";
 
-    private static readonly Lazy<GodotMetadata> ShippedMetadata = new(() => GodotMetadata.Load(MetadataFile.Shipped));
+    private static readonly Lazy<GodotMetadata> ShippedMetadata = new(() =>
+        GodotMetadata.LoadBundled(MetadataChoice.Newest(GodotMetadata.BundledVersions))
+    );
 
     [Fact]
     public void FormatRewritesANonCanonicalFileInPlace()

@@ -13,15 +13,16 @@ internal static class CheckCommand
 
     /// <summary>The command, its paths argument and its metadata option.</summary>
     /// <param name="enumerate">The files of a folder and its subfolders.</param>
+    /// <param name="versions">The Godot versions this run carries, and how it loads one's metadata.</param>
     /// <returns>The command.</returns>
-    internal static Command Create(Func<string, IEnumerable<string>> enumerate)
+    internal static Command Create(Func<string, IEnumerable<string>> enumerate, MetadataVersions versions)
     {
         Argument<string[]> paths = PathsArgument("A .xscn or .xres file, or a folder searched recursively for both.");
         Option<string> metadata = MetadataOption();
         var command = new Command("check", "Parses .xscn and .xres files and reports every problem found.");
         command.Arguments.Add(paths);
         command.Options.Add(metadata);
-        command.SetAction(parseResult => Run(parseResult, paths, metadata, enumerate));
+        command.SetAction(parseResult => Run(parseResult, paths, metadata, enumerate, versions));
         return command;
     }
 
@@ -37,7 +38,7 @@ internal static class CheckCommand
     {
         Option<string> metadata = new("--metadata")
         {
-            Description = "The Godot metadata file; default, the metadata/godot-4.7.json shipped beside the tool.",
+            Description = "The Godot metadata file; default, the bundled metadata the file's x:Godot marker names, else the newest bundled version.",
             HelpName = "file",
         };
         // An empty or blank value would reach the loader as a path of its own; it is a missing argument, not a file.
@@ -71,7 +72,13 @@ internal static class CheckCommand
 
     // Exit 2 is everything that stops the check before a file is judged: a path that does not exist, a folder or file
     // that cannot be read, a file that is not UTF-8 text, or an unreadable metadata file.
-    private static int Run(ParseResult parseResult, Argument<string[]> paths, Option<string> metadata, Func<string, IEnumerable<string>> enumerate)
+    private static int Run(
+        ParseResult parseResult,
+        Argument<string[]> paths,
+        Option<string> metadata,
+        Func<string, IEnumerable<string>> enumerate,
+        MetadataVersions versions
+    )
     {
         InvocationConfiguration invocation = parseResult.InvocationConfiguration;
         List<InputFile<XscnDocumentKind>>? files = InputFiles.Collect(parseResult.GetValue(paths) ?? [], Accepted, invocation.Error, enumerate);
@@ -79,16 +86,16 @@ internal static class CheckCommand
         {
             return 2;
         }
-        GodotMetadata? loaded = MetadataFile.TryLoad(parseResult.GetValue(metadata), invocation.Error);
-        if (loaded is null)
+        var choice = MetadataChoice.For(parseResult.GetValue(metadata), versions, invocation.Error, invocation.Output);
+        if (choice is null)
         {
             return 2;
         }
-        return Check(files, loaded, invocation);
+        return Check(files, choice, invocation);
     }
 
     // Every file is read before any of them is judged, so a failure part way through leaves no half-reported run.
-    private static int Check(List<InputFile<XscnDocumentKind>> files, GodotMetadata metadata, InvocationConfiguration invocation)
+    private static int Check(List<InputFile<XscnDocumentKind>> files, MetadataChoice choice, InvocationConfiguration invocation)
     {
         List<(InputFile<XscnDocumentKind> File, string Text)>? read = InputFiles.ReadAll(files, invocation.Error);
         if (read is null)
@@ -99,7 +106,9 @@ internal static class CheckCommand
         int warnings = 0;
         foreach ((InputFile<XscnDocumentKind> file, string text) in read)
         {
-            XscnParseResult result = XscnParser.Parse(text, file.Kind, metadata);
+            (GodotMetadata Metadata, bool Warned) chosen = choice.Of(file.Path, text);
+            warnings += chosen.Warned ? 1 : 0;
+            XscnParseResult result = XscnParser.Parse(text, file.Kind, chosen.Metadata);
             LineMap map = new(text);
             foreach (XscnDiagnostic diagnostic in result.Diagnostics)
             {

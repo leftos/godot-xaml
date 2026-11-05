@@ -387,3 +387,11 @@ Error. The conversion or the writer refuses the document. The file is not writte
 ### GXT0003 Wrong kind of file
 
 Error. A `.tres` holding a scene, or a `.tscn` holding a resource. The file is not converted.
+
+### GXT0004 Version not carried
+
+Warning. `written with Godot 4.8's metadata, which this tool does not carry; reading it with 4.7's` A file's `x:Godot` marker names a Godot version whose metadata this tool does not carry, so the file is read with the newest version it carries. One line is printed per marker value in a run, at the first file that carries it.
+
+### GXT0005 Not written
+
+Error. `written with Godot 4.8's metadata, which this tool does not carry (it has 4.7's); not written, so the file keeps 4.8's typing and marker` `format` refuses to write a file whose marker names a version the tool does not carry, since writing would restamp it with the metadata of the version the tool has. The file is left as it is.
