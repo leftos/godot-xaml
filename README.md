@@ -33,7 +33,7 @@ You need a Godot 4.7 .NET project (tested on 4.7.2). The full walk-through is in
 
 1. Give the project a solution file (`.sln` or `.slnx`) that contains its `.csproj`, if it has none, or an export fails on the C# step: `dotnet new sln -n <AssemblyName>`, then `dotnet sln add <AssemblyName>.csproj`.
 2. Download `godot-xaml-addon-0.4.0.zip` from [the latest release](https://github.com/leftos/godot-xaml/releases/latest) and unzip it at the project root, which puts it at `addons/godot_xaml/`, dotfiles included.
-3. Add the package to your `.csproj`: `<PackageReference Include="GodotXaml.Core" Version="0.4.0" />`.
+3. Add the package to your `.csproj`: `<PackageReference Include="GodotXaml.Core" Version="0.4.0" />`. With central package management, the version goes in `Directory.Packages.props` as a `PackageVersion` and the reference carries none, as [Getting started](docs/guide/getting-started.md#install-the-addon) shows.
 
    The project's own `.csproj` must compile `addons/godot_xaml/`: a `<Compile Remove="addons\**" />` makes every file fail with `No loader found`. It also needs `<EnableDynamicLoading>true</EnableDynamicLoading>`. `godot/GodotXaml.Addon.csproj` is a working example.
 4. Run `dotnet build` before you first open the project. An editor that finds no built assembly turns the plugin off.

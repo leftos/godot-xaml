@@ -29,7 +29,17 @@ The format itself is in the [format reference](../format/README.md).
 3. **Reference the core package** in the project's `.csproj`, at the same version as the addon:
 
    ```xml
-   <PackageReference Include="GodotXaml.Core" Version="0.1.0" />
+   <PackageReference Include="GodotXaml.Core" Version="<version>" />
+   ```
+
+   `<version>` is the release's version, the one in the addon zip's name. A project with central package management (a `Directory.Packages.props` that sets `ManagePackageVersionsCentrally`) puts the version there instead, and its `.csproj` reference carries none:
+
+   ```xml
+   <!-- Directory.Packages.props -->
+   <PackageVersion Include="GodotXaml.Core" Version="<version>" />
+
+   <!-- the project's .csproj -->
+   <PackageReference Include="GodotXaml.Core" />
    ```
 
    The `.csproj` must compile `addons/godot_xaml/`: a `<Compile Remove="addons\**" />` makes every scene fail with `No loader found`. It also needs `<EnableDynamicLoading>true</EnableDynamicLoading>`, which Godot's own template sets.
