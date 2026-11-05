@@ -25,8 +25,7 @@
 ## Agent tooling
 
 - [ ] GXAML-247 CLI convert: the backup line and GXP0006 warnings print once
-- [ ] GXAML-248 CLI convert: the backup does not leave scene copies inside the Godot project · release vNext
-- [ ] GXAML-249 CLI convert --back keeps a C# global class's script_class · release vNext
+- [ ] GXAML-252 CLI: read the global class cache from godot/ when the project's data folder is not hidden
 
 ## Editor support
 
