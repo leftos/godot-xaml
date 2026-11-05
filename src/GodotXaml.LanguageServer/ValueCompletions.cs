@@ -27,12 +27,12 @@ internal sealed class ValueCompletions(CompletionScope scope, XscnCursorContext 
     /// <returns>The candidates and their range, or null where the value takes none.</returns>
     public ValueCandidates? Candidates()
     {
-        if (Property() is not { } property)
+        if (NameRules.PropertyOf(scope.Metadata, context) is not { } property)
         {
             return null;
         }
 
-        XscnValueType type = XscnValueText.TypeOf(scope.Metadata, property);
+        XscnValueType type = scope.Names.TypeOf(property);
         if ((type.Names ?? type.Declared?.Names) is { } names)
         {
             return Members(names);
@@ -49,21 +49,6 @@ internal sealed class ValueCompletions(CompletionScope scope, XscnCursorContext 
     // The candidates over the value, or none where the value starts on an earlier line.
     private ValueCandidates? Values(IEnumerable<CompletionCandidate> candidates) =>
         Value() is { } value ? new ValueCandidates(value, candidates) : null;
-
-    // The property of a class element's attribute, as hover resolves it; null for an x: attribute, a signal or an unknown name.
-    private GodotPropertyInfo? Property()
-    {
-        if (
-            context.AttributeName is not { } name
-            || name.Contains(':', StringComparison.Ordinal)
-            || scope.ShapeOf(context) != ElementShape.ClassElement
-        )
-        {
-            return null;
-        }
-
-        return context.Class is { } cls ? scope.Metadata.FindPropertyByCSharpName(cls, name) : null;
-    }
 
     private ValueCandidates? Members(XscnEnumNames names)
     {
@@ -224,8 +209,7 @@ internal sealed class ValueCompletions(CompletionScope scope, XscnCursorContext 
     // the cursor is in is left out, since an entry cannot refer to itself.
     private IEnumerable<CompletionCandidate> Keys(string hint)
     {
-        XscnParseResult parsed = XscnParser.Parse(scope.Text, scope.Kind, scope.Metadata);
-        foreach (XscnResource entry in parsed.Document.Resources.Where(r => r.Span.Start >= offset || offset >= r.Span.End))
+        foreach (XscnResource entry in scope.Parse.Document.Resources.Where(r => r.Span.Start >= offset || offset >= r.Span.End))
         {
             string? detail = entry.Type switch
             {

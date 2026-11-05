@@ -1,9 +1,8 @@
 namespace GodotXaml.LanguageServer;
 
 /// <summary>
-/// Finds where start tags end and which are open at an offset, by their '&lt;' and '&gt;' alone: a quoted run inside a tag
-/// is skipped, a comment or a declaration is passed over, and a '&lt;' ends a tag left unclosed. Completion uses it for the
-/// elements around a cursor, which the cursor context does not name.
+/// Finds where a start tag ends by its '&lt;' and '&gt;' alone: a quoted run inside the tag is skipped and a '&lt;' ends a
+/// tag left unclosed. Completion uses it for the attributes a tag already has.
 /// </summary>
 internal static class StartTags
 {
@@ -26,54 +25,6 @@ internal static class StartTags
         }
 
         return text.Length;
-    }
-
-    /// <summary>The '&lt;' of each start tag open at an offset, outermost first.</summary>
-    /// <param name="text">The text.</param>
-    /// <param name="offset">The offset; a tag that starts at or after it is not read.</param>
-    /// <returns>The open tags' offsets.</returns>
-    public static List<int> OpenAt(string text, int offset)
-    {
-        List<int> open = [];
-        int next = text.IndexOf('<', StringComparison.Ordinal);
-        while (next >= 0 && next < offset)
-        {
-            int after = Pass(text, next, open);
-            next = after < text.Length ? text.IndexOf('<', after) : -1;
-        }
-
-        return open;
-    }
-
-    // Passes the markup at a '<', opening or closing an element; returns the offset after it.
-    private static int Pass(string text, int lessThan, List<int> open)
-    {
-        if (string.CompareOrdinal(text, lessThan, "<!--", 0, 4) == 0)
-        {
-            int close = text.IndexOf("-->", lessThan + 4, StringComparison.Ordinal);
-            return close < 0 ? text.Length : close + 3;
-        }
-
-        int end = End(text, lessThan);
-        Track(text, lessThan, end, open);
-        return end < text.Length && text[end] == '>' ? end + 1 : Math.Max(end, lessThan + 1);
-    }
-
-    // An end tag closes the innermost open element; a start tag not closed by '/>' opens one; '<?' and '<!' do neither.
-    private static void Track(string text, int lessThan, int end, List<int> open)
-    {
-        char first = lessThan + 1 < text.Length ? text[lessThan + 1] : '\0';
-        if (first == '/')
-        {
-            if (open.Count > 0)
-            {
-                open.RemoveAt(open.Count - 1);
-            }
-        }
-        else if (first is not ('?' or '!') && !(end < text.Length && text[end] == '>' && text[end - 1] == '/'))
-        {
-            open.Add(lessThan);
-        }
     }
 
     private static char Quote(char quote, char c) =>

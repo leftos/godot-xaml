@@ -544,6 +544,72 @@ public sealed class CompletionTests
         Assert.Equal(JsonValueKind.Null, result.ValueKind);
     }
 
+    // A prefix the root does not bind to a valid scene namespace is no scene tag: its tag takes no format attributes and
+    // holds no nodes.
+    [Fact]
+    public Task ARejectedNamespaceIsNotASceneTag() =>
+        AssertNoSceneTagAsync(inner => $"<Control xmlns:x=\"{FormatNamespace}\" xmlns:c=\"http://bad\" Name=\"Root\">\n  {inner}\n</Control>\n");
+
+    [Fact]
+    public Task ANamespaceInACommentIsNotDeclared() => AssertNoSceneTagAsync(inner => Root($"<!-- xmlns:c=\"res://ui/\" -->\n  {inner}"));
+
+    [Fact]
+    public Task ANamespaceOnANestedElementIsNotDeclared() =>
+        AssertNoSceneTagAsync(inner => Root($"<Control xmlns:c=\"res://ui/\" Name=\"N\">\n    {inner}\n  </Control>"));
+
+    // The format prefix is the one the root binds: a binding written in a comment before it binds nothing.
+    [Fact]
+    public async Task TheFormatPrefixIsTheRootsFirstBinding()
+    {
+        JsonElement result = await CompleteAsync($"<!-- xmlns:y=\"{FormatNamespace}\" -->\n" + Root("<|"));
+
+        List<string> labels = Labels(result);
+        Assert.Contains("x:Connect", StartingWith(labels, "x:"));
+        Assert.Empty(StartingWith(labels, "y:"));
+    }
+
+    // A key completion reads the parse the document's diagnostics made: the seam's parse holds an entry the text lacks,
+    // and completing twice runs no parse of its own.
+    [Fact]
+    public async Task AKeyCompletionReadsTheKeptParse()
+    {
+        int parses = 0;
+        ServerSeams seams = ServerSeams.Default with
+        {
+            Parse = (text, kind, metadata) =>
+            {
+                Interlocked.Increment(ref parses);
+                string withSeam = text.Replace("<x:Resources>", "<x:Resources>\n    <Theme x:Key=\"Seam\" />", StringComparison.Ordinal);
+                return XscnParser.Parse(withSeam, kind, metadata);
+            },
+        };
+        string source = Root("<x:Resources>\n    <Theme x:Key=\"A\" />\n  </x:Resources>\n  <Control Name=\"C\" Theme=\"|\" />");
+        int cursor = source.IndexOf('|', StringComparison.Ordinal);
+        string text = source.Remove(cursor, 1);
+        await using ServerHarness server = new(seams);
+        await server.InitializeAsync();
+        await server.OpenAsync(SceneUri, 1, text);
+        await server.NextAsync(server.Published, "the didOpen publish");
+        int afterOpen = Volatile.Read(ref parses);
+
+        JsonElement first = await RequestAsync(server, SceneUri, PositionOf(text, cursor));
+        JsonElement second = await RequestAsync(server, SceneUri, PositionOf(text, cursor));
+
+        Assert.Equal(["{A}", "{Seam}"], Labels(first));
+        Assert.Equal(Labels(first), Labels(second));
+        Assert.Equal(afterOpen, Volatile.Read(ref parses));
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+    }
+
+    // A tag of the prefix takes no attributes, and an element inside it takes no tags.
+    private static async Task AssertNoSceneTagAsync(Func<string, string> scene)
+    {
+        JsonElement attributes = await CompleteAsync(scene("<c:Thing |"));
+        JsonElement children = await CompleteAsync(scene("<c:Thing>\n    <|\n  </c:Thing>"));
+
+        Assert.Equal((JsonValueKind.Null, JsonValueKind.Null), (attributes.ValueKind, children.ValueKind));
+    }
+
     // The range of the value between the quotes around the marker.
     private static LspRange WholeValue(string source)
     {
@@ -594,18 +660,21 @@ public sealed class CompletionTests
         await server.InitializeAsync();
         await server.OpenAsync(uri, 1, text);
         await server.NextAsync(server.Published, "the didOpen publish");
-        LspPosition position = PositionOf(text, cursor);
 
-        JsonElement result = await server.RequestObjectAsync(
+        JsonElement result = await RequestAsync(server, uri, PositionOf(text, cursor));
+
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+        return result;
+    }
+
+    // The request as a client sends it.
+    private static Task<JsonElement> RequestAsync(ServerHarness server, string uri, LspPosition position) =>
+        server.RequestObjectAsync(
             "textDocument/completion",
             JsonSerializer.SerializeToElement(
                 new { textDocument = new { uri }, position = new { line = position.Line, character = position.Character } }
             )
         );
-
-        Assert.Equal(0, await server.ShutdownAndDrainAsync());
-        return result;
-    }
 
     private static List<string> Labels(JsonElement result)
     {

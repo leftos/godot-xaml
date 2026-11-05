@@ -234,7 +234,7 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
 
         private Found Property(GodotClassInfo cls, GodotPropertyInfo property, TextSpan span)
         {
-            XscnValueType type = XscnValueText.TypeOf(metadata, property);
+            XscnValueType type = XscnParser.NamesOf(metadata).TypeOf(property);
             XscnEnumNames? names = type.Names ?? type.Declared?.Names;
             string? defaultLine = metadata.FindDefault(cls, property.Name) is { } found ? $"Default: {found.Text}" : null;
             string? valuesLine = names is { Names.Length: > 0 }
@@ -260,13 +260,7 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
                 return Reference(key.Groups[1].Value, context.Replace);
             }
 
-            string? name = context.AttributeName;
-            if (name is null || name.Contains(':', StringComparison.Ordinal) || ClassOf(context) is not { } cls)
-            {
-                return null;
-            }
-
-            return metadata.FindPropertyByCSharpName(cls, name) is { } property ? EnumValue(property, context.Replace) : null;
+            return NameRules.PropertyOf(metadata, context) is { } property ? EnumValue(property, context.Replace) : null;
         }
 
         private Found? Reference(string key, TextSpan span)
@@ -280,7 +274,7 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
         // The enum member under the cursor in an enum property's value.
         private Found? EnumValue(GodotPropertyInfo property, TextSpan value)
         {
-            XscnValueType type = XscnValueText.TypeOf(metadata, property);
+            XscnValueType type = XscnParser.NamesOf(metadata).TypeOf(property);
             if ((type.Names ?? type.Declared?.Names) is not { Names.Length: > 0 } names || WordAt(value) is not { } word)
             {
                 return null;
@@ -368,7 +362,8 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
 
         private string CSharpClassName(string godotName) => NameRules.CSharpClassName(metadata, godotName);
 
-        private string? FormatPrefix() => NameRules.FormatPrefix(text);
+        // The prefix the root binds to the format's namespace, from the document's kept parse; a text with no root binds none.
+        private string? FormatPrefix() => cache.Get(document, metadata).Document.FormatPrefix;
 
         // A Godot snake_case argument name as the C# API names it (toggled_on, toggledOn; event, @event).
         private static string CamelCase(string snake)

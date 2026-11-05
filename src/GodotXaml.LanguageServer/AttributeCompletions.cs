@@ -28,7 +28,7 @@ internal sealed partial class AttributeCompletions(CompletionScope scope, XscnCu
 
         IEnumerable<CompletionCandidate>? all = scope.ShapeOf(context) switch
         {
-            ElementShape.ClassElement => ClassElement(lessThan),
+            ElementShape.ClassElement => ClassElement(),
             ElementShape.FormatElement when context.ElementName is { } name && XscnFormatVocabulary.Elements.Contains(name) => Format(name),
             ElementShape.SceneTag => Format(XscnFormatVocabulary.Node),
             _ => null,
@@ -45,23 +45,24 @@ internal sealed partial class AttributeCompletions(CompletionScope scope, XscnCu
     private IEnumerable<CompletionCandidate> Format(string elementKind) => scope.Keywords(XscnFormatVocabulary.AttributesFor(elementKind));
 
     // The format's attributes first, so a property or signal named like one (Script, Name) does not replace it.
-    private IEnumerable<CompletionCandidate> ClassElement(int lessThan)
+    private IEnumerable<CompletionCandidate> ClassElement()
     {
-        string kind = KindOf(lessThan);
+        string kind = KindOf();
         IEnumerable<CompletionCandidate> format = Format(kind);
         return context.Class is { } cls ? format.Concat(Members(cls, kind == XscnFormatVocabulary.Node)) : format;
     }
 
     // A node, a resource or an x:Resources entry: by the class, else by the elements it is in, else by the document's kind.
-    private string KindOf(int lessThan)
+    // The element is a class element, so its name is written.
+    private string KindOf()
     {
         if (context.Class is { } cls && scope.Metadata.Inherits(cls, "Node"))
         {
             return XscnFormatVocabulary.Node;
         }
 
-        List<XscnCursorContext> chain = [.. scope.OpenElements(lessThan), context];
-        if (chain.Count > 1 && chain[^2] is { } parent && scope.ShapeOf(parent) == ElementShape.FormatElement && parent.ElementName == "Resources")
+        List<XscnOpenElement> chain = [.. context.Ancestors, new XscnOpenElement(context.ElementPrefix, context.ElementName!, context.Class)];
+        if (chain.Count > 1 && chain[^2] is { } parent && scope.ShapeOf(parent) == ElementShape.FormatElement && parent.LocalName == "Resources")
         {
             return XscnFormatVocabulary.TableEntry;
         }

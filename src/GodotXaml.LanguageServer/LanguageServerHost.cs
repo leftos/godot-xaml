@@ -52,7 +52,7 @@ internal static class LanguageServerHost
             publisher,
             new FormattingHandler(store, projects, client, cache),
             new HoverHandler(store, projects, cache, seams.LoadDocs),
-            new CompletionHandler(store, projects)
+            new CompletionHandler(store, projects, cache)
         );
 
         // The transport's own warnings and errors (a message it could not read or answer) go to stderr.

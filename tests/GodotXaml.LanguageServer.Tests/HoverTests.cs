@@ -253,6 +253,24 @@ public sealed class HoverTests
     [Fact]
     public async Task AFormatAttributeLinksTheFormat() => await AssertHoverAsync("x:Groups", 4, "x:Groups", Markdown("x:Groups", FormatLink));
 
+    // The format prefix is the one the root binds: a prefix bound only in a comment links no format attribute.
+    [Fact]
+    public async Task AFormatAttributeOfAPrefixInACommentHasNoHover()
+    {
+        const string scene = """
+            <!-- xmlns:y="https://github.com/leftos/godot-xaml/format/1" -->
+            <Control Name="Root">
+              <Button Name="Ok" y:Groups="buttons" />
+            </Control>
+            """;
+        await using ServerHarness server = await OpenAsync(text: scene);
+
+        JsonElement result = await HoverAsync(server, PositionOf(scene, scene.IndexOf("y:Groups", StringComparison.Ordinal) + 3));
+
+        Assert.Equal(JsonValueKind.Null, result.ValueKind);
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+    }
+
     [Theory]
     [InlineData("  <Button", 1)]
     [InlineData("a note", 2)]

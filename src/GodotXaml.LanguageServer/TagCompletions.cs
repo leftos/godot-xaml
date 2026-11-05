@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
 using GodotXaml.LanguageServer.Protocol;
@@ -32,24 +33,24 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
             return null;
         }
 
-        // The elements the tag is in are those open at its '<'.
         int lessThan = context.Replace.Start - 1;
         if (lessThan < 0 || scope.Text[lessThan] != '<')
         {
             return null;
         }
 
-        List<XscnCursorContext> chain = scope.OpenElements(lessThan);
-        return chain.Count == 0 ? Root() : InElement(chain);
+        // The elements the tag is in are the context's ancestors.
+        ImmutableArray<XscnOpenElement> chain = context.Ancestors;
+        return chain.Length == 0 ? Root() : InElement(chain);
     }
 
     private IEnumerable<CompletionCandidate> Root() =>
         scope.Kind == XscnDocumentKind.Scene ? scope.Classes(NodeClass).Concat(scope.Keywords(["x:Instance"])) : scope.Classes(ResourceClass);
 
-    private IEnumerable<CompletionCandidate>? InElement(List<XscnCursorContext> chain)
+    private IEnumerable<CompletionCandidate>? InElement(ImmutableArray<XscnOpenElement> chain)
     {
-        int index = chain.Count - 1;
-        XscnCursorContext parent = chain[index];
+        int index = chain.Length - 1;
+        XscnOpenElement parent = chain[index];
         bool isRoot = index == 0;
         return scope.ShapeOf(parent) switch
         {
@@ -62,8 +63,8 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
         };
     }
 
-    private IEnumerable<CompletionCandidate>? FormatChildren(XscnCursorContext parent, bool isRoot) =>
-        parent.ElementName switch
+    private IEnumerable<CompletionCandidate>? FormatChildren(XscnOpenElement parent, bool isRoot) =>
+        parent.LocalName switch
         {
             "Resources" => scope.Classes(ResourceClass),
             "Uids" => scope.Keywords(["x:Uid"]),
@@ -72,14 +73,14 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
         };
 
     // A node's children: the node classes, the x: elements a node takes and, for a node of known class, its property elements.
-    private IEnumerable<CompletionCandidate> NodeChildren(XscnCursorContext? node, bool isRoot)
+    private IEnumerable<CompletionCandidate> NodeChildren(XscnOpenElement? node, bool isRoot)
     {
         IEnumerable<CompletionCandidate> children = scope.Classes(NodeClass).Concat(FormatElements(NodeElements, isRoot));
         return node is null ? children : children.Concat(PropertyElements(node));
     }
 
     // A resource's children: x:Prop and, for a resource of known class, its property elements; a resource holds no class element.
-    private IEnumerable<CompletionCandidate> ResourceChildren(XscnCursorContext resource, bool isRoot)
+    private IEnumerable<CompletionCandidate> ResourceChildren(XscnOpenElement resource, bool isRoot)
     {
         IEnumerable<CompletionCandidate> format = FormatElements(ResourceElements, isRoot);
         return format.Concat(PropertyElements(resource));
@@ -88,7 +89,7 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
     private IEnumerable<CompletionCandidate> FormatElements(string[] names, bool isRoot) => scope.Keywords(isRoot ? names.Concat(RootTables) : names);
 
     // Owner.Property for each stored property of the owner's class that holds a resource.
-    private IEnumerable<CompletionCandidate> PropertyElements(XscnCursorContext owner)
+    private IEnumerable<CompletionCandidate> PropertyElements(XscnOpenElement owner)
     {
         if (owner.Class is not { } cls)
         {
@@ -98,7 +99,7 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
         return scope
             .Metadata.PropertiesOf(cls)
             .Where(p => p.IsStored && !p.Name.Contains('/') && HoldsResource(p))
-            .Select(p => Named($"{owner.ElementName}.{p.CSharpName}", scope.TypeName(p.Type, p.ClassName)));
+            .Select(p => Named($"{owner.LocalName}.{p.CSharpName}", scope.TypeName(p.Type, p.ClassName)));
     }
 
     // A property element's name, its label and its insert alike.
@@ -108,9 +109,9 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
         property.Type == "Object" && NameRules.HoldsResource(scope.Metadata, property.ClassName);
 
     // The classes a property element's property holds: those its hint allows, less those it excludes.
-    private IEnumerable<CompletionCandidate>? PropertyValue(XscnCursorContext propertyElement)
+    private IEnumerable<CompletionCandidate>? PropertyValue(XscnOpenElement propertyElement)
     {
-        string name = propertyElement.ElementName!;
+        string name = propertyElement.LocalName;
         string propertyName = name[(name.IndexOf('.', StringComparison.Ordinal) + 1)..];
         if (propertyElement.Class is not { } owner || scope.Metadata.FindPropertyByCSharpName(owner, propertyName) is not { } property)
         {

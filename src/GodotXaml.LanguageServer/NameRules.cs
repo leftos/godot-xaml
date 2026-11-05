@@ -1,18 +1,37 @@
-using System.Text.RegularExpressions;
 using GodotXaml.Core.Metadata;
+using GodotXaml.Core.Xscn;
 
 namespace GodotXaml.LanguageServer;
 
 /// <summary>
-/// The name rules hover and completion share: the document's format prefix, a class hint's lists of allowed and excluded
-/// classes, and how a type is named in C#.
+/// The name rules hover and completion share: the property an attribute names, a class hint's lists of allowed and
+/// excluded classes, and how a type is named in C#.
 /// </summary>
-internal static partial class NameRules
+internal static class NameRules
 {
-    /// <summary>The prefix a document binds to the format's namespace.</summary>
-    /// <param name="text">The document's text.</param>
-    /// <returns>The prefix, or null when the document binds none.</returns>
-    public static string? FormatPrefix(string text) => FormatDeclaration().Match(text) is { Success: true } match ? match.Groups[1].Value : null;
+    /// <summary>
+    /// The property a class tag's attribute names: the attribute's C# name on the tag's class. A format or scene tag, a
+    /// property element, an unknown class, a prefixed attribute, a signal and an unknown name have none.
+    /// </summary>
+    /// <param name="metadata">The metadata.</param>
+    /// <param name="context">A context on the attribute's name or value.</param>
+    /// <returns>The property, or null.</returns>
+    public static GodotPropertyInfo? PropertyOf(GodotMetadata metadata, XscnCursorContext context)
+    {
+        if (
+            context.AttributeName is not { } name
+            || name.Contains(':', StringComparison.Ordinal)
+            || context.ElementPrefix is not null
+            || context.ElementName is not { } element
+            || element.Contains('.', StringComparison.Ordinal)
+            || context.Class is not { } cls
+        )
+        {
+            return null;
+        }
+
+        return metadata.FindPropertyByCSharpName(cls, name);
+    }
 
     /// <summary>
     /// The classes a class name or a hint's list of them allows (<c>Texture2D,-AnimatedTexture</c> allows Texture2D): every
@@ -83,7 +102,4 @@ internal static partial class NameRules
         allowed.Any(a => metadata.Inherits(cls, a)) && !excluded.Any(e => metadata.Inherits(cls, e));
 
     private static string[] Entries(string hint) => hint.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-
-    [GeneratedRegex("""xmlns:([^\s=:"']+)\s*=\s*["']https://github\.com/leftos/godot-xaml/format/1["']""", RegexOptions.CultureInvariant)]
-    private static partial Regex FormatDeclaration();
 }

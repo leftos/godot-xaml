@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
@@ -14,7 +12,10 @@ namespace GodotXaml.LanguageServer;
 /// token at the cursor (a flags value's part); the list holds every candidate the context takes, and the client filters it.
 /// Other values, content, comments and end tags get no list.
 /// </summary>
-internal sealed class CompletionHandler(DocumentStore store, ProjectCache projects)
+/// <param name="store">The open documents.</param>
+/// <param name="projects">The projects, which give a document its metadata.</param>
+/// <param name="cache">The documents' parses, which give a completion its prefixes and the root's entries.</param>
+internal sealed class CompletionHandler(DocumentStore store, ProjectCache projects, ParseCache cache)
 {
     /// <summary>The completions at a cursor of a document.</summary>
     /// <param name="uri">The document's URI.</param>
@@ -37,7 +38,7 @@ internal sealed class CompletionHandler(DocumentStore store, ProjectCache projec
             return null;
         }
 
-        CompletionList? list = await Task.Run(() => new CompletionScope(document, project.Metadata).Complete(position), cancellation)
+        CompletionList? list = await Task.Run(() => new CompletionScope(document, project.Metadata, cache).Complete(position), cancellation)
             .ConfigureAwait(false);
 
         // A change or a close that landed while it ran makes the list complete text the buffer no longer holds.
@@ -67,31 +68,30 @@ internal enum ElementShape
     /// <summary>An element of the format's prefix.</summary>
     FormatElement,
 
-    /// <summary>A scene tag, of a prefix the document declares.</summary>
+    /// <summary>A scene tag, of a prefix the root binds to a scene namespace the reader accepts.</summary>
     SceneTag,
 }
 
 /// <summary>One completion's work over one document's text: the context, the names it reads and the list it makes.</summary>
-internal sealed partial class CompletionScope
+internal sealed class CompletionScope
 {
-    // Indexing every class's properties is costly, so each metadata's attribute names are built once.
-    private static readonly ConditionalWeakTable<GodotMetadata, XscnPropertyNames> NamesByMetadata = new();
-
     private readonly LineMap lines;
-    private readonly Lazy<HashSet<string>> declaredPrefixes;
+
+    // The document's parse, read from the cache the first time a prefix or an entry is asked for.
+    private readonly Lazy<XscnParseResult> parse;
 
     /// <summary>Reads a document with its project's metadata.</summary>
     /// <param name="document">The document.</param>
     /// <param name="metadata">The metadata.</param>
-    public CompletionScope(OpenDocument document, GodotMetadata metadata)
+    /// <param name="cache">The documents' parses.</param>
+    public CompletionScope(OpenDocument document, GodotMetadata metadata, ParseCache cache)
     {
         Text = document.Text;
         Kind = document.Kind;
         Metadata = metadata;
-        Names = NamesByMetadata.GetValue(metadata, m => new XscnPropertyNames(m));
+        Names = XscnParser.NamesOf(metadata);
         lines = new LineMap(Text);
-        FormatPrefix = NameRules.FormatPrefix(Text);
-        declaredPrefixes = new(() => [.. NamespaceDeclaration().Matches(Text).Select(m => m.Groups[1].Value)]);
+        parse = new(() => cache.Get(document, metadata));
     }
 
     /// <summary>The document's text.</summary>
@@ -106,8 +106,11 @@ internal sealed partial class CompletionScope
     /// <summary>The metadata's attribute names.</summary>
     public XscnPropertyNames Names { get; }
 
-    /// <summary>The prefix the document binds to the format's namespace, or null.</summary>
-    public string? FormatPrefix { get; }
+    /// <summary>The document's parse, the one its diagnostics made when it is kept for the text.</summary>
+    public XscnParseResult Parse => parse.Value;
+
+    /// <summary>The prefix the root binds to the format's namespace, or null; a text with no root binds none.</summary>
+    public string? FormatPrefix => Parse.Document.FormatPrefix;
 
     /// <summary>The list at a cursor.</summary>
     /// <param name="position">The cursor.</param>
@@ -138,13 +141,21 @@ internal sealed partial class CompletionScope
     /// <summary>What an element's tag makes it.</summary>
     /// <param name="element">A context on or in the element.</param>
     /// <returns>Its shape.</returns>
-    public ElementShape ShapeOf(XscnCursorContext element) =>
-        element.ElementPrefix switch
+    public ElementShape ShapeOf(XscnCursorContext element) => ShapeOf(element.ElementPrefix, element.ElementName);
+
+    /// <summary>What an open element's tag makes it.</summary>
+    /// <param name="element">The element.</param>
+    /// <returns>Its shape.</returns>
+    public ElementShape ShapeOf(XscnOpenElement element) => ShapeOf(element.Prefix, element.LocalName);
+
+    // A scene tag's prefix is one the root binds to a scene namespace the reader accepts.
+    private ElementShape ShapeOf(string? prefix, string? name) =>
+        prefix switch
         {
-            null when element.ElementName is null => ElementShape.Unknown,
-            null => element.ElementName.Contains('.', StringComparison.Ordinal) ? ElementShape.PropertyElement : ElementShape.ClassElement,
-            { } prefix when prefix == FormatPrefix => ElementShape.FormatElement,
-            { } prefix => declaredPrefixes.Value.Contains(prefix) ? ElementShape.SceneTag : ElementShape.Unknown,
+            null when name is null => ElementShape.Unknown,
+            null => name.Contains('.', StringComparison.Ordinal) ? ElementShape.PropertyElement : ElementShape.ClassElement,
+            _ when prefix == FormatPrefix => ElementShape.FormatElement,
+            _ => Parse.Document.Namespaces.Any(n => n.Prefix == prefix) ? ElementShape.SceneTag : ElementShape.Unknown,
         };
 
     /// <summary>A format name as the document writes it: an <c>x:</c> name with the document's format prefix.</summary>
@@ -183,11 +194,6 @@ internal sealed partial class CompletionScope
     /// <returns>The type's name.</returns>
     public string TypeName(string variantType, string hint) => NameRules.TypeName(Metadata, variantType, hint);
 
-    /// <summary>The start tags open at an offset, outermost first, each by the tag-name context just after its '&lt;'.</summary>
-    /// <param name="offset">The offset; a tag that starts there is not counted.</param>
-    /// <returns>The open elements.</returns>
-    public List<XscnCursorContext> OpenElements(int offset) => [.. StartTags.OpenAt(Text, offset).Select(lessThan => ContextAt(lessThan + 1))];
-
     /// <summary>
     /// Whether an element of a chain is a resource: by its class when it is a node or a resource class, else by where it is
     /// (in a property element or <c>x:Resources</c>, in a resource, or the root of a resource file).
@@ -195,7 +201,7 @@ internal sealed partial class CompletionScope
     /// <param name="chain">The open elements, outermost first.</param>
     /// <param name="index">The element's index in the chain.</param>
     /// <returns>True for a resource.</returns>
-    public bool IsResource(IReadOnlyList<XscnCursorContext> chain, int index)
+    public bool IsResource(IReadOnlyList<XscnOpenElement> chain, int index)
     {
         if (chain[index].Class is { } cls && KnownIsResource(cls) is { } known)
         {
@@ -207,11 +213,11 @@ internal sealed partial class CompletionScope
             return Kind == XscnDocumentKind.Resource;
         }
 
-        XscnCursorContext parent = chain[index - 1];
+        XscnOpenElement parent = chain[index - 1];
         return ShapeOf(parent) switch
         {
             ElementShape.PropertyElement => true,
-            ElementShape.FormatElement => parent.ElementName == "Resources",
+            ElementShape.FormatElement => parent.LocalName == "Resources",
             ElementShape.ClassElement => IsResource(chain, index - 1),
             _ => false,
         };
@@ -241,8 +247,4 @@ internal sealed partial class CompletionScope
         ];
         return new CompletionList(false, items);
     }
-
-    // Every prefix the document declares.
-    [GeneratedRegex("""xmlns:([^\s=:"']+)\s*=""", RegexOptions.CultureInvariant)]
-    private static partial Regex NamespaceDeclaration();
 }
