@@ -27,7 +27,6 @@ internal sealed record ConvertSource(bool FromTscn, XscnDocumentKind Kind, strin
 internal static class ConvertCommand
 {
     private const string NoRootMessage = "no project.godot above this file; its res:// references are not rewritten";
-    private const string StagingFolderName = ".godot-xaml-staging";
 
     // A file's built paths past the third each add a line without saying anything new, so the fourth says how many more
     // there are in that file and the rest say nothing.
@@ -309,7 +308,7 @@ internal static class ConvertCommand
         }
         finally
         {
-            RemoveStaging(run);
+            run.Staging.Dispose();
         }
     }
 
@@ -320,17 +319,14 @@ internal static class ConvertCommand
         {
             return true;
         }
-        string parent = Path.Combine(run.Root, StagingFolderName);
-        if (!OriginalsBackup.TryCreateUnique(parent, out string? staging))
+        if (!run.Staging.TryCreate())
         {
-            run.Invocation.Error.WriteLine($"{parent}: cannot be written.");
             WriteError(run.Tally);
             return false;
         }
-        run.Staging = staging;
         foreach (Planned item in planned)
         {
-            item.Staged = Path.Combine(staging, Path.GetRelativePath(run.Root, item.Output));
+            item.Staged = run.Staging.PathOf(item.Output);
             Place(item, run.Tally, run.Invocation);
         }
         return planned.All(item => item.Written);
@@ -445,20 +441,14 @@ internal static class ConvertCommand
             files.AddRange(new[] { item.Source.File.Path + ".uid", item.Output, item.Output + ".uid" }.Where(File.Exists));
         }
         List<(string Path, byte[] Bytes)> read = [.. edits.Select(edit => (edit.Path, edit.Original))];
-        if (!OriginalsBackup.TryCopy(run.Root, files, read, run.Invocation.Error, out string? folder))
-        {
-            return false;
-        }
-        run.Backup = folder;
-        run.Invocation.Output.WriteLine($"{files.Count + read.Count} file(s) backed up to {folder}");
-        return true;
+        return run.Staging.TryBackUp(files, read);
     }
 
     private static bool MoveIn(ProjectRun run, List<Planned> planned)
     {
         foreach (Planned item in planned)
         {
-            if (!MoveSidecar(item, run.Invocation.Error) || !TryMove(item.Staged!, item.Output, run.Invocation.Error))
+            if (!MoveSidecar(item, run.Invocation.Error) || !ProjectStaging.TryMove(item.Staged!, item.Output, run.Invocation.Error))
             {
                 return false;
             }
@@ -480,7 +470,7 @@ internal static class ConvertCommand
         string target = item.Output + ".uid";
         if (File.Exists(staged))
         {
-            return TryMove(staged, target, error);
+            return ProjectStaging.TryMove(staged, target, error);
         }
         return !File.Exists(target) || InputFiles.TryDelete(target, error);
     }
@@ -513,53 +503,6 @@ internal static class ConvertCommand
         }
         run.Invocation.Output.WriteLine($"{planned.Count} original(s) removed");
         return true;
-    }
-
-    private static bool TryMove(string from, string to, TextWriter error)
-    {
-        try
-        {
-            File.Move(from, to, overwrite: true);
-            return true;
-        }
-        catch (IOException)
-        {
-            error.WriteLine($"{to}: cannot be written.");
-        }
-        catch (UnauthorizedAccessException)
-        {
-            error.WriteLine($"{to}: access denied.");
-        }
-        return false;
-    }
-
-    // The staging folder goes whatever the run's outcome, and the folder above it, with its .gitignore, once no other
-    // run's is left in it.
-    private static void RemoveStaging(ProjectRun run)
-    {
-        if (run.Staging is null)
-        {
-            return;
-        }
-        try
-        {
-            Directory.Delete(run.Staging, recursive: true);
-            string parent = Path.GetDirectoryName(run.Staging)!;
-            string gitIgnore = Path.Combine(parent, OriginalsBackup.GitIgnoreName);
-            if (Directory.EnumerateFileSystemEntries(parent).All(entry => entry == gitIgnore))
-            {
-                File.Delete(gitIgnore);
-                Directory.Delete(parent);
-            }
-        }
-        catch (IOException)
-        {
-            run.Invocation.Error.WriteLine($"{run.Staging}: cannot be deleted.");
-        }
-        catch (UnauthorizedAccessException)
-        {
-            run.Invocation.Error.WriteLine($"{run.Staging}: access denied.");
-        }
     }
 
     private static void WriteError(Tally tally)
@@ -1299,9 +1242,10 @@ internal static class ConvertCommand
 
         public InvocationConfiguration Invocation { get; } = invocation;
 
-        public string? Staging { get; set; }
+        // The staging folder, the backup and the moves the run's outputs go through.
+        public ProjectStaging Staging { get; } = new(settings.Root, settings.NoBackup, invocation.Output, invocation.Error);
 
-        public string? Backup { get; set; }
+        public string? Backup => Staging.Backup;
     }
 
     // The text to write, for a .xscn or .xres the uid its .uid sidecar holds (null for none), and the conversion issues the
