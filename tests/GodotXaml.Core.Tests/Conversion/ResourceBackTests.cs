@@ -67,6 +67,44 @@ public sealed class ResourceBackTests
         Assert.NotEqual(Atlas("0:0/0", "0:0/size_in_atlas"), Atlas("0:0/size_in_atlas", "0:0/0"));
     }
 
+    // The FontFile entry hides size, glyph and kerning pair order only: whole sizes, whole glyphs and whole pairs move, and
+    // textures, a glyph's keys and a glyph split around another stay as they are.
+    [Fact]
+    public void TheFontFileEntryHidesSizeGlyphAndKerningOrderOnly()
+    {
+        Assert.Equal(
+            Font("cache/0/9/0/ascent", "cache/0/9/0/scale", "cache/0/8/0/ascent", "cache/0/8/0/scale"),
+            Font("cache/0/8/0/ascent", "cache/0/8/0/scale", "cache/0/9/0/ascent", "cache/0/9/0/scale")
+        );
+        Assert.Equal(
+            Font("cache/0/9/0/glyphs/66/offset", "cache/0/9/0/glyphs/66/size", "cache/0/9/0/glyphs/3/offset", "cache/0/9/0/glyphs/3/size"),
+            Font("cache/0/9/0/glyphs/3/offset", "cache/0/9/0/glyphs/3/size", "cache/0/9/0/glyphs/66/offset", "cache/0/9/0/glyphs/66/size")
+        );
+        Assert.Equal(
+            Font("cache/0/9/0/glyphs/3/offset", "cache/0/9/0/kerning_overrides/65/66", "cache/0/9/0/kerning_overrides/3/12"),
+            Font("cache/0/9/0/glyphs/3/offset", "cache/0/9/0/kerning_overrides/3/12", "cache/0/9/0/kerning_overrides/65/66")
+        );
+        Assert.NotEqual(
+            Font("cache/0/9/0/textures/10/offsets", "cache/0/9/0/textures/2/offsets"),
+            Font("cache/0/9/0/textures/2/offsets", "cache/0/9/0/textures/10/offsets")
+        );
+        Assert.NotEqual(
+            Font("cache/0/9/0/glyphs/65/offset", "cache/0/9/0/glyphs/65/advance"),
+            Font("cache/0/9/0/glyphs/65/advance", "cache/0/9/0/glyphs/65/offset")
+        );
+        Assert.NotEqual(
+            Font("cache/0/9/0/glyphs/65/advance", "cache/0/9/0/glyphs/66/advance", "cache/0/9/0/glyphs/65/offset"),
+            Font("cache/0/9/0/glyphs/65/advance", "cache/0/9/0/glyphs/65/offset", "cache/0/9/0/glyphs/66/advance")
+        );
+    }
+
+    // A FontFile resource holding the names in this order, as the round trips compare it.
+    private static string Font(params string[] names) =>
+        Comparable(
+            "font",
+            TscnReader.Read("[gd_resource type=\"FontFile\" format=3]\n\n[resource]\n" + string.Concat(names.Select(name => $"{name} = 0\n")))
+        );
+
     // A TileSetAtlasSource resource holding the names in this order, as the round trips compare it.
     private static string Atlas(params string[] names) =>
         Comparable(

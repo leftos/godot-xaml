@@ -1,5 +1,113 @@
 [gd_resource type="Theme" format=3]
 
+[sub_resource type="Image" id="Image_tkimm"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_unady"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_iaeuo"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_bhlgk"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_qk6wm"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_oi0l4"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_y6vbd"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_vyu6y"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_ms3yb"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_6w2yh"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_wfegn"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_iyrg1"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"format": "LumAlpha8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
 [sub_resource type="FontFile" id="FontFile_f0nt5"]
 language_support_override/sr = true
 language_support_override/en = false
@@ -29,13 +137,66 @@ cache/0/variation_coordinates = {
 "wght": 400
 }
 cache/0/face_index = 1
-cache/0/embolden = 0.1
+cache/0/embolden = 0.0
 cache/0/transform = Transform2D(0.99875027, 0.04997917, -0.04997917, 0.99875027, 0, 0)
 cache/0/spacing_top = 1
 cache/0/spacing_bottom = 2
 cache/0/spacing_space = 3
 cache/0/spacing_glyph = 4
 cache/0/baseline_offset = 0.05
+cache/0/9/0/ascent = 12.5
+cache/0/9/0/descent = 0.0
+cache/0/9/0/underline_position = 0.0
+cache/0/9/0/underline_thickness = 0.0
+cache/0/9/0/scale = 1.0
+cache/0/9/0/textures/0/offsets = PackedInt32Array(0, 0, 4, 4)
+cache/0/9/0/textures/0/image = SubResource("Image_tkimm")
+cache/0/9/0/textures/1/offsets = PackedInt32Array(1, 0, 4, 4)
+cache/0/9/0/textures/1/image = SubResource("Image_unady")
+cache/0/9/0/textures/2/offsets = PackedInt32Array(2, 0, 4, 4)
+cache/0/9/0/textures/2/image = SubResource("Image_qk6wm")
+cache/0/9/0/textures/3/offsets = PackedInt32Array(3, 0, 4, 4)
+cache/0/9/0/textures/3/image = SubResource("Image_oi0l4")
+cache/0/9/0/textures/4/offsets = PackedInt32Array(4, 0, 4, 4)
+cache/0/9/0/textures/4/image = SubResource("Image_y6vbd")
+cache/0/9/0/textures/5/offsets = PackedInt32Array(5, 0, 4, 4)
+cache/0/9/0/textures/5/image = SubResource("Image_vyu6y")
+cache/0/9/0/textures/6/offsets = PackedInt32Array(6, 0, 4, 4)
+cache/0/9/0/textures/6/image = SubResource("Image_ms3yb")
+cache/0/9/0/textures/7/offsets = PackedInt32Array(7, 0, 4, 4)
+cache/0/9/0/textures/7/image = SubResource("Image_6w2yh")
+cache/0/9/0/textures/8/offsets = PackedInt32Array(8, 0, 4, 4)
+cache/0/9/0/textures/8/image = SubResource("Image_wfegn")
+cache/0/9/0/textures/9/offsets = PackedInt32Array(9, 0, 4, 4)
+cache/0/9/0/textures/9/image = SubResource("Image_iyrg1")
+cache/0/9/0/textures/10/offsets = PackedInt32Array(10, 0, 4, 4)
+cache/0/9/0/textures/10/image = SubResource("Image_iaeuo")
+cache/0/9/0/textures/11/offsets = PackedInt32Array(11, 0, 4, 4)
+cache/0/9/0/textures/11/image = SubResource("Image_bhlgk")
+cache/0/9/0/glyphs/66/advance = Vector2(8, 0)
+cache/0/9/0/glyphs/66/offset = Vector2(1, -2)
+cache/0/9/0/glyphs/66/size = Vector2(4, 2)
+cache/0/9/0/glyphs/66/uv_rect = Rect2(1, 1, 4, 2)
+cache/0/9/0/glyphs/66/texture_idx = 1
+cache/0/9/0/glyphs/3/advance = Vector2(8, 0)
+cache/0/9/0/glyphs/3/offset = Vector2(1, -4)
+cache/0/9/0/glyphs/3/size = Vector2(4, 2)
+cache/0/9/0/glyphs/3/uv_rect = Rect2(1, 1, 4, 2)
+cache/0/9/0/glyphs/3/texture_idx = 4
+cache/0/9/0/glyphs/65/advance = Vector2(7, 0)
+cache/0/9/0/glyphs/65/offset = Vector2(1, -1)
+cache/0/9/0/glyphs/65/size = Vector2(4, 4)
+cache/0/9/0/glyphs/65/uv_rect = Rect2(1, 1, 4, 4)
+cache/0/9/0/glyphs/65/texture_idx = 11
+cache/0/9/0/glyphs/12/advance = Vector2(10, 0)
+cache/0/9/0/glyphs/12/offset = Vector2(1, -3)
+cache/0/9/0/glyphs/12/size = Vector2(4, 2)
+cache/0/9/0/glyphs/12/uv_rect = Rect2(1, 1, 4, 2)
+cache/0/9/0/glyphs/12/texture_idx = 2
+cache/0/9/0/kerning_overrides/65/66 = Vector2(-3, 0)
+cache/0/9/0/kerning_overrides/3/12 = Vector2(-1, 0)
+cache/0/9/0/kerning_overrides/65/3 = Vector2(-4, 0)
+cache/0/9/0/kerning_overrides/12/65 = Vector2(-2, 0)
 cache/0/8/0/ascent = 10.0
 cache/0/8/0/descent = 3.0
 cache/0/8/0/underline_position = 1.5

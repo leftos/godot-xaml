@@ -636,11 +636,12 @@ internal static class DynamicPropertyFamilies
         // scene/resources/font.cpp, FontFile::_get_property_list
         Row.AnyOrder("FontFile", @"^language_support_override/"),
         Row.AnyOrder("FontFile", @"^script_support_override/"),
-        // Cache entries in numeric order, each entry's keys, then its sizes by number (FontCacheRank); FontFile::_set grows the
-        // cache on any key, so any order loads.
+        // Cache entries in numeric order, each entry's keys, then its sizes by number, each size's textures, glyphs and
+        // kerning pairs by number (FontCacheRank); FontFile::_set grows the cache on any key, so any order loads.
         Row.Ranked(
             "FontFile",
-            @"^cache/(?<index>[0-9]+)/(?:(?<subindex>[0-9]+)/(?<outline>[0-9]+)/(?<subkey>[^/]*)(?:/[\s\S]*)?|(?<key>[^/]*))\z",
+            @"^cache/(?<index>[0-9]+)/(?:(?<subindex>[0-9]+)/(?<outline>[0-9]+)/(?<subkey>[^/]*)"
+                + @"(?:/(?<item>[^/]*)(?:/(?<itemkey>[\s\S]*))?)?|(?<key>[^/]*))\z",
             FontCacheRank,
             null
         ),
@@ -1097,33 +1098,66 @@ internal static class DynamicPropertyFamilies
         "kerning_overrides",
     ]);
 
+    // FontFile::_get_property_list's keys of one texture and of one glyph (advance only on an outline-0 size).
+    private static readonly ImmutableArray<(string Key, int Index)> FontTextureKeys = KeyLookup(["offsets", "image"]);
+
+    private static readonly ImmutableArray<(string Key, int Index)> FontGlyphKeys = KeyLookup([
+        "advance",
+        "offset",
+        "size",
+        "uv_rect",
+        "texture_idx",
+    ]);
+
     /// <summary>
     /// The rank levels of a FontFile cache name, in FontFile::_get_property_list's order: entries by number; in an entry, its
-    /// keys, then its sizes by size and outline size, each size's keys in order. Godot lists the sizes in the order the
-    /// text server's size cache (a HashMap) holds them, their creation order, which the text keeps no record of, so they
-    /// come by number. A key Godot does not list goes after the listed ones; the names under a size's textures, glyphs and
-    /// kerning_overrides keep their ordinal order inside that key.
+    /// keys, then its sizes by size and outline size; in a size, its metrics and scale, then its textures by number (each
+    /// texture's offsets before its image), its glyphs by id (each glyph's advance, offset, size, uv_rect and texture_idx
+    /// together), then its kerning pairs by their first, then second, number. Godot lists the sizes, the glyphs and the
+    /// kerning pairs in the order the text server's HashMaps (its size cache, glyph_map and kerning_map) hold them, the
+    /// order they were made, which the text keeps no record of, so they come by number. A key Godot does not list goes after
+    /// the listed ones.
     /// </summary>
+    /// <remarks>
+    /// Bounds: a size of <c>int.MaxValue - (FontCacheKeys.Length + 1)</c> or more ties with every larger one at the top of
+    /// its level. A texture number, glyph id or kerning number past int's range, or negative, or not all digits, ranks as
+    /// <c>int.MaxValue</c>, after the ones in range. Names that tie that way keep their source order (two glyphs past the
+    /// range tie on the id, so their keys mix by key).
+    /// </remarks>
     /// <param name="match">The match of the row's pattern, with its <c>index</c> group and either its <c>key</c> group or
-    /// its <c>subindex</c>, <c>outline</c> and <c>subkey</c> groups.</param>
+    /// its <c>subindex</c>, <c>outline</c> and <c>subkey</c> groups, and for a name under a size key its <c>item</c> and
+    /// <c>itemkey</c> groups.</param>
     /// <param name="classKeys">Unused: the row reads no class list.</param>
-    /// <returns>Entry the cache entry, Key the entry key's place (past them all for a size), SubEntry the size, SubKey its
-    /// outline size, Layer the size key's place.</returns>
+    /// <returns>Entry the cache entry; Key the entry key's place, or for a size its number past every entry key; SubEntry
+    /// the outline size; SubKey the size key's place; Layer the texture number, glyph id or kerning pair's first number;
+    /// Leaf the texture key's or glyph key's place, or the kerning pair's second number.</returns>
     internal static RankLevels FontCacheRank(Match match, ImmutableArray<(string Key, int Index)> classKeys)
     {
         Group size = match.Groups["subindex"];
         int entry = Number(match.Groups["index"].ValueSpan) ?? int.MaxValue;
-        return size.Success
-            ? new RankLevels(
-                entry,
-                FontCacheKeys.Length + 1,
-                Number(size.ValueSpan) ?? int.MaxValue,
-                Number(match.Groups["outline"].ValueSpan) ?? int.MaxValue,
-                PropertyOrder.PlaceOf(FontSizeKeys, match.Groups["subkey"].ValueSpan),
-                0
-            )
-            : new RankLevels(entry, PropertyOrder.PlaceOf(FontCacheKeys, match.Groups["key"].ValueSpan), 0, 0, 0, 0);
+        if (!size.Success)
+        {
+            return new RankLevels(entry, PropertyOrder.PlaceOf(FontCacheKeys, match.Groups["key"].ValueSpan), 0, 0, 0, 0);
+        }
+
+        int sizeKeys = FontCacheKeys.Length + 1;
+        ReadOnlySpan<char> subkey = match.Groups["subkey"].ValueSpan;
+        Group item = match.Groups["item"];
+        return new RankLevels(
+            entry,
+            sizeKeys + Math.Min(Number(size.ValueSpan) ?? int.MaxValue, int.MaxValue - sizeKeys),
+            Number(match.Groups["outline"].ValueSpan) ?? int.MaxValue,
+            PropertyOrder.PlaceOf(FontSizeKeys, subkey),
+            item.Success ? Number(item.ValueSpan) ?? int.MaxValue : 0,
+            item.Success ? FontItemKeyRank(subkey, match.Groups["itemkey"].ValueSpan) : 0
+        );
     }
+
+    // The leaf of a name under a size key: a texture's or a glyph's key place, else (a kerning pair) the second number.
+    private static int FontItemKeyRank(ReadOnlySpan<char> subkey, ReadOnlySpan<char> itemKey) =>
+        subkey.SequenceEqual("textures") ? PropertyOrder.PlaceOf(FontTextureKeys, itemKey)
+        : subkey.SequenceEqual("glyphs") ? PropertyOrder.PlaceOf(FontGlyphKeys, itemKey)
+        : Number(itemKey) ?? int.MaxValue;
 
     // A run of ASCII digits as a number, a number past int's range as int.MaxValue; null for anything else.
     private static int? Number(ReadOnlySpan<char> digits)

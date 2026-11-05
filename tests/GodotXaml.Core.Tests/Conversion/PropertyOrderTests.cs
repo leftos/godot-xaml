@@ -3237,6 +3237,184 @@ public sealed class PropertyOrderTests
         );
     }
 
+    // FontFile::_get_property_list (font.cpp) lists a size's textures from 0 up to the texture count, each texture's offsets
+    // before its image.
+    [Fact]
+    public void AFontSizesTexturesComeByNumberWithOffsetsFirst()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <FontFile {{X}}>
+              <x:Prop Name="cache/0/16/0/textures/10/image" Value="null" />
+              <x:Prop Name="cache/0/16/0/textures/2/image" Value="null" />
+              <x:Prop Name="cache/0/16/0/textures/2/offsets" Value="PackedInt32Array()" />
+              <x:Prop Name="cache/0/16/0/textures/10/offsets" Value="PackedInt32Array()" />
+            </FontFile>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "cache/0/16/0/textures/2/offsets",
+                "cache/0/16/0/textures/2/image",
+                "cache/0/16/0/textures/10/offsets",
+                "cache/0/16/0/textures/10/image",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // FontFile::_get_property_list (font.cpp) lists a glyph's advance (on an outline-0 size), offset, size, uv_rect and
+    // texture_idx.
+    [Fact]
+    public void AGlyphsKeysComeInGodotsOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <FontFile {{X}}>
+              <x:Prop Name="cache/0/16/0/glyphs/65/texture_idx" Value="1" />
+              <x:Prop Name="cache/0/16/0/glyphs/65/uv_rect" Value="Rect2(0, 0, 4, 4)" />
+              <x:Prop Name="cache/0/16/0/glyphs/65/size" Value="Vector2(4, 4)" />
+              <x:Prop Name="cache/0/16/0/glyphs/65/offset" Value="Vector2(1, 1)" />
+              <x:Prop Name="cache/0/16/0/glyphs/65/advance" Value="Vector2(5, 0)" />
+            </FontFile>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "cache/0/16/0/glyphs/65/advance",
+                "cache/0/16/0/glyphs/65/offset",
+                "cache/0/16/0/glyphs/65/size",
+                "cache/0/16/0/glyphs/65/uv_rect",
+                "cache/0/16/0/glyphs/65/texture_idx",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // Godot lists a size's glyphs in the text server's glyph_map walk (a HashMap), which the text keeps no record of; the way
+    // back puts them by id, each glyph's keys together.
+    [Fact]
+    public void AFontSizesGlyphsComeByIdWithTheirKeysTogether()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <FontFile {{X}}>
+              <x:Prop Name="cache/0/16/0/glyphs/66/offset" Value="Vector2(1, 1)" />
+              <x:Prop Name="cache/0/16/0/glyphs/65/advance" Value="Vector2(5, 0)" />
+              <x:Prop Name="cache/0/16/0/glyphs/66/advance" Value="Vector2(6, 0)" />
+              <x:Prop Name="cache/0/16/0/glyphs/10/offset" Value="Vector2(2, 2)" />
+              <x:Prop Name="cache/0/16/0/glyphs/65/offset" Value="Vector2(3, 3)" />
+            </FontFile>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "cache/0/16/0/glyphs/10/offset",
+                "cache/0/16/0/glyphs/65/advance",
+                "cache/0/16/0/glyphs/65/offset",
+                "cache/0/16/0/glyphs/66/advance",
+                "cache/0/16/0/glyphs/66/offset",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // Godot lists a size's kerning pairs in the text server's kerning_map walk (a HashMap), which the text keeps no record
+    // of; the way back puts them by their first, then second, number.
+    [Fact]
+    public void AFontSizesKerningPairsComeByTheirNumbers()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <FontFile {{X}}>
+              <x:Prop Name="cache/0/16/0/kerning_overrides/65/66" Value="Vector2(1, 0)" />
+              <x:Prop Name="cache/0/16/0/kerning_overrides/10/20" Value="Vector2(2, 0)" />
+              <x:Prop Name="cache/0/16/0/kerning_overrides/65/10" Value="Vector2(3, 0)" />
+              <x:Prop Name="cache/0/16/0/kerning_overrides/9/300" Value="Vector2(4, 0)" />
+            </FontFile>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "cache/0/16/0/kerning_overrides/9/300",
+                "cache/0/16/0/kerning_overrides/10/20",
+                "cache/0/16/0/kerning_overrides/65/10",
+                "cache/0/16/0/kerning_overrides/65/66",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // FontFile::_get_property_list (font.cpp) lists a size's metrics and scale, then its textures, glyphs and kerning pairs.
+    [Fact]
+    public void AFontSizesGroupsKeepTheirOrder()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <FontFile {{X}}>
+              <x:Prop Name="cache/0/16/0/kerning_overrides/65/66" Value="Vector2(1, 0)" />
+              <x:Prop Name="cache/0/16/0/glyphs/65/offset" Value="Vector2(1, 1)" />
+              <x:Prop Name="cache/0/16/0/textures/0/image" Value="null" />
+              <x:Prop Name="cache/0/16/0/scale" Value="2.0" />
+              <x:Prop Name="cache/0/16/0/ascent" Value="1.0" />
+            </FontFile>
+            """
+        );
+
+        Assert.Equal(
+            [
+                "cache/0/16/0/ascent",
+                "cache/0/16/0/scale",
+                "cache/0/16/0/textures/0/image",
+                "cache/0/16/0/glyphs/65/offset",
+                "cache/0/16/0/kerning_overrides/65/66",
+            ],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
+    // A glyph id past int's range sorts after every id in range.
+    [Fact]
+    public void AGlyphIdPastIntRangeComesLast()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <FontFile {{X}}>
+              <x:Prop Name="cache/0/16/0/glyphs/99999999999/offset" Value="Vector2(1, 1)" />
+              <x:Prop Name="cache/0/16/0/glyphs/65/offset" Value="Vector2(2, 2)" />
+            </FontFile>
+            """
+        );
+
+        Assert.Equal(["cache/0/16/0/glyphs/65/offset", "cache/0/16/0/glyphs/99999999999/offset"], PropertyNames(resource.ResourceProperties));
+    }
+
+    // Godot lists an entry's sizes in the text server's size cache walk (a HashMap), which the text keeps no record of; the
+    // way back puts them by number, each size's names together.
+    [Fact]
+    public void AFontCacheEntrysSizesComeByNumberWithTheirNamesTogether()
+    {
+        TscnDocument resource = BackResource(
+            $$"""
+            <FontFile {{X}}>
+              <x:Prop Name="cache/0/16/0/glyphs/65/offset" Value="Vector2(1, 1)" />
+              <x:Prop Name="cache/0/8/0/ascent" Value="1.0" />
+              <x:Prop Name="cache/0/16/0/ascent" Value="2.0" />
+              <x:Prop Name="cache/0/8/0/textures/0/image" Value="null" />
+            </FontFile>
+            """
+        );
+
+        Assert.Equal(
+            ["cache/0/8/0/ascent", "cache/0/8/0/textures/0/image", "cache/0/16/0/ascent", "cache/0/16/0/glyphs/65/offset"],
+            PropertyNames(resource.ResourceProperties)
+        );
+    }
+
     // Skin::_get_property_list (skin.cpp) lists bind_count, then a bind's keys name, bone and pose, the binds in numeric
     // order past ten.
     [Fact]

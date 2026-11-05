@@ -374,7 +374,9 @@ static func theme_font_resources(generator) -> String:
 
 
 ## A FontFile, its id pinned: 12 language and 12 script support overrides, added out of name
-## order, and 12 cache entries, each off its defaults with one size's metrics (8 or 16).
+## order, and 12 cache entries, each off its defaults (entry 0's embolden aside) with one size's
+## metrics (8 or 16); entry 0 also has size 9, made before its 8, with its textures, glyphs and
+## kerning pairs.
 static func _font_file() -> FontFile:
 	var font := FontFile.new()
 	font.resource_scene_unique_id = "FontFile_f0nt5"
@@ -388,19 +390,42 @@ static func _font_file() -> FontFile:
 		var size := 8 if index % 2 == 0 else 16
 		font.set_variation_coordinates(index, {"wght": 400 + 50 * index})
 		font.set_face_index(index, index + 1)
-		font.set_embolden(index, 0.1 * (index + 1))
+		# Entry 0 keeps embolden 0: the text server adds it to every glyph advance read back.
+		font.set_embolden(index, 0.0 if index == 0 else 0.1 * (index + 1))
 		font.set_transform(index, Transform2D(0.05 * (index + 1), Vector2.ZERO))
 		font.set_extra_spacing(index, TextServer.SPACING_TOP, index + 1)
 		font.set_extra_spacing(index, TextServer.SPACING_BOTTOM, index + 2)
 		font.set_extra_spacing(index, TextServer.SPACING_SPACE, index + 3)
 		font.set_extra_spacing(index, TextServer.SPACING_GLYPH, index + 4)
 		font.set_extra_baseline_offset(index, 0.05 * (index + 1))
+		if index == 0:
+			# After the entry's face, embolden and transform: setting them clears its sizes.
+			_font_size_contents(font)
 		font.set_cache_ascent(index, size, 10.0 + index)
 		font.set_cache_descent(index, size, 3.0 + index)
 		font.set_cache_underline_position(index, size, 1.5 + index)
 		font.set_cache_underline_thickness(index, size, 0.5 + index)
 		font.set_cache_scale(index, size, 1.25 + index)
 	return font
+
+
+## Cache entry 0's size 9 (outline 0), made before the entry's size 8: its ascent, 12 textures
+## (so 2 and 10 both show), glyphs and kerning pairs each added out of number order, every glyph
+## key off its default.
+static func _font_size_contents(font: FontFile) -> void:
+	var size := Vector2i(9, 0)
+	font.set_cache_ascent(0, 9, 12.5)
+	for texture in 12:
+		font.set_texture_image(0, size, texture, Image.create_empty(4, 4, false, Image.FORMAT_LA8))
+		font.set_texture_offsets(0, size, texture, PackedInt32Array([texture, 0, 4, 4]))
+	for glyph in [66, 3, 65, 12]:
+		font.set_glyph_advance(0, 9, glyph, Vector2(glyph % 7 + 5, 0))
+		font.set_glyph_offset(0, size, glyph, Vector2(1, -glyph % 5 - 1))
+		font.set_glyph_size(0, size, glyph, Vector2(4, glyph % 3 + 2))
+		font.set_glyph_uv_rect(0, size, glyph, Rect2(1, 1, 4, glyph % 3 + 2))
+		font.set_glyph_texture_idx(0, size, glyph, glyph % 11 + 1)
+	for pair in [Vector2i(65, 66), Vector2i(3, 12), Vector2i(65, 3), Vector2i(12, 65)]:
+		font.set_kerning(0, 9, pair, Vector2(-pair.y % 4 - 1, 0))
 
 
 ## A plain SkeletonProfile, its id pinned: 12 groups with a name and the icon, 12 bones in a

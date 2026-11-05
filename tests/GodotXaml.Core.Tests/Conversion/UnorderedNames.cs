@@ -58,6 +58,16 @@ internal static partial class UnorderedNames
             null
         ),
         new(
+            "FontFile sizes, glyphs and kerning pairs",
+            // FontFile::_get_property_list lists a cache entry's sizes from get_size_cache_list, a size's glyphs from
+            // get_glyph_list and its kerning pairs from get_kerning_list, which walk the text server's size cache, glyph_map
+            // and kerning_map (HashMaps, text_server_adv.h and text_server_fb.h) in the order the sizes were made, the glyphs
+            // added and the pairs set, which the text keeps no record of; the way back puts each by number. Only those orders
+            // are hidden: whole sizes, whole glyphs and whole pairs move, and nothing else does.
+            (section, name) => section.Class == "FontFile" && FontSizeKey().IsMatch(name),
+            ReorderFontSizes
+        ),
+        new(
             "BoneMap bone map",
             // BoneMap::_get_property_list walks its bone_map (a HashMap, bone_map.cpp) in the order the profile's bones were
             // added, which the text keeps no record of.
@@ -135,6 +145,56 @@ internal static partial class UnorderedNames
         Entries.FirstOrDefault(entry => entry.Matches(section, run[0].Name)) is { Reorder: { } reorder }
             ? reorder(run)
             : [.. run.OrderBy(property => property.Name, StringComparer.Ordinal)];
+
+    // Size order only: the run's blocks of one FontFile size each, ordered by size, each with its glyphs and kerning pairs
+    // reordered. A size written in two separate blocks leaves the run as it is.
+    private static List<TscnProperty> ReorderFontSizes(List<TscnProperty> run)
+    {
+        List<List<TscnProperty>> sizes = Blocks(run, FontSizeOf);
+        return IsRepeated(sizes, FontSizeOf)
+            ? run
+            : [.. sizes.Select(ReorderFontSizeContents).OrderBy(size => FontSizeOf(size[0]), StringComparer.Ordinal).SelectMany(size => size)];
+    }
+
+    // One size's names with its run of glyphs reordered by glyph, then its run of kerning pairs sorted by name (a pair is one
+    // name, so whole pairs move); every other name keeps its place.
+    private static List<TscnProperty> ReorderFontSizeContents(List<TscnProperty> size) =>
+        ReorderRuns(
+            ReorderRuns(size, FontGlyphKey(), ReorderGlyphs),
+            FontKerningKey(),
+            run => [.. run.OrderBy(property => property.Name, StringComparer.Ordinal)]
+        );
+
+    // The properties with each run of consecutive names the pattern matches reordered; every other property keeps its place.
+    private static List<TscnProperty> ReorderRuns(List<TscnProperty> properties, Regex pattern, Func<List<TscnProperty>, List<TscnProperty>> reorder)
+    {
+        List<TscnProperty> result = [];
+        int done = 0;
+        foreach (List<TscnProperty> run in Runs([.. properties], pattern.IsMatch))
+        {
+            int start = properties.IndexOf(run[0], done);
+            result.AddRange(properties[done..start]);
+            result.AddRange(reorder(run));
+            done = start + run.Count;
+        }
+
+        result.AddRange(properties[done..]);
+        return result;
+    }
+
+    // Glyph order only: a run of glyph names' blocks (each glyph's keys) by glyph; a glyph in two separate blocks leaves the
+    // run as it is.
+    private static List<TscnProperty> ReorderGlyphs(List<TscnProperty> run)
+    {
+        List<List<TscnProperty>> glyphs = Blocks(run, GlyphOf);
+        return IsRepeated(glyphs, GlyphOf) ? run : [.. glyphs.OrderBy(glyph => GlyphOf(glyph[0]), StringComparer.Ordinal).SelectMany(glyph => glyph)];
+    }
+
+    // A FontFile cache name's size: cache/<entry>/<size>/<outline>/.
+    private static string FontSizeOf(TscnProperty property) => FontSizeKey().Match(property.Name).Value;
+
+    // A FontFile glyph name's size and glyph.
+    private static string GlyphOf(TscnProperty property) => FontGlyphKey().Match(property.Name).Value;
 
     // Tile order only: the run's blocks of one tile each, ordered by tile, each with its alternatives reordered. A tile written
     // in two separate blocks (its names interleaved with another tile's) leaves the run as it is, so the interleaving shows.
@@ -226,6 +286,18 @@ internal static partial class UnorderedNames
     // A TileSetAtlasSource tile's name: its tile, and its alternative's id when it names one.
     [GeneratedRegex(@"^(?<tile>[0-9]+:[0-9]+)/(?:(?<alternative>[0-9]+)(?:/|\z))?")]
     private static partial Regex TileGroupPattern();
+
+    // A FontFile cache size's name: cache/<entry>/<size>/<outline>/ and any key.
+    [GeneratedRegex(@"^cache/[0-9]+/[0-9]+/[0-9]+/")]
+    private static partial Regex FontSizeKey();
+
+    // A FontFile glyph's name: its size and glyph, then any key.
+    [GeneratedRegex(@"^cache/[0-9]+/[0-9]+/[0-9]+/glyphs/[^/]*/")]
+    private static partial Regex FontGlyphKey();
+
+    // A FontFile kerning pair's name.
+    [GeneratedRegex(@"^cache/[0-9]+/[0-9]+/[0-9]+/kerning_overrides/")]
+    private static partial Regex FontKerningKey();
 
     /// <summary>One section of a fixture: its class, and whether it is the [resource] section.</summary>
     internal sealed record Section(string Fixture, string? Class, bool Root);
