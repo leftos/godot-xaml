@@ -13,3 +13,7 @@ godot/quoted.gd
 godot/quoted.gd.uid
 godot/tagged.gd
 godot/tagged.gd.uid
+editors/vscode/dist/
+editors/vscode/server/
+*.vsix
+.vscode-test/

@@ -2,7 +2,8 @@
 # on the staged C# files, the 150-character line check that catches the comments CSharpier does not wrap, the GDScript
 # format and lint checks of the tools/ GDScript, and the Agent Mail guard. The warnings-as-errors builds of the
 # solution and of the godot/ addon project, in Debug and in ExportRelease, join at pre-push. No hook runs a test
-# suite: `run.ps1 test` runs by hand, and `run.ps1 format-check` checks the whole repo by hand.
+# suite: `run.ps1 test` runs by hand, and `run.ps1 format-check` checks the whole repo by hand. A change under
+# editors/vscode/ runs oxlint and the oxfmt check at pre-commit and `run.ps1 vscode-check` at pre-push.
 default_install_hook_types: [pre-commit, pre-push]
 default_stages: [pre-commit]
 repos:
@@ -75,6 +76,25 @@ repos:
         entry: gdlint
         language: system
         files: ^tools/(metadata-dump|value-fixtures|scene-fixtures|export-probe|editor-checks)/.*\.gd$
+      - id: vscode-lint
+        name: oxlint (editors/vscode)
+        entry: pwsh -NoProfile -File run.ps1 vscode-lint
+        language: system
+        pass_filenames: false
+        files: ^editors/vscode/
+      - id: vscode-format-check
+        name: oxfmt check (editors/vscode)
+        entry: pwsh -NoProfile -File run.ps1 vscode-format-check
+        language: system
+        pass_filenames: false
+        files: ^editors/vscode/
+      - id: vscode-check
+        name: VS Code extension lint, format check, type check, build and package
+        entry: pwsh -NoProfile -File run.ps1 vscode-check
+        language: system
+        pass_filenames: false
+        files: ^editors/vscode/
+        stages: [pre-push]
       - id: agent-mail-guard
         name: agent-mail lease guard
         entry: pwsh -NoProfile -File tools/agent-mail-guard.ps1

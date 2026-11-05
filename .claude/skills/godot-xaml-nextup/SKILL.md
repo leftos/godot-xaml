@@ -27,10 +27,13 @@ linear: godot-xaml
 - `test`: the build, then `dotnet test --solution GodotXaml.slnx -c Release --no-build`.
 - `format-check`: `dotnet csharpier check .`.
 - `format`: `dotnet csharpier format .`.
+- `vscode-install`: `pnpm --dir editors/vscode install --frozen-lockfile`, which the other `vscode-` verbs need first (without it they print that `node_modules` is missing and exit 1).
+- `vscode-check`: the VS Code extension's lint, format check, type check and build, then its VSIX packaged into `.tmp/vscode/`; CI runs it as `.github/workflows/build-vscode.yml`.
+- `vscode-lint`, `vscode-format-check` and `vscode-format`: oxlint (`--deny-warnings`), the oxfmt check and the oxfmt rewrite over `editors/vscode`.
 
 Where each runs (`.pre-commit-config.yaml`):
 
-- pre-commit: `csharpier check` on the staged C# files, the 150-character line check (`tools/linelength.py`), and gdformat and gdlint on the metadata dump tool's GDScript.
-- pre-push: `run.ps1 build`, then `run.ps1 godot-export-build`, then `run.ps1 godot-build` (Debug last, so the restore left in `godot/obj/` is Debug's).
+- pre-commit: `csharpier check` on the staged C# files, the 150-character line check (`tools/linelength.py`), and gdformat and gdlint on the metadata dump tool's GDScript; `run.ps1 vscode-lint` and `run.ps1 vscode-format-check` on a staged file under `editors/vscode/`.
+- pre-push: `run.ps1 build`, then `run.ps1 godot-export-build`, then `run.ps1 godot-build` (Debug last, so the restore left in `godot/obj/` is Debug's); `run.ps1 vscode-check` when the push touches `editors/vscode/`.
 - By hand: `run.ps1 test`, which no hook runs, and `run.ps1 format-check` for the whole repo.
 - By hand, after a change to the addon's editor behaviour: the editor checks, `godot/editor-checks.ps1` (command in `docs/ARCHITECTURE.md`, Test locations), routed to a builder's hidden desktop.

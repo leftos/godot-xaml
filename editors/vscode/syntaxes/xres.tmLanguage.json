@@ -1,0 +1,4 @@
+{
+  "scopeName": "text.xml.xres",
+  "patterns": [{ "include": "text.xml" }]
+}

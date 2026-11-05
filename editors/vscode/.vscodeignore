@@ -1,0 +1,8 @@
+src/**
+.tmp/**
+tsconfig.json
+.oxlintrc.json
+.oxfmtrc.json
+pnpm-workspace.yaml
+pnpm-lock.yaml
+**/*.map

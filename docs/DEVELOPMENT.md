@@ -11,6 +11,7 @@ How to build, test and check godot-xaml on a development machine, from the repo 
 | Godot source | 4.7.2 | `F:\Godot\src-4.7.2`: engine behaviour is cited from it. `F:\Godot\repo` is a stale 4.5.1 checkout; never cite it |
 | CSharpier | 1.3.0, a local tool (`.config/dotnet-tools.json`) | `dotnet tool restore`; `run.ps1 format-check` and `format` restore it first |
 | gdformat, gdlint | gdtoolkit, on `PATH` | the pre-commit hooks for the GDScript under `tools/` |
+| Node, pnpm | Node 22; pnpm from `packageManager` in `editors/vscode/package.json` | the VS Code extension's toolchain (oxlint, oxfmt, TypeScript, vsce); `run.ps1 vscode-install` installs its packages from the lockfile |
 | uv | any | runs `tools/linelength.py` for the C# line-length hook |
 | prek | any | `prek install` once per clone installs the pre-commit and pre-push hooks |
 | gate | the installed `gate.exe` | `tools/gate.ps1` hands every word to it; on a machine without one it prints `gate: no gate.exe found; running the command without slots or watchdog` and runs the command directly, with no log, slot or ceiling |
@@ -24,7 +25,7 @@ How to build, test and check godot-xaml on a development machine, from the repo 
 
 ## run.ps1
 
-`run.ps1` builds, tests and format-checks the solution. Every verb but `help` runs its command through `tools/gate.ps1` in a pwsh of its own, with the log under `.tmp/`, and the script exits with the gated command's status.
+`run.ps1` builds, tests and format-checks the solution, and lints, checks and packages the VS Code extension. Every verb but `help` runs its command through `tools/gate.ps1` in a pwsh of its own, with the log under `.tmp/`, and the script exits with the gated command's status.
 
 Call it bare, `./run.ps1 <verb>` or `pwsh -NoProfile -File run.ps1 <verb>`, never wrapped in another gate call: wrapped, an outer slot holds the machine for the whole run while the inner gates do the work.
 
@@ -37,6 +38,13 @@ Call it bare, `./run.ps1 <verb>` or `pwsh -NoProfile -File run.ps1 <verb>`, neve
 | `test` | `build`, then `dotnet test --solution GodotXaml.slnx -c Release --no-build`, so the runner never builds a configuration of its own | `.tmp/build.log`, then `.tmp/test.log` | heavy, 600 s each |
 | `format-check` | `dotnet tool restore`, then `dotnet csharpier check .`, changing nothing | `.tmp/format.log` | light, 300 s |
 | `format` | `dotnet tool restore`, then `dotnet csharpier format .` | `.tmp/format.log` | light, 300 s |
+| `vscode-install` | `pnpm --dir editors/vscode install --frozen-lockfile` | `.tmp/vscode-install.log` | light, 600 s |
+| `vscode-lint` | the extension's `lint` script, `oxlint --deny-warnings` | `.tmp/vscode-lint.log` | light, 300 s |
+| `vscode-format-check` | the extension's `format:check` script, oxfmt over `editors/vscode/src`, changing nothing | `.tmp/vscode-format-check.log` | light, 300 s |
+| `vscode-format` | the extension's `format` script, oxfmt rewriting `editors/vscode/src` | `.tmp/vscode-format.log` | light, 300 s |
+| `vscode-check` | the extension's `check` script (lint, format check, type check, build), then its `package` script, which writes the VSIX to `.tmp/vscode/godot-xaml-<version>.vsix` | `.tmp/vscode-check.log`, then `.tmp/vscode-package.log` | light, 600 s each |
+
+Every `vscode-` verb but `vscode-install` prints `run.ps1: editors/vscode/node_modules is missing; run ./run.ps1 vscode-install first.` and exit 1 when the packages are not installed. The extension pins exact versions, and its `pnpm-workspace.yaml` holds the supply-chain settings (`minimumReleaseAge`, `ignoreScripts`, and a `minimatch` override for a vulnerability in the one vsce pulls). vsce packages with `--no-dependencies`, since it has no pnpm support.
 
 To run one test class after a build, go through the gate: `tools/gate.ps1 run` with `dotnet test --project tests/GodotXaml.Core.Tests/GodotXaml.Core.Tests.csproj -c Release --no-build --filter-class "<namespace>.<Class>"`.
 
@@ -49,8 +57,10 @@ To run one test class after a build, go through the gate: `tools/gate.ps1 run` w
   - The fast docs-lint on `.md` files (`tools/docs-lint.ps1`), which says so on a machine without the tool and passes.
   - `dotnet csharpier check` on the staged C# files, and the 150-character line check (`tools/linelength.py`), which catches the comments CSharpier does not wrap.
   - `gdformat --check` and `gdlint` on the GDScript under `tools/metadata-dump/`, `tools/value-fixtures/`, `tools/scene-fixtures/`, `tools/export-probe/` and `tools/editor-checks/`.
+  - `run.ps1 vscode-lint` and `run.ps1 vscode-format-check`, when a staged file is under `editors/vscode/`.
   - The Agent Mail lease guard (`tools/agent-mail-guard.ps1`).
-- **pre-push**: `run.ps1 build`, then `run.ps1 godot-export-build`, then `run.ps1 godot-build` (Debug last, because Godot.NET.Sdk references GodotSharpEditor only in Debug, so the restore left in `godot/obj/` is Debug's), when the push touches a `.cs`, `.csproj`, `.props`, `.slnx` or `.editorconfig` file or `global.json`.
+- **pre-push**: `run.ps1 vscode-check`, when the push touches a file under `editors/vscode/`.
+- **pre-push**, for C#: `run.ps1 build`, then `run.ps1 godot-export-build`, then `run.ps1 godot-build` (Debug last, because Godot.NET.Sdk references GodotSharpEditor only in Debug, so the restore left in `godot/obj/` is Debug's), when the push touches a `.cs`, `.csproj`, `.props`, `.slnx` or `.editorconfig` file or `global.json`.
 - **By hand**: no hook runs a test suite, so `run.ps1 test` runs by hand, and so does `run.ps1 format-check` for the whole repo.
 
 ## Godot-side harnesses

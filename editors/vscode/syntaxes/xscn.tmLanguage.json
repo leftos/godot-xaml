@@ -1,0 +1,4 @@
+{
+  "scopeName": "text.xml.xscn",
+  "patterns": [{ "include": "text.xml" }]
+}
