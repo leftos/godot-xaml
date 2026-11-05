@@ -308,6 +308,8 @@ Version 1 ships in four releases; the ones still to come are tracked as Linear's
 
 The later versions above sit in no release. Everything godot-xaml needs from godot-mcp is owner-approved at High priority there.
 
+The editor extensions wait until the core works as solidly as possible: the next releases hold only core features, polish and bug fixes, and the VS Code and Visual Studio extensions (with the preview pane) sit in the Backlog, their work so far kept on `feat/vscode-extension`, until the owner resumes them.
+
 ## Friction from projects using godot-xaml is filed as GitHub issues
 
 From the first release, every repo that uses godot-xaml files each friction (a conversion that comes out wrong, a load error, an editor save that changes a scene it should not, a tooling gap) as a GitHub issue on `leftos/godot-xaml`, one per friction, naming the version, what happened against what was expected, and the workaround, as godot-mcp's friction rule does. The repo is public, so a private project's scene goes in as a minimal repro, never pasted whole.
