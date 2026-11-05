@@ -19,5 +19,5 @@ Element tags are Godot class names in C# form, attributes are C# property names,
 
 ## Optional
 
-- [Editor guide](https://github.com/leftos/godot-xaml/blob/main/docs/guide/editor.md), [export](https://github.com/leftos/godot-xaml/blob/main/docs/guide/export.md), [converting a project](https://github.com/leftos/godot-xaml/blob/main/docs/guide/converting.md), [troubleshooting](https://github.com/leftos/godot-xaml/blob/main/docs/guide/troubleshooting.md), [limitations](https://github.com/leftos/godot-xaml/blob/main/docs/guide/limitations.md).
+- [Editor guide](https://github.com/leftos/godot-xaml/blob/main/docs/guide/editor.md), [export](https://github.com/leftos/godot-xaml/blob/main/docs/guide/export.md), [converting a project](https://github.com/leftos/godot-xaml/blob/main/docs/guide/converting.md), [upgrading to a new Godot version](https://github.com/leftos/godot-xaml/blob/main/docs/guide/upgrading.md), [troubleshooting](https://github.com/leftos/godot-xaml/blob/main/docs/guide/troubleshooting.md), [limitations](https://github.com/leftos/godot-xaml/blob/main/docs/guide/limitations.md).
 - [Core library](https://github.com/leftos/godot-xaml/blob/main/src/GodotXaml.Core/README.md): parse, write and convert from C#.

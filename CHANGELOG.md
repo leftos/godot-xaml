@@ -6,6 +6,7 @@
 
 - Every `.xscn` and `.xres` the tools write names its Godot metadata version in a root `x:Godot` attribute; godot-xaml 0.4.0 cannot read a marked file.
 - The CLI, language server and editor read each file with the metadata its `x:Godot` names, and never restamp one naming a version they lack.
+- `godot-xaml upgrade` moves a project's `.xscn` and `.xres` files to a newer Godot version's metadata, all or nothing, with a `--check` mode.
 
 ### Changed
 

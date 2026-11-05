@@ -171,3 +171,32 @@ formatted ui/main.xscn
 `--check` changes nothing: it names each file that would change (`ui/main.xscn: not canonical`) and exits 1 when any would, for CI and hooks.
 
 A file with an error is printed in `check`'s form and left as it is. The exit code is 0 when nothing failed (and, under `--check`, nothing would change), 1 otherwise, and 2 for a usage or I/O error.
+
+## Upgrade
+
+```sh
+godot-xaml upgrade --to <version> [--from <version>] [--check] <project>
+```
+
+The project is a folder holding `project.godot`. Every `.xscn` and `.xres` under it, found by the walk `convert --project` makes, is read with the metadata of the Godot version it was written with and written canonically with `--to`'s, stamping `x:Godot="<to>"`. The walk leaves `addons/` out, as `convert --project` does: an addon's files keep their marker, and every host still reads them by it.
+
+- `--to <version>` (required): the version every file is written with.
+- `--from <version>`: the version a file with no `x:Godot` marker was written with. A marked file is read with its marker's version; a marker that names another version than `--from` is an error (`GXT0006`), and an unmarked file with no `--from` is an error (`GXT0007`). A marker naming a version the tool does not carry is an error (`GXT0004`).
+- `--check`: changes nothing; names each file that would change and exits 1 when any would.
+
+Both versions must be ones the tool carries; any other is a usage error naming the carried versions: `--to 4.9: this tool carries no metadata for Godot 4.9; it carries 4.7`.
+
+A property the `--to` metadata no longer has is kept as a script property, an attribute under its Godot name holding its Godot value text (`legacy_text='"old"'`), and warned about once per class and property in a file (`GXT0008`). A file that does not read cleanly with its version is printed in `check`'s form.
+
+The run is all or nothing. With an error in any file nothing changes: the errors are printed with the summary, and the exit code is 1. Otherwise each file whose text changes is staged, the originals are backed up to `.godot-xaml-backup/<stamp>/` and the upgraded files moved in; a file whose text does not change is not written:
+
+```text
+2 file(s) backed up to /game/.godot-xaml-backup/20261104-120000
+/game/ui/main.xscn: upgraded
+/game/ui/menu.xscn: upgraded
+2 of 14 file(s) upgraded, 1 warning(s)
+```
+
+Under `--check` each changed file is named as `{path}: would upgrade` and the summary reads `{n} of {m} file(s) would upgrade, {w} warning(s)`.
+
+A failure after the first move stops the run and exits 2, with `{root}: the project is part upgraded; restore it from {backup folder}` on stderr. The exit code is 0 when every file upgraded (or, under `--check`, none would change), 1 for an error in a file or a file that would change under `--check`, and 2 for a usage or I/O error.

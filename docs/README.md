@@ -2,7 +2,7 @@
 
 ## Map
 
-- [`guide/getting-started.md`](guide/getting-started.md): the guides for people using godot-xaml: installing, [the editor](guide/editor.md), [exporting](guide/export.md), [converting a project](guide/converting.md), [troubleshooting](guide/troubleshooting.md) and [limitations](guide/limitations.md).
+- [`guide/getting-started.md`](guide/getting-started.md): the guides for people using godot-xaml: installing, [the editor](guide/editor.md), [exporting](guide/export.md), [converting a project](guide/converting.md), [upgrading to a new Godot version](guide/upgrading.md), [troubleshooting](guide/troubleshooting.md) and [limitations](guide/limitations.md).
 - [`../agents/skill/godot-xaml/SKILL.md`](../agents/skill/godot-xaml/SKILL.md): the docs for agents, a Claude Code skill installed user-level by `tools/install-skill.ps1`; the same rules ship in the addon as [`AGENTS.md`](../godot/addons/godot_xaml/AGENTS.md), and [`../llms.txt`](../llms.txt) indexes the docs.
 - [`format/README.md`](format/README.md): the `.xscn` and `.xres` format reference, with [`format/values.md`](format/values.md) for every value type's text and [`format/diagnostics.md`](format/diagnostics.md) for every error and warning code.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): the components, what each owns, and where to start for a change.
@@ -13,7 +13,7 @@
 
 ## Glossary
 
-- **Backup folder**: `<root>/.godot-xaml-backup/<UTC stamp>/`, where `convert --project` copies each original, its `.uid`, each script or `project.godot` it edits and each output it overwrites, at their paths under the root, before changing anything.
+- **Backup folder**: `<root>/.godot-xaml-backup/<UTC stamp>/`, where `convert --project` and `upgrade` copy each original, its `.uid`, each script or `project.godot` it edits and each output it overwrites, at their paths under the root, before changing anything.
 - **Builder**: another machine the gate routes a run to, by this PC's gate `remote.json` (`gate remote add`); the editor checks run there, on a hidden desktop.
 - **Built path**: a path a script assembles at run time (`"res://ui/" + name + ".tscn"`) instead of writing whole; `convert` cannot rewrite it and warns (`GXP0006`) when a literal ends in an extension the run converts.
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.
@@ -75,7 +75,7 @@
 - **Site key**: where a sub-resource is used in an `.xscn` (its element path and property, nested), from which the way back mints its id, so ids do not shift when the file is edited elsewhere.
 - **Source orders**: `SourceOrders`, the per-conversion cache of the orders a `BySource` family reads from a shader's uniforms or a mesh's blend shapes, each file read once.
 - **Stage**: the folder `compare-project.ps1 -Out` fills with one dump per scene or resource of a project (`<relative path>.scene.dump` or `.resource.dump`), and `stage.status`; two stages are diffed by relative path.
-- **Staging folder**: `<root>/.godot-xaml-staging/<stamp>-<8 hex>/`, where `convert --project` writes every output first; it is removed when the run ends, and a failed run leaves the project as it was.
+- **Staging folder**: `<root>/.godot-xaml-staging/<stamp>-<8 hex>/`, where `convert --project` and `upgrade` write every output first; it is removed when the run ends, and a failed run leaves the project as it was.
 - **Stale**: a preview result's `stale` flag, true when its `image` is the document's last good image, sent with the new diagnostics because the text did not parse or convert; false for a fresh render, including one that loads with issues.
 - **Stored default**: a property a `.tscn` stores at its class's default value, which the conversion keeps in the `.xscn` and writes back.
 - **Stripped copy**: a scene or text resource a scripts-off preview reads from its file, strips of scripts and writes to the addon's temp folder, then loads from there instead; it is deleted after the preview.
@@ -84,6 +84,7 @@
 - **Tolerant parse**: a parse that always returns a document with its diagnostics and never throws on bad text (`XscnParser.Parse`).
 - **Typing**: how the metadata types an attribute's value: its type, enum, hint, and whether its C# name is unambiguous across classes.
 - **Typing diff**: the list of properties whose typing differs between two Godot versions' metadata (`TypingDiff.Between`), the base for telling whether a release needs an upgrade step.
+- **Upgrade**: `godot-xaml upgrade`, the one way a project's files move to another Godot version's metadata: it reads each file by its marker (or `--from`), writes it with `--to`'s and stamps the new marker, all or nothing, with a backup.
 - **Value grammar**: Godot's text syntax for a property value, such as `Vector2(0, 0)`, shared by `.tscn`, `.tres` and the metadata defaults.
 - **`x:Connect`**: the element on an emitter for a signal connection that is not the common case (another receiver, flags, binds or unbinds).
 - **`x:Instance`**: the element instancing a scene by its `res://` path, used where no scene namespace tag reads back as the same file; at the root, the scene inherits that one.

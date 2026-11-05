@@ -8,6 +8,7 @@ The format reference is at https://github.com/leftos/godot-xaml/blob/v0.4.0/docs
 
 - **Do not edit the files in this folder.** They are the addon, copied from a release; to update it, replace the folder with a newer release's.
 - **New scenes are `.xscn` and new resources `.xres`.** Never write a `.tscn` beside an `.xscn` of the same scene. Converting existing files is the owner's call.
+- **Moving to a new Godot version is `godot-xaml upgrade --to <version> <project>`, the owner's call.** A newer editor keeps a file's `x:Godot` marker; run `upgrade` with `--check` first, and never change a marker by hand.
 - **Leave text files Godot loads early as `.tscn`/`.tres`:** the files named by the custom theme, custom font, default bus layout, custom mouse cursor, default environment and translations settings, and the files they reference. Godot loads them before any addon exists.
 - **Names are those of Godot's C# API.**
   - Tags are class names (`CpuParticles2D`).

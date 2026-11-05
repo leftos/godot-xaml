@@ -65,7 +65,7 @@ Otherwise the originals are copied to `.godot-xaml-backup/` before they are remo
 
 ## Documentation
 
-- [Getting started](docs/guide/getting-started.md), then [the editor](docs/guide/editor.md), [exporting](docs/guide/export.md), [converting a project](docs/guide/converting.md), [troubleshooting](docs/guide/troubleshooting.md) and [limitations](docs/guide/limitations.md).
+- [Getting started](docs/guide/getting-started.md), then [the editor](docs/guide/editor.md), [exporting](docs/guide/export.md), [converting a project](docs/guide/converting.md), [upgrading to a new Godot version](docs/guide/upgrading.md), [troubleshooting](docs/guide/troubleshooting.md) and [limitations](docs/guide/limitations.md).
 - [The format reference](docs/format/README.md): every element and attribute, [every value type](docs/format/values.md) and [every diagnostic code](docs/format/diagnostics.md).
 - [The CLI reference](src/GodotXaml.Cli/README.md) and [the core library](src/GodotXaml.Core/README.md).
 
@@ -76,7 +76,7 @@ Otherwise the originals are copied to `.godot-xaml-backup/` before they are remo
 - `.xscn` and `.xres` open, edit and save in the Godot editor through a C# addon, with no `.tscn` beside them.
 - Exported games load `.xscn` and `.xres` as Godot binary, with no addon code run on a load and no raw XML shipped, once the `godot-xaml` editor plugin is enabled.
 - A converter for existing `.tscn` and `.tres` files, which rewrites the `res://` references between the files it converts.
-- A CLI to convert, check and format.
+- A CLI to convert, check, format and upgrade a project to a new Godot version's metadata.
 - A language server, as a native executable per platform attached to each release.
 
 Still to come in version 1: the Visual Studio and VS Code extensions that use the language server, and a live preview pane in Visual Studio. The addon already has the editor side of the preview, a [server in the Godot editor](docs/guide/editor.md#live-preview-server) that is off by default. The plan is in [`docs/plans/v1-design.md`](docs/plans/v1-design.md) and the settled choices in [`docs/DECISIONS.md`](docs/DECISIONS.md).

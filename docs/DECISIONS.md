@@ -64,7 +64,7 @@ On an element whose class the core cannot know without opening another file (an 
 
 This typing depends on the metadata of one Godot minor version, so a new version can change how a file is read: a name that becomes ambiguous, or a property whose type or enum changes. The root's `x:Godot` marker names the metadata a file was written with; an unmarked file is valid. A marked file is rejected by godot-xaml 0.4.0, so a project updates all its godot-xaml tools together.
 
-Each Godot release that changes typing gets an upgrader that reads a project's files with the old version's metadata and writes them with the new one. `TypingDiff.Between` lists every property whose typing differs between two metadata versions, and a test runs it on each pair of consecutive bundled versions, so whether a release needs an upgrade step is always known.
+A newer editor keeps a file's own typing and marker; only `godot-xaml upgrade` moves a project to a new Godot version, all files at once. Each Godot release that changes typing is met by that upgrader, which reads a project's files with the metadata their marker names (`--from` for an unmarked file; a marker that disagrees with `--from` is an error) and writes them with `--to`'s. A property the new version lacks is kept as a script property, an attribute under its Godot name with its value text, and warned about. `TypingDiff.Between` lists every property whose typing differs between two metadata versions, and a test runs it on each pair of consecutive bundled versions, so whether a release needs an upgrade step is always known.
 
 Booleans are written `True` and `False` (either case is read), and a float has no trailing `.0` (`AnchorRight="1"`), as vector components already have none.
 

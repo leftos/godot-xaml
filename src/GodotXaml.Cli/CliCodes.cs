@@ -41,4 +41,13 @@ internal static class CliCodes
 
     /// <summary>A file whose <c>x:Godot</c> marker names a Godot version this tool does not carry; it is not written.</summary>
     internal const string MarkerNotWritten = "GXT0005";
+
+    /// <summary>An <c>upgrade</c> of a file whose <c>x:Godot</c> marker names another version than <c>--from</c>; nothing is upgraded.</summary>
+    internal const string MarkerDisagrees = "GXT0006";
+
+    /// <summary>An <c>upgrade</c> of a file with no <c>x:Godot</c> marker and no <c>--from</c>; nothing is upgraded.</summary>
+    internal const string NoMarker = "GXT0007";
+
+    /// <summary>A property an <c>upgrade</c>'s new metadata no longer has, kept as a script property with its value text.</summary>
+    internal const string PropertyRemoved = "GXT0008";
 }

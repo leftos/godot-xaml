@@ -113,10 +113,11 @@ public static class CliProgram
 
     private static RootCommand Build(CliSeams seams)
     {
-        var root = new RootCommand("Checks, converts and formats Godot scenes and resources written as XAML.");
+        var root = new RootCommand("Checks, converts, formats and upgrades Godot scenes and resources written as XAML.");
         root.Subcommands.Add(CheckCommand.Create(seams.Enumerate, seams.Versions));
         root.Subcommands.Add(ConvertCommand.Create(seams.Enumerate, seams.WorkingDirectory, seams.Versions));
         root.Subcommands.Add(FormatCommand.Create(seams.Enumerate, seams.Versions));
+        root.Subcommands.Add(UpgradeCommand.Create(seams.Versions));
         return root;
     }
 }

@@ -80,3 +80,6 @@ A line break inside a value is `&#10;`.
 | GX0112 | Bad property element | Name it `<ParentTag.Property>` and give it one resource |
 | GXC0102 | `{Key}` names no `x:Resources` entry; shown on a Godot load, not by `check` | Add the entry or fix the key |
 | GXP0006 | A path a script builds was not rewritten | Edit the script by hand |
+| GXT0006 | `upgrade`: a file's `x:Godot` marker differs from `--from` | Fix or drop `--from` |
+| GXT0007 | `upgrade`: a file has no marker and no `--from` was given | Pass `--from` with the version it was written with |
+| GXT0008 | `upgrade` (warning): a property the `--to` version lacks, kept as a script property with its value text | Review or replace it by hand |

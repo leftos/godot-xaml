@@ -5,7 +5,7 @@ What godot-xaml does not do, or does differently from a `.tscn`.
 ## Platform
 
 - **Godot 4.7 with .NET, tested on 4.7.2.** The addon is C#, so the GDScript-only build of Godot cannot load it.
-- **One metadata file per Godot version.** Property types and enum names come from Godot 4.7's metadata, shipped in the package. A later Godot version that renames or retypes a property can change how a file reads; such a release of godot-xaml will say so and say how to upgrade.
+- **One metadata file per Godot version.** Property types and enum names come from Godot 4.7's metadata, shipped in the package. A later Godot version that renames or retypes a property can change how a file reads; such a release of godot-xaml will say so and say how to upgrade, with `godot-xaml upgrade` ([Upgrading to a new Godot version](upgrading.md)).
 
 ## Format
 

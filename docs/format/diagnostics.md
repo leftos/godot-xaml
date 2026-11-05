@@ -395,3 +395,15 @@ Warning. `written with Godot 4.8's metadata, which this tool does not carry; rea
 ### GXT0005 Not written
 
 Error. `written with Godot 4.8's metadata, which this tool does not carry (it has 4.7's); not written, so the file keeps 4.8's typing and marker` `format` refuses to write a file whose marker names a version the tool does not carry, since writing would restamp it with the metadata of the version the tool has. The file is left as it is.
+
+### GXT0006 Marker disagrees with --from
+
+Error. `x:Godot is 4.6 but --from is 4.7` An `upgrade` reads a marked file with the version its `x:Godot` marker names, so a `--from` that names another version is a mistake about the file. Nothing in the project is upgraded.
+
+### GXT0007 No marker
+
+Error. `no x:Godot marker; pass --from with the version it was written with` An `upgrade` met a file with no `x:Godot` marker and was given no `--from`, so it does not know which version's metadata the file was written with. Nothing in the project is upgraded.
+
+### GXT0008 Property removed
+
+Warning. `Label.legacy_text is not in Godot 4.7's metadata; kept as a script property with its value text` The version an `upgrade` writes with no longer has a property the file sets, so the property is written as a script property: an attribute under its Godot name holding its Godot value text (`legacy_text='"old"'`). One line per class and property in a file.
