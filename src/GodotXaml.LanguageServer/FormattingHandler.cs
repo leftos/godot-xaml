@@ -26,13 +26,13 @@ internal sealed class FormattingHandler(DocumentStore store, ProjectCache projec
         // The project's lookup takes its lock and may load metadata: it must not run on the dispatch thread.
         await Task.Yield();
 
-        ProjectContext? project = await projects.ResolveAsync(document.Path).ConfigureAwait(false);
+        ProjectContext? project = await projects.ResolveAsync(document).ConfigureAwait(false);
         if (project is null)
         {
             return [];
         }
 
-        Written written = await Task.Run(() => Write(document, project.Metadata, cache), cancellation).ConfigureAwait(false);
+        Written written = await Task.Run(() => Write(document, project, cache), cancellation).ConfigureAwait(false);
 
         // The edit replaces the whole buffer: a change or a close that landed while it ran makes the reply stale, and
         // applying it would wipe what the user typed after asking.
@@ -44,6 +44,11 @@ internal sealed class FormattingHandler(DocumentStore store, ProjectCache projec
     // The message a failed write shows, or the one edit a successful one is.
     private async Task<TextEdit[]> AnswerAsync(OpenDocument document, Written written, CancellationToken cancellation)
     {
+        if (written.NotCarried is { } notCarried)
+        {
+            await ShowAsync(MessageType.Warning, $"{NameOf(document)}: {notCarried}", cancellation).ConfigureAwait(false);
+            return [];
+        }
         if (written.HasErrors)
         {
             await ShowAsync(MessageType.Warning, $"{NameOf(document)} has errors; fix them before formatting.", cancellation).ConfigureAwait(false);
@@ -67,22 +72,28 @@ internal sealed class FormattingHandler(DocumentStore store, ProjectCache projec
     private Task ShowAsync(MessageType type, string message, CancellationToken cancellation) =>
         cancellation.IsCancellationRequested ? Task.CompletedTask : client.ShowAsync(type, message);
 
-    // The canonical text, or which of an error and a refusal stopped it.
-    private static Written Write(OpenDocument document, GodotMetadata metadata, ParseCache cache)
+    // The canonical text, or which of a marker the server does not carry, an error and a refusal stopped it.
+    private static Written Write(OpenDocument document, ProjectContext project, ParseCache cache)
     {
-        XscnParseResult result = cache.Get(document, metadata);
+        // Writing would restamp the file with the version the server carries; it keeps its own marker and typing instead.
+        if (!project.MarkerCarried)
+        {
+            return new Written(false, null, null, XscnMarker.NotWritten(project.Marker!, project.Version));
+        }
+
+        XscnParseResult result = cache.Get(document, project.Metadata);
         if (result.HasErrors)
         {
-            return new Written(true, null, null);
+            return new Written(true, null, null, null);
         }
 
         try
         {
-            return new Written(false, XscnWriter.Write(result.Document, metadata), null);
+            return new Written(false, XscnWriter.Write(result.Document, project.Metadata), null, null);
         }
         catch (Exception exception) when (WriterRefusal.Is(exception))
         {
-            return new Written(false, null, exception.Message);
+            return new Written(false, null, exception.Message, null);
         }
     }
 
@@ -90,6 +101,6 @@ internal sealed class FormattingHandler(DocumentStore store, ProjectCache projec
     private static string NameOf(OpenDocument document) =>
         document.Path is null ? Uri.UnescapeDataString(document.Uri[(document.Uri.LastIndexOf('/') + 1)..]) : Path.GetFileName(document.Path);
 
-    // A document the writer was asked to write: its text, or that it had an error or was refused.
-    private sealed record Written(bool HasErrors, string? Text, string? Refusal);
+    // A document the writer was asked to write: its text, or that it had a marker the server does not carry, an error or a refusal.
+    private sealed record Written(bool HasErrors, string? Text, string? Refusal, string? NotCarried);
 }

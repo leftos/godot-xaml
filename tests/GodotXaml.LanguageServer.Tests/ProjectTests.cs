@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using GodotXaml.Core.Diagnostics;
+using GodotXaml.Core.Metadata;
+using GodotXaml.Core.Xscn;
 using GodotXaml.LanguageServer.Protocol;
 
 namespace GodotXaml.LanguageServer.Tests;
@@ -114,6 +117,74 @@ public sealed class ProjectTests : IDisposable
         Assert.Contains("project.godot could not be read", shown.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("names no Godot version", shown.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task AMarkedFileIsReadWithItsMarkersMetadata()
+    {
+        WriteProject("4.7");
+        await using ServerHarness server = new(Recording(MetadataSeams.Loader));
+        await server.InitializeAsync();
+
+        await server.OpenAsync(SceneUri("Marked.xscn"), 1, Scene("4.8"));
+        PublishDiagnosticsParams marked = await server.NextAsync(server.Published, "the marked file's publish");
+        await server.OpenAsync(SceneUri("Unmarked.xscn"), 1, Scene(null));
+        PublishDiagnosticsParams plain = await server.NextAsync(server.Published, "the unmarked file's publish");
+
+        // 4.8's metadata has no Label.text, so Text is an unknown property whose value does not read as Godot value text.
+        LspDiagnostic unknown = Assert.Single(marked.Diagnostics);
+        Assert.Equal(XscnCodes.InvalidValue, unknown.Code);
+        Assert.Contains("Unexpected identifier 'a'", unknown.Message, StringComparison.Ordinal);
+
+        // The same file with no marker keeps the project's 4.7, where Text is a String property.
+        Assert.Empty(plain.Diagnostics);
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+        Assert.Equal(["4.7", "4.8"], asked);
+    }
+
+    [Fact]
+    public async Task AnUnmarkedFileKeepsTheProjectsVersion()
+    {
+        WriteProject("4.7");
+        await using ServerHarness server = new(Recording(MetadataSeams.Loader));
+        await server.InitializeAsync();
+
+        await server.OpenAsync(SceneUri("Plain.xscn"), 1, Scene(null));
+        PublishDiagnosticsParams published = await server.NextAsync(server.Published, "the publish");
+
+        Assert.Empty(published.Diagnostics);
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+
+        // The loader carries 4.8 too, and it is the newest; the file is still read with the project's 4.7.
+        Assert.Equal(["4.7"], asked);
+    }
+
+    [Fact]
+    public async Task AMarkerTheServerDoesNotCarryWarnsOnce()
+    {
+        WriteProject("4.7");
+        await using ServerHarness server = new(Recording(MetadataSeams.Loader));
+        await server.InitializeAsync();
+
+        await server.OpenAsync(SceneUri("One.xscn"), 1, Scene("4.9"));
+        PublishDiagnosticsParams first = await server.NextAsync(server.Published, "the first file's publish");
+        await server.OpenAsync(SceneUri("Two.xscn"), 1, Scene("4.9"));
+        PublishDiagnosticsParams second = await server.NextAsync(server.Published, "the second file's publish");
+
+        // Both read with 4.8, the newest the server carries: Text is unknown to it.
+        Assert.Equal(XscnCodes.InvalidValue, Assert.Single(first.Diagnostics).Code);
+        Assert.Equal(XscnCodes.InvalidValue, Assert.Single(second.Diagnostics).Code);
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+
+        ShowMessageParams shown = Assert.Single(ServerHarness.Remaining(server.Shown));
+        Assert.Equal(MessageType.Warning, shown.Type);
+        Assert.Equal($"One.xscn: {XscnMarker.NotCarried("4.9", "4.8")}", shown.Message);
+    }
+
+    // A scene whose Label's Text is a string property in 4.7's metadata and, in 4.8's, an unknown property whose unquoted
+    // value is not Godot value text: which metadata read the file shows in its diagnostics.
+    private static string Scene(string? marker) =>
+        $"<Control xmlns:x=\"{XscnParser.FormatNamespace}\"{(marker is null ? "" : $" x:Godot=\"{marker}\"")} Name=\"Root\">"
+        + "<Label Name=\"Text\" Text=\"a\" /></Control>";
 
     private ServerSeams Recording(MetadataLoader inner) =>
         ServerSeams.Default with

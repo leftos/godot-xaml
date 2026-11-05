@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GodotXaml.Core.Diagnostics;
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
 using GodotXaml.LanguageServer.Protocol;
 
@@ -199,6 +200,38 @@ public sealed class FormattingTests
         Assert.Equal(0, await server.ShutdownAndDrainAsync());
     }
 
+    [Fact]
+    public async Task FormattingRefusesAFileWhoseMarkerIsNotCarried()
+    {
+        ServerSeams seams = ServerSeams.Default with { LoadMetadata = MetadataSeams.Loader };
+        await using ServerHarness server = new(seams);
+        await server.InitializeAsync();
+
+        string refused = FileUri(Path.Combine(FormatFolder, "Marker49.xscn"));
+        await server.OpenAsync(refused, 1, Marked("4.9"));
+        await server.NextAsync(server.Published, "the refused file's publish");
+        await server.NextAsync(server.Shown, "the marker's notice");
+
+        JsonElement refusedEdits = await FormatAsync(server, refused);
+
+        Assert.Empty(refusedEdits.EnumerateArray());
+        ShowMessageParams refusal = await server.NextAsync(server.Shown, "the formatting refusal");
+        Assert.Equal(MessageType.Warning, refusal.Type);
+        Assert.Equal($"Marker49.xscn: {XscnMarker.NotWritten("4.9", "4.8")}", refusal.Message);
+
+        // A marker the server carries is written with, so the file keeps its own version and marker.
+        string kept = FileUri(Path.Combine(FormatFolder, "Marker48.xscn"));
+        await server.OpenAsync(kept, 1, Marked("4.8"));
+        await server.NextAsync(server.Published, "the kept file's publish");
+
+        JsonElement keptEdits = await FormatAsync(server, kept);
+
+        JsonElement edit = Assert.Single(keptEdits.EnumerateArray());
+        Assert.Contains("x:Godot=\"4.8\"", edit.GetProperty("newText").GetString()!, StringComparison.Ordinal);
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+        Assert.Empty(ServerHarness.Remaining(server.Shown));
+    }
+
     // The request as a client sends it: the document's URI and formatting options the server ignores.
     private static Task<JsonElement> FormatAsync(ServerHarness server, string uri) =>
         server.RequestObjectAsync(
@@ -207,6 +240,10 @@ public sealed class FormattingTests
         );
 
     private static string FileUri(string path) => new Uri(path).AbsoluteUri;
+
+    // A scene marked with a Godot version, written so that its canonical form is a whole-document edit.
+    private static string Marked(string marker) =>
+        $"<Control xmlns:x=\"{XscnParser.FormatNamespace}\" x:Godot=\"{marker}\" Name=\"Root\"><Label Name=\"A\" /></Control>";
 
     private static XscnParseResult WithUnwritableRootName(XscnParseResult result)
     {

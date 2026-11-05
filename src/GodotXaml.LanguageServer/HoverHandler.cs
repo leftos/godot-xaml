@@ -123,7 +123,7 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
         // The project's lookup takes its lock and may load metadata: it must not run on the dispatch thread.
         await Task.Yield();
 
-        ProjectContext? project = await projects.ResolveAsync(document.Path).ConfigureAwait(false);
+        ProjectContext? project = await projects.ResolveAsync(document).ConfigureAwait(false);
         if (project is null)
         {
             return null;

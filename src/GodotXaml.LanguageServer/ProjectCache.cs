@@ -1,5 +1,6 @@
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Projects;
+using GodotXaml.Core.Xscn;
 using GodotXaml.LanguageServer.Protocol;
 
 namespace GodotXaml.LanguageServer;
@@ -8,12 +9,16 @@ namespace GodotXaml.LanguageServer;
 /// <param name="Root">The project root's full path, or null outside any project.</param>
 /// <param name="Metadata">The metadata.</param>
 /// <param name="Version">The Godot minor version of the metadata.</param>
-internal sealed record ProjectContext(string? Root, GodotMetadata Metadata, string Version);
+/// <param name="Marker">The <c>x:Godot</c> marker the document names, or null when it has none.</param>
+/// <param name="MarkerCarried">Whether the document's marker names a version the server carries; true when it has none.</param>
+internal sealed record ProjectContext(string? Root, GodotMetadata Metadata, string Version, string? Marker, bool MarkerCarried);
 
 /// <summary>
 /// Finds each document's project, the nearest folder above it holding <c>project.godot</c>, cached per folder, and loads
-/// the metadata its <c>config/features</c> names once per version. Each project's notices (the version in use, a
-/// version with no bundled metadata, a load failure) are sent once, the first time the project is seen.
+/// the metadata its <c>config/features</c> names once per version. A document's <c>x:Godot</c> marker then names the
+/// version it is read with, when the server carries that version; a marker it does not carry reads with the newest it
+/// carries. Each project's notices (the version in use, a version with no bundled metadata, a load failure) are sent once,
+/// the first time the project is seen, and a marker the server does not carry is sent once per marker value.
 /// </summary>
 internal sealed class ProjectCache(MetadataLoader loader, IClientMessages client)
 {
@@ -25,17 +30,19 @@ internal sealed class ProjectCache(MetadataLoader loader, IClientMessages client
     private readonly Dictionary<string, string?> rootsByFolder = new(DocumentStore.PathComparer);
     private readonly Dictionary<string, ProjectContext?> projects = new(DocumentStore.PathComparer);
     private readonly Dictionary<string, LoadedMetadata> byVersion = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, MarkerRead> markers = new(StringComparer.Ordinal);
+    private readonly HashSet<string> warnedMarkers = new(StringComparer.Ordinal);
 
     /// <summary>The project of a document, sending its notices the first time it is seen.</summary>
-    /// <param name="path">The document's full path, or null for a document not on disk.</param>
+    /// <param name="document">The document, whose marker names the metadata it is read with.</param>
     /// <returns>The project, or null when its metadata could not be loaded.</returns>
-    public async Task<ProjectContext?> ResolveAsync(string? path)
+    public async Task<ProjectContext?> ResolveAsync(OpenDocument document)
     {
         List<Notice> notices = [];
         ProjectContext? context;
         lock (gate)
         {
-            context = Resolve(path, notices);
+            context = Resolve(document, notices);
         }
 
         foreach (Notice notice in notices)
@@ -46,28 +53,77 @@ internal sealed class ProjectCache(MetadataLoader loader, IClientMessages client
     }
 
     // Called under the gate.
-    private ProjectContext? Resolve(string? path, List<Notice> notices)
+    private ProjectContext? Resolve(OpenDocument document, List<Notice> notices)
     {
         string? root = null;
-        if (path is not null)
+        if (document.Path is not null)
         {
-            string folder = Path.GetDirectoryName(path) ?? path;
+            string folder = Path.GetDirectoryName(document.Path) ?? document.Path;
             if (!rootsByFolder.TryGetValue(folder, out root))
             {
-                root = GodotProject.Find(path);
+                root = GodotProject.Find(document.Path);
                 rootsByFolder.Add(folder, root);
             }
         }
 
         string key = root ?? Outside;
-        if (projects.TryGetValue(key, out ProjectContext? known))
+        if (!projects.TryGetValue(key, out ProjectContext? project))
         {
-            return known;
+            project = Load(root, notices);
+            projects.Add(key, project);
+        }
+        if (project is null)
+        {
+            return null;
         }
 
-        ProjectContext? context = Load(root, notices);
-        projects.Add(key, context);
-        return context;
+        return MarkerOf(document) is { } marker ? Marked(project, marker, document, notices) : project;
+    }
+
+    // A project read with a marker's metadata: the marker's version when the server carries it, else the newest it carries,
+    // with one message per marker value it does not carry.
+    private ProjectContext? Marked(ProjectContext project, string marker, OpenDocument document, List<Notice> notices)
+    {
+        if (!byVersion.TryGetValue(marker, out LoadedMetadata? loaded))
+        {
+            try
+            {
+                loaded = loader(marker);
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                notices.Add(
+                    new Notice(
+                        true,
+                        MessageType.Error,
+                        $"godot-xaml could not load the Godot {marker} metadata for {NameOf(document)}: {exception.Message}"
+                    )
+                );
+                return null;
+            }
+            byVersion.Add(marker, loaded);
+        }
+
+        bool carried = string.Equals(marker, loaded.Version, StringComparison.Ordinal);
+        if (!carried && warnedMarkers.Add(marker))
+        {
+            notices.Add(new Notice(true, MessageType.Warning, $"{NameOf(document)}: {XscnMarker.NotCarried(marker, loaded.Version)}"));
+        }
+
+        return new ProjectContext(project.Root, loaded.Metadata, loaded.Version, marker, carried);
+    }
+
+    // Called under the gate: the document's marker, read once per update of its text.
+    private string? MarkerOf(OpenDocument document)
+    {
+        if (markers.TryGetValue(document.Uri, out MarkerRead read) && read.Stamp == document.Stamp)
+        {
+            return read.Marker;
+        }
+
+        string? marker = XscnMarker.Read(document.Text);
+        markers[document.Uri] = new MarkerRead(document.Stamp, marker);
+        return marker;
     }
 
     private ProjectContext? Load(string? root, List<Notice> notices)
@@ -83,7 +139,7 @@ internal sealed class ProjectCache(MetadataLoader loader, IClientMessages client
             }
 
             AddLoaded(root, loaded, unreadable, notices);
-            return new ProjectContext(root, loaded.Metadata, loaded.Version);
+            return new ProjectContext(root, loaded.Metadata, loaded.Version, null, true);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
@@ -141,6 +197,12 @@ internal sealed class ProjectCache(MetadataLoader loader, IClientMessages client
             return null;
         }
     }
+
+    // The document's file name, or the last, unescaped segment of its URI for a document not on disk.
+    private static string NameOf(OpenDocument document) =>
+        document.Path is null ? Uri.UnescapeDataString(document.Uri[(document.Uri.LastIndexOf('/') + 1)..]) : Path.GetFileName(document.Path);
+
+    private readonly record struct MarkerRead(long Stamp, string? Marker);
 
     private sealed record Notice(bool Shown, MessageType Type, string Message);
 }

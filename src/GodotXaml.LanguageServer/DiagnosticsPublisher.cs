@@ -180,7 +180,7 @@ internal sealed class DiagnosticsPublisher(
                 await Task.Yield();
             }
 
-            ProjectContext? project = await projects.ResolveAsync(document.Path).ConfigureAwait(false);
+            ProjectContext? project = await projects.ResolveAsync(document).ConfigureAwait(false);
             if (project is null)
             {
                 return;
