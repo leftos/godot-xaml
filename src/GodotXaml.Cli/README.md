@@ -86,9 +86,9 @@ The project's `.gd` and `.cs` scripts and its `project.godot` are scanned too, a
 
 A converted path inside a longer string is warned about and not rewritten (`warning GXP0006`: `holds …, which this run converts to …, inside a longer string; it is not rewritten`), and so is a literal ending in an extension the run converts, since a path built from it is not rewritten (`warning GXP0006`: `ends in .tscn, and this run converts such files to .xscn; a path built from it is not rewritten`).
 
-A file prints at most three `GXP0006` lines; the fourth line stands for the rest (`warning GXP0006: and {n} more like it in this file; none is rewritten`) and counts as one warning.
+A file prints at most three `GXP0006` lines; the fourth line stands for the rest (`warning GXP0006: and {n} more like it in this file; none is rewritten`), and the summary counts each of them.
 
-Inside `addons/`, which the run never edits, the messages say so: `ends in .tscn; this run converts such files to .xscn but edits nothing under addons/, so a path built from it is not rewritten` and `holds …, which this run converts to …, inside a longer string; addons/ is not edited, so it is not rewritten`. Comments are skipped. These warnings are counted in the summary line and do not change the exit code.
+Inside `addons/`, which the run never edits, the messages say so: `ends in .tscn; this run converts such files to .xscn but edits nothing under addons/, so a path built from it is not rewritten` and `holds …, which this run converts to …, inside a longer string; addons/ is not edited, so it is not rewritten`. Comments are skipped. These warnings are counted in the summary line and do not change the exit code. A `--project` run does not scan the addon's own folder, `addons/godot_xaml/`, whose files name the extensions it converts on purpose.
 
 `export_presets.cfg`, `.gdextension` files, `.import` files, other `.cfg` files and `.csproj` files are not scanned.
 

@@ -44,17 +44,19 @@ internal static class ReferenceScan
     /// <param name="root">The project root to walk.</param>
     /// <param name="renames">Old <c>res://</c> path to new, compared ordinal.</param>
     /// <param name="skip">The full paths of the files the run reads or writes itself.</param>
+    /// <param name="excluded">The full path of the one folder under the root to leave out, or null for none.</param>
     /// <param name="error">Where a folder or file that cannot be read is reported.</param>
     /// <returns>Every reference found, in file, line and column order.</returns>
     internal static IEnumerable<ScannedReference> Find(
         string root,
         IReadOnlyDictionary<string, string> renames,
         HashSet<string> skip,
+        string? excluded,
         TextWriter error
     )
     {
         List<ScannedReference> references = [];
-        foreach (string file in Files(root, error))
+        foreach (string file in Files(root, excluded, error))
         {
             if (skip.Contains(Path.GetFullPath(file)))
             {
@@ -498,13 +500,13 @@ internal static class ReferenceScan
     private static string? Attribute(XamlTag tag, string name) =>
         tag.Attributes.Find(attribute => string.Equals(attribute.Name, name, StringComparison.Ordinal))?.Value;
 
-    // Every accepted file under the root, in one order on every OS. A folder Godot leaves out of its file system is
-    // skipped: a hidden one, one holding .gdignore, and one holding its own project.godot, a nested project. So is a
-    // .NET project's build output, its bin and obj.
-    private static List<string> Files(string root, TextWriter error)
+    // Every accepted file under the root, in one order on every OS, leaving out the one folder given by full path. A
+    // folder Godot leaves out of its file system is skipped: a hidden one, one holding .gdignore, and one holding its
+    // own project.godot, a nested project. So is a .NET project's build output, its bin and obj.
+    private static List<string> Files(string root, string? excluded, TextWriter error)
     {
         List<string> found = [];
-        Walk(root, found, new WalkRule(Accepted, Excluded: null, SkipLinks: false), error);
+        Walk(root, found, new WalkRule(Accepted, Excluded: excluded, SkipLinks: false), error);
         found.Sort(StringComparer.Ordinal);
         return found;
     }

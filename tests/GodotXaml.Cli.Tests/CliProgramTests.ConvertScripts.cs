@@ -132,7 +132,28 @@ public sealed partial class CliProgramTests
             $"{file}(4,16): warning GXP0006: and 2 more like it in this file; none is rewritten",
         ];
         Assert.Equal(expected, ScriptWarnings(run));
-        Assert.Contains("1 converted, 0 refused, 0 error(s), 4 warning(s)", run.Lines);
+        Assert.Contains("1 converted, 0 refused, 0 error(s), 5 warning(s)", run.Lines);
+    }
+
+    [Fact]
+    public void TheSummaryCountsEveryHitTheRollUpStandsFor()
+    {
+        const string SevenFragments =
+            "var aa = \"x\" + \".tscn\"\nvar bb = \"x\" + \".tscn\"\nvar cc = \"x\" + \".tscn\"\n"
+            + "var dd = \"x\" + \".tscn\"\nvar ee = \"x\" + \".tscn\"\nvar ff = \"x\" + \".tscn\"\nvar gg = \"x\" + \".tscn\"\n";
+        string file = WriteConvertedButtonAnd("a.gd", SevenFragments);
+
+        RunResult run = RunConvert(folder);
+
+        string[] expected =
+        [
+            $"{file}(1,16): warning GXP0006: {Fragment}",
+            $"{file}(2,16): warning GXP0006: {Fragment}",
+            $"{file}(3,16): warning GXP0006: {Fragment}",
+            $"{file}(4,16): warning GXP0006: and 4 more like it in this file; none is rewritten",
+        ];
+        Assert.Equal(expected, ScriptWarnings(run));
+        Assert.Contains("1 converted, 0 refused, 0 error(s), 7 warning(s)", run.Lines);
     }
 
     [Fact]

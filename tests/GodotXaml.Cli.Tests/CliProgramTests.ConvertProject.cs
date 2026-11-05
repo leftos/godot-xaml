@@ -130,6 +130,29 @@ public sealed partial class CliProgramTests
     }
 
     [Fact]
+    public void TheAddonsOwnFolderIsNotScannedForReferences()
+    {
+        Write("project.godot", Project);
+        Write("ui/button.tscn", ButtonScene);
+        string temp = Write(
+            "addons/godot_xaml/Temp.cs",
+            "class Temp\n{\n    string T = \".tscn\";\n    string P = \"could not load res://ui/button.tscn\";\n}\n"
+        );
+        string gd = Write("addons/x/a.gd", "var p = \"x\" + \".tscn\"\n");
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain(run.Lines, line => line.StartsWith(temp, StringComparison.Ordinal));
+        Assert.Contains(
+            $"{gd}(1,15): warning GXP0006: ends in .tscn; this run converts such files to .xscn but edits nothing under addons/, "
+                + "so a path built from it is not rewritten",
+            run.Lines
+        );
+        Assert.Contains("1 converted, 0 refused, 0 error(s), 1 warning(s)", run.Lines);
+    }
+
+    [Fact]
     public void ProjectLeavesTheFilesGodotLoadsBeforeTheAddonAsText()
     {
         string project = Write("project.godot", "config_version=5\n\n[gui]\ntheme/custom=\"res://t.tres\"\n");

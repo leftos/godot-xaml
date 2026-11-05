@@ -297,7 +297,7 @@ internal static class ConvertCommand
             {
                 // A failed run moves no output in, so every source found counts as not converted.
                 string message = $"nothing changed: {sourceCount} source(s) were not converted; the project is as it was";
-                Warn(run.Invocation.Output, run.Tally, run.Root, CliCodes.OriginalsKept, message);
+                Warn(run.Invocation.Output, run.Tally, run.Root, CliCodes.OriginalsKept, message, 1);
                 return;
             }
             if (Apply(run, planned, edits))
@@ -392,7 +392,7 @@ internal static class ConvertCommand
         string? text = DecodeUtf8(bytes);
         if (text is null)
         {
-            Warn(run.Invocation.Output, run.Tally, file, CliCodes.NotUtf8, "not UTF-8 text; not scanned or edited");
+            Warn(run.Invocation.Output, run.Tally, file, CliCodes.NotUtf8, "not UTF-8 text; not scanned or edited", 1);
             run.NotUtf8.Add(file);
             return true;
         }
@@ -671,7 +671,7 @@ internal static class ConvertCommand
             item.Root = root;
             if (root is null)
             {
-                Warn(output, tally, item.Source.File.Path, CliCodes.NoProjectRoot, NoRootMessage);
+                Warn(output, tally, item.Source.File.Path, CliCodes.NoProjectRoot, NoRootMessage, 1);
                 continue;
             }
             if (!roots.TryGetValue(root, out Dictionary<string, string>? map))
@@ -699,7 +699,7 @@ internal static class ConvertCommand
             item.Checked = result.Changed ? null : item.Checked;
             foreach (string warning in result.Warnings)
             {
-                Warn(output, tally, item.Source.File.Path, CliCodes.UnrewrittenPath, warning);
+                Warn(output, tally, item.Source.File.Path, CliCodes.UnrewrittenPath, warning, 1);
             }
         }
     }
@@ -845,7 +845,7 @@ internal static class ConvertCommand
             string message =
                 $"the source still carries {item.Uid}, which now belongs to {Path.GetFileName(item.Output)}; "
                 + "remove the source or Godot will give one of them a new uid";
-            Warn(output, tally, item.Source.File.Path, CliCodes.SharedUid, message);
+            Warn(output, tally, item.Source.File.Path, CliCodes.SharedUid, message, 1);
         }
     }
 
@@ -871,7 +871,7 @@ internal static class ConvertCommand
                 string message = $"refers to {failedPath}, which this run failed to write; {oldPath} still exists";
                 (int Line, int Column)? at = FirstOccurrence(written.WrittenText, ReferenceScan.GrammarOf(written.Output), failedPath);
                 string path = at is { } location ? Location(written.Output, location.Line, location.Column) : written.Output;
-                Warn(output, tally, path, CliCodes.FailedWrite, message);
+                Warn(output, tally, path, CliCodes.FailedWrite, message, 1);
             }
         }
     }
@@ -931,7 +931,10 @@ internal static class ConvertCommand
 
     private static void ScanRoot(string root, Dictionary<string, string> map, HashSet<string> skip, Tally tally, InvocationConfiguration invocation)
     {
-        List<ScannedReference> references = [.. ReferenceScan.Find(root, map, skip, invocation.Error)];
+        // The addon's own files name the extensions it converts on purpose, so a project run leaves that one folder out of
+        // the scan; every other folder under addons/ is still scanned.
+        string? excluded = tally.Project ? Path.GetFullPath(Path.Combine(root, "addons", "godot_xaml")) : null;
+        List<ScannedReference> references = [.. ReferenceScan.Find(root, map, skip, excluded, invocation.Error)];
         foreach (IGrouping<string, ScannedReference> file in references.GroupBy(reference => reference.File, InputFiles.PathComparer))
         {
             ScanFile(root, file, tally, invocation);
@@ -950,28 +953,31 @@ internal static class ConvertCommand
             string path = Location(reference.File, reference.Line, reference.Column);
             if (reference.Kind == ScriptHitKind.Whole)
             {
-                Warn(invocation.Output, tally, path, CliCodes.UntouchedReference, ReferenceMessage(reference, underAddons));
+                Warn(invocation.Output, tally, path, CliCodes.UntouchedReference, ReferenceMessage(reference, underAddons), 1);
                 continue;
             }
             printed++;
-            string? message = BuiltPathMessage(reference, printed, built, underAddons);
-            if (message is not null)
+            if (BuiltPathMessage(reference, printed, built, underAddons) is { } line)
             {
-                Warn(invocation.Output, tally, path, CliCodes.BuiltPath, message);
+                Warn(invocation.Output, tally, path, CliCodes.BuiltPath, line.Message, line.Hits);
             }
         }
     }
 
-    // The message a built path prints, or null when an earlier hit of the same file already rolled the rest up.
-    private static string? BuiltPathMessage(ScannedReference reference, int printed, int built, bool underAddons)
+    // The message a built path prints and the number of hits it stands for, or null when an earlier hit of the same file
+    // already rolled the rest up.
+    private static (string Message, int Hits)? BuiltPathMessage(ScannedReference reference, int printed, int built, bool underAddons)
     {
         if (printed > RolledUpAt)
         {
             return null;
         }
-        return printed == RolledUpAt
-            ? $"and {built - (RolledUpAt - 1)} more like it in this file; none is rewritten"
-            : ReferenceMessage(reference, underAddons);
+        if (printed == RolledUpAt)
+        {
+            int hidden = built - (RolledUpAt - 1);
+            return ($"and {hidden} more like it in this file; none is rewritten", hidden);
+        }
+        return (ReferenceMessage(reference, underAddons), 1);
     }
 
     // Whether a file is under the root's own addons folder, the first segment below the root, which the run never edits.
@@ -1004,10 +1010,10 @@ internal static class ConvertCommand
         return $"refers to {reference.Key}, which this run converts to {reference.Value}; {clause}";
     }
 
-    private static void Warn(TextWriter output, Tally tally, string path, string code, string message)
+    private static void Warn(TextWriter output, Tally tally, string path, string code, string message, int hits)
     {
         output.WriteLine($"{path}: warning {code}: {message}");
-        tally.Warnings++;
+        tally.Warnings += hits;
     }
 
     private static string Location(string path, int line, int column) => $"{path}({line},{column})";
