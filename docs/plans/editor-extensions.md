@@ -13,8 +13,10 @@ The design of the VS Code extension (GXAML-15) and the Visual Studio extension (
 - **VS Code: settings.** `godotXaml.server.path` (another executable in place of the embedded one) and `godotXaml.trace.server` (the language client's standard message trace), both read by the client alone; the server still takes no arguments and no initialization options.
 - **VS Code: branch.** The extension is built on `feat/vscode-extension`, with a draft PR into `main`, and merges once its per-platform packaging is proven.
 
+- **Visual Studio: extension model.** One VSIX in the hybrid model: VisualStudio.Extensibility's APIs with in-process hosting (`VssdkCompatibleExtension`, .NET Framework 4.7.2, `RequiresInProcessHosting`, manifest type `VSSDK+VisualStudio.Extensibility`), Microsoft's documented route for the new SDK's gaps. `LanguageServerProvider` launches the server (it is still experimental, `VSEXTPREVIEW_LSP`, so its use is suppressed by name), a pkgdef-registered TextMate grammar colours the files, and GXAML-17 may host a classic WPF tool window for the live preview image and its click positions, which Remote UI cannot report.
+- **Visual Studio: targets.** `InstallationTarget` `[17.14,)` for amd64 and for arm64, so Visual Studio 2022 17.14 and later and Visual Studio 2026 both install it; the VSIX embeds the win-x64 and win-arm64 server executables and picks one by the OS architecture at run time.
+- **Visual Studio: branch.** The extension is built on `feat/visual-studio-extension`, with a draft PR into `main`, and merges once its packaging is proven.
+
 ## Open
 
-- Visual Studio: the extension SDK (VisualStudio.Extensibility's `LanguageServerProvider`, or the legacy `ILanguageClient`), which also decides how GXAML-17's tool window and click-to-select are hosted.
-- Visual Studio: the content type (its own, based on XML, or the built-in XML editor), the IDE versions it targets, and how its two Windows executables are delivered.
-- Whether the Visual Studio extension's work goes on a feature branch.
+- Visual Studio: the content type (its own, based on XML or on the language-server base document type) and how its colour coexists with the built-in XML editor; its Marketplace publishing (`VsixPublisher.exe`, trusted publishing from CI).
