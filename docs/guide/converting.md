@@ -41,6 +41,22 @@ What the run guarantees:
 
 Read the warnings it prints: each names a file and a line.
 
+### What it does not rewrite
+
+The run edits only the project's scripts and `project.godot`, and only where a string is exactly a converted path. These break after it and need a change by hand:
+
+- **Files outside the project root**: a test project, a build or smoke script, a theme or asset tool beside the game. The run never reads them, so it neither edits nor warns about them.
+- **Code that recognises a scene by its extension**, such as a `SceneSuffix = ".tscn"` constant or a `path.EndsWith(".tscn")` test. A script inside the project gets a `GXP0006` warning for it; one outside gets nothing.
+- **Code that reads a scene file as text**: a test that parses a `.tscn` to check a node or a property, or a tool that edits one with string or regex operations. An `.xscn` is XML, so that code needs rewriting, not only renaming.
+
+Find them before converting. Outside the project, search for scene and resource paths:
+
+```sh
+rg -n "\.tscn|\.tres" --glob '!path/to/game/**'
+```
+
+Inside it, read the `GXP0006` warnings, which name each file and line that builds or tests a path the run did not rewrite.
+
 ## Back to `.tscn`
 
 ```sh
