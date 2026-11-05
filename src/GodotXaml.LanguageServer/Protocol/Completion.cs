@@ -1,9 +1,15 @@
 namespace GodotXaml.LanguageServer.Protocol;
 
-/// <summary>The <c>textDocument/completion</c> request's parameters; the client's trigger context is not read.</summary>
+/// <summary>The <c>textDocument/completion</c> request's parameters.</summary>
 /// <param name="TextDocument">The document.</param>
 /// <param name="Position">The 0-based cursor position, between two characters.</param>
-internal sealed record CompletionParams(TextDocumentIdentifier TextDocument, LspPosition Position);
+/// <param name="Context">How the client triggered the request: the character it typed, or null for one the user invoked.</param>
+internal sealed record CompletionParams(TextDocumentIdentifier TextDocument, LspPosition Position, CompletionContext? Context);
+
+/// <summary>How a completion was triggered.</summary>
+/// <param name="TriggerKind">LSP's kind: 1 the user invoked it, 2 a character was typed, 3 an earlier list was incomplete.</param>
+/// <param name="TriggerCharacter">The character typed, when the kind is 2; null otherwise.</param>
+internal sealed record CompletionContext(int TriggerKind, string? TriggerCharacter);
 
 /// <summary>What the server completes on, advertised in <c>initialize</c>.</summary>
 /// <param name="TriggerCharacters">The characters that ask for completions as they are typed.</param>

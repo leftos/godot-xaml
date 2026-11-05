@@ -20,9 +20,10 @@ internal sealed class CompletionHandler(DocumentStore store, ProjectCache projec
     /// <summary>The completions at a cursor of a document.</summary>
     /// <param name="uri">The document's URI.</param>
     /// <param name="position">The 0-based cursor, between two characters, clamped into the text.</param>
+    /// <param name="trigger">How the client triggered the request, or null for one it invoked.</param>
     /// <param name="cancellation">The request's cancellation.</param>
     /// <returns>The completions, or null for a document not open or a cursor where nothing is completed.</returns>
-    public async Task<CompletionList?> CompleteAsync(string uri, LspPosition position, CancellationToken cancellation)
+    public async Task<CompletionList?> CompleteAsync(string uri, LspPosition position, CompletionContext? trigger, CancellationToken cancellation)
     {
         if (store.Find(uri) is not { } document)
         {
@@ -38,7 +39,7 @@ internal sealed class CompletionHandler(DocumentStore store, ProjectCache projec
             return null;
         }
 
-        CompletionList? list = await Task.Run(() => new CompletionScope(document, project.Metadata, cache).Complete(position), cancellation)
+        CompletionList? list = await Task.Run(() => new CompletionScope(document, project.Metadata, cache, trigger).Complete(position), cancellation)
             .ConfigureAwait(false);
 
         // A change or a close that landed while it ran makes the list complete text the buffer no longer holds.
@@ -84,12 +85,14 @@ internal sealed class CompletionScope
     /// <param name="document">The document.</param>
     /// <param name="metadata">The metadata.</param>
     /// <param name="cache">The documents' parses.</param>
-    public CompletionScope(OpenDocument document, GodotMetadata metadata, ParseCache cache)
+    /// <param name="trigger">How the client triggered the request, or null for one it invoked.</param>
+    public CompletionScope(OpenDocument document, GodotMetadata metadata, ParseCache cache, CompletionContext? trigger)
     {
         Text = document.Text;
         Kind = document.Kind;
         Metadata = metadata;
         Names = XscnParser.NamesOf(metadata);
+        SpaceTyped = trigger is { TriggerKind: 2, TriggerCharacter: " " };
         lines = new LineMap(Text);
         parse = new(() => cache.Get(document, metadata));
     }
@@ -106,6 +109,9 @@ internal sealed class CompletionScope
     /// <summary>The metadata's attribute names.</summary>
     public XscnPropertyNames Names { get; }
 
+    /// <summary>Whether a space typed in the document asked for the list.</summary>
+    public bool SpaceTyped { get; }
+
     /// <summary>The document's parse, the one its diagnostics made when it is kept for the text.</summary>
     public XscnParseResult Parse => parse.Value;
 
@@ -114,11 +120,22 @@ internal sealed class CompletionScope
 
     /// <summary>The list at a cursor.</summary>
     /// <param name="position">The cursor.</param>
-    /// <returns>The list, or null where nothing is completed.</returns>
+    /// <returns>
+    /// The list, or null where nothing is completed, and at once for a typed space anywhere but a start tag's attributes
+    /// and a flags value.
+    /// </returns>
     public CompletionList? Complete(LspPosition position)
     {
         int offset = lines.ClampedOffset(new LinePosition(position.Line, position.Character));
         XscnCursorContext context = ContextAt(offset);
+
+        // A space is syntax only in a start tag, between its attributes or on one's name, and in a flags value; in content,
+        // a comment, an end tag or any other part of a tag it is text, and asks for no list.
+        if (SpaceTyped && context.Kind is not (XscnCursorKind.AttributeValue or XscnCursorKind.AttributeName or XscnCursorKind.BetweenAttributes))
+        {
+            return null;
+        }
+
         if (context.Kind == XscnCursorKind.AttributeValue)
         {
             return new ValueCompletions(this, context, offset).Candidates() is { } value ? List(value.Replace, value.Candidates) : null;

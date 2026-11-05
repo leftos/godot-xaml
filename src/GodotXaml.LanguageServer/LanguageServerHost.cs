@@ -269,7 +269,7 @@ internal partial interface ILanguageServerTarget
     Task<Hover?> HoverAsync(HoverParams parameters, CancellationToken cancellation);
 
     /// <summary>Completes the element or attribute name at a position.</summary>
-    /// <param name="parameters">The document and the cursor.</param>
+    /// <param name="parameters">The document, the cursor and how the client triggered the request.</param>
     /// <param name="cancellation">The request's cancellation.</param>
     /// <returns>The completions, or null where the server completes nothing.</returns>
     [JsonRpcMethod("textDocument/completion")]
@@ -426,7 +426,7 @@ internal sealed class LanguageServerTarget(
         {
             EnsureServing();
         }
-        return completion.CompleteAsync(parameters.TextDocument.Uri, parameters.Position, cancellation);
+        return completion.CompleteAsync(parameters.TextDocument.Uri, parameters.Position, parameters.Context, cancellation);
     }
 
     // A notification is dropped before initialize and after shutdown.

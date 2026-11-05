@@ -38,6 +38,17 @@ internal sealed class ValueCompletions(CompletionScope scope, XscnCursorContext 
             return Members(names);
         }
 
+        return NonEnumValues(property, type);
+    }
+
+    // A typed space asks for nothing here: a bool and a resource's keys are not a flags value's parts.
+    private ValueCandidates? NonEnumValues(GodotPropertyInfo property, XscnValueType type)
+    {
+        if (scope.SpaceTyped)
+        {
+            return null;
+        }
+
         if (type.VariantType == "bool")
         {
             return Values([Bool("True"), Bool("False")]);
@@ -62,7 +73,8 @@ internal sealed class ValueCompletions(CompletionScope scope, XscnCursorContext 
             return Flags(names);
         }
 
-        return Values(names.Names.Select(m => Member(m, m.Name)));
+        // A typed space separates a flags value's parts only: in an enum value it is text.
+        return scope.SpaceTyped ? null : Values(names.Names.Select(m => Member(m, m.Name)));
     }
 
     private static CompletionCandidate Member(XscnEnumName member, string insert) =>

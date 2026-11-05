@@ -601,6 +601,77 @@ public sealed class CompletionTests
         Assert.Equal(0, await server.ShutdownAndDrainAsync());
     }
 
+    // A space typed in content is text, not a trigger a completion answers.
+    [Fact]
+    public async Task ASpaceInContentOffersNothing()
+    {
+        JsonElement result = await CompleteAsync(Root("<Control Name=\"R\">  |</Control>"), trigger: new CompletionContext(2, " "));
+
+        Assert.Equal(JsonValueKind.Null, result.ValueKind);
+    }
+
+    // A space typed in an enum value is text: no list comes back, and the request reads none of the document's parse,
+    // though the change after the publish left the parse the cache keeps behind the document's stamp.
+    [Fact]
+    public async Task ASpaceInAnEnumValueOffersNothing()
+    {
+        int parses = 0;
+        ServerSeams seams = ServerSeams.Default with
+        {
+            Parse = (text, kind, metadata) =>
+            {
+                Interlocked.Increment(ref parses);
+                return XscnParser.Parse(text, kind, metadata);
+            },
+        };
+        string source = Root("<Control MouseFilter=\"Stop |\" />");
+        int cursor = source.IndexOf('|', StringComparison.Ordinal);
+        string text = source.Remove(cursor, 1);
+        await using ServerHarness server = new(seams);
+        await server.InitializeAsync();
+        await server.OpenAsync(SceneUri, 1, text);
+        await server.NextAsync(server.Published, "the didOpen publish");
+
+        // The change's debounce is never released, so a read of the cache would run the seam's parse.
+        await server.ChangeAsync(SceneUri, 2, text);
+        int before = Volatile.Read(ref parses);
+
+        JsonElement result = await RequestAsync(server, SceneUri, PositionOf(text, cursor), new CompletionContext(2, " "));
+
+        Assert.Equal(JsonValueKind.Null, result.ValueKind);
+        Assert.Equal(before, Volatile.Read(ref parses));
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+    }
+
+    // A space typed in a start tag where an attribute starts is the trigger the attribute list answers.
+    [Fact]
+    public async Task ASpaceBetweenAttributesStillOffersAttributes()
+    {
+        JsonElement result = await CompleteAsync(Root("<Button Name=\"A\" |"), trigger: new CompletionContext(2, " "));
+
+        List<string> labels = Labels(result);
+        Assert.Contains("MouseFilter", labels);
+        Assert.DoesNotContain("Name", labels);
+    }
+
+    // A space typed in a flags value separates its parts, so the members it does not hold yet are the trigger's answer.
+    [Fact]
+    public async Task ASpaceInAFlagsValueStillOffersFlags()
+    {
+        JsonElement result = await CompleteAsync(Root("<Control SizeFlagsHorizontal=\"Expand |\" />"), trigger: new CompletionContext(2, " "));
+
+        Assert.Equal(["ExpandFill", "Fill", "ShrinkBegin", "ShrinkCenter", "ShrinkEnd"], Labels(result));
+    }
+
+    // A completion the user invoked carries no trigger character, so an enum value still lists its members.
+    [Fact]
+    public async Task AnInvokedCompletionInAnEnumValueStillOffersTheList()
+    {
+        JsonElement result = await CompleteAsync(Root("<Control MouseFilter=\"Stop |\" />"));
+
+        Assert.Equal(["Ignore", "Pass", "Stop"], Labels(result));
+    }
+
     // A tag of the prefix takes no attributes, and an element inside it takes no tags.
     private static async Task AssertNoSceneTagAsync(Func<string, string> scene)
     {
@@ -650,7 +721,7 @@ public sealed class CompletionTests
     private static string Root(string inner) => $"<Control xmlns:x=\"{FormatNamespace}\" Name=\"Root\">\n  {inner}\n</Control>\n";
 
     // Opens the source without its marker and asks for completions at the marker.
-    private static async Task<JsonElement> CompleteAsync(string source, string? uri = null)
+    private static async Task<JsonElement> CompleteAsync(string source, string? uri = null, CompletionContext? trigger = null)
     {
         uri ??= SceneUri;
         int cursor = source.IndexOf('|', StringComparison.Ordinal);
@@ -661,20 +732,29 @@ public sealed class CompletionTests
         await server.OpenAsync(uri, 1, text);
         await server.NextAsync(server.Published, "the didOpen publish");
 
-        JsonElement result = await RequestAsync(server, uri, PositionOf(text, cursor));
+        JsonElement result = await RequestAsync(server, uri, PositionOf(text, cursor), trigger);
 
         Assert.Equal(0, await server.ShutdownAndDrainAsync());
         return result;
     }
 
-    // The request as a client sends it.
-    private static Task<JsonElement> RequestAsync(ServerHarness server, string uri, LspPosition position) =>
-        server.RequestObjectAsync(
-            "textDocument/completion",
-            JsonSerializer.SerializeToElement(
-                new { textDocument = new { uri }, position = new { line = position.Line, character = position.Character } }
-            )
-        );
+    // The request as a client sends it; a trigger the client names adds the context that carries it.
+    private static Task<JsonElement> RequestAsync(ServerHarness server, string uri, LspPosition position, CompletionContext? trigger = null)
+    {
+        var at = new { line = position.Line, character = position.Character };
+        JsonElement parameters = trigger is null
+            ? JsonSerializer.SerializeToElement(new { textDocument = new { uri }, position = at })
+            : JsonSerializer.SerializeToElement(
+                new
+                {
+                    textDocument = new { uri },
+                    position = at,
+                    context = new { triggerKind = trigger.TriggerKind, triggerCharacter = trigger.TriggerCharacter },
+                }
+            );
+
+        return server.RequestObjectAsync("textDocument/completion", parameters);
+    }
 
     private static List<string> Labels(JsonElement result)
     {
