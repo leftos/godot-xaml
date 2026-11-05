@@ -1,0 +1,77 @@
+{
+  "name": "godot-xaml",
+  "displayName": "godot-xaml",
+  "description": "Language support for godot-xaml's .xscn scenes and .xres resources.",
+  "version": "0.4.0",
+  "publisher": "leftos",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leftos/godot-xaml"
+  },
+  "type": "module",
+  "main": "./dist/extension.cjs",
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "packageManager": "pnpm@12.15.0",
+  "contributes": {
+    "languages": [
+      {
+        "id": "xscn",
+        "aliases": [
+          "godot-xaml scene",
+          "xscn"
+        ],
+        "extensions": [
+          ".xscn"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "xres",
+        "aliases": [
+          "godot-xaml resource",
+          "xres"
+        ],
+        "extensions": [
+          ".xres"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "xscn",
+        "scopeName": "text.xml.xscn",
+        "path": "./syntaxes/xscn.tmLanguage.json"
+      },
+      {
+        "language": "xres",
+        "scopeName": "text.xml.xres",
+        "path": "./syntaxes/xres.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings",
+    "format": "oxfmt src",
+    "format:check": "oxfmt --check src",
+    "typecheck": "tsc --noEmit",
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.cjs",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run build",
+    "package": "node -e \"import('node:fs').then(f=>f.mkdirSync('../../.tmp/vscode',{recursive:true}))\" && vsce package --no-dependencies --out ../../.tmp/vscode/"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/vscode": "1.91.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
+    "typescript": "7.0.2"
+  }
+}

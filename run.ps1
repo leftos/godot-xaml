@@ -2,14 +2,14 @@
 
 <#
 .SYNOPSIS
-Builds, tests and format-checks the GodotXaml solution, every step run through tools/gate.ps1.
+Builds, tests and format-checks the GodotXaml solution and the VS Code extension, every step run through tools/gate.ps1.
 
 .DESCRIPTION
 Every verb but help runs its command through the repo's gate wrapper, tools/gate.ps1, in a pwsh of its own: the wrapper
 hands the words to the installed gate.exe, which writes the command's whole output to the log under .tmp/ and enforces
 the ceiling, and on a machine without gate.exe it runs the command directly. The script exits with the gated command's
-status. The pre-push hooks in .pre-commit-config.yaml call build, godot-build and godot-export-build, so the same
-commands run there; pre-commit runs csharpier on the staged files itself.
+status. The pre-push hooks in .pre-commit-config.yaml call build, godot-build, godot-export-build and vscode-check, so
+the same commands run there; pre-commit runs csharpier on the staged files itself.
 
   help                prints this usage; the verb a run without one uses
   build               dotnet build GodotXaml.slnx in Release, warnings as errors; .tmp/build.log, ceiling 600 s
@@ -18,9 +18,16 @@ commands run there; pre-commit runs csharpier on the staged files itself.
   test                build, then dotnet test of the solution in Release without building it again; .tmp/test.log, ceiling 600 s
   format-check        dotnet tool restore, then dotnet csharpier check on the repo, changing nothing; .tmp/format.log
   format              dotnet tool restore, then dotnet csharpier format on the repo; .tmp/format.log
+  vscode-install      pnpm install of editors/vscode with the frozen lockfile; .tmp/vscode-install.log, ceiling 600 s
+  vscode-lint         oxlint over editors/vscode, warnings failing it; .tmp/vscode-lint.log, ceiling 300 s
+  vscode-format-check oxfmt check of editors/vscode/src, changing nothing; .tmp/vscode-format-check.log, ceiling 300 s
+  vscode-check        lint, format check, type check and build of editors/vscode, then its VSIX packaged into .tmp/vscode/;
+                      .tmp/vscode-check.log and .tmp/vscode-package.log, ceiling 600 s each
+  vscode-format       oxfmt rewriting editors/vscode/src; .tmp/vscode-format.log, ceiling 300 s
 
 .PARAMETER Verb
-One of help, build, godot-build, godot-export-build, test, format-check or format; help when it is not given.
+One of help, build, godot-build, godot-export-build, test, format-check, format, vscode-install, vscode-lint,
+vscode-format-check, vscode-check or vscode-format; help when it is not given.
 
 .EXAMPLE
 ./run.ps1 build
@@ -31,7 +38,9 @@ One of help, build, godot-build, godot-export-build, test, format-check or forma
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'build', 'godot-build', 'godot-export-build', 'test', 'format-check', 'format')]
+    [ValidateSet(
+        'help', 'build', 'godot-build', 'godot-export-build', 'test', 'format-check', 'format',
+        'vscode-install', 'vscode-lint', 'vscode-format-check', 'vscode-check', 'vscode-format')]
     [string]$Verb = 'help'
 )
 
@@ -60,6 +69,11 @@ function Show-Help {
     Write-Host '  test                build, then dotnet test the solution -c Release --no-build (.tmp/test.log)'
     Write-Host '  format-check        dotnet csharpier check . (.tmp/format.log)'
     Write-Host '  format              dotnet csharpier format . (.tmp/format.log)'
+    Write-Host '  vscode-install      pnpm --dir editors/vscode install --frozen-lockfile (.tmp/vscode-install.log)'
+    Write-Host '  vscode-lint         pnpm --dir editors/vscode run lint (.tmp/vscode-lint.log)'
+    Write-Host '  vscode-format-check pnpm --dir editors/vscode run format:check (.tmp/vscode-format-check.log)'
+    Write-Host '  vscode-check        pnpm --dir editors/vscode run check, then run package (.tmp/vscode-check.log, .tmp/vscode-package.log)'
+    Write-Host '  vscode-format       pnpm --dir editors/vscode run format (.tmp/vscode-format.log)'
 }
 
 # One command under the gate: the log, the slot and the ceiling as given, and the command's own status returned.
@@ -115,6 +129,62 @@ function Invoke-FormatVerb {
     return Invoke-Gated -Log '.tmp/format.log' -Slot 'light' -TimeoutSeconds 300 -Command @('dotnet', 'csharpier', $action, '.')
 }
 
+# The VS Code extension's packages installed from its lockfile, which the lockfile alone decides.
+function Invoke-VscodeInstallVerb {
+    return Invoke-Gated -Log '.tmp/vscode-install.log' -Slot 'light' -TimeoutSeconds 600 -Command @(
+        'pnpm', '--dir', 'editors/vscode', 'install', '--frozen-lockfile')
+}
+
+# Whether the VS Code extension's packages are installed; a missing install is reported with the verb that makes it.
+function Test-VscodeInstalled {
+    if (Test-Path (Join-Path $PSScriptRoot 'editors/vscode/node_modules')) {
+        return $true
+    }
+    Write-Host 'run.ps1: editors/vscode/node_modules is missing; run ./run.ps1 vscode-install first.'
+    return $false
+}
+
+# oxlint over the VS Code extension, a warning failing it as an error does; the pre-commit hook's command.
+function Invoke-VscodeLintVerb {
+    if (-not (Test-VscodeInstalled)) {
+        return 1
+    }
+    return Invoke-Gated -Log '.tmp/vscode-lint.log' -Slot 'light' -TimeoutSeconds 300 -Command @(
+        'pnpm', '--dir', 'editors/vscode', 'run', 'lint')
+}
+
+# oxfmt's check of the VS Code extension's sources, changing nothing; the pre-commit hook's command.
+function Invoke-VscodeFormatCheckVerb {
+    if (-not (Test-VscodeInstalled)) {
+        return 1
+    }
+    return Invoke-Gated -Log '.tmp/vscode-format-check.log' -Slot 'light' -TimeoutSeconds 300 -Command @(
+        'pnpm', '--dir', 'editors/vscode', 'run', 'format:check')
+}
+
+# The VS Code extension linted, format-checked, type-checked and built, then packaged into .tmp/vscode/.
+function Invoke-VscodeCheckVerb {
+    if (-not (Test-VscodeInstalled)) {
+        return 1
+    }
+    $status = Invoke-Gated -Log '.tmp/vscode-check.log' -Slot 'light' -TimeoutSeconds 600 -Command @(
+        'pnpm', '--dir', 'editors/vscode', 'run', 'check')
+    if ($status -ne 0) {
+        return $status
+    }
+    return Invoke-Gated -Log '.tmp/vscode-package.log' -Slot 'light' -TimeoutSeconds 600 -Command @(
+        'pnpm', '--dir', 'editors/vscode', 'run', 'package')
+}
+
+# The VS Code extension's sources rewritten by oxfmt.
+function Invoke-VscodeFormatVerb {
+    if (-not (Test-VscodeInstalled)) {
+        return 1
+    }
+    return Invoke-Gated -Log '.tmp/vscode-format.log' -Slot 'light' -TimeoutSeconds 300 -Command @(
+        'pnpm', '--dir', 'editors/vscode', 'run', 'format')
+}
+
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 # The verb runs from the script's own folder, which the caller keeps: the caller's location is given back afterwards
@@ -128,6 +198,11 @@ try {
         'test' { Invoke-TestVerb }
         'format-check' { Invoke-FormatVerb }
         'format' { Invoke-FormatVerb -Fix }
+        'vscode-install' { Invoke-VscodeInstallVerb }
+        'vscode-lint' { Invoke-VscodeLintVerb }
+        'vscode-format-check' { Invoke-VscodeFormatCheckVerb }
+        'vscode-check' { Invoke-VscodeCheckVerb }
+        'vscode-format' { Invoke-VscodeFormatVerb }
         default { Show-Help; 0 }
     }
 }

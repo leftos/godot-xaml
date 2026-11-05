@@ -1,0 +1,57 @@
+name: Build the VS Code extension
+
+# Lints, format-checks, type-checks, builds and packages editors/vscode, the VS Code extension, with the frozen lockfile.
+on:
+  push:
+    branches: [main]
+    paths:
+      - editors/vscode/**
+      - .github/workflows/build-vscode.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - editors/vscode/**
+      - .github/workflows/build-vscode.yml
+
+permissions: {}
+
+concurrency:
+  group: build-vscode-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build and package the extension
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # actions/checkout reads the repository
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: editors/vscode/package.json
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: editors/vscode/pnpm-lock.yaml
+
+      - name: Install with the frozen lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint, format-check, type-check and build
+        run: pnpm run check
+
+      - name: Package
+        run: pnpm run package
