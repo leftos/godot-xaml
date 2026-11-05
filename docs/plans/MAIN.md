@@ -53,7 +53,7 @@
 
 ## Backlog
 
-- [ ] GXAML-84 Find the cause of two rare Godot crashes during first import · release vNext
+- [ ] GXAML-84 Find the cause of two rare Godot crashes during first import
 
 ## Design files
 
