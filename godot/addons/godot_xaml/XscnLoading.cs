@@ -8,6 +8,7 @@ using System.Xml;
 using Godot;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Diagnostics;
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Xscn;
 using FileAccess = Godot.FileAccess;
@@ -115,7 +116,8 @@ internal static class XscnLoading
     /// <param name="path">The file.</param>
     /// <param name="renames">Old <c>res://</c> path to new <c>res://</c> path, as Godot passes it.</param>
     /// <returns>
-    /// <see cref="Error.Ok"/>; <see cref="Error.FileCorrupt"/> when the file does not parse; the read or write error;
+    /// <see cref="Error.Ok"/>; <see cref="Error.FileCorrupt"/> when the file does not parse; <see cref="Error.InvalidData"/>
+    /// when a path changed in a file whose <c>x:Godot</c> marker names a version the addon does not carry; the read or write error;
     /// <see cref="Error.Failed"/> on an unexpected exception. Nothing is written on an error.
     /// </returns>
     public static Error RenameDependencies(string path, Godot.Collections.Dictionary renames)
@@ -202,7 +204,8 @@ internal static class XscnLoading
     /// <summary>Converts a parsed document to the text loader's form, minting its sub-resource ids as every load does.</summary>
     /// <param name="document">The parsed <c>.xscn</c> or <c>.xres</c>.</param>
     /// <returns>The converted document and the conversion's issues.</returns>
-    internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document) => XscnToTscn.Convert(document, XscnMetadata.Value, Options);
+    internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document) =>
+        XscnToTscn.Convert(document, XscnMetadata.For(document.Godot), Options);
 
     /// <summary>
     /// Converts a parsed document as <see cref="ToTscn(XscnDocument)"/> does, reading the scenes it instances so their
@@ -212,7 +215,15 @@ internal static class XscnLoading
     /// <param name="path">The file's <c>res://</c> path, which its relative references are resolved against.</param>
     /// <returns>The converted document and the conversion's issues.</returns>
     internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document, string path) =>
-        XscnToTscn.Convert(document, XscnMetadata.Value, Options with { SceneFiles = GodotSceneFiles.Instance, SourceKey = path });
+        XscnToTscn.Convert(
+            document,
+            XscnMetadata.For(document.Godot, path),
+            Options with
+            {
+                SceneFiles = GodotSceneFiles.Instance,
+                SourceKey = path,
+            }
+        );
 
     private static Variant LoadConverted(string path, string originalPath, int cacheMode)
     {
@@ -301,8 +312,21 @@ internal static class XscnLoading
         }
 
         XscnDocument rewritten = XscnPathRewriter.Rewrite(document, full).Document;
-        string text = XscnWriter.Write(XscnRenameUids.Retarget(rewritten, targets), XscnMetadata.Value);
-        return text == XscnWriter.Write(document, XscnMetadata.Value) ? Error.Ok : XscnSaveRoute.WriteAtomically(path, text);
+        GodotMetadata metadata = XscnMetadata.For(document.Godot, path);
+        string text = XscnWriter.Write(XscnRenameUids.Retarget(rewritten, targets), metadata);
+        if (text == XscnWriter.Write(document, metadata))
+        {
+            return Error.Ok;
+        }
+
+        // A write would restamp the file with the version the addon carries, so a file whose marker it lacks is left alone.
+        if (!XscnMetadata.Carries(document.Godot))
+        {
+            GD.PushError(XscnMetadata.NotWritten(path, document.Godot!));
+            return Error.InvalidData;
+        }
+
+        return XscnSaveRoute.WriteAtomically(path, text);
     }
 
     // The text loader resolves a path that does not start with res:// against the file's folder, maps it, and makes it
@@ -422,7 +446,8 @@ internal static class XscnLoading
             return openError;
         }
 
-        XscnParseResult result = XscnParser.Parse(text, IsScene(path) ? XscnDocumentKind.Scene : XscnDocumentKind.Resource, XscnMetadata.Value);
+        XscnDocumentKind kind = IsScene(path) ? XscnDocumentKind.Scene : XscnDocumentKind.Resource;
+        XscnParseResult result = XscnParser.Parse(text, kind, XscnMetadata.For(XscnMarker.Read(text), path));
         PushDiagnostics(path, text, result.Diagnostics, pushWarnings);
         if (result.HasErrors)
         {

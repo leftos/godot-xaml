@@ -58,7 +58,7 @@ internal static class XscnPreviewScene
     /// <returns>The root, or null, with the parse's diagnostics and the conversion's issues.</returns>
     internal static PreviewScene Instantiate(string text, string resPath, bool scriptsRequested)
     {
-        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, XscnMetadata.Value);
+        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, XscnMetadata.For(XscnMarker.Read(text), resPath));
         if (parsed.HasErrors)
         {
             return new PreviewScene(null, parsed.Diagnostics, [], null);

@@ -367,7 +367,7 @@ internal sealed class XscnPreviewInstances : IDisposable
 
     private TscnDocument? FromXscn(string resPath, string text, XscnDocumentKind documentKind, string noun)
     {
-        XscnParseResult parsed = XscnParser.Parse(text, documentKind, XscnMetadata.Value);
+        XscnParseResult parsed = XscnParser.Parse(text, documentKind, XscnMetadata.For(XscnMarker.Read(text), resPath));
         if (parsed.Diagnostics.FirstOrDefault(d => d.Severity == XscnSeverity.Error) is { } parseError)
         {
             return Failed(resPath, $"{resPath}: the {noun} does not parse: {parseError.Code}: {parseError.Message}");

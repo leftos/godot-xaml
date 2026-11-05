@@ -7,6 +7,7 @@ using System.Text;
 using Godot;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Diagnostics;
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Xscn;
 using FileAccess = Godot.FileAccess;
@@ -30,6 +31,11 @@ internal static class XscnSaveRoute
     /// <returns><see cref="Error.Ok"/>, or the error that stopped the save; nothing is written on an error.</returns>
     public static Error Save(Resource resource, string path, uint flags)
     {
+        if (MetadataOfPrevious(path) is not { } metadata)
+        {
+            return Error.InvalidData;
+        }
+
         bool isScene = resource is PackedScene;
         Error textError = SaveAsText(resource, path, flags, isScene, out string tscnText);
         if (textError != Error.Ok)
@@ -48,20 +54,16 @@ internal static class XscnSaveRoute
             return Error.InvalidData;
         }
 
-        XscnDocument? previous = Previous(path, isScene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource);
+        XscnDocument? previous = Previous(path, isScene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource, metadata);
         var options = new ConversionOptions
         {
             Seed = XscnLoading.Seed,
             ScriptClassOf = GodotProjectLookups.ScriptClassOf,
             Previous = previous,
-            // The map pairs only with the previous file's x:Resources entries, so with none there is nothing to walk for.
-            OwnedSubResourceIds =
-                previous is null || previous.Resources.IsDefaultOrEmpty
-                    ? new Dictionary<string, string>(StringComparer.Ordinal)
-                    : OwnedSubResourceIds(resource, path),
+            OwnedSubResourceIds = OwnedSubResourceIds(resource, path, previous),
         };
         TscnDocument withUids = WithProjectUids(tscn, path, previous);
-        ConversionResult<XscnDocument> converted = TscnToXscn.Convert(withUids, XscnMetadata.Value, options);
+        ConversionResult<XscnDocument> converted = TscnToXscn.Convert(withUids, metadata, options);
         if (PushIssues(path, converted.Issues))
         {
             return Error.InvalidData;
@@ -70,7 +72,7 @@ internal static class XscnSaveRoute
         string text;
         try
         {
-            text = XscnWriter.Write(converted.Document, XscnMetadata.Value);
+            text = XscnWriter.Write(converted.Document, metadata);
         }
         catch (Exception exception) when (WriterRefusal.Is(exception))
         {
@@ -128,6 +130,12 @@ internal static class XscnSaveRoute
     // TakeOverSubResourcePaths renames them. Another file's save takes over the sub-resources it borrowed from this one, so
     // a path that names no file of its own falls back to the file and id the sub-resource was loaded with
     // (SubResourceOrigins), which no save changes.
+    // The map pairs only with the previous file's x:Resources entries, so with none there is nothing to walk for.
+    private static Dictionary<string, string> OwnedSubResourceIds(Resource saved, string path, XscnDocument? previous) =>
+        previous is null || previous.Resources.IsDefaultOrEmpty
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : OwnedSubResourceIds(saved, path);
+
     private static Dictionary<string, string> OwnedSubResourceIds(Resource saved, string path)
     {
         string localized = ProjectSettings.LocalizePath(path);
@@ -284,15 +292,31 @@ internal static class XscnSaveRoute
         }
     }
 
-    // The file being replaced, parsed, so the conversion keeps its keys; null when there is none or it does not parse.
-    private static XscnDocument? Previous(string path, XscnDocumentKind kind)
+    // The metadata the x:Godot marker of the file being replaced names, read from its text whether or not the rest parses,
+    // so the save keeps the file's typing and marker; the newest carried for no file or no marker. A save would restamp a
+    // file whose marker the addon does not carry with the version it has, so such a file is refused: null after the error.
+    private static GodotMetadata? MetadataOfPrevious(string path)
+    {
+        string? marker = FileAccess.FileExists(path) ? XscnMarker.Read(FileAccess.GetFileAsString(path)) : null;
+        if (!XscnMetadata.Carries(marker))
+        {
+            GD.PushError(XscnMetadata.NotWritten(path, marker!));
+            return null;
+        }
+
+        return XscnMetadata.For(marker, path);
+    }
+
+    // The file being replaced, parsed with the metadata its marker names, so the conversion keeps its keys; null when there
+    // is none or it does not parse.
+    private static XscnDocument? Previous(string path, XscnDocumentKind kind, GodotMetadata metadata)
     {
         if (!FileAccess.FileExists(path))
         {
             return null;
         }
 
-        XscnParseResult result = XscnParser.Parse(FileAccess.GetFileAsString(path), kind, XscnMetadata.Value);
+        XscnParseResult result = XscnParser.Parse(FileAccess.GetFileAsString(path), kind, metadata);
         if (result.HasErrors)
         {
             GD.PushWarning($"{path}: godot-xaml: the file being replaced does not parse; its x:Resources keys and comments are not kept.");

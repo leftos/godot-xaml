@@ -125,6 +125,19 @@ public partial class Checks : Node
         + "  <NoSuchGodotClass Name=\"Unknown\" />\n"
         + "</Control>\n";
 
+    // A Godot version whose metadata the addon does not carry, and a scene its marker names (GXAML-238).
+    private const string UncarriedMarker = "4.9";
+
+    private const string UncarriedScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" x:Godot=\"4.9\" Name=\"Root\">\n"
+        + "  <Label Name=\"Label\" Text=\"hi\" />\n"
+        + "</Control>\n";
+
+    private const string CarriedScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" x:Godot=\"4.7\" Name=\"Root\">\n"
+        + "  <Label Name=\"Label\" Text=\"hi\" />\n"
+        + "</Control>\n";
+
     // C64's scene: the same warning beside a parse error, a node without a Name (GX0104).
     private const string FailedParseScene =
         "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
@@ -272,6 +285,10 @@ public partial class Checks : Node
             ("C26", SavingOverUnparsableTextWritesAParsableFile),
             ("C27", SaveToAMissingFolderWritesNothing),
             ("C144", SaveOfARefusedDocumentPushesTheErrorAndWritesNothing),
+            // Each file is read and written with the metadata its x:Godot marker names, when the addon carries it (GXAML-238).
+            ("C145", AFileMarkedWithAnUncarriedVersionLoadsWithAWarning),
+            ("C146", TheSaveRouteRefusesAFileMarkedWithAnUncarriedVersion),
+            ("C147", TheSaveRouteKeepsACarriedMarker),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -5262,6 +5279,116 @@ public partial class Checks : Node
         }
 
         return string.Join("; ", failures);
+    }
+
+    // A file whose marker names a version the addon does not carry loads with the newest version it carries, and the first
+    // such load warns, naming the file and both versions; a second load of the same marker does not warn again.
+    private static string AFileMarkedWithAnUncarriedVersionLoadsWithAWarning()
+    {
+        const string path = OutFolder + "uncarried.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
+        var log = new WarningLog();
+        OS.AddLogger(log);
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), UncarriedScene);
+            var failures = new List<string>();
+            for (int load = 1; load <= 2; load++)
+            {
+                Resource? loaded = ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore);
+                if (loaded is not PackedScene)
+                {
+                    failures.Add($"load {load} of {path} did not return a PackedScene");
+                }
+
+                GC.KeepAlive(loaded);
+            }
+
+            string warning = XscnMarker.NotCarried(UncarriedMarker, XscnMetadata.Value.Version);
+            int warnings = log.Entries.Count(entry =>
+                entry.Type == Logger.ErrorType.Warning
+                && entry.Text.Contains("uncarried.xscn", StringComparison.Ordinal)
+                && entry.Text.Contains(warning, StringComparison.Ordinal)
+            );
+            if (warnings != 1)
+            {
+                failures.Add($"two loads logged {warnings} Warning entries naming the path and \"{warning}\", not one: [{LogText(log.Entries)}]");
+            }
+
+            return string.Join("; ", failures);
+        }
+        finally
+        {
+            OS.RemoveLogger(log);
+            DeleteKeptTempFiles(tempPathsBeforeLoad);
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A save over a file whose marker names a version the addon does not carry would restamp it with the version it has, so
+    // the save is refused: InvalidData, the refusal naming both versions pushed once, and the file's bytes left as they were.
+    private static string TheSaveRouteRefusesAFileMarkedWithAnUncarriedVersion()
+    {
+        const string sourcePath = CasesPath + "scene.xscn";
+        const string savedPath = SavesFolder + "uncarried.xscn";
+        if (ResourceLoader.Load(sourcePath) is not PackedScene scene)
+        {
+            return $"loading {sourcePath} did not return a PackedScene";
+        }
+
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        string target = ProjectSettings.GlobalizePath(savedPath);
+        File.WriteAllText(target, UncarriedScene);
+        byte[] before = File.ReadAllBytes(target);
+        (Error error, WarningLog log) = SaveLogged(scene, savedPath);
+        var failures = new List<string>();
+        if (error != Error.InvalidData)
+        {
+            failures.Add($"ResourceSaver.Save({savedPath}) returned {error}, not InvalidData");
+        }
+
+        string refusal = XscnMarker.NotWritten(UncarriedMarker, XscnMetadata.Value.Version);
+        int refusals = log.Entries.Count(entry =>
+            entry.Type == Logger.ErrorType.Error
+            && entry.Text.Contains("uncarried.xscn", StringComparison.Ordinal)
+            && entry.Text.Contains(refusal, StringComparison.Ordinal)
+        );
+        if (refusals != 1)
+        {
+            failures.Add($"the log holds {refusals} Error entries naming the path and \"{refusal}\", not one: [{LogText(log.Entries)}]");
+        }
+
+        if (!File.ReadAllBytes(target).AsSpan().SequenceEqual(before))
+        {
+            failures.Add($"{savedPath} changed");
+        }
+
+        string[] staging = Directory.GetFiles(ProjectSettings.GlobalizePath(SavesFolder), "*.tmp");
+        if (staging.Length > 0)
+        {
+            failures.Add($"staging files left in {SavesFolder}: [{string.Join(", ", staging)}]");
+        }
+
+        return string.Join("; ", failures);
+    }
+
+    // A save over a file whose marker names a version the addon carries writes it with that version's metadata, so the
+    // marker stays.
+    private static string TheSaveRouteKeepsACarriedMarker()
+    {
+        const string sourcePath = CasesPath + "scene.xscn";
+        const string savedPath = SavesFolder + "carried.xscn";
+        if (ResourceLoader.Load(sourcePath) is not PackedScene scene)
+        {
+            return $"loading {sourcePath} did not return a PackedScene";
+        }
+
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        File.WriteAllText(ProjectSettings.GlobalizePath(savedPath), CarriedScene);
+        string text = Encoding.UTF8.GetString(SaveAndRead(scene, savedPath));
+        return text.Contains("x:Godot=\"4.7\"", StringComparison.Ordinal) ? "" : $"{savedPath} was written without x:Godot=\"4.7\": {text}";
     }
 
     // Saves the resource, then parses the saved file; the failure, or "" with the parsed document.
