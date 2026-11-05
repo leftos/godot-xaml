@@ -32,10 +32,11 @@ namespace GodotXaml.Addon.Compare;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The dump normalises exactly two things: a path's <c>.tscn</c>, <c>.xscn</c>, <c>.tres</c> or <c>.xres</c> extension
-/// is removed, and a built-in sub-resource's id after <c>::</c> is printed as <c>*</c>, since <c>.xscn</c> stores no
-/// sub-resource ids and the conversion mints new ones. A sub-resource's identity is still checked by the
-/// <c>res(seen:&lt;n&gt;)</c> ordinals and its <c>subprop</c> lines.
+/// The dump normalises exactly three things: a path's <c>.tscn</c>, <c>.xscn</c>, <c>.tres</c> or <c>.xres</c> extension
+/// is removed, a built-in sub-resource's id after <c>::</c> is printed as <c>*</c>, since <c>.xscn</c> stores no
+/// sub-resource ids and the conversion mints new ones, and a script's source text has the conversion's path rewrites
+/// undone, since <c>convert --project</c> rewrites exact-path literals inside scripts. A sub-resource's identity is still
+/// checked by the <c>res(seen:&lt;n&gt;)</c> ordinals and its <c>subprop</c> lines.
 /// </remarks>
 public partial class Compare : Node
 {
@@ -71,10 +72,12 @@ public partial class Compare : Node
             return;
         }
 
-        int expected = ExpectedPairs();
+        int expected = 0;
         int passed = 0;
         try
         {
+            // Read inside the try, so a failure here still reaches the finally that prints DONE and quits.
+            expected = ExpectedPairs();
             if (expected == 0)
             {
                 GD.Print("COMPARE setup FAIL no --expected-pairs=<n> argument");
@@ -433,6 +436,9 @@ public partial class Compare : Node
             : this(null, null, resource) { }
 
         private const string CallableParts = "[v.get_object(), v.get_method(), v.get_bound_arguments(), v.get_unbound_arguments_count()]";
+
+        // The property a script stores its source text in, whose path literals the conversion rewrites.
+        private const string SourceProperty = "script/source";
         private const string ArrayTyping = "[v.is_typed(), v.get_typed_builtin(), v.get_typed_class_name(), v.get_typed_script()]";
         private const string DictionaryTyping =
             "[v.is_typed(), v.get_typed_key_builtin(), v.get_typed_key_class_name(), v.get_typed_key_script(),"
@@ -540,10 +546,21 @@ public partial class Compare : Node
             foreach (string name in names)
             {
                 var firstVisits = new List<(Resource, string)>();
-                into.Add($"{kind} {path} {keyPrefix}{name}={ValueText(keyPrefix + name, owner.Get(name), firstVisits)}");
+                Variant value = owner.Get(name);
+                if (owner is Script && name == SourceProperty && value.VariantType == Variant.Type.String)
+                {
+                    value = UndoPathRewrite(value.AsString());
+                }
+
+                into.Add($"{kind} {path} {keyPrefix}{name}={ValueText(keyPrefix + name, value, firstVisits)}");
                 DumpFirstVisits(path, firstVisits, into);
             }
         }
+
+        // The conversion rewrites exact-path literals inside scripts, `.tscn` to `.xscn` and `.tres` to `.xres`; undone
+        // here, the original and converted source texts read alike.
+        private static string UndoPathRewrite(string source) =>
+            source.Replace(".xscn", ".tscn", StringComparison.Ordinal).Replace(".xres", ".tres", StringComparison.Ordinal);
 
         // The subprop lines of each resource a value named for the first time, after the value's own line.
         private void DumpFirstVisits(string path, List<(Resource Resource, string Key)> firstVisits, List<string> into)

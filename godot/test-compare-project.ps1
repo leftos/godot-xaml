@@ -125,6 +125,9 @@ public partial class Mover : Node
     /// <summary>A value the scene stores.</summary>
     [Export]
     public int Speed { get; set; }
+
+    /// <summary>A path literal convert --project rewrites, so a dump of the source text must normalise it back.</summary>
+    public const string Neighbour = "res://a/groups.tscn";
 }
 
 '@
