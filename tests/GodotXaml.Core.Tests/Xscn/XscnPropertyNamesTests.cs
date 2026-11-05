@@ -101,5 +101,42 @@ public sealed class XscnPropertyNamesTests
         Assert.Equal("StringName", resolved.Type.VariantType);
     }
 
+    [Fact]
+    public void NamesOfReturnsOneIndexPerMetadata() => Assert.Same(XscnParser.NamesOf(Real), XscnParser.NamesOf(Real));
+
+    // The names index types a property the way the value is read, for an enum, a flags bitfield, a resource and a plain
+    // scalar. XscnValueText.TypeOf builds a fresh XscnEnumNames per call, so names are compared by content.
+    [Fact]
+    public void TypeOfMatchesTheValueTextType()
+    {
+        XscnPropertyNames names = XscnParser.NamesOf(Real);
+        (string Class, string Property)[] properties =
+        [
+            ("Control", "MouseFilter"),
+            ("Button", "ButtonMask"),
+            ("Control", "Theme"),
+            ("Label", "Text"),
+        ];
+
+        foreach ((string className, string propertyName) in properties)
+        {
+            GodotPropertyInfo property =
+                Real.FindPropertyByCSharpName(Class(className), propertyName)
+                ?? throw new InvalidOperationException($"{className} has no property {propertyName}.");
+
+            XscnValueType expected = XscnValueText.TypeOf(Real, property);
+            XscnValueType actual = names.TypeOf(property);
+
+            Assert.Equal(expected.VariantType, actual.VariantType);
+            Assert.Equal(expected.Names?.IsFlags, actual.Names?.IsFlags);
+            Assert.Equal(EnumEntries(expected), EnumEntries(actual));
+            Assert.Equal(expected.Declared?.VariantType, actual.Declared?.VariantType);
+            Assert.Equal(EnumEntries(expected.Declared), EnumEntries(actual.Declared));
+        }
+    }
+
+    private static IEnumerable<(string Name, long Value)> EnumEntries(XscnValueType? type) =>
+        type?.Names is null ? [] : type.Names.Names.Select(name => (name.Name, name.Value));
+
     private static GodotClassInfo Class(string name) => Real.FindClass(name) ?? throw new InvalidOperationException($"No class {name}.");
 }

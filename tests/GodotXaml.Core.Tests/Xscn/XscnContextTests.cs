@@ -145,6 +145,49 @@ public sealed class XscnContextTests
         Assert.Equal(typed, context.Typed);
     }
 
+    // The elements open around the cursor's element, outermost first; a tag name typed in text has its enclosing element last.
+    [Theory]
+    [InlineData(
+        "attribute name in a grandchild's start tag",
+        "<Control Name=\"R\">\n  <Button Name=\"B\">\n    <Label «Te|»",
+        "Control,Button",
+        "Control,Button"
+    )]
+    [InlineData(
+        "a tag name typed inside an unclosed parent",
+        "<Control Name=\"R\">\n  <Button Name=\"B\">\n    <«La|»",
+        "Control,Button",
+        "Control,Button"
+    )]
+    [InlineData("the root's own start tag", "<Control Name=\"R\" «Na|»", "", "")]
+    public void TheContextNamesItsAncestors(string name, string marked, string names, string classes)
+    {
+        Assert.NotEmpty(name);
+        (string text, int offset, _) = Unmark(marked);
+
+        XscnCursorContext context = XscnParser.ContextAt(text, offset, Real);
+
+        Assert.Equal(Items(names), context.Ancestors.Select(a => a.LocalName));
+        Assert.Equal(Items(classes), context.Ancestors.Select(a => a.Class?.Name ?? ""));
+        Assert.All(context.Ancestors, a => Assert.Null(a.Prefix));
+    }
+
+    [Fact]
+    public void AnAncestorsClassIsResolvedAsTheContextsIs()
+    {
+        (string text, int offset, _) = Unmark("<Control Name=\"R\">\n  <Button.Theme>\n    <StyleBoxFlat Name=\"S\" «Bg|»");
+
+        XscnCursorContext context = XscnParser.ContextAt(text, offset, Real);
+        int onElement = text.IndexOf("Button.Theme", StringComparison.Ordinal) + 1;
+        XscnCursorContext atElement = XscnParser.ContextAt(text, onElement, Real);
+
+        Assert.Equal("Button.Theme", atElement.ElementName);
+        Assert.Equal(atElement.Class?.Name, Assert.Single(context.Ancestors, a => a.LocalName == "Button.Theme").Class?.Name);
+        Assert.Equal("Button", atElement.Class?.Name);
+    }
+
+    private static string[] Items(string joined) => joined.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
     [Theory]
     [InlineData(-1)]
     [InlineData(7)]

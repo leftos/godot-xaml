@@ -55,6 +55,6 @@ public static class XscnParser
 
     /// <summary>The attribute names of a metadata, built once per metadata and shared with the writer.</summary>
     /// <param name="metadata">The metadata.</param>
-    /// <returns>Its attribute names.</returns>
-    internal static XscnPropertyNames NamesOf(GodotMetadata metadata) => Names.GetValue(metadata, m => new XscnPropertyNames(m));
+    /// <returns>Its attribute names; repeated calls for one metadata instance return the same index.</returns>
+    public static XscnPropertyNames NamesOf(GodotMetadata metadata) => Names.GetValue(metadata, m => new XscnPropertyNames(m));
 }

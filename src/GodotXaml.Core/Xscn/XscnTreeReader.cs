@@ -69,6 +69,7 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
         XscnElement element = kind == XscnDocumentKind.Scene ? ReadRootNode(root) : (XscnElement)ReadRootResource(root);
         return new XscnDocument(kind, namespaces, uids, [.. resources], WithDocumentComments(element, syntax), godot)
         {
+            FormatPrefix = formatPrefix,
             UidsLeadingComments = CommentList(uidsLeading),
             UidsTrailingComments = CommentList(uidsTrailing),
             ResourcesLeadingComments = CommentList(resourcesLeading),

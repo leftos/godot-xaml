@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using GodotXaml.Core.Metadata;
 using Microsoft.Language.Xml;
 using TextSpan = GodotXaml.Core.Diagnostics.TextSpan;
@@ -32,6 +33,15 @@ public enum XscnCursorKind
     EndTag,
 }
 
+/// <summary>An element open around the cursor's element, as its tag writes it.</summary>
+/// <param name="Prefix">The element's namespace prefix as written; null for a Godot class tag.</param>
+/// <param name="LocalName">The element's local name as written (<c>Button</c>, <c>Button.Theme</c>).</param>
+/// <param name="Class">
+/// The element's Godot class, resolved as <see cref="XscnCursorContext.Class"/> is for it; null when the metadata does not
+/// resolve it.
+/// </param>
+public sealed record XscnOpenElement(string? Prefix, string LocalName, GodotClassInfo? Class);
+
 /// <summary>What an offset of a document's text is on, and the element around it.</summary>
 /// <param name="Kind">What the offset is on.</param>
 /// <param name="ElementPrefix">
@@ -64,7 +74,14 @@ public sealed record XscnCursorContext(
     string? AttributeName,
     TextSpan Replace,
     string Typed
-);
+)
+{
+    /// <summary>
+    /// The elements open around the cursor's element, outermost first, the cursor's own element excluded. For a tag name
+    /// typed in text the enclosing element is the last ancestor; an element whose name is not written yet is left out.
+    /// </summary>
+    public ImmutableArray<XscnOpenElement> Ancestors { get; init; } = [];
+}
 
 /// <summary>Finds what an offset is on, over the XML tree of a possibly broken text.</summary>
 /// <param name="text">The document's text.</param>
@@ -213,7 +230,8 @@ internal sealed class XscnContextReader(string text, int offset, GodotMetadata m
             int colon = written.IndexOf(':', StringComparison.Ordinal);
             string? prefix = colon < 0 ? null : written[..colon];
             string local = written[(colon + 1)..];
-            return Make(XscnCursorKind.TagName, prefix, local.Length == 0 ? null : local, null, word);
+            XscnCursorContext context = Make(XscnCursorKind.TagName, prefix, local.Length == 0 ? null : local, null, word);
+            return context with { Ancestors = AncestorsOf(element, elementIsAncestor: true) };
         }
 
         return element is null ? Make(XscnCursorKind.None, null, null, null, Empty) : Context(XscnCursorKind.Content, element, null, Empty);
@@ -242,13 +260,41 @@ internal sealed class XscnContextReader(string text, int offset, GodotMetadata m
     private XscnCursorContext Context(XscnCursorKind kind, IXmlElementSyntax? element, string? attributeName, TextSpan replace)
     {
         XmlNameSyntax? name = element?.NameNode;
-        return Make(kind, Written(name?.Prefix), Written(name?.LocalName), attributeName, replace);
+        XscnCursorContext context = Make(kind, Written(name?.Prefix), Written(name?.LocalName), attributeName, replace);
+        return context with { Ancestors = AncestorsOf(element, elementIsAncestor: false) };
     }
 
     private static string? Written(string? name) => string.IsNullOrEmpty(name) ? null : name;
 
     private XscnCursorContext Make(XscnCursorKind kind, string? prefix, string? local, string? attributeName, TextSpan replace) =>
         new(kind, prefix, local, ClassOf(prefix, local), attributeName, replace, text[replace.Start..Math.Max(replace.Start, offset)]);
+
+    // The elements open around the element, outermost first; one whose name is not written yet is left out.
+    private ImmutableArray<XscnOpenElement> AncestorsOf(IXmlElementSyntax? element, bool elementIsAncestor)
+    {
+        ImmutableArray<XscnOpenElement>.Builder found = ImmutableArray.CreateBuilder<XscnOpenElement>();
+        IXmlElementSyntax? current = elementIsAncestor ? element : element?.AsNode.ParentElement;
+        while (current is not null)
+        {
+            if (OpenElement(current) is { } open)
+            {
+                found.Add(open);
+            }
+
+            current = current.AsNode.ParentElement;
+        }
+
+        found.Reverse();
+        return found.ToImmutable();
+    }
+
+    // An ancestor as its tag writes it; null for an element whose name the tree has not written yet.
+    private XscnOpenElement? OpenElement(IXmlElementSyntax element)
+    {
+        string? prefix = Written(element.NameNode?.Prefix);
+        string? local = Written(element.NameNode?.LocalName);
+        return local is null ? null : new XscnOpenElement(prefix, local, ClassOf(prefix, local));
+    }
 
     // A class tag names its class by its C# name, as the tree reader resolves it; a property element names its owner's.
     private GodotClassInfo? ClassOf(string? prefix, string? local)

@@ -44,6 +44,12 @@ public sealed record XscnDocument(
         init => field = GodotValueTables.Required(value, nameof(Namespaces));
     } = GodotValueTables.Required(Namespaces, nameof(Namespaces));
 
+    /// <summary>
+    /// The prefix the root binds to the format namespace (<c>x</c> in <c>xmlns:x="…/format/1"</c>): the first such binding;
+    /// null when the root binds none or the document has no root. The writer stamps its own format prefix and ignores it.
+    /// </summary>
+    public string? FormatPrefix { get; init; }
+
     /// <summary>The <c>&lt;x:Uids&gt;</c> table, in source order.</summary>
     public ImmutableArray<XscnUid> Uids
     {

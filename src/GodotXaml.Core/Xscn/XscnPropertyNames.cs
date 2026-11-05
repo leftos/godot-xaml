@@ -93,7 +93,10 @@ public sealed class XscnPropertyNames
 
     // Typing a property builds its enum names, so each property's and theme override item's type is made once; a property's
     // type is its own, whichever class's element it is on.
-    private XscnValueType TypeOf(GodotPropertyInfo property) => types.GetOrAdd(property, _ => XscnValueText.TypeOf(metadata, property));
+    /// <summary>The type a property's attribute is read and written by, built once per property.</summary>
+    /// <param name="property">The property.</param>
+    /// <returns>The type <see cref="XscnValueText.TypeOf(GodotMetadata, GodotPropertyInfo)"/> gives for this index's metadata.</returns>
+    public XscnValueType TypeOf(GodotPropertyInfo property) => types.GetOrAdd(property, _ => XscnValueText.TypeOf(metadata, property));
 
     private XscnValueType TypeOf(GodotThemeOverrideInfo item) => types.GetOrAdd(item, _ => XscnValueText.TypeOf(item));
 
