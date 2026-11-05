@@ -64,7 +64,7 @@ On an element whose class the core cannot know without opening another file (an 
 
 This typing depends on the metadata of one Godot minor version, so a new version can change how a file is read: a name that becomes ambiguous, or a property whose type or enum changes.
 
-Each Godot release that changes typing gets an upgrader that reads a project's files with the old version's metadata and writes them with the new one. When a new metadata file is added, a test lists every name whose typing differs from the previous version's, so whether a release needs an upgrade step is always known.
+Each Godot release that changes typing gets an upgrader that reads a project's files with the old version's metadata and writes them with the new one. `TypingDiff.Between` lists every property whose typing differs between two metadata versions, and a test runs it on each pair of consecutive bundled versions, so whether a release needs an upgrade step is always known.
 
 Booleans are written `True` and `False` (either case is read), and a float has no trailing `.0` (`AnchorRight="1"`), as vector components already have none.
 

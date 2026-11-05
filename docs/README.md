@@ -80,6 +80,8 @@
 - **Sub-entry**: a numbered list inside one entry of a dynamic family (`settings/N/joints/M/` on a bone-chain setting), ranked at its list key's place among its outer entry's keys; `PropertyOrder` ranks a name by entry, key, sub-entry, sub-key, then the two deeper levels a `Ranked` family may use, layer and leaf (a TileData's occlusion, physics or navigation layer, and the number or property inside it).
 - **Takeover**: the addon saver's step on a save with `ReplaceSubresourcePaths` to a `res://` path, giving each built-in sub-resource the id and path `<file>::<id>` the next load mints.
 - **Tolerant parse**: a parse that always returns a document with its diagnostics and never throws on bad text (`XscnParser.Parse`).
+- **Typing**: how the metadata types an attribute's value: its type, enum, hint, and whether its C# name is unambiguous across classes.
+- **Typing diff**: the list of properties whose typing differs between two Godot versions' metadata (`TypingDiff.Between`), the base for telling whether a release needs an upgrade step.
 - **Value grammar**: Godot's text syntax for a property value, such as `Vector2(0, 0)`, shared by `.tscn`, `.tres` and the metadata defaults.
 - **`x:Connect`**: the element on an emitter for a signal connection that is not the common case (another receiver, flags, binds or unbinds).
 - **`x:Instance`**: the element instancing a scene by its `res://` path, used where no scene namespace tag reads back as the same file; at the root, the scene inherits that one.
