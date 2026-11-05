@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GodotXaml.Core.Diagnostics;
+using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
 using GodotXaml.LanguageServer.Protocol;
 
@@ -94,6 +95,160 @@ public sealed class HoverTests
 
     [Fact]
     public async Task AKeyReferenceShowsTheEntrysClass() => await AssertHoverAsync("{Panel}", 3, "{Panel}", Markdown("{Panel}: StyleBoxFlat"));
+
+    // The entry's key and the value are both decoded before they are compared, so escaped text still finds its entry.
+    [Fact]
+    public async Task AKeyReferenceWithAnEscapedCharacterShowsTheEntrysClass()
+    {
+        const string scene = """
+            <Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+              <x:Resources>
+                <Theme x:Key="A&amp;B" />
+              </x:Resources>
+              <Control Name="C" Theme="{A&amp;B}" />
+            </Control>
+            """;
+        await using ServerHarness server = await OpenAsync(text: scene);
+        int value = scene.IndexOf("{A&amp;B}", StringComparison.Ordinal);
+
+        JsonElement result = await HoverAsync(server, PositionOf(scene, value + 1));
+
+        Assert.Equal(JsonValueKind.Object, result.ValueKind);
+        Assert.Equal(Markdown("{A&B}: Theme"), result.GetProperty("contents").GetProperty("value").GetString());
+        Assert.Equal(new LspRange(PositionOf(scene, value), PositionOf(scene, value + "{A&amp;B}".Length)), RangeOf(result.GetProperty("range")));
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+    }
+
+    // A key holding whitespace is no key reference once decoded: the decoded text holds a character the reference form excludes.
+    [Fact]
+    public async Task AKeyReferenceWhoseKeyHoldsWhitespaceShowsNothing()
+    {
+        const string scene = """
+            <Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+              <x:Resources>
+                <Theme x:Key="A&#9;B" />
+              </x:Resources>
+              <Control Name="C" Theme="{A&#9;B}" />
+            </Control>
+            """;
+        await using ServerHarness server = await OpenAsync(text: scene);
+        int value = scene.IndexOf("{A&#9;B}", StringComparison.Ordinal);
+
+        JsonElement result = await HoverAsync(server, PositionOf(scene, value + 1));
+
+        Assert.Equal(JsonValueKind.Null, result.ValueKind);
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+    }
+
+    // A hover reuses the parse the document's diagnostics made, so it runs no parse of its own.
+    [Fact]
+    public async Task AKeyHoverDoesNotParseTheDocumentAgain()
+    {
+        int parses = 0;
+        ServerSeams seams = ServerSeams.Default with
+        {
+            Parse = (text, kind, metadata) =>
+            {
+                Interlocked.Increment(ref parses);
+                return XscnParser.Parse(text, kind, metadata);
+            },
+        };
+        await using ServerHarness server = await OpenAsync(seams);
+        int afterOpen = Volatile.Read(ref parses);
+        int key = Scene.IndexOf("{Panel}", StringComparison.Ordinal) + 1;
+
+        JsonElement first = await HoverAsync(server, PositionOf(Scene, key));
+        JsonElement second = await HoverAsync(server, PositionOf(Scene, key));
+
+        Assert.Equal(afterOpen, Volatile.Read(ref parses));
+        Assert.Equal(Markdown("{Panel}: StyleBoxFlat"), first.GetProperty("contents").GetProperty("value").GetString());
+        Assert.Equal(first.GetProperty("contents").GetProperty("value").GetString(), second.GetProperty("contents").GetProperty("value").GetString());
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+    }
+
+    // A change gives the document a new stamp, so the hover reads the changed text rather than a kept parse.
+    [Fact]
+    public async Task ADocumentChangeDropsTheCachedParse()
+    {
+        const string before = """
+            <Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+              <x:Resources>
+                <Theme x:Key="Old" />
+              </x:Resources>
+              <Control Name="C" Theme="{Old}" />
+              <Control Name="D" Theme="{New}" />
+            </Control>
+            """;
+        const string after = """
+            <Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+              <x:Resources>
+                <Theme x:Key="New" />
+              </x:Resources>
+              <Control Name="C" Theme="{Old}" />
+              <Control Name="D" Theme="{New}" />
+            </Control>
+            """;
+        await using ServerHarness server = await OpenAsync(text: before);
+        int oldKey = before.IndexOf("{Old}", StringComparison.Ordinal) + 1;
+        int newKey = before.IndexOf("{New}", StringComparison.Ordinal) + 1;
+
+        Assert.Equal(JsonValueKind.Object, (await HoverAsync(server, PositionOf(before, oldKey))).ValueKind);
+        Assert.Equal(JsonValueKind.Null, (await HoverAsync(server, PositionOf(before, newKey))).ValueKind);
+
+        await server.ChangeAsync(Uri, 2, after);
+        (await server.NextAsync(server.Scheduler.Requested, "the change's debounce")).Release();
+        await server.NextAsync(server.Published, "the change's publish");
+
+        Assert.Equal(JsonValueKind.Null, (await HoverAsync(server, PositionOf(after, oldKey))).ValueKind);
+        Assert.Equal(JsonValueKind.Object, (await HoverAsync(server, PositionOf(after, newKey))).ValueKind);
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+    }
+
+    // A parse still running when the document closes leaves no entry behind for the closed document.
+    [Fact]
+    public async Task AParseFinishingAfterTheCloseLeavesNoEntry()
+    {
+        using ManualResetEventSlim release = new();
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        DocumentStore store = new();
+        ParseCache cache = new(
+            store,
+            (text, kind, metadata) =>
+            {
+                started.TrySetResult();
+                release.Wait(TimeSpan.FromMinutes(2));
+                return XscnParser.Parse(text, kind, metadata);
+            }
+        );
+        QuietClient client = new();
+        ProjectCache projects = new(_ => new LoadedMetadata(GodotMetadata.LoadBundled("4.7"), "4.7", null), client);
+        using DiagnosticsPublisher publisher = new(store, projects, client, new ManualScheduler(), cache);
+        try
+        {
+            publisher.Opened(Uri, 1, Scene);
+            await started.Task;
+            publisher.Closed(Uri);
+            release.Set();
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        // The publish of the closed document's parse is dropped, so the run's end, not a publish, is what the test waits on.
+        await publisher.StopAsync();
+        Assert.False(cache.Contains(Uri));
+    }
+
+    // A client that sends nothing.
+    private sealed class QuietClient : IClientMessages
+    {
+        public Task LogAsync(MessageType type, string message) => Task.CompletedTask;
+
+        public Task ShowAsync(MessageType type, string message) => Task.CompletedTask;
+
+        public Task PublishAsync(PublishDiagnosticsParams parameters) => Task.CompletedTask;
+    }
 
     [Fact]
     public async Task AFormatAttributeLinksTheFormat() => await AssertHoverAsync("x:Groups", 4, "x:Groups", Markdown("x:Groups", FormatLink));

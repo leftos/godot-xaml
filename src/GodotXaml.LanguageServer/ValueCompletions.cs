@@ -13,10 +13,10 @@ internal sealed record ValueCandidates(TextSpan Replace, IEnumerable<CompletionC
 
 /// <summary>
 /// The values a property attribute takes, by the property's type on the element's class: an enum's members over the whole
-/// value; a flags member over the comma-separated part at the cursor, less the members the other parts hold; <c>True</c> and
-/// <c>False</c> for a bool; and, for a resource property, a <c>{Key}</c> for each root <c>x:Resources</c> entry whose class
-/// the property takes (an entry of unknown class included). An unknown class or attribute, an <c>x:</c> attribute, a signal
-/// and every other type get none.
+/// value; a flags member over the space- or comma-separated word at the cursor, less the members the other parts hold;
+/// <c>True</c> and <c>False</c> for a bool; and, for a resource property, a <c>{Key}</c> for each root <c>x:Resources</c>
+/// entry whose class the property takes (an entry of unknown class included). An unknown class or attribute, an <c>x:</c>
+/// attribute, a signal and every other type get none.
 /// </summary>
 /// <param name="scope">The document.</param>
 /// <param name="context">The value's context.</param>
@@ -102,9 +102,9 @@ internal sealed class ValueCompletions(CompletionScope scope, XscnCursorContext 
         return new TextSpan(context.Replace.Start, end - context.Replace.Start);
     }
 
-    // The part at the cursor, trimmed of spaces, is replaced when the cursor is on it, else the cursor inserts beside a
-    // part, with the comma the value needs between them; the names the value holds outside the replaced text are not
-    // offered again.
+    // The word at the cursor is replaced when the cursor is in it or at its end, else the cursor inserts beside a part,
+    // with the comma the value needs between them; the names the value holds outside the replaced text are not offered
+    // again.
     private ValueCandidates? Flags(XscnEnumNames names)
     {
         if (Value() is not { } value)
@@ -125,13 +125,16 @@ internal sealed class ValueCompletions(CompletionScope scope, XscnCursorContext 
         return new ValueCandidates(replace, Unwritten(names, written).Select(n => Member(n, prefix + n.Name + suffix)));
     }
 
-    // The names the value holds outside the replaced text.
+    // The names the value holds outside the replaced text, split on the commas and whitespace between them.
     private HashSet<string> Written(TextSpan value, TextSpan replace)
     {
         string text = scope.Text;
         string outside = $"{text[value.Start..replace.Start]},{text[replace.End..value.End]}";
-        return [.. outside.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)];
+        return [.. outside.Split(',', StringSplitOptions.RemoveEmptyEntries).SelectMany(Words)];
     }
+
+    // A comma-free run's words, split at every character the part test calls whitespace.
+    private static string[] Words(string run) => run.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
 
     private static IEnumerable<XscnEnumName> Unwritten(XscnEnumNames names, HashSet<string> written) =>
         names.Names.Where(n => !written.Contains(n.Name));
@@ -169,24 +172,53 @@ internal sealed class ValueCompletions(CompletionScope scope, XscnCursorContext 
         return char.IsWhiteSpace(text[offset]) ? "," : ", ";
     }
 
-    // The comma-separated part of a value the cursor is in, trimmed of spaces.
+    // The word of a value the cursor is in or at the end of: a run of characters that are neither a comma nor whitespace.
+    // A cursor outside every word gets an empty span, which inserts instead of replacing.
     private TextSpan PartAt(TextSpan value)
     {
         string text = scope.Text;
-        int start = offset > value.Start && text.LastIndexOf(',', offset - 1, offset - value.Start) is int comma and >= 0 ? comma + 1 : value.Start;
-        int end = text.IndexOf(',', offset, value.End - offset) is int next and >= 0 ? next : value.End;
-        while (start < end && char.IsWhiteSpace(text[start]))
+        int at = Math.Clamp(offset, value.Start, value.End);
+
+        // A cursor at a word's end belongs to that word, as a cursor on one of its characters does.
+        if (!IsWordText(text, value, at) && at > value.Start && IsWordText(text, value, at - 1))
         {
-            start++;
+            at--;
         }
 
-        while (end > start && char.IsWhiteSpace(text[end - 1]))
+        if (!IsWordText(text, value, at))
         {
-            end--;
+            return new TextSpan(at, 0);
         }
 
+        int start = WordStart(text, value, at);
+        int end = WordEnd(text, value, at);
         return new TextSpan(start, end - start);
     }
+
+    // The first index of the word holding `at`.
+    private static int WordStart(string text, TextSpan value, int at)
+    {
+        int start = at;
+        while (IsWordText(text, value, start - 1))
+        {
+            start--;
+        }
+        return start;
+    }
+
+    // The index after the word holding `at`.
+    private static int WordEnd(string text, TextSpan value, int at)
+    {
+        int end = at + 1;
+        while (IsWordText(text, value, end))
+        {
+            end++;
+        }
+        return end;
+    }
+
+    private static bool IsWordText(string text, TextSpan value, int index) =>
+        index >= value.Start && index < value.End && text[index] != ',' && !char.IsWhiteSpace(text[index]);
 
     // The root's x:Resources entries whose class the hint takes, or whose class is unknown, as {Key} references; the entry
     // the cursor is in is left out, since an entry cannot refer to itself.

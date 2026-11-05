@@ -5,7 +5,7 @@ using System.Text;
 namespace GodotXaml.Core.Xscn;
 
 /// <summary>Decodes the text of an XML attribute value, which the XML parser hands over as written.</summary>
-internal static class XmlText
+public static class XmlText
 {
     // XML 1.0 section 4.6, the predefined entities.
     private static readonly FrozenDictionary<string, string> Named = new Dictionary<string, string>(StringComparer.Ordinal)

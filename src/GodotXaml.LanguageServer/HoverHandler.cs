@@ -16,7 +16,7 @@ namespace GodotXaml.LanguageServer;
 /// else (whitespace, content, a comment, an unknown prefix or class, a name the metadata lacks) has no hover. The class
 /// reference of each Godot minor version is read on the first hover that needs it, and kept.
 /// </summary>
-internal sealed partial class HoverHandler(DocumentStore store, ProjectCache projects, ParseFunction parse, DocsLoader loadDocs)
+internal sealed partial class HoverHandler(DocumentStore store, ProjectCache projects, ParseCache cache, DocsLoader loadDocs)
 {
     private const string FormatLine = "godot-xaml format attribute: https://github.com/leftos/godot-xaml/blob/main/docs/format/README.md";
 
@@ -129,7 +129,7 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
             return null;
         }
 
-        Hover? hover = await Task.Run(() => new Reader(this, parse, document, project, position).Read(), cancellation).ConfigureAwait(false);
+        Hover? hover = await Task.Run(() => new Reader(this, cache, document, project, position).Read(), cancellation).ConfigureAwait(false);
 
         // A change or a close that landed while it ran makes the answer describe text the buffer no longer holds.
         return store.IsCurrent(document) ? hover : null;
@@ -162,7 +162,7 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
     }
 
     // One hover's work over one document's text.
-    private sealed class Reader(HoverHandler handler, ParseFunction parse, OpenDocument document, ProjectContext project, LspPosition position)
+    private sealed class Reader(HoverHandler handler, ParseCache cache, OpenDocument document, ProjectContext project, LspPosition position)
     {
         private readonly string text = document.Text;
         private readonly GodotMetadata metadata = project.Metadata;
@@ -252,7 +252,8 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
 
         private Found? AttributeValue(XscnCursorContext context)
         {
-            string value = text.Substring(context.Replace.Start, context.Replace.Length);
+            string raw = text.Substring(context.Replace.Start, context.Replace.Length);
+            string value = XmlText.DecodeAttribute(raw);
             Match key = KeyReference().Match(value);
             if (key.Success)
             {
@@ -270,7 +271,7 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
 
         private Found? Reference(string key, TextSpan span)
         {
-            XscnParseResult result = parse(text, document.Kind, metadata);
+            XscnParseResult result = cache.Get(document, metadata);
             return result.Document.Resources.FirstOrDefault(r => r.Key == key)?.Type is XscnClassType entry
                 ? new Found($"{{{key}}}: {entry.Class.CSharpName}", [], span)
                 : null;

@@ -15,7 +15,7 @@ internal sealed class DiagnosticsPublisher(
     ProjectCache projects,
     IClientMessages client,
     IDebounceScheduler scheduler,
-    ParseFunction parse
+    ParseCache cache
 ) : IDisposable
 {
     /// <summary>How long a change waits for the next one before it is parsed.</summary>
@@ -53,6 +53,7 @@ internal sealed class DiagnosticsPublisher(
             }
             pending.Remove(uri, out old);
             wasOpen = store.Close(uri);
+            cache.Remove(uri);
         }
 
         old?.Cancel();
@@ -185,7 +186,7 @@ internal sealed class DiagnosticsPublisher(
                 return;
             }
 
-            XscnParseResult result = await Task.Run(() => parse(document.Text, document.Kind, project.Metadata), cancellation).ConfigureAwait(false);
+            XscnParseResult result = await Task.Run(() => cache.Get(document, project.Metadata), cancellation).ConfigureAwait(false);
             await PublishAsync(new PublishDiagnosticsParams(document.Uri, document.Version, Map(document.Text, result.Diagnostics)), document)
                 .ConfigureAwait(false);
         }

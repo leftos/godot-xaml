@@ -331,6 +331,62 @@ public sealed class CompletionTests
         AssertEveryEdit(result, new LspRange(PositionOf(text, start), PositionOf(text, start + "Expand".Length)));
     }
 
+    // A cursor between two words with no comma between them inserts at the cursor, with a comma on each side.
+    [Fact]
+    public async Task AFlagsCursorBetweenTwoWordsInsertsWithCommasOnBothSides()
+    {
+        string source = Root("<Control SizeFlagsHorizontal=\"Expand | Fill\" />");
+
+        JsonElement result = await CompleteAsync(source);
+
+        AssertEdit(result, "ShrinkEnd", AtMarker(source), ", ShrinkEnd,");
+        Assert.DoesNotContain("Expand", Labels(result));
+        Assert.DoesNotContain("Fill", Labels(result));
+    }
+
+    // Each space-separated word is a part of its own: the partial word after another is replaced alone.
+    [Fact]
+    public async Task AFlagsPartialWordAfterAWordIsReplacedAlone()
+    {
+        string source = Root("<Control SizeFlagsHorizontal=\"Expand Sh|\" />");
+        int cursor = source.IndexOf('|', StringComparison.Ordinal);
+        string text = source.Remove(cursor, 1);
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.DoesNotContain("Expand", Labels(result));
+        AssertEveryEdit(result, new LspRange(PositionOf(text, cursor - "Sh".Length), PositionOf(text, cursor)));
+    }
+
+    // A word before another is replaced alone, and the word after it is not offered again.
+    [Fact]
+    public async Task AFlagsWordBeforeAnotherWordIsReplacedAlone()
+    {
+        string source = Root("<Control SizeFlagsHorizontal=\"Exp|and Fill\" />");
+        int cursor = source.IndexOf('|', StringComparison.Ordinal);
+        string text = source.Remove(cursor, 1);
+        int start = cursor - "Exp".Length;
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.DoesNotContain("Fill", Labels(result));
+        AssertEveryEdit(result, new LspRange(PositionOf(text, start), PositionOf(text, start + "Expand".Length)));
+    }
+
+    // A no-break space separates two words as any whitespace does, so the word after it is not offered again.
+    [Fact]
+    public async Task AFlagsWordAfterANoBreakSpaceIsNotOfferedAgain()
+    {
+        string source = Root("<Control SizeFlagsHorizontal=\"Expand\u00A0Sh|\" />");
+        int cursor = source.IndexOf('|', StringComparison.Ordinal);
+        string text = source.Remove(cursor, 1);
+
+        JsonElement result = await CompleteAsync(source);
+
+        Assert.DoesNotContain("Expand", Labels(result));
+        AssertEveryEdit(result, new LspRange(PositionOf(text, cursor - "Sh".Length), PositionOf(text, cursor)));
+    }
+
     [Fact]
     public async Task AFlagsValueAtTheEndOfTheDocumentOffersItsMembers()
     {

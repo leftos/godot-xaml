@@ -10,7 +10,7 @@ namespace GodotXaml.LanguageServer;
 /// edit when the buffer is canonical already. A document with an error, or one the writer refuses, gets no edit and a
 /// message instead.
 /// </summary>
-internal sealed class FormattingHandler(DocumentStore store, ProjectCache projects, IClientMessages client, ParseFunction parse)
+internal sealed class FormattingHandler(DocumentStore store, ProjectCache projects, IClientMessages client, ParseCache cache)
 {
     /// <summary>Formats a document's buffer.</summary>
     /// <param name="uri">The document's URI.</param>
@@ -32,7 +32,7 @@ internal sealed class FormattingHandler(DocumentStore store, ProjectCache projec
             return [];
         }
 
-        Written written = await Task.Run(() => Write(document, project.Metadata, parse), cancellation).ConfigureAwait(false);
+        Written written = await Task.Run(() => Write(document, project.Metadata, cache), cancellation).ConfigureAwait(false);
 
         // The edit replaces the whole buffer: a change or a close that landed while it ran makes the reply stale, and
         // applying it would wipe what the user typed after asking.
@@ -68,9 +68,9 @@ internal sealed class FormattingHandler(DocumentStore store, ProjectCache projec
         cancellation.IsCancellationRequested ? Task.CompletedTask : client.ShowAsync(type, message);
 
     // The canonical text, or which of an error and a refusal stopped it.
-    private static Written Write(OpenDocument document, GodotMetadata metadata, ParseFunction parse)
+    private static Written Write(OpenDocument document, GodotMetadata metadata, ParseCache cache)
     {
-        XscnParseResult result = parse(document.Text, document.Kind, metadata);
+        XscnParseResult result = cache.Get(document, metadata);
         if (result.HasErrors)
         {
             return new Written(true, null, null);

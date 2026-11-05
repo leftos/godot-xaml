@@ -45,12 +45,13 @@ internal static class LanguageServerHost
         ClientChannel client = new(rpc, log);
         DocumentStore store = new(log);
         ProjectCache projects = new(seams.LoadMetadata, client);
-        using DiagnosticsPublisher publisher = new(store, projects, client, scheduler, seams.Parse);
+        ParseCache cache = new(store, seams.Parse);
+        using DiagnosticsPublisher publisher = new(store, projects, client, scheduler, cache);
         LanguageServerTarget server = new(
             client,
             publisher,
-            new FormattingHandler(store, projects, client, seams.Parse),
-            new HoverHandler(store, projects, seams.Parse, seams.LoadDocs),
+            new FormattingHandler(store, projects, client, cache),
+            new HoverHandler(store, projects, cache, seams.LoadDocs),
             new CompletionHandler(store, projects)
         );
 
