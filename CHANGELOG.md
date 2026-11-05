@@ -11,6 +11,7 @@
 ### Changed
 
 - Converting a `.tscn` keeps every property it stores, even at its default, and `format` keeps a default a hand-written `.xscn` spells.
+- `convert --project` and `upgrade` back up the originals in a folder beside the project, so the project's own scans never find the copies.
 
 ### Fixed
 

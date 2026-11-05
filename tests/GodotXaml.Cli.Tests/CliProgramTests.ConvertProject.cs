@@ -859,7 +859,7 @@ public sealed partial class CliProgramTests
     public void ProjectKeepsEverythingWhenTheBackupFails()
     {
         string[] files = [.. WriteThreeScenes(ThemedButton), Write("a.gd", MainScript)];
-        Write(BackupFolder, "in the way\n");
+        WriteAt(Path.Combine(sandbox, BackupFolder), "in the way\n");
         Dictionary<string, byte[]> before = Snapshot(files);
 
         RunResult run = RunProject();
@@ -869,6 +869,17 @@ public sealed partial class CliProgramTests
         AssertUnchanged(before);
         Assert.Empty(OutputsUnder(folder));
         Assert.False(Directory.Exists(Located(StagingFolder)));
+    }
+
+    [Fact]
+    public void ABackupBaseIsBesideTheProjectOrInsideARoot()
+    {
+        string root = Path.GetPathRoot(folder)!;
+
+        Assert.Equal(Path.Combine(root, ".godot-xaml-backup"), OriginalsBackup.BaseOf(root));
+        Assert.True(OriginalsBackup.InsideProject(root));
+        Assert.Equal(Path.Combine(sandbox, ".godot-xaml-backup", Path.GetFileName(folder)), OriginalsBackup.BaseOf(folder));
+        Assert.False(OriginalsBackup.InsideProject(folder));
     }
 
     [Fact]
@@ -1132,7 +1143,7 @@ public sealed partial class CliProgramTests
         Assert.Equal([$"{folder}: no .tscn or .tres files to convert", Summary], forward.Lines);
         Assert.Equal(0, back.ExitCode);
         Assert.Equal([$"{folder}: no .xscn or .xres files to convert", Summary], back.Lines);
-        Assert.False(Directory.Exists(Located(BackupFolder)));
+        Assert.False(Directory.Exists(BackupBase));
     }
 
     [Fact]
@@ -1254,7 +1265,7 @@ public sealed partial class CliProgramTests
         Assert.Equal(0, run.ExitCode);
         Assert.All(sources, source => Assert.False(File.Exists(source)));
         Assert.Equal(MainScript.Replace("main.tscn", "main.xscn", StringComparison.Ordinal), File.ReadAllText(gd));
-        Assert.False(Directory.Exists(Located(BackupFolder)));
+        Assert.False(Directory.Exists(BackupBase));
         Assert.DoesNotContain(run.Lines, line => line.Contains("backed up", StringComparison.Ordinal));
     }
 
@@ -1270,18 +1281,23 @@ public sealed partial class CliProgramTests
     }
 
     [Fact]
-    public void ProjectSkipsItsBackupFolder()
+    public void ProjectBacksUpBesideTheProject()
     {
         WriteThreeScenes(ThemedButton);
         Assert.Equal(0, RunProject().ExitCode);
-        string backup = Assert.Single(BackupFolders());
-        Dictionary<string, byte[]> backedUp = Snapshot(Directory.GetFiles(backup, "*", SearchOption.AllDirectories));
+        string first = Assert.Single(BackupFolders());
+        Dictionary<string, byte[]> backedUp = Snapshot(Directory.GetFiles(first, "*", SearchOption.AllDirectories));
 
         RunResult run = RunProject("--back");
 
         Assert.Equal(0, run.ExitCode);
+        string backup = Assert.Single(BackupFolders(), each => each != first);
+        string[] copies = Directory.GetFiles(backup, "*", SearchOption.AllDirectories);
+        Assert.Contains($"{copies.Length} file(s) backed up to {backup}", run.Lines);
+        Assert.Equal(Path.Combine(sandbox, BackupFolder, Path.GetFileName(folder)), Path.GetDirectoryName(backup));
+        Assert.False(Directory.Exists(Path.Combine(folder, BackupFolder)));
         AssertUnchanged(backedUp);
-        Assert.Empty(OutputsUnder(backup));
+        Assert.Empty(OutputsUnder(first));
         Assert.DoesNotContain(
             run.Lines,
             line => line.Contains(BackupFolder, StringComparison.Ordinal) && !line.Contains("backed up", StringComparison.Ordinal)
@@ -1307,14 +1323,14 @@ public sealed partial class CliProgramTests
 
         Assert.Equal(0, RunProject().ExitCode);
 
-        Assert.Equal("*\n", File.ReadAllText(Path.Combine(Located(BackupFolder), ".gitignore")));
+        Assert.Equal("*\n", File.ReadAllText(Path.Combine(BackupBase, ".gitignore")));
     }
 
     [Fact]
     public void ProjectKeepsAnExistingBackupGitignore()
     {
         WriteThreeScenes(ThemedButton);
-        string gitignore = Write(Path.Combine(BackupFolder, ".gitignore"), "*.tscn\n");
+        string gitignore = WriteAt(Path.Combine(BackupBase, ".gitignore"), "*.tscn\n");
 
         Assert.Equal(0, RunProject().ExitCode);
 
@@ -1369,7 +1385,7 @@ public sealed partial class CliProgramTests
         Assert.Equal(0, run.ExitCode);
         Assert.Equal(MainScript, File.ReadAllText(gd));
         Assert.All(sources, source => Assert.True(File.Exists(source)));
-        Assert.False(Directory.Exists(Located(BackupFolder)));
+        Assert.False(Directory.Exists(BackupBase));
     }
 
     // main instances ui/button, and ui/button, unless it is replaced, uses themes/t.
@@ -1397,7 +1413,7 @@ public sealed partial class CliProgramTests
         Assert.Equal(2, run.ExitCode);
         Assert.Equal([message], run.ErrorLines);
         Assert.Empty(OutputsUnder(folder));
-        Assert.False(Directory.Exists(Located(BackupFolder)));
+        Assert.False(Directory.Exists(BackupBase));
     }
 
     // Every folder and every file's bytes under the test's folder, with no exemption.
@@ -1575,8 +1591,19 @@ public sealed partial class CliProgramTests
 
     private string[] BackupFolders()
     {
-        string backups = Located(BackupFolder);
+        string backups = BackupBase;
         return Directory.Exists(backups) ? Directory.GetDirectories(backups) : [];
+    }
+
+    // The folder beside the project that holds the project's own folder of stamped backups, where a run puts them.
+    private string BackupBase => Path.Combine(sandbox, BackupFolder, Path.GetFileName(folder));
+
+    // Writes a file at a full path outside the project folder, making the folders above it.
+    private static string WriteAt(string path, string text)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, text);
+        return path;
     }
 
     private static string[] OutputsUnder(string root) =>

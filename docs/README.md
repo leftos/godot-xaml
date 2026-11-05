@@ -13,7 +13,7 @@
 
 ## Glossary
 
-- **Backup folder**: `<root>/.godot-xaml-backup/<UTC stamp>/`, where `convert --project` and `upgrade` copy each original, its `.uid`, each script or `project.godot` it edits and each output it overwrites, at their paths under the root, before changing anything.
+- **Backup folder**: `<root's parent>/.godot-xaml-backup/<project name>/<UTC stamp>/`, beside the project so no scan of it finds the copies (inside the root only when the root has no folder above it), where `convert --project` (also `--back`) and `upgrade` copy each original, its `.uid`, each script or `project.godot` it edits and each output it overwrites, at their paths under the root, before changing anything.
 - **Builder**: another machine the gate routes a run to, by this PC's gate `remote.json` (`gate remote add`); the editor checks run there, on a hidden desktop.
 - **Built path**: a path a script assembles at run time (`"res://ui/" + name + ".tscn"`) instead of writing whole; `convert` cannot rewrite it and warns (`GXP0006`) when a literal ends in an extension the run converts.
 - **Canonical format**: the one layout every save writes, whatever the file looked like before, so a diff shows only real changes.

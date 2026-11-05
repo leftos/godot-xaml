@@ -6,17 +6,25 @@ namespace GodotXaml.Cli.Tests;
 public sealed partial class CliProgramTests : IDisposable
 {
     private const string UnknownClass = "No Godot class is named Gadget; the element is kept with an unknown type.";
-    private readonly string folder = Path.Combine(Path.GetTempPath(), "godot-xaml-cli-tests", Guid.NewGuid().ToString("N"));
 
-    /// <summary>Creates the test's own folder.</summary>
-    public CliProgramTests() => Directory.CreateDirectory(folder);
+    // Each test's own folder, holding its project and everything the run writes beside it, so the backup never outlives
+    // the test either.
+    private readonly string sandbox = Path.Combine(Path.GetTempPath(), "godot-xaml-cli-tests", Guid.NewGuid().ToString("N"));
+    private readonly string folder;
 
-    /// <summary>Removes the test's folder and everything in it.</summary>
+    /// <summary>Creates the test's own sandbox folder and the project folder in it.</summary>
+    public CliProgramTests()
+    {
+        folder = Path.Combine(sandbox, "project");
+        Directory.CreateDirectory(folder);
+    }
+
+    /// <summary>Removes the test's sandbox folder and everything in it.</summary>
     public void Dispose()
     {
-        if (Directory.Exists(folder))
+        if (Directory.Exists(sandbox))
         {
-            Directory.Delete(folder, recursive: true);
+            Directory.Delete(sandbox, recursive: true);
         }
     }
 

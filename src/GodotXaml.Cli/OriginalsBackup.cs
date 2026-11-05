@@ -5,19 +5,40 @@ namespace GodotXaml.Cli;
 
 /// <summary>
 /// Copies the files a <c>convert --project</c> run will replace, edit or delete into
-/// <c>&lt;root&gt;/.godot-xaml-backup/&lt;UTC yyyyMMdd-HHmmss&gt;/</c>, each at its path under the root. The folder's name
-/// starts with a dot, so Godot and every walk of this tool leave it out.
+/// <c>&lt;project parent&gt;/.godot-xaml-backup/&lt;project name&gt;/&lt;UTC yyyyMMdd-HHmmss&gt;/</c>, each at its path under
+/// the root, or for a project with no folder above it into <c>&lt;root&gt;/.godot-xaml-backup/&lt;UTC yyyyMMdd-HHmmss&gt;/</c>.
+/// Beside the project no walk of it finds the copies; inside one the folder's dot keeps Godot and the walk out.
 /// </summary>
 internal static class OriginalsBackup
 {
-    /// <summary>The folder under a project root that holds one stamped folder per run.</summary>
+    /// <summary>The folder beside a project that holds one folder per project, each with one stamped folder per run.</summary>
     internal const string FolderName = ".godot-xaml-backup";
+
+    /// <summary>
+    /// The folder one stamped folder per run is made in: <c>&lt;parent&gt;/.godot-xaml-backup/&lt;name&gt;</c> beside a
+    /// project, or <c>&lt;root&gt;/.godot-xaml-backup</c> inside a project with no folder above it.
+    /// </summary>
+    /// <param name="root">The project root's full path, with no trailing separator.</param>
+    /// <returns>The folder the stamped folder is made in.</returns>
+    internal static string BaseOf(string root) =>
+        HasNoFolderAbove(root) ? Path.Combine(root, FolderName) : Path.Combine(Path.GetDirectoryName(root)!, FolderName, Path.GetFileName(root));
+
+    /// <summary>Whether this project's backup goes inside it, as it does for a project with no folder above it.</summary>
+    /// <param name="root">The project root's full path, with no trailing separator.</param>
+    /// <returns>Whether <see cref="BaseOf"/> names the project's own folder.</returns>
+    internal static bool InsideProject(string root) => HasNoFolderAbove(root);
+
+    // A drive, filesystem or share root has nowhere above it, so its backup goes inside it.
+    private static bool HasNoFolderAbove(string root) => Path.GetDirectoryName(root) is null || Path.GetFileName(root).Length == 0;
 
     /// <summary>Backs up each file, stopping at the first that cannot be; the copies made so far stay.</summary>
     /// <param name="root">The project root's full path.</param>
     /// <param name="files">The full paths of the files to copy from disk, each under the root.</param>
     /// <param name="read">Files under the root already read, each backed up from the bytes held rather than read again.</param>
-    /// <param name="error">Where <c>{path}: cannot be backed up.</c> is printed for the first failure.</param>
+    /// <param name="error">
+    /// Where <c>{BaseOf(root)}: cannot be backed up.</c> or <c>{file}: cannot be backed up.</c> is printed for the first
+    /// failure.
+    /// </param>
     /// <param name="folder">The stamped folder the copies went to, when every file was backed up.</param>
     /// <returns>Whether every file was backed up.</returns>
     internal static bool TryCopy(
@@ -29,9 +50,10 @@ internal static class OriginalsBackup
     )
     {
         folder = null;
-        if (!TryCreateStamped(Path.Combine(root, FolderName), out string? created))
+        string backups = BaseOf(root);
+        if (!TryCreateStamped(backups, out string? created))
         {
-            error.WriteLine($"{Path.Combine(root, FolderName)}: cannot be backed up.");
+            error.WriteLine($"{backups}: cannot be backed up.");
             return false;
         }
         foreach (string file in files)

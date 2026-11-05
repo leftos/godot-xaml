@@ -320,7 +320,7 @@ From the first release, every repo that uses godot-xaml files each friction (a c
 
 It skips `addons/` (third-party addon scenes stay as they are, and references to them are left alone), `.godot/`, every folder whose name starts with `.`, and every folder holding a `.gdignore` file. There is no flag to include `addons/`.
 
-It always backs up what it removes or edits, unless the user passes `--nobackup`. The backup is a folder under the root, not the Recycle Bin, since the bin cannot meet "always": Windows silently deletes a file it cannot recycle and other systems have no bin.
+It always backs up what it removes or edits, unless the user passes `--nobackup`. The backup is a folder beside the project (under the project's parent, so no scan of the project finds the copies), not the Recycle Bin, since the bin cannot meet "always": Windows silently deletes a file it cannot recycle and other systems have no bin.
 
 It is all or nothing. The outputs are written to a hidden staging folder first. If any source fails, the staging folder is deleted and the project is left exactly as it was, with every error listed in that run. Only when every source converts are the originals backed up, the outputs moved in, the scripts and `project.godot` edited, and the originals removed. A failure after the first move is reported as a part-converted project, naming the backup to restore from; there is no automatic rollback.
 

@@ -91,13 +91,13 @@ dotnet godot-xaml convert --project <root>          # every .tscn/.tres to .xscn
 dotnet godot-xaml convert --project <root> --back   # and back
 ```
 
-Run these only when the owner asks. The run backs up the originals to `.godot-xaml-backup/`, rewrites references and script strings, and warns about paths it could not rewrite as `GXP0006`, up to three lines per file and then one line for the rest. Those need a change by hand.
+Run these only when the owner asks. The run backs up the originals to `.godot-xaml-backup/<project name>/` beside the project, not inside it, rewrites references and script strings, and warns about paths it could not rewrite as `GXP0006`, up to three lines per file and then one line for the rest. Those need a change by hand.
 
 ## Upgrading to a new Godot version
 
 ```sh
 dotnet godot-xaml upgrade --to <version> --check <root>   # names the files that would change, writes nothing
-dotnet godot-xaml upgrade --to <version> <root>           # all or nothing, backed up to .godot-xaml-backup/
+dotnet godot-xaml upgrade --to <version> <root>           # all or nothing, backed up beside the project, to ../.godot-xaml-backup/<project name>/
 ```
 
 Run these only when the owner asks. A newer editor keeps a file's `x:Godot` marker, so only `upgrade` moves a project to another version's metadata. Pass `--from <version>` for files with no marker. `GXT0006`, `GXT0007` and `GXT0008` are in [reference.md](reference.md#codes-you-will-meet); `addons/` is not upgraded.

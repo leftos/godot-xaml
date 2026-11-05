@@ -3,9 +3,9 @@ namespace GodotXaml.Cli;
 /// <summary>
 /// The all-or-nothing part of a project run that writes many files: each output is written first under
 /// <c>&lt;root&gt;/.godot-xaml-staging/&lt;stamp&gt;-&lt;8 hex digits&gt;/</c> at its path under the root, the originals are
-/// backed up to <c>.godot-xaml-backup/&lt;stamp&gt;/</c> through <see cref="OriginalsBackup"/>, then each staged output is moved
-/// into place. Disposing removes the staging folder, whatever the run's outcome. Shared by <c>convert --project</c> and
-/// <c>upgrade</c>.
+/// backed up beside the project to <c>&lt;project parent&gt;/.godot-xaml-backup/&lt;project name&gt;/&lt;stamp&gt;/</c> through
+/// <see cref="OriginalsBackup"/>, then each staged output is moved into place. Disposing removes the staging folder,
+/// whatever the run's outcome. Shared by <c>convert --project</c> and <c>upgrade</c>.
 /// </summary>
 /// <param name="root">The project root's full path, with no trailing separator.</param>
 /// <param name="noBackup">Whether the run keeps no backup, so <see cref="TryBackUp"/> copies nothing.</param>
@@ -67,8 +67,9 @@ internal sealed class ProjectStaging(string root, bool noBackup, TextWriter outp
     }
 
     /// <summary>
-    /// Backs up each file once, a path named twice copied once, and prints <c>{n} file(s) backed up to {folder}</c>; does
-    /// nothing under the no-backup flag.
+    /// Backs up each file once, a path named twice copied once, and prints <c>{n} file(s) backed up to {folder}</c>, or
+    /// <c>{n} file(s) backed up to {folder}, inside the project, which has no folder above it</c> for a project with no
+    /// folder above it; does nothing under the no-backup flag.
     /// </summary>
     /// <param name="files">The full paths of the files to copy from disk, each under the root.</param>
     /// <param name="read">Files under the root already read, each backed up from the bytes held.</param>
@@ -87,7 +88,11 @@ internal sealed class ProjectStaging(string root, bool noBackup, TextWriter outp
             return false;
         }
         Backup = folder;
-        output.WriteLine($"{copied.Count + held.Count} file(s) backed up to {folder}");
+        int count = copied.Count + held.Count;
+        string location = OriginalsBackup.InsideProject(root)
+            ? $"{count} file(s) backed up to {folder}, inside the project, which has no folder above it"
+            : $"{count} file(s) backed up to {folder}";
+        output.WriteLine(location);
         return true;
     }
 

@@ -137,7 +137,7 @@ The run is all or nothing, in this order:
 
 1. Plan and stage: every refusal and conversion is checked first, and each output (with its `.uid`) is written to `<root>/.godot-xaml-staging/<stamp>-<8 hex>/`, which is removed when the run ends.
 2. If any source failed, nothing else happens: the project is as it was, every error is listed, and the run prints `{root}: warning GXP0007: nothing changed: {n} source(s) were not converted; the project is as it was` and exits 1 (2 on an I/O failure in the plan).
-3. Otherwise the originals are backed up to `<root>/.godot-xaml-backup/<UTC yyyyMMdd-HHmmss>[-N]/`, each at its path under the root, together with their `.uid` files, each script or `project.godot` to be edited and each output `--force` overwrites, unless `--nobackup`. The line is `{n} file(s) backed up to {folder}`. The backup folder holds a `.gitignore` of `*`, so git leaves it out; backups pile up, one folder per run, and are deleted by hand.
+3. Otherwise the originals are backed up to `<root's parent>/.godot-xaml-backup/<project name>/<UTC yyyyMMdd-HHmmss>[-N]/`, beside the project so no scan of the project finds the copies, each at its path under the root, together with their `.uid` files, each script or `project.godot` to be edited and each output `--force` overwrites, unless `--nobackup`. The line is `{n} file(s) backed up to {folder}`. `<root's parent>/.godot-xaml-backup/<project name>/` holds a `.gitignore` of `*` (unless one is there), so git leaves the backup out when the parent is inside a repository; backups are never deleted by the tool, so they pile up, one folder per run, until deleted by hand. A project with no folder above it (a drive root, `/`, a share root) is backed up inside itself, to `<root>/.godot-xaml-backup/<stamp>[-N]/`, and the line reads `{n} file(s) backed up to {folder}, inside the project, which has no folder above it`. A backup folder that cannot be written fails the run before anything changes (`{backup folder}: cannot be backed up.`, exit 2). The walk skips dot folders, so a backup an older version left inside a project is not converted. `--back` and `upgrade` back up the same way.
 4. Each staged output moves into place (`{source} -> {output}`), each script and `project.godot` that names a converted file is edited (`{path}: {n} path(s) rewritten`), and the originals and their `.uid` files are removed (`{n} original(s) removed`). The reference scan then runs.
 
 The plan refuses, with nothing changed:
@@ -190,10 +190,10 @@ Both versions must be ones the tool carries; any other is a usage error naming t
 
 A property the `--to` metadata no longer has is kept as a script property, an attribute under its Godot name holding its Godot value text (`legacy_text='"old"'`), and warned about once per class and property in a file (`GXT0008`). A file that does not read cleanly with its version is printed in `check`'s form.
 
-The run is all or nothing. With an error in any file nothing changes: the errors are printed with the summary, and the exit code is 1. Otherwise each file whose text changes is staged, the originals are backed up to `.godot-xaml-backup/<stamp>/` and the upgraded files moved in; a file whose text does not change is not written:
+The run is all or nothing. With an error in any file nothing changes: the errors are printed with the summary, and the exit code is 1. Otherwise each file whose text changes is staged, the originals are backed up beside the project, to `<root's parent>/.godot-xaml-backup/<project name>/<stamp>/` (as `convert --project` does), and the upgraded files moved in; a file whose text does not change is not written:
 
 ```text
-2 file(s) backed up to /game/.godot-xaml-backup/20261104-120000
+2 file(s) backed up to /.godot-xaml-backup/game/20261104-120000
 /game/ui/main.xscn: upgraded
 /game/ui/menu.xscn: upgraded
 2 of 14 file(s) upgraded, 1 warning(s)

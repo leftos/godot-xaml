@@ -15,7 +15,7 @@ godot-xaml upgrade --to 4.8 path/to/game
 
 Run `--check` first. It writes nothing, names each file that would change and exits 1 when any would. Commit, or have a clean working tree, before the second run.
 
-The run reads every `.xscn` and `.xres` under the project with the metadata its `x:Godot` marker names, and writes it canonically with the `--to` version's, stamping the new marker. It is all or nothing: with an error in any file nothing changes. Before it moves a file in, it copies the originals to `.godot-xaml-backup/<time>/`, which Git ignores. A file whose text would not change is not written.
+The run reads every `.xscn` and `.xres` under the project with the metadata its `x:Godot` marker names, and writes it canonically with the `--to` version's, stamping the new marker. It is all or nothing: with an error in any file nothing changes. Before it moves a file in, it copies the originals to `.godot-xaml-backup/<project name>/<time>/` in the folder above the project, which Git ignores. A file whose text would not change is not written.
 
 It skips what `convert --project` skips, including the project's top-level `addons/`. An addon's files keep their marker, and every host still reads them by it.
 

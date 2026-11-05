@@ -24,12 +24,12 @@ Before running it:
 What the run guarantees:
 
 - **All or nothing.** Every output is staged first. If any source fails to convert, nothing in the project changes, and the run lists the errors.
-- **A backup.** Before anything changes, the run copies to `.godot-xaml-backup/<time>/`:
+- **A backup.** Before anything changes, the run copies to `.godot-xaml-backup/<project name>/<time>/` in the folder above the project, so the copies are not in the project:
   - the originals and their `.uid` files;
   - every script and `project.godot` it edits;
   - every output `--force` overwrites.
 
-  Git ignores the backup folder. Pass `--nobackup` to skip it, for example when the project is in git.
+  Git ignores the backup when that folder is inside a repository. The tool never deletes a backup, so they pile up until you delete them. A project with no folder above it (a drive root) is backed up inside itself. Pass `--nobackup` to skip it, for example when the project is in git.
 - **What it skips.** It never touches:
   - the project's top-level `addons/` and `.godot/`;
   - folders whose names start with `.`, and folders holding a `.gdignore`;
