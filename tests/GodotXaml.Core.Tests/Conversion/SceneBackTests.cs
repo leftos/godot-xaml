@@ -38,6 +38,7 @@ public sealed partial class SceneBackTests
             "shader_parameters",
             "skeleton_bones",
             "skeleton_modification_chains",
+            "stored_defaults",
             "sub_resources",
             "tile_map_grid_map",
             "two_bone_ik_modifiers",
@@ -49,10 +50,11 @@ public sealed partial class SceneBackTests
     [MemberData(nameof(Fixtures))]
     public void ConvertsXscnToTheGodotScene(string fixture)
     {
-        TscnDocument expected = TscnReader.Read(ReadFixture(fixture + ".tscn"));
+        TscnDocument expected = TscnReader.Read(ReadFixture(FixtureFolder(fixture), fixture + ".tscn"));
         ConversionOptions options = Options with
         {
             ExtResourceTypes = new TypesOf(expected),
+            Uid = expected.Header.Uid,
             SceneFiles = FixtureScenes.Instance,
             SourceKey = $"res://cases/{fixture}.xscn",
         };
@@ -1008,8 +1010,13 @@ public sealed partial class SceneBackTests
     private static void AssertIssue(ImmutableArray<ConversionIssue> issues, string code, ConversionSeverity severity) =>
         Assert.Equal(severity, Assert.Single(issues, issue => issue.Code == code).Severity);
 
-    private static string ReadFixture(string file) =>
-        new UTF8Encoding(false, true).GetString(File.ReadAllBytes(RepoFiles.PathOf("tests", "fixtures", "scenes", file)));
+    private static string ReadFixture(string file) => ReadFixture("scenes", file);
+
+    private static string ReadFixture(string folder, string file) =>
+        new UTF8Encoding(false, true).GetString(File.ReadAllBytes(RepoFiles.PathOf("tests", "fixtures", folder, file)));
+
+    // Godot's own saves live in "scenes"; a hand-written scene, which no saver could produce, lives in "stored".
+    private static string FixtureFolder(string fixture) => fixture == "stored_defaults" ? "stored" : "scenes";
 
     // The fixture's own ext_resource types, so the lookup is exact.
     private sealed class TypesOf(TscnDocument source) : IExtResourceTypes

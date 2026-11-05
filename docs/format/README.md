@@ -97,7 +97,7 @@ A property is an attribute named by the property's C# name. Its type, from the m
 - **Every other value** is Godot's own value text, exactly as a `.tscn` holds it: transforms, bases, quaternions, arrays, dictionaries and packed arrays (`Transform="Transform2D(1, 0, 0, 1, 0, 0)"`).
 - **A property of a script** (an `[Export]` or `@export`) has no type the format can know without the script. Its value is always Godot value text, with strings quoted: `Title='"[Esc] to close"'`.
 
-A property equal to its default for the node's class is not written.
+A property is written whatever its value, a default included; only `layout_mode` under a Container is left out, since the parent decides it.
 
 ### Properties on an element of unknown class
 
@@ -471,7 +471,7 @@ Every save, by the editor or by `godot-xaml format`, writes one fixed layout, so
   3. property elements and `x:Prop`, sorted by Godot name;
   4. `x:Connect`;
   5. child nodes in scene order.
-- **Defaults:** a property equal to its default for the element's class is omitted, on a known class only. `layout_mode` is omitted only under a Container, which decides it; elsewhere it is always written, since Godot's loader honours a written value.
+- **Defaults:** a property equal to its default is kept, so a `.tscn` that stores a default converts without loss and a hand-written default survives a format. `layout_mode` is omitted only under a Container, which decides it; elsewhere it is always written, since Godot's loader honours a written value.
 - **Signals as attributes:** only the leading run of common-case connections whose names sort in order is written as attributes. The rest are `x:Connect`.
 - **Prefix clashes:** a scene prefix that would clash with the format's is written `x1`, `x2`.
 

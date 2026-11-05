@@ -5,13 +5,14 @@ Compares each scene fixture with its converted .xscn and each .tres fixture with
 them.
 
 .DESCRIPTION
-Copies the fixtures (tests/fixtures/scenes/*.tscn and *.tres), their converted goldens
-(tests/fixtures/converted/*.xscn and *.xres) into godot/cases/, recreated on each run, and the scripts the fixtures name
+Copies the fixtures (tests/fixtures/scenes/*.tscn and *.tres, and the hand-written tests/fixtures/stored/*.tscn), their
+converted goldens (tests/fixtures/converted/*.xscn and *.xres) into godot/cases/, recreated on each run, and the scripts
+the fixtures name
 (holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the
 fixtures' res:// paths point. Then builds the godot/ project as a full rebuild (--no-incremental), imports it headless
 (which registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless. The
-expected pair count is the number of fixtures in tests/fixtures/scenes (its .tscn and .tres files), passed to the
-scene as --expected-pairs=<n>. The scene prints
+expected pair count is the number of fixture files it copies (the .tscn and .tres files in tests/fixtures/scenes and the
+.tscn files in tests/fixtures/stored), passed to the scene as --expected-pairs=<n>. The scene prints
 COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is left in
 godot/cases/<name>.tscn.dump and <name>.xscn.dump, or <name>.tres.dump and <name>.xres.dump.
 
@@ -46,7 +47,8 @@ $cases = Join-Path $project 'cases'
 # The expected count is the fixtures themselves: the same .tscn and .tres globs the copy step below copies.
 $expectedFixtures = @(Get-ChildItem -File -Path @(
         (Join-Path $repo 'tests/fixtures/scenes/*.tscn'),
-        (Join-Path $repo 'tests/fixtures/scenes/*.tres')
+        (Join-Path $repo 'tests/fixtures/scenes/*.tres'),
+        (Join-Path $repo 'tests/fixtures/stored/*.tscn')
     )).Count
 if ($expectedFixtures -eq 0) {
     [Console]::Error.WriteLine('compare.ps1: no fixtures in tests/fixtures/scenes')
@@ -62,6 +64,7 @@ if (Test-Path $cases) {
 New-Item -ItemType Directory -Path $cases | Out-Null
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/scenes/*.tscn') -Destination $cases
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/scenes/*.tres') -Destination $cases
+Copy-Item -Path (Join-Path $repo 'tests/fixtures/stored/*.tscn') -Destination $cases
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/converted/*.xscn') -Destination $cases
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/converted/*.xres') -Destination $cases
 foreach ($script in $fixtureScripts) {

@@ -41,6 +41,7 @@ public sealed class SceneRoundTripTests
             "shader_parameters",
             "skeleton_bones",
             "skeleton_modification_chains",
+            "stored_defaults",
             "sub_resources",
             "tile_map_grid_map",
             "two_bone_ik_modifiers",
@@ -51,7 +52,7 @@ public sealed class SceneRoundTripTests
     [MemberData(nameof(Fixtures))]
     public void ConvertsGodotSceneThereAndBackByteIdentical(string fixture)
     {
-        string text = ReadFixture(fixture + ".tscn");
+        string text = ReadFixture(FixtureFolder(fixture), fixture + ".tscn");
 
         Assert.Equal(text, ThroughModel(text, XscnDocumentKind.Scene));
     }
@@ -60,7 +61,7 @@ public sealed class SceneRoundTripTests
     [MemberData(nameof(Fixtures))]
     public void ConvertsGodotSceneThroughXscnTextAndBack(string fixture)
     {
-        string text = ReadFixture(fixture + ".tscn");
+        string text = ReadFixture(FixtureFolder(fixture), fixture + ".tscn");
 
         Assert.Equal(Comparable(TscnReader.Read(text)), Comparable(ThroughText(text, XscnDocumentKind.Scene)));
     }
@@ -350,8 +351,13 @@ public sealed class SceneRoundTripTests
     // The file's sections, blank-line separated, in ordinal order.
     private static string[] Sections(string text) => [.. text.Split("\n\n").Order(StringComparer.Ordinal)];
 
-    private static string ReadFixture(string file) =>
-        new UTF8Encoding(false, true).GetString(File.ReadAllBytes(RepoFiles.PathOf("tests", "fixtures", "scenes", file)));
+    private static string ReadFixture(string file) => ReadFixture("scenes", file);
+
+    private static string ReadFixture(string folder, string file) =>
+        new UTF8Encoding(false, true).GetString(File.ReadAllBytes(RepoFiles.PathOf("tests", "fixtures", folder, file)));
+
+    // Godot's own saves live in "scenes"; a hand-written scene, which no saver could produce, lives in "stored".
+    private static string FixtureFolder(string fixture) => fixture == "stored_defaults" ? "stored" : "scenes";
 
     private sealed class TypesOf(TscnDocument source) : IExtResourceTypes
     {

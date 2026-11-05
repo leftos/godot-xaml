@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://dst0r3d"]
+
+[node name="Root" type="Control"]
+anchors_preset = -1
+
+[node name="Title" type="Label" parent="."]
+size_flags_vertical = 4
+mouse_filter = 2
+text = "Stored"
+
+[node name="Box" type="VBoxContainer" parent="."]
+
+[node name="Inner" type="Label" parent="Box"]
+layout_mode = 2
+size_flags_vertical = 4

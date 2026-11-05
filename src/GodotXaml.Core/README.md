@@ -39,7 +39,7 @@ XscnDocument document = result.Document;
 
 ## Write one
 
-`XscnWriter.Write` gives the canonical text: the layout, attribute order and default omission every save uses.
+`XscnWriter.Write` gives the canonical text: the layout and attribute order every save uses, and every property the document holds (only a scalar `layout_mode` under a Container is left out).
 
 ```csharp
 string text = XscnWriter.Write(document, metadata);

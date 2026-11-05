@@ -46,7 +46,7 @@ See [Exporting a game](export.md).
 
 ## A property I set is missing from the file
 
-A value equal to the property's default for the node's class is not written; that is the same as Godot's `.tscn`. `layout_mode` is written outside a Container, since Godot's loader honours a written value.
+A property is never dropped for equalling its default: the file keeps what you wrote, and a conversion keeps a default the `.tscn` stored. `layout_mode` is written outside a Container, since Godot's loader honours a written value.
 
 ## The formatter reordered my file
 

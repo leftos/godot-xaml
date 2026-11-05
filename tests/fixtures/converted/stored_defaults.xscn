@@ -1,0 +1,10 @@
+<Control
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Name="Root"
+    AnchorsPreset="Custom">
+  <Label Name="Title" MouseFilter="Ignore" SizeFlagsVertical="ShrinkCenter" Text="Stored" />
+  <VBoxContainer Name="Box">
+    <Label Name="Inner" SizeFlagsVertical="ShrinkCenter" />
+  </VBoxContainer>
+</Control>

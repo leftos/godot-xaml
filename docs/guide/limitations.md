@@ -10,6 +10,7 @@ What godot-xaml does not do, or does differently from a `.tscn`.
 ## Format
 
 - **Order inside a script's exports, and inside a Theme's or a TileSet's own properties, is not kept.** An `.xscn` sorts attributes alphabetically. Converting back to `.tscn` restores Godot's order for everything else.
+- **An editor save drops a stored default.** The conversion keeps a property a `.tscn` stores at its class's default, but Godot's own saver omits a default, so saving the scene in the editor writes it without.
 - **Hand formatting is not kept.** Every save writes the canonical layout; comments are kept.
 - **Script properties are untyped.** The format cannot know an `[Export]` or `@export` property's type without the script, so its value is Godot's value text, strings quoted (`title='"Main menu"'`).
 - **`Signal` and `Callable` values** can only be empty (`Signal()`, `Callable()`), as in any saved Godot file.
