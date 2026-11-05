@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-11-04
 
 ### Added
 
@@ -23,6 +23,7 @@
 - `convert --project` no longer warns about the addon's own files, and its summary counts every warning a roll-up line stands for.
 - Converting back to `.tres`, a font's baked textures, glyphs and kerning pairs keep Godot's order, each glyph's keys in the order Godot writes them.
 - Converting a `.xres` back to `.tres` keeps its global class's `script_class` once the project has been opened in the editor.
+- The macOS language-server zips hold the executable at their root, as the other platforms' zips do.
 
 ## 0.4.0 - 2026-11-04
 
