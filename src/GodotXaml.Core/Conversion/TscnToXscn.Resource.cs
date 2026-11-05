@@ -17,7 +17,7 @@ public static partial class TscnToXscn
                 Type = TypeOf(document.Header.Type ?? "Resource", "[gd_resource]"),
                 Properties = Properties(document.ResourceProperties, "[resource]"),
             };
-            return new XscnDocument(XscnDocumentKind.Resource, [], Uids(), table, root);
+            return new XscnDocument(XscnDocumentKind.Resource, [], Uids(), table, root, metadata.Version);
         }
     }
 }

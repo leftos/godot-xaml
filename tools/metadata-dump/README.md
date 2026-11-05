@@ -10,7 +10,7 @@ Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent
 
 ## Format
 
-Top level: `godot` (the engine's version string), `globalEnums`, `classes`.
+Top level: `godot` (the engine's version string), `version` (the minor version as `<major>.<minor>`, `4.7`, which `x:Godot` also names), `globalEnums`, `classes`.
 
 - A class: `parent` (null for `Object`), `instantiable`, `enums`, `properties`, `signals`, and `hasDefaults`, `defaultOverrides`, `themeOverrides` and `listOrder` on some (below). `listOrder`, on a class that declares a slash-named property itself, lists every property name the class declares in ClassDB order, slash-named ones included; `properties` leaves slash-named ones out, so it alone serves typing and C# names, and `listOrder` serves property order.
 - An enum: `{"bitfield": bool, "values": [[name, int], …]}`, members in declaration order.

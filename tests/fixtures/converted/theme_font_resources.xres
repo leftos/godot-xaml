@@ -1,5 +1,6 @@
 <Theme
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Metadata.extra='[SubResource("FontFile1"), SubResource("Skin1"), SubResource("SkeletonProfile1"), SubResource("BoneMap1")]'>
   <x:Resources>
     <Image

@@ -2115,7 +2115,7 @@ public sealed class PropertyOrderTests
             new MemoryStream(
                 Encoding.UTF8.GetBytes(
                     """
-                    {"godot": "4.7", "globalEnums": {}, "classes": {
+                    {"version": "4.7", "godot": "4.7", "globalEnums": {}, "classes": {
                       "Object": {"parent": null, "instantiable": true, "enums": {}, "properties": [], "signals": []},
                       "TileSetAtlasSource": {"parent": "Object", "instantiable": true, "enums": {}, "properties": [], "signals": []}
                     }}

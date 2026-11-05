@@ -514,6 +514,32 @@ public sealed class XscnParserTests
         Assert.Equal(emptied, document);
     }
 
+    [Theory]
+    [InlineData("4.7")]
+    [InlineData("4.10")]
+    [InlineData("5.0")]
+    public void ARootMarkerIsReadIntoTheDocument(string version)
+    {
+        XscnDocument scene = Parse($"""<Control {X} xmlns:c="res://ui/" x:Godot="{version}" Name="Root" />""");
+        XscnParseResult resource = XscnParser.Parse($"""<Gradient {X} x:Godot="{version}" />""", XscnDocumentKind.Resource, Real);
+
+        Assert.Equal(version, scene.Godot);
+        Assert.Empty(Assert.IsType<XscnNode>(scene.Root).Properties);
+        Assert.Empty(resource.Diagnostics);
+        Assert.Equal(version, resource.Document.Godot);
+    }
+
+    [Fact]
+    public void AnUnmarkedFileReadsWithNoDiagnostic()
+    {
+        XscnDocument scene = Parse($"""<Control {X} Name="Root" />""");
+        XscnParseResult resource = XscnParser.Parse($"""<Gradient {X} />""", XscnDocumentKind.Resource, Real);
+
+        Assert.Null(scene.Godot);
+        Assert.Empty(resource.Diagnostics);
+        Assert.Null(resource.Document.Godot);
+    }
+
     private static XscnDocument Parse(string text)
     {
         XscnParseResult result = XscnParser.Parse(text, XscnDocumentKind.Scene, Real);

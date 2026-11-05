@@ -97,4 +97,7 @@ public static class XscnCodes
 
     /// <summary>An element nested deeper than the reader accepts; it and everything inside it are not read.</summary>
     public const string NestingTooDeep = "GX0120";
+
+    /// <summary>The root's <c>x:Godot</c> is not a Godot version as <c>&lt;major&gt;.&lt;minor&gt;</c>; it is not kept.</summary>
+    public const string MalformedGodotMarker = "GX0121";
 }

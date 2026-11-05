@@ -136,7 +136,11 @@ internal sealed partial class XscnTreeReader
 
     private void ReadFormatAttribute(ElementParts parts, AttributeText attribute)
     {
-        if (parts.IsNode && NodeFormatAttributes.TryGetValue(attribute.LocalName, out AttributeReader? read))
+        if (parts.IsRoot && attribute.LocalName == XscnFormatVocabulary.Godot)
+        {
+            ReadGodotMarker(attribute);
+        }
+        else if (parts.IsNode && NodeFormatAttributes.TryGetValue(attribute.LocalName, out AttributeReader? read))
         {
             read(this, parts, attribute);
         }
@@ -149,6 +153,20 @@ internal sealed partial class XscnTreeReader
         else
         {
             UnknownAttribute(parts.Syntax, attribute);
+        }
+    }
+
+    // The root's x:Godot: the Godot version as <major>.<minor>; a malformed one is reported and not kept.
+    private void ReadGodotMarker(AttributeText attribute)
+    {
+        if (GodotMetadata.IsMinorVersion(attribute.Value))
+        {
+            godot = attribute.Value;
+        }
+        else
+        {
+            string message = $"x:Godot is \"{attribute.Value}\"; it names the Godot version as <major>.<minor>, such as 4.7.";
+            Report(XscnCodes.MalformedGodotMarker, message, attribute.ValueSpan);
         }
     }
 

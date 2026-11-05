@@ -156,6 +156,10 @@ Error. `The root cannot be an instance placeholder; Godot loads no scene whose f
 
 Error. `Elements are nested deeper than 512; the reader stops here.` A deeper file would exhaust the call stack of every program that reads it, and no Godot scene needs that depth. Flatten the tree, or split it into instanced scenes.
 
+### GX0121 Malformed x:Godot
+
+Error. `x:Godot is "4"; it names the Godot version as <major>.<minor>, such as 4.7.` The root's `x:Godot` names the Godot version whose metadata wrote the file, as its major and minor numbers joined by a dot. The marker is not kept. Correct it, such as `x:Godot="4.7"`, or remove it: a file without one reads as before, and the next save writes it.
+
 ## Conversion to `.xscn`: `GXC00xx`
 
 Reported when a `.tscn` or `.tres` is converted forward, by `godot-xaml convert` and by the editor's saver.

@@ -29,6 +29,9 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
     private readonly List<string> resourcesTrailing = [];
     private ImmutableArray<XscnUid> uids = [];
     private string? formatPrefix;
+
+    // The root's x:Godot marker, when it has a well-formed one.
+    private string? godot;
     private bool uidTableSeen;
     private bool resourceTableSeen;
 
@@ -58,13 +61,13 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
         if (root is null || FullName(root).Length == 0)
         {
             Report(XscnCodes.MissingRoot, "The document has no root element.", new TextSpan(0, 0));
-            return new XscnDocument(kind, [], [], [], StandInRoot(kind));
+            return new XscnDocument(kind, [], [], [], StandInRoot(kind), null);
         }
 
         ImmutableArray<XscnNamespace> namespaces = ReadNamespaces(root);
         uids = root.Elements.FirstOrDefault(e => IsFormat(e, "Uids")) is { } table ? [.. ReadUidTable(table)] : [];
         XscnElement element = kind == XscnDocumentKind.Scene ? ReadRootNode(root) : (XscnElement)ReadRootResource(root);
-        return new XscnDocument(kind, namespaces, uids, [.. resources], WithDocumentComments(element, syntax))
+        return new XscnDocument(kind, namespaces, uids, [.. resources], WithDocumentComments(element, syntax), godot)
         {
             UidsLeadingComments = CommentList(uidsLeading),
             UidsTrailingComments = CommentList(uidsTrailing),

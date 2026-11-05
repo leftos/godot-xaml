@@ -36,7 +36,7 @@ public sealed class PreviousCommentsTests
         Assert.Equal(
             $$"""
             <!-- about the root -->
-            <Control {{X}} Name="Root" />
+            <Control {{X}} x:Godot="4.7" Name="Root" />
             """ + "\n",
             Forward(previous, ControlRoot)
         );
@@ -54,7 +54,7 @@ public sealed class PreviousCommentsTests
 
         Assert.Equal(
             $$"""
-            <Control {{X}} Name="Root">
+            <Control {{X}} x:Godot="4.7" Name="Root">
               <!-- about Go -->
               <Button Name="Go" />
             </Control>
@@ -76,7 +76,7 @@ public sealed class PreviousCommentsTests
 
         Assert.Equal(
             $$"""
-            <Control {{X}} Name="Root">
+            <Control {{X}} x:Godot="4.7" Name="Root">
               <Button Name="Go">
                 <!-- inside Go -->
               </Button>
@@ -98,7 +98,7 @@ public sealed class PreviousCommentsTests
 
         Assert.Equal(
             $$"""
-            <Control {{X}} Name="Root">
+            <Control {{X}} x:Godot="4.7" Name="Root">
               <!-- about focus -->
               <x:Prop Name="focus_mode" Value="2" />
             </Control>
@@ -119,7 +119,7 @@ public sealed class PreviousCommentsTests
 
         Assert.Equal(
             $$"""
-            <Control {{X}} Name="Root">
+            <Control {{X}} x:Godot="4.7" Name="Root">
               <!-- about resized -->
               <x:Connect Signal="Resized" Method="OnResized" />
             </Control>
@@ -142,7 +142,7 @@ public sealed class PreviousCommentsTests
 
         Assert.Equal(
             $$"""
-            <Control {{X}} Name="Root">
+            <Control {{X}} x:Godot="4.7" Name="Root">
               <!-- first -->
               <x:Connect Signal="Resized" Method="OnResized" />
               <!-- second -->
@@ -239,7 +239,7 @@ public sealed class PreviousCommentsTests
 
         Assert.Equal(
             $$"""
-            <Control {{X}} Name="Root">
+            <Control {{X}} x:Godot="4.7" Name="Root">
               <Control.Theme>
                 <Theme>
                   <!-- about the font size -->
@@ -511,7 +511,7 @@ public sealed class PreviousCommentsTests
 
         Assert.Equal(
             $$"""
-            <Control {{X}} Name="Root">
+            <Control {{X}} x:Godot="4.7" Name="Root">
               <!-- about the label -->
               <Label Name="New" x:UniqueId="5" />
             </Control>
@@ -542,7 +542,7 @@ public sealed class PreviousCommentsTests
 
         Assert.Equal(
             $$"""
-            <Control {{X}} Name="Root">
+            <Control {{X}} x:Godot="4.7" Name="Root">
               <Control Name="Box">
                 <!-- about the label -->
                 <Label Name="New" x:UniqueId="5" />

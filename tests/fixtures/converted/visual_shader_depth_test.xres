@@ -1,1 +1,4 @@
-<VisualShader xmlns:x="https://github.com/leftos/godot-xaml/format/1" Modes.depth_test="2" />
+<VisualShader
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Modes.depth_test="2" />

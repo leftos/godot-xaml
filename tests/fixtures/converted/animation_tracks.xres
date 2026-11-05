@@ -1,4 +1,4 @@
-<Animation xmlns:x="https://github.com/leftos/godot-xaml/format/1" Length="2">
+<Animation xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Length="2">
   <x:Prop Name="tracks/0/enabled" Value="true" />
   <x:Prop Name="tracks/0/imported" Value="false" />
   <x:Prop Name="tracks/0/interp" Value="2" />

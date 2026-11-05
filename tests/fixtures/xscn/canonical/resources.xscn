@@ -1,4 +1,4 @@
-<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Name="Root">
   <x:Resources>
     <StyleBoxFlat x:Key="Panel" BgColor="0.25, 0.25, 0.25, 1" CornerRadiusTopLeft="4" />
     <StyleBoxFlat x:Key="Hover" BgColor="0.5, 0.5, 0.5, 1" />

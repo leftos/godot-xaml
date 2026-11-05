@@ -1,4 +1,8 @@
-<Node3D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="628645524">
+<Node3D
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Name="Root"
+    x:UniqueId="628645524">
   <MeshInstance3D
       Name="MeshInstance3D"
       InstanceShaderParameters.i0="0.5"

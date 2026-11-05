@@ -1,5 +1,6 @@
 <VisualShader
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Flags.depth_prepass_alpha="true"
     Flags.fog_disabled="true"
     Flags.shadows_disabled="true"

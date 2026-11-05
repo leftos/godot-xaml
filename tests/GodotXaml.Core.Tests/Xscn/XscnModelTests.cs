@@ -13,7 +13,7 @@ public sealed class XscnModelTests
     {
         var root = new XscnNode { Type = new XscnUnknownType("Thing"), Name = "Root" };
 
-        Assert.Throws<ArgumentException>(() => new XscnDocument(XscnDocumentKind.Scene, [], default, [], root));
+        Assert.Throws<ArgumentException>(() => new XscnDocument(XscnDocumentKind.Scene, [], default, [], root, null));
     }
 
     [Fact]

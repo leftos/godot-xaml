@@ -449,7 +449,7 @@ public sealed partial class CliProgramTests : IDisposable
     public void AGivenMetadataIsUsed()
     {
         string file = Write("clean.xscn", "<Control Name=\"Root\" />");
-        string metadata = Write("small.json", "{\"godot\": \"4.7\", \"globalEnums\": {}, \"classes\": {}}");
+        string metadata = Write("small.json", "{\"version\": \"4.7\", \"godot\": \"4.7\", \"globalEnums\": {}, \"classes\": {}}");
 
         RunResult run = Run("check", file, "--metadata", metadata);
 

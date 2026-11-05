@@ -1,4 +1,8 @@
-<Node3D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="819234613">
+<Node3D
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Name="Root"
+    x:UniqueId="819234613">
   <Skeleton3D Name="Skeleton3D" x:UniqueId="238123946">
     <x:Prop Name="bones/0/enabled" Value="true" />
     <x:Prop Name="bones/0/name" Value='"bone_0"' />

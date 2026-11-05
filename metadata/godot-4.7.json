@@ -96213,5 +96213,6 @@
       ]
     }
   },
-  "godot": "4.7.2-stable (official)"
+  "godot": "4.7.2-stable (official)",
+  "version": "4.7"
 }

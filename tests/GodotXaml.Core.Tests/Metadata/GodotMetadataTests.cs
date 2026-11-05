@@ -339,6 +339,47 @@ public sealed class GodotMetadataTests
     }
 
     [Fact]
+    public void AMetadataFileWithoutAVersionIsRefused()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"godot-xaml-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, """{"godot": "4.7", "globalEnums": {}, "classes": {}}""");
+        try
+        {
+            InvalidDataException error = Assert.Throws<InvalidDataException>(() => GodotMetadata.Load(path));
+
+            Assert.Contains(path, error.Message, StringComparison.Ordinal);
+            Assert.Contains("'version'", error.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Theory]
+    [InlineData("4")]
+    [InlineData("4.7.1")]
+    [InlineData("")]
+    public void AMetadataFileWithAMalformedVersionIsRefused(string version)
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+            Load($$$"""{"version": "{{{version}}}", "godot": "4.7", "globalEnums": {}, "classes": {}}""")
+        );
+
+        Assert.Contains("'version'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ABundledFileWhoseVersionIsNotItsBundledVersionIsRefused()
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes("""{"version": "4.6", "godot": "4.6", "globalEnums": {}, "classes": {}}"""));
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() => GodotMetadata.LoadBundled(stream, "4.7"));
+
+        Assert.Equal("The bundled metadata for 4.7 says its version is 4.6.", error.Message);
+    }
+
+    [Fact]
     public void RejectsAFileWithoutClasses()
     {
         InvalidDataException error = Assert.Throws<InvalidDataException>(() => Load("""{"godot": "4.7", "globalEnums": {}}"""));
@@ -484,7 +525,7 @@ public sealed class GodotMetadataTests
         Property(name).Replace("\"usage\"", $"\"default\": {JsonSerializer.Serialize(defaultText)}, \"usage\"", StringComparison.Ordinal);
 
     private static GodotMetadata LoadJson(params string[] classes) =>
-        Load($$$"""{"godot": "4.7", "globalEnums": {}, "classes": { {{{string.Join(", ", classes)}}} }}""");
+        Load($$$"""{"version": "4.7", "godot": "4.7", "globalEnums": {}, "classes": { {{{string.Join(", ", classes)}}} }}""");
 
     private static GodotMetadata Load(string json) => GodotMetadata.Load(new MemoryStream(Encoding.UTF8.GetBytes(json)));
 }

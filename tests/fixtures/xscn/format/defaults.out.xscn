@@ -1,4 +1,4 @@
-<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Name="Root">
   <Button Name="A" />
   <Button Name="B" FocusMode="None" />
   <BaseButton Name="C" FocusMode="None" />

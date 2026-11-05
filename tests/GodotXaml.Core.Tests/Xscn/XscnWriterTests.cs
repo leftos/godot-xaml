@@ -59,6 +59,34 @@ public sealed class XscnWriterTests
         Assert.Equal(line + "\n", Rewrite(line));
     }
 
+    // The marker is the writing metadata's version, after the namespace declarations and before the node's own attributes,
+    // whatever marker the document was read with.
+    [Fact]
+    public void TheWriterStampsTheMetadataVersionOnTheRoot()
+    {
+        XscnParseResult scene = XscnParser.Parse(
+            $"""<Control {X} xmlns:c="res://ui/" x:Godot="4.6" Name="Root"><Label Name="A" /></Control>""",
+            XscnDocumentKind.Scene,
+            Real
+        );
+        XscnParseResult resource = XscnParser.Parse($"""<Gradient {X} />""", XscnDocumentKind.Resource, Real);
+
+        Assert.Equal(
+            $"""
+            <Control
+                {X}
+                xmlns:c="res://ui/"
+                x:Godot="4.7"
+                Name="Root">
+              <Label Name="A" />
+            </Control>
+
+            """,
+            XscnWriter.Write(scene.Document, Real)
+        );
+        Assert.Equal($"<Gradient {X} x:Godot=\"4.7\" />\n", XscnWriter.Write(resource.Document, Real));
+    }
+
     [Fact]
     public void AStartTagOfOneHundredAndOneColumnsPutsEachAttributeOnItsOwnLine()
     {
@@ -67,6 +95,7 @@ public sealed class XscnWriterTests
         string expected = $"""
             <Control
                 {X}
+                x:Godot="4.7"
                 Name="{name}" />
 
             """;
@@ -88,7 +117,11 @@ public sealed class XscnWriterTests
     public void ADefaultValueIsKeptOnAnInstance() =>
         AssertCanonical(
             $"""
-            <Control {X} xmlns:c="res://ui/" Name="Root">
+            <Control
+                {X}
+                xmlns:c="res://ui/"
+                x:Godot="4.7"
+                Name="Root">
               <c:Modal Name="M" FocusMode="All" Visible="True" />
             </Control>
 
@@ -99,7 +132,11 @@ public sealed class XscnWriterTests
     public void ADefaultValueIsKeptOnAnOverride() =>
         AssertCanonical(
             $"""
-            <Control {X} xmlns:c="res://ui/" Name="Root">
+            <Control
+                {X}
+                xmlns:c="res://ui/"
+                x:Godot="4.7"
+                Name="Root">
               <c:Modal Name="M">
                 <x:Override Path="P" Visible="True" />
               </c:Modal>
@@ -112,7 +149,7 @@ public sealed class XscnWriterTests
     public void ADefaultValueIsKeptOnAnUnknownClassWhoseTagIsWrittenVerbatim()
     {
         string text = $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <Gizmo Name="G" Visible="True" />
             </Control>
 
@@ -130,6 +167,7 @@ public sealed class XscnWriterTests
             <c:Base
                 {X}
                 xmlns:c="res://ui/"
+                x:Godot="4.7"
                 Name="Root"
                 Visible="True" />
 
@@ -147,6 +185,7 @@ public sealed class XscnWriterTests
         string expected = $"""
             <Button
                 {X}
+                x:Godot="4.7"
                 Name="Root"
                 Script="{"{x:Null}"}"
                 FocusMode="All" />
@@ -160,7 +199,11 @@ public sealed class XscnWriterTests
     public void APlainConnectionToTheRootIsASignalAttribute() =>
         Assert.Equal(
             $"""
-            <Button {X} Name="Root" Pressed="OnPressed" />
+            <Button
+                {X}
+                x:Godot="4.7"
+                Name="Root"
+                Pressed="OnPressed" />
 
             """,
             Rewrite(
@@ -177,7 +220,7 @@ public sealed class XscnWriterTests
     public void AnInstanceConnectionIsAConnectElement() =>
         AssertCanonical(
             $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <x:Instance Name="M" Scene="res://dialog.xscn">
                 <x:Connect Signal="Pressed" Method="OnPressed" />
               </x:Instance>
@@ -196,7 +239,7 @@ public sealed class XscnWriterTests
     public void AConnectionThatIsNotPlainStaysAnElement(string connect) =>
         AssertCanonical(
             $"""
-            <Button {X} Name="Root">
+            <Button {X} x:Godot="4.7" Name="Root">
               {connect}
             </Button>
 
@@ -207,7 +250,7 @@ public sealed class XscnWriterTests
     public void AConnectionOnAnInstanceOrAnUnknownClassStaysAnElement() =>
         AssertCanonical(
             $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <Gizmo Name="G">
                 <x:Connect Signal="Pressed" Method="M" />
               </Gizmo>
@@ -224,7 +267,7 @@ public sealed class XscnWriterTests
     public void ConnectOnAnInstanceWritesGodotSignalForAScriptSignalTheAgreedNameWouldChange() =>
         Assert.Equal(
             $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <x:Instance Name="I" Scene="res://dialog.xscn">
                 <x:Connect GodotSignal="Finished" To="Panel" Method="M" />
               </x:Instance>
@@ -239,7 +282,10 @@ public sealed class XscnWriterTests
     public void ConnectOnAKnownClassWritesGodotSignalWhenItsEngineSignalTakesTheName() =>
         Assert.Equal(
             $"""
-            <AudioStreamPlayer {X} Name="Root">
+            <AudioStreamPlayer
+                {X}
+                x:Godot="4.7"
+                Name="Root">
               <x:Connect GodotSignal="Finished" To="Panel" Method="M" />
             </AudioStreamPlayer>
 
@@ -251,7 +297,7 @@ public sealed class XscnWriterTests
     public void ConnectOnAKnownClassKeepsSignalForAScriptSignalNoEngineSignalTakes() =>
         Assert.Equal(
             $"""
-            <Button {X} Name="Root">
+            <Button {X} x:Godot="4.7" Name="Root">
               <x:Connect Signal="Finished" To="Panel" Method="M" />
             </Button>
 
@@ -263,7 +309,7 @@ public sealed class XscnWriterTests
     public void ConnectOnAnInstanceKeepsTheAgreedCSharpName() =>
         Assert.Equal(
             $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <x:Instance Name="I" Scene="res://dialog.xscn">
                 <x:Connect Signal="Finished" To="Panel" Method="M" />
               </x:Instance>
@@ -277,7 +323,7 @@ public sealed class XscnWriterTests
     public void ConnectOnAnInstanceKeepsAScriptSignalWithNoAgreedName() =>
         Assert.Equal(
             $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <x:Instance Name="I" Scene="res://dialog.xscn">
                 <x:Connect Signal="my_signal" To="Panel" Method="M" />
               </x:Instance>
@@ -317,7 +363,11 @@ public sealed class XscnWriterTests
     public void AConnectionThatWouldReorderOrRepeatAnAttributeStaysAnElement() =>
         AssertCanonical(
             $"""
-            <Button {X} Name="Root" Pressed="A">
+            <Button
+                {X}
+                x:Godot="4.7"
+                Name="Root"
+                Pressed="A">
               <x:Connect Signal="ButtonDown" Method="B" />
               <x:Connect Signal="Pressed" Method="C" />
             </Button>
@@ -329,7 +379,7 @@ public sealed class XscnWriterTests
     public void AScriptPropertyNamedLikeASignalIsAProp() =>
         AssertCanonical(
             $"""
-            <Button {X} Name="Root">
+            <Button {X} x:Godot="4.7" Name="Root">
               <x:Prop Name="Pressed" Value="1" />
             </Button>
 
@@ -340,7 +390,7 @@ public sealed class XscnWriterTests
     public void APropertyOrConnectionWithLeadingCommentsStaysAnElement() =>
         AssertCanonical(
             $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <!-- p -->
               <x:Prop Name="visible" Value="false" />
               <!-- c -->
@@ -354,7 +404,7 @@ public sealed class XscnWriterTests
     public void AnEmptyTableWithCommentsIsWritten() =>
         AssertCanonical(
             $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <!-- u -->
               <x:Uids />
               <x:Resources>
@@ -417,7 +467,7 @@ public sealed class XscnWriterTests
     {
         XscnNode root = Root("Label", new XscnProperty("text", new XscnScalar(new GodotString("a\u0001b"))));
         string expected = $"""
-            <Label {X} Name="Root">
+            <Label {X} x:Godot="4.7" Name="Root">
               <x:Prop Name="text" Value='"a\u0001b"' />
             </Label>
 
@@ -433,7 +483,7 @@ public sealed class XscnWriterTests
         var array = new GodotArray([new GodotString("a\u0001b")], null);
         XscnNode root = Root("Control", new XscnProperty("metadata/m", new XscnScalar(array)));
         string expected = $"""
-            <Control {X} Name="Root">
+            <Control {X} x:Godot="4.7" Name="Root">
               <x:Prop Name="metadata/m" Value='["a\u0001b"]' />
             </Control>
 
@@ -495,6 +545,7 @@ public sealed class XscnWriterTests
         string expected = $"""
             <ColorRect
                 {X}
+                x:Godot="4.7"
                 Name="Root"
                 LayoutMode="Uncontrolled" />
 
@@ -578,7 +629,7 @@ public sealed class XscnWriterTests
     {
         XscnNode root = Root("Label", new XscnProperty("text", new XscnScalar(new GodotString("hi"))) { TrailingComments = [" trail "] });
         string expected = $"""
-            <Label {X} Name="Root">
+            <Label {X} x:Godot="4.7" Name="Root">
               <x:Prop Name="text" Value='"hi"' />
               <!-- trail -->
             </Label>
@@ -601,7 +652,7 @@ public sealed class XscnWriterTests
             TrailingComments = [" trail "],
         };
         string expected = $"""
-            <Label {X} Name="Root">
+            <Label {X} x:Godot="4.7" Name="Root">
               <!-- lead -->
               <x:Prop Name="text" Value='"hi"' />
               <!-- trail -->
@@ -698,7 +749,7 @@ public sealed class XscnWriterTests
     // A root Control whose start tag, written on one line, is the given width.
     private static string RootOfWidth(int width)
     {
-        string head = $"<Control {X} Name=\"";
+        string head = $"<Control {X} x:Godot=\"4.7\" Name=\"";
         const string Tail = "\" />";
         return head + new string('a', width - head.Length - Tail.Length) + Tail;
     }
@@ -722,7 +773,7 @@ public sealed class XscnWriterTests
             Properties = [.. properties],
         };
 
-    private static XscnDocument SceneOf(XscnElement root) => new(XscnDocumentKind.Scene, [], [], [], root);
+    private static XscnDocument SceneOf(XscnElement root) => new(XscnDocumentKind.Scene, [], [], [], root, null);
 
     // The value each Godot name ends up with, a later property of the name winning, as the reader's last one does.
     private static Dictionary<string, XscnValue> LastValues(XscnNodeElement element)

@@ -1,5 +1,6 @@
 <AudioBusLayout
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Metadata.extra='[SubResource("AudioStreamRandomizer1"), SubResource("LabelSettings1")]'>
   <x:Resources>
     <AudioEffectEQ6

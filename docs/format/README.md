@@ -27,7 +27,7 @@ Every value type's text is in [values.md](values.md), and every error and warnin
 A `.tscn` lists its nodes as flat sections, each naming its parent by path, and stores enum properties as integers. An `.xscn` nests them as elements and uses the names of Godot's C# API:
 
 ```xml xscn canonical
-<PanelContainer xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+<PanelContainer xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Name="Root">
   <VBoxContainer Name="Column" Alignment="Center" ThemeOverrideConstants.separation="12">
     <Label
         Name="Title"
@@ -60,6 +60,14 @@ The namespace URI carries the format's version. A second prefix bound to the sam
 Godot classes have no prefix, so a default namespace (`xmlns="…"`) is refused (`GX0110`). The only other declarations allowed are scene namespaces, each binding a prefix to a `res://` folder ending in `/` ([Instanced scenes](#instanced-scenes)). Every declaration belongs on the root element (`GX0109`).
 
 The root of an `.xscn` is the scene's root node. The root of an `.xres` is the resource ([`.xres` files](#xres-files)).
+
+### The Godot marker
+
+The root carries `x:Godot="<major>.<minor>"` (`x:Godot="4.7"`), the Godot version whose metadata the writer wrote the file with. Every write stamps it, so the first format or save of a file without one adds it; converting back to `.tscn` or `.tres` writes nothing for it. The writer places it right after the namespace declarations, before `Name`.
+
+It is allowed on the root only: a scene's root node, including an inherited or instance root, or an `.xres` root resource. On any other element it is `GX0102`. A value that is not `<major>.<minor>` is `GX0121`, and the marker is ignored. A file without the marker is valid.
+
+An older godot-xaml (0.4.0) rejects a marked file (`GX0102`), so a project updates all its godot-xaml tools together.
 
 ## Nodes
 
@@ -173,7 +181,7 @@ A sub-resource goes in the root's `<x:Resources>` table, under an `x:Key`, when 
 Inlining a shared resource twice would make Godot load two separate objects. An attribute refers to an entry as `{Key}`, and Godot value text as `SubResource("Key")`:
 
 ```xml xscn canonical
-<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Name="Root">
   <x:Resources>
     <StyleBoxFlat x:Key="Panel" BgColor="0.25, 0.25, 0.25, 1" CornerRadiusTopLeft="4" />
     <StyleBoxFlat x:Key="Hover" BgColor="0.5, 0.5, 0.5, 1" />
@@ -233,6 +241,7 @@ An instance of another scene is an element too, written in one of two forms.
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
     xmlns:c="res://ui/"
     xmlns:w="res://world/"
+    x:Godot="4.7"
     Name="Root">
   <x:Uids>
     <x:Uid Path="res://ui/Modal.tscn" Value="uid://b1modal" />
@@ -311,7 +320,11 @@ An attribute is read as a signal only on an element of a known class with no pro
 **Every other connection** is an `<x:Connect>` child of the emitter:
 
 ```xml xscn canonical
-<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" Script="res://root.gd">
+<Control
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Name="Root"
+    Script="res://root.gd">
   <Button Name="Go" ButtonDown="OnGoDown" Pressed="OnGoPressed">
     <x:Connect Signal="Pressed" To="Panel" Method="Hide" />
     <x:Connect Signal="Toggled" Method="OnToggled" Flags="Deferred, OneShot" />
@@ -386,7 +399,7 @@ XML comments are kept: a comment belongs to the element, property element, conne
 
 ```xml xscn canonical
 <!-- before root -->
-<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Name="Root">
   <!-- before uids -->
   <x:Uids>
     <!-- before uid -->
@@ -428,6 +441,7 @@ The root of an `.xres` is the resource, tagged with its class (`GX0117` if the c
 ```xml xres canonical
 <StyleBoxFlat
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     BgColor="0.25, 0.5, 0.75, 1"
     BorderWidthLeft="2"
     ContentMarginLeft="8"
@@ -444,7 +458,7 @@ Every save, by the editor or by `godot-xaml format`, writes one fixed layout, so
 - **Indentation:** elements indent two spaces, with no blank lines.
 - **Start tags:** a start tag stays on one line when it fits in 100 columns. Otherwise the tag name stands alone, and each attribute goes on its own line, indented four spaces past the tag.
 - **Attribute order:**
-  1. the namespace declarations, on the root: `xmlns:x`, then the scene namespaces;
+  1. the namespace declarations, on the root: `xmlns:x`, then the scene namespaces, then `x:Godot` ([The Godot marker](#the-godot-marker));
   2. `Name`, then `Scene` on `x:Instance`, or `Path` on `x:Override`;
   3. `Script`;
   4. every property and signal attribute, in ordinal order of its name;

@@ -163,12 +163,16 @@ public static partial class XscnWriter
         // The path the reader gives a scene tag: the first uid path with the tag's stem and an extension, else .xscn.
         private string RecoveredPath(string stem) => uidPaths.FirstOrDefault(p => XscnTreeReader.IsStemOf(stem, p)) ?? stem + ".xscn";
 
+        // The root's own attributes, before the node's or the resource's: xmlns:x, the scene namespaces, then x:Godot with
+        // the version of the metadata this writes with (not the document's marker). The marker is a file-level attribute,
+        // so it sits with the namespace declarations rather than with the x: attributes after the properties.
         private IEnumerable<XmlAttr> RootAttributes(bool isRoot) =>
             isRoot
                 ?
                 [
                     new XmlAttr("xmlns:" + FormatPrefix, XscnParser.FormatNamespace),
                     .. document.Namespaces.Select(n => new XmlAttr("xmlns:" + prefixes[n.Prefix], n.Folder)),
+                    new XmlAttr(FormatPrefix + ":" + XscnFormatVocabulary.Godot, metadata.Version),
                 ]
                 : [];
 

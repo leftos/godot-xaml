@@ -1,5 +1,6 @@
 <TileSet
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     TileProxies.alternative_level="[[6, Vector2i(0, 0), 1], [7, Vector2i(0, 0), 10], [9, Vector2i(0, 0), 10], [0, Vector2i(0, 0), 1]]"
     TileProxies.coords_level="[[1, Vector2i(0, 0)], [10, Vector2i(1, 0)], [3, Vector2i(1, 0)], [4, Vector2i(0, 0)]]"
     TileProxies.source_level="[5, 1, 11, 0]">

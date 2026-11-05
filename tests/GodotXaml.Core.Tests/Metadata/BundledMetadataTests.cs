@@ -21,6 +21,9 @@ public sealed class BundledMetadataTests
     public void ListsTheVersionsTheAssemblyCarries() => Assert.Equal(["4.7"], GodotMetadata.BundledVersions);
 
     [Fact]
+    public void TheBundledMetadataNamesItsVersion() => Assert.Equal("4.7", GodotMetadata.LoadBundled("4.7").Version);
+
+    [Fact]
     public void RejectsAVersionTheAssemblyDoesNotCarry()
     {
         ArgumentException error = Assert.Throws<ArgumentException>(() => GodotMetadata.LoadBundled("4.6"));

@@ -1,4 +1,4 @@
-<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Name="Root">
   <Label Name="A" Text='say "hi"' />
   <Label Name="B" Text="it's" />
   <Label Name="C" Text="both ' and &quot;" />

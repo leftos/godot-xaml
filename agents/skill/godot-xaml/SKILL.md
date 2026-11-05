@@ -23,6 +23,7 @@ A project uses godot-xaml when it has `addons/godot_xaml/plugin.cfg`, or `.xscn`
 ```xml xscn canonical
 <Control
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Name="MainMenu"
     Script="res://ui/main_menu.gd">
   <VBoxContainer Name="Buttons" Alignment="Center">

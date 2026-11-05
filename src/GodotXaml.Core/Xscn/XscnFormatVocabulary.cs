@@ -66,6 +66,14 @@ public static class XscnFormatVocabulary
     /// <summary>The local name of the <c>x:</c> attribute that keys a table entry.</summary>
     internal const string Key = "Key";
 
+    /// <summary>
+    /// The local name of the <c>x:</c> attribute that marks a document's root with the Godot version whose metadata wrote it
+    /// (<c>x:Godot="4.7"</c>).
+    /// </summary>
+    internal const string Godot = "Godot";
+
+    private static readonly string[] RootAttributeNames = ["x:" + Godot];
+
     private static readonly string[] ElementNames = ["Uids", "Uid", "Resources", "Instance", "Override", "Connect", "Prop"];
 
     private static readonly FrozenDictionary<string, IReadOnlyList<string>> AttributesByKind = new Dictionary<string, IReadOnlyList<string>>(
@@ -86,6 +94,12 @@ public static class XscnFormatVocabulary
 
     /// <summary>The local names of the <c>x:</c> elements, without the prefix.</summary>
     public static IReadOnlyList<string> Elements { get; } = Array.AsReadOnly(ElementNames);
+
+    /// <summary>
+    /// The format attributes only a document's root takes (a scene's root node, an <c>.xres</c>'s root resource), besides
+    /// those of its kind, prefixed <c>x:</c>; on any other element they are unknown.
+    /// </summary>
+    public static IReadOnlyList<string> RootAttributes { get; } = Array.AsReadOnly(RootAttributeNames);
 
     /// <summary>
     /// The format attributes an element of a kind takes: its reserved unprefixed ones, then its <c>x:</c> ones, prefixed <c>x:</c>.

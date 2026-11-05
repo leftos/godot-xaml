@@ -22,8 +22,9 @@ public sealed class GodotMetadata
     private readonly FrozenDictionary<string, GodotClassInfo> classesByCSharpName;
     private readonly FrozenDictionary<string, GodotEnumInfo> globalEnums;
 
-    private GodotMetadata(List<GodotClassInfo> classList, ImmutableArray<GodotEnumInfo> globalEnumList)
+    private GodotMetadata(string version, List<GodotClassInfo> classList, ImmutableArray<GodotEnumInfo> globalEnumList)
     {
+        Version = version;
         classes = Index(classList, c => c.Name, "class");
         classesByCSharpName = Index(classList, c => c.CSharpName, "class C# name");
         globalEnums = Index(globalEnumList, e => e.QualifiedName, "global enum");
@@ -80,8 +81,18 @@ public sealed class GodotMetadata
 
             ImmutableArray<GodotEnumInfo> globals = GodotMetadataReader.GlobalEnums(JsonFields.Object(root, "globalEnums", "The metadata"));
             List<GodotClassInfo> classList = GodotMetadataReader.Classes(JsonFields.Object(root, "classes", "The metadata"));
-            return new GodotMetadata(classList, globals);
+            return new GodotMetadata(ReadVersion(root), classList, globals);
         }
+    }
+
+    /// <summary>Whether a text is a Godot minor version as <c>x:Godot</c> and the metadata's <c>version</c> name it.</summary>
+    /// <param name="text">The text.</param>
+    /// <returns>Whether it is ASCII digits, a dot, then ASCII digits (<c>4.7</c>, <c>4.10</c>), and nothing else.</returns>
+    public static bool IsMinorVersion(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        int dot = text.IndexOf('.', StringComparison.Ordinal);
+        return dot > 0 && dot < text.Length - 1 && text.Remove(dot, 1).All(char.IsAsciiDigit);
     }
 
     /// <summary>The Godot versions whose metadata this assembly carries, by minor version (<c>4.7</c>).</summary>
@@ -110,7 +121,20 @@ public sealed class GodotMetadata
             throw new ArgumentException($"This assembly carries no metadata for Godot '{godotMinor}'; it carries {carried}.", nameof(godotMinor));
         }
 
-        return Load(stream);
+        return LoadBundled(stream, godotMinor);
+    }
+
+    /// <summary>Loads a bundled metadata file's stream, checking that the file names the version it is bundled as.</summary>
+    /// <param name="stream">The file's UTF-8 JSON.</param>
+    /// <param name="godotMinor">The version the file is bundled as (<c>4.7</c>).</param>
+    /// <returns>The file's classes and enums.</returns>
+    /// <exception cref="InvalidDataException">The file is not metadata, or its <c>version</c> is not <paramref name="godotMinor"/>.</exception>
+    internal static GodotMetadata LoadBundled(Stream stream, string godotMinor)
+    {
+        GodotMetadata metadata = Load(stream);
+        return metadata.Version == godotMinor
+            ? metadata
+            : throw new InvalidDataException($"The bundled metadata for {godotMinor} says its version is {metadata.Version}.");
     }
 
     /// <summary>
@@ -132,13 +156,16 @@ public sealed class GodotMetadata
         }
 
         version =
-            BundledVersions.Where(v => Version.TryParse(v, out _)).MaxBy(v => Version.Parse(v))
+            BundledVersions.Where(v => System.Version.TryParse(v, out _)).MaxBy(v => System.Version.Parse(v))
             ?? throw new InvalidOperationException("This assembly carries no metadata.");
         warning = projectVersion is null
             ? $"the project names no Godot version; using {version}"
             : $"Godot {projectVersion} has no bundled metadata; using {version}";
         return LoadBundled(version);
     }
+
+    /// <summary>The Godot version the metadata describes, by minor version (<c>4.7</c>): the file's <c>version</c>.</summary>
+    public string Version { get; }
 
     /// <summary>Every class in the file, in no set order.</summary>
     public IEnumerable<GodotClassInfo> Classes => classes.Values;
@@ -292,6 +319,15 @@ public sealed class GodotMetadata
     /// <returns>The item, or null when the class has no such item.</returns>
     /// <exception cref="ArgumentException">This metadata has no class of <paramref name="cls"/>'s name.</exception>
     public GodotThemeOverrideInfo? FindThemeOverride(GodotClassInfo cls, string godotName) => Resolve(cls).ThemeOverride(godotName);
+
+    // The file's version, required, as <major>.<minor>.
+    private static string ReadVersion(JsonElement root)
+    {
+        string version = JsonFields.String(root, "version", "The metadata");
+        return IsMinorVersion(version)
+            ? version
+            : throw new InvalidDataException($"The metadata's 'version' is \"{version}\", not a Godot version as <major>.<minor>, such as 4.7.");
+    }
 
     private static FrozenDictionary<string, T> Index<T>(IEnumerable<T> items, Func<T, string> key, string what) =>
         UniqueIndex.Build(items, key, duplicate => $"The metadata lists the {what} '{duplicate}' twice.");

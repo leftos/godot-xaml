@@ -1,4 +1,8 @@
-<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="757501449">
+<Node
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Name="Root"
+    x:UniqueId="757501449">
   <x:Resources>
     <GradientTexture2D x:Key="GradientTexture2D1" Height="16" Width="16">
       <GradientTexture2D.Gradient>

@@ -62,7 +62,7 @@ The property's type decides how its text is read, never the text's first charact
 
 On an element whose class the core cannot know without opening another file (an instanced scene, `<x:Override>`), a property is typed by its C# name across every Godot class: when every class that has the name agrees on its type and enum, the value is compact text (`AnchorsPreset="FullRect"`, `CustomMinimumSize="640, 0"`); when they disagree (`Position`, `Size`, `Mode`), it is Godot value text (`Position="Vector2(10, 20)"`).
 
-This typing depends on the metadata of one Godot minor version, so a new version can change how a file is read: a name that becomes ambiguous, or a property whose type or enum changes.
+This typing depends on the metadata of one Godot minor version, so a new version can change how a file is read: a name that becomes ambiguous, or a property whose type or enum changes. The root's `x:Godot` marker names the metadata a file was written with; an unmarked file is valid. A marked file is rejected by godot-xaml 0.4.0, so a project updates all its godot-xaml tools together.
 
 Each Godot release that changes typing gets an upgrader that reads a project's files with the old version's metadata and writes them with the new one. `TypingDiff.Between` lists every property whose typing differs between two metadata versions, and a test runs it on each pair of consecutive bundled versions, so whether a release needs an upgrade step is always known.
 
@@ -70,7 +70,7 @@ Booleans are written `True` and `False` (either case is read), and a float has n
 
 ## Format elements and attributes take the `x:` prefix
 
-The default XML namespace is Godot's classes. Everything the format adds rather than Godot's property list takes the reserved `x:` prefix: the tables (`<x:Uids>`, `<x:Resources>`), the elements `<x:Instance>`, `<x:Override>`, `<x:Connect>` and `<x:Prop>`, and the attributes `x:Editable`, `x:Groups`, `x:Index`, `x:InstancePlaceholder`, `x:NodePaths`, `x:Owner`, `x:OwnerUidPath`, `x:ParentIdPath`, `x:UniqueId` and `x:Key`.
+The default XML namespace is Godot's classes. Everything the format adds rather than Godot's property list takes the reserved `x:` prefix: the tables (`<x:Uids>`, `<x:Resources>`), the elements `<x:Instance>`, `<x:Override>`, `<x:Connect>` and `<x:Prop>`, and the attributes `x:Editable`, `x:Groups`, `x:Index`, `x:InstancePlaceholder`, `x:NodePaths`, `x:Owner`, `x:OwnerUidPath`, `x:ParentIdPath`, `x:UniqueId` and `x:Key`, and on the root alone `x:Godot`.
 
 A script property named `Index` or `Groups` therefore never clashes with them. `Name` and `Script` stay unprefixed, since they are Godot's own `name` and `script`.
 
@@ -106,7 +106,7 @@ Inlining a shared resource twice would make Godot load two separate objects. A r
 
 ## Canonical attribute order: Name, Script, then alphabetical
 
-The canonical writer puts `Name` first and `Script` second, then every other property in ordinal alphabetical order, then the `x:` attributes. The order needs no metadata, so a new Godot minor version never reorders a file.
+The canonical writer puts `Name` first and `Script` second, then every other property in ordinal alphabetical order, then the `x:` attributes. The order needs no metadata, so a new Godot minor version never reorders a file. The root's `x:Godot` marker is placed with the namespace declarations, before `Name`.
 
 The way back (`.xscn` to `.tscn`) restores Godot's property order instead, because a `.tscn` sets properties in file order and some depend on it (`control.cpp` anchors and grow direction, `base_button.cpp` `toggle_mode` before `button_pressed`).
 
@@ -188,7 +188,7 @@ Nine integer properties carry an enum-style hint with no C# enum behind it (`lay
 ## The metadata file
 
 - The dump tool is a GDScript run by headless Godot (`godot --headless --script`), with no build step, so it shares no files with the C# core.
-- Its output is JSON, one file per Godot minor version (`metadata/godot-4.7.json`). Each class lists only its own properties and signals, with a link to its parent; names containing `/` are not properties. Each class also records the inherited defaults it changes (`defaultOverrides`), since Godot saves a property only when it differs from the default for the node's own class (`Button` has `focus_mode` All).
+- Its output is JSON, one file per Godot minor version (`metadata/godot-4.7.json`), with a top-level `version` key (`<major>.<minor>`) that `GodotMetadata.LoadBundled` checks against the version the file is bundled as. Each class lists only its own properties and signals, with a link to its parent; names containing `/` are not properties. Each class also records the inherited defaults it changes (`defaultOverrides`), since Godot saves a property only when it differs from the default for the node's own class (`Button` has `focus_mode` All).
 
   The exception is `themeOverrides`, which a class that is `Control` or `Window` or inherits one carries as its full list, inherited items included: each `theme_override_<family>/<item>` entry with its type, hint and hint string, read from an instance, so the file records each family's type and the item names. Defaults are stored as Godot's own value text (`Vector2(0, 0)`), the grammar a `.tscn` uses, so the core reads them with its `.tscn` value reader.
 

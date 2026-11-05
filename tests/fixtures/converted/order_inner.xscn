@@ -1,5 +1,6 @@
 <Control
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Name="Root"
     AnchorsPreset="TopLeft"
     LayoutMode="Uncontrolled"

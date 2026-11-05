@@ -1,4 +1,4 @@
-<SceneReplicationConfig xmlns:x="https://github.com/leftos/godot-xaml/format/1">
+<SceneReplicationConfig xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7">
   <x:Prop Name="properties/0/path" Value='NodePath(".:p0")' />
   <x:Prop Name="properties/0/replication_mode" Value="0" />
   <x:Prop Name="properties/0/spawn" Value="true" />

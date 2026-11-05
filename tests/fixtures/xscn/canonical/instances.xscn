@@ -2,6 +2,7 @@
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
     xmlns:c="res://ui/"
     xmlns:w="res://world/"
+    x:Godot="4.7"
     Name="Root">
   <x:Uids>
     <x:Uid Path="res://ui/Modal.tscn" Value="uid://b1modal" />

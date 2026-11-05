@@ -49,7 +49,9 @@ func _run() -> String:
 ## Reads ClassDB into the dump and writes it under `out_dir`, failing when Godot logs any error.
 func _dump(api: Dictionary, out_dir: String, error_log: DumpErrorLog) -> String:
 	var version := Engine.get_version_info()
+	# The JSON is written key-sorted, so `version` lands last in the file.
 	var data := {
+		"version": "%d.%d" % [version.major, version.minor],
 		"godot": version.string,
 		"globalEnums": _global_enums(api),
 		"classes": _classes(_api_property_types(api)),

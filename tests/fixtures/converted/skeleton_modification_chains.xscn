@@ -1,5 +1,6 @@
 <Skeleton2D
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Name="Root"
     x:UniqueId="801381991">
   <Skeleton2D.modification_stack>

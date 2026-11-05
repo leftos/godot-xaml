@@ -1,6 +1,7 @@
 <Node
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
     xmlns:cases="res://cases/"
+    x:Godot="4.7"
     Name="Root"
     x:UniqueId="1300837998">
   <x:Instance

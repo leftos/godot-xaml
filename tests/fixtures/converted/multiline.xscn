@@ -1,5 +1,6 @@
 <Node
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Name="Root"
     EditorDescription='first line&#10;second "quoted" line'
     Metadata.table='{&#10;"a": [1, 2],&#10;"b": 2,&#10;"c": {&#10;"nested": true&#10;}&#10;}'

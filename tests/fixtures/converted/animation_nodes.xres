@@ -1,5 +1,6 @@
 <AnimationNodeBlendTree
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     node_connections='[&amp;"output", 0, &amp;"n10", &amp;"n10", 0, &amp;"n2", &amp;"n10", 1, &amp;"zeta", &amp;"n10", 2, &amp;"alpha", &amp;"n10", 3, &amp;"n1", &amp;"n10", 4, &amp;"b3", &amp;"n10", 5, &amp;"omega"]'>
   <x:Resources>
     <AnimationNodeAnimation x:Key="AnimationNodeAnimation1" Animation="plane_0" />

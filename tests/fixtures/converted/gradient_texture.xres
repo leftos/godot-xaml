@@ -1,4 +1,4 @@
-<GradientTexture2D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Width="16">
+<GradientTexture2D xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Width="16">
   <GradientTexture2D.Gradient>
     <Gradient Colors="PackedColorArray(1, 0, 0, 1, 0, 0, 1, 1)" />
   </GradientTexture2D.Gradient>

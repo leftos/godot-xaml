@@ -1,4 +1,4 @@
-<VisualShader xmlns:x="https://github.com/leftos/godot-xaml/format/1">
+<VisualShader xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7">
   <x:Resources>
     <VisualShaderNodeExpression
         x:Key="VisualShaderNodeExpression1"

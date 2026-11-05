@@ -1,5 +1,6 @@
 <Skeleton3D
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Name="Root"
     x:UniqueId="1637017537">
   <x:Prop Name="bones/0/enabled" Value="true" />

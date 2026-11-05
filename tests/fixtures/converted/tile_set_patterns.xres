@@ -1,4 +1,4 @@
-<TileSet xmlns:x="https://github.com/leftos/godot-xaml/format/1">
+<TileSet xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7">
   <TileSet.pattern_0>
     <TileMapPattern tile_data="PackedInt32Array(0, 0, -65536)" />
   </TileSet.pattern_0>

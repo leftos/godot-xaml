@@ -367,7 +367,7 @@ public sealed class XscnParserErrorTests
     public void NamedConnectFlagsNeedTheEnumInTheMetadata()
     {
         const string json = """
-            {"godot": "4.7", "globalEnums": {}, "classes": {"Object": {"parent": null, "instantiable": true, "enums": {},
+            {"version": "4.7", "godot": "4.7", "globalEnums": {}, "classes": {"Object": {"parent": null, "instantiable": true, "enums": {},
               "properties": [], "signals": [{"name": "changed", "args": []}]}}}
             """;
         var small = GodotMetadata.Load(new MemoryStream(Encoding.UTF8.GetBytes(json)));
@@ -641,6 +641,35 @@ public sealed class XscnParserErrorTests
 
     // The number of elements on the longest path from the root down.
     private static int TreeDepth(XscnNodeElement element) => 1 + (element.Children.IsEmpty ? 0 : element.Children.Max(TreeDepth));
+
+    [Fact]
+    public void AMarkerOnAChildElementIsAnUnknownFormatAttribute()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <Label Name=\"A\" x:Godot=\"4.7\" />\n</Control>"
+        );
+
+        Assert.Equal([("GX0102", 2, 19)], positions);
+        Assert.Null(result.Document.Godot);
+    }
+
+    [Theory]
+    [InlineData("4")]
+    [InlineData("4.7.1")]
+    [InlineData("v4.7")]
+    [InlineData("four.seven")]
+    [InlineData("")]
+    [InlineData(" 4.7")]
+    public void AMalformedMarkerIsGX0121(string version)
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse($"<Control {X} x:Godot=\"{version}\" Name=\"Root\" />");
+
+        Assert.Equal([("GX0121", 1, 75)], positions);
+        XscnDiagnostic diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal($"x:Godot is \"{version}\"; it names the Godot version as <major>.<minor>, such as 4.7.", diagnostic.Message);
+        Assert.Equal(XscnSeverity.Error, diagnostic.Severity);
+        Assert.Null(result.Document.Godot);
+    }
 
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text) => Parse(text, Real);
 

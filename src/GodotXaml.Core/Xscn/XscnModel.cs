@@ -24,12 +24,17 @@ public enum XscnDocumentKind
 /// <param name="Uids">The <c>&lt;x:Uids&gt;</c> table, in source order.</param>
 /// <param name="Resources">The <c>&lt;x:Resources&gt;</c> table, in source order.</param>
 /// <param name="Root">The root: an <see cref="XscnNode"/> for a scene, an <see cref="XscnResource"/> for a resource.</param>
+/// <param name="Godot">
+/// The root's <c>x:Godot</c> marker, the Godot version whose metadata the file was written with (<c>4.7</c>); null when the
+/// file has none. The writer stamps the version of the metadata it writes with, not this.
+/// </param>
 public sealed record XscnDocument(
     XscnDocumentKind Kind,
     ImmutableArray<XscnNamespace> Namespaces,
     ImmutableArray<XscnUid> Uids,
     ImmutableArray<XscnResource> Resources,
-    XscnElement Root
+    XscnElement Root,
+    string? Godot
 )
 {
     /// <summary>The scene namespaces the root declares, in source order.</summary>

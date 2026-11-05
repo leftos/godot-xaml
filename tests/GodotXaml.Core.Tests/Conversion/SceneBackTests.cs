@@ -67,6 +67,19 @@ public sealed partial class SceneBackTests
     }
 
     [Fact]
+    public void ConvertingBackDropsTheMarker()
+    {
+        string marked = TscnWriter.Write(Back($$"""<Node {{X}} x:Godot="4.7" Name="Root"><Label Name="L" Text="Hi" /></Node>"""));
+        string unmarked = TscnWriter.Write(Back($$"""<Node {{X}} Name="Root"><Label Name="L" Text="Hi" /></Node>"""));
+        string resource = TscnWriter.Write(BackResource($$"""<Gradient {{X}} x:Godot="4.7" />"""));
+
+        Assert.Equal(unmarked, marked);
+        Assert.DoesNotContain("4.7", marked, StringComparison.Ordinal);
+        Assert.Equal(TscnWriter.Write(BackResource($$"""<Gradient {{X}} />""")), resource);
+        Assert.DoesNotContain("4.7", resource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void InstanceIsANodeWithInstanceAndNoType()
     {
         TscnDocument scene = Back($$"""<Node {{X}} Name="Root"><x:Instance Name="Inst" Scene="res://inner.tscn" /></Node>""");
@@ -302,7 +315,11 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(
+            new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null),
+            TestMetadata,
+            Options
+        );
 
         AssertExtOrder(back.Document, "res://u.gd", "res://u.png", "res://c.tscn", "res://i.png", "res://i.gd");
         Assert.Equal(["script", "texture"], PropertyNames(back.Document.Nodes[1].Properties));
@@ -389,7 +406,8 @@ public sealed partial class SceneBackTests
             [],
             [],
             [],
-            new XscnResource { Type = new XscnClassType(TestMetadata.FindClass("Gradient")!) }
+            new XscnResource { Type = new XscnClassType(TestMetadata.FindClass("Gradient")!) },
+            null
         );
 
         ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, TestMetadata, Options);
@@ -420,7 +438,11 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(
+            new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null),
+            TestMetadata,
+            Options
+        );
 
         Assert.Equal(
             2,
@@ -454,7 +476,11 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(
+            new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null),
+            TestMetadata,
+            Options
+        );
 
         AssertIssue(back.Issues, ConversionCodes.OverrideWithoutPath, ConversionSeverity.Error);
         Assert.Equal(["Root", "Inst"], back.Document.Nodes.Select(node => node.Name));
@@ -686,7 +712,11 @@ public sealed partial class SceneBackTests
             Children = [new XscnNode { Type = new XscnUnknownType("MyThing"), Name = "Child" }],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(
+            new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null),
+            TestMetadata,
+            Options
+        );
 
         Assert.Empty(back.Issues);
         Assert.Empty(back.Document.Nodes[1].Properties);
@@ -833,7 +863,11 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(
+            new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null),
+            TestMetadata,
+            Options
+        );
 
         Assert.Empty(back.Issues);
         Assert.Equal(["Inst", "A", "Unknown"], back.Document.Nodes.Skip(1).Select(node => node.Name));
@@ -930,7 +964,11 @@ public sealed partial class SceneBackTests
             ],
         };
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(new XscnDocument(XscnDocumentKind.Scene, [], [], [], root), TestMetadata, Options);
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(
+            new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null),
+            TestMetadata,
+            Options
+        );
 
         Assert.Empty(back.Issues);
         Assert.Equal(

@@ -45,7 +45,7 @@ public static partial class TscnToXscn
             }
 
             XscnNodeElement built = root.Build();
-            return new XscnDocument(XscnDocumentKind.Scene, Namespaces(built), Uids(), table, built);
+            return new XscnDocument(XscnDocumentKind.Scene, Namespaces(built), Uids(), table, built, metadata.Version);
         }
 
         private SceneElement AddRoot()

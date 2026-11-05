@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Every `.xscn` and `.xres` the tools write names its Godot metadata version in a root `x:Godot` attribute; godot-xaml 0.4.0 cannot read a marked file.
+
 ### Fixed
 
 - Saving a `.xscn` the writer cannot write fails with `Error.InvalidData` and an error naming the file, whatever the writer refused.

@@ -1,1 +1,4 @@
-<CanvasItemMaterial xmlns:x="https://github.com/leftos/godot-xaml/format/1" BlendMode="Add" />
+<CanvasItemMaterial
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    BlendMode="Add" />

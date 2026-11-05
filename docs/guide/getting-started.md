@@ -56,6 +56,8 @@ The format itself is in the [format reference](../format/README.md).
 
    The addon's loaders register from Godot's global class cache (`.godot/global_script_class_cache.cfg`), which only an editor scan or `godot --headless --import` rewrites. A checkout that Godot imported before the addon arrived fails every `.xscn` with "Failed loading scene" until it is imported again, headless and scripted runs included. Run `godot --headless --path <project> --import` once after installing.
 
+Every `.xscn` and `.xres` the tools write carries an `x:Godot` marker on its root, and godot-xaml 0.4.0 rejects a marked file (`GX0102`). Update the addon, the NuGet package, the command-line tool and the language server together.
+
 To update, raise the package version and replace `addons/godot_xaml/` with the new release's folder. Unzipping over the old folder leaves files with the zip's older timestamps, so import the project again (open it in the editor, or run `godot --headless --path <project> --import`).
 
 To open a `.xscn` from a script or a headless run, pass it with `--scene`: `godot --path <project> --scene res://ui/main_menu.xscn`. A bare `res://ui/main_menu.xscn` on the command line is not taken as a scene, because Godot does that only for `.scn`, `.tscn`, `.escn`, `.res` and `.tres`, and the main scene runs instead.

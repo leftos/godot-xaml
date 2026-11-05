@@ -453,7 +453,8 @@ public sealed partial class ResourceConversionTests
 
     private static XscnProperty Prop(string name, GodotValue value) => new(name, new XscnScalar(value));
 
-    private static XscnDocument Xres(XscnResource root, params XscnResource[] table) => new(XscnDocumentKind.Resource, [], [], [.. table], root);
+    private static XscnDocument Xres(XscnResource root, params XscnResource[] table) =>
+        new(XscnDocumentKind.Resource, [], [], [.. table], root, null);
 
     private static ImmutableArray<XscnProperty> RootProperties(XscnDocument document) => Assert.IsType<XscnResource>(document.Root).Properties;
 

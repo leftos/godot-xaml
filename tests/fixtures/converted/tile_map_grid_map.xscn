@@ -1,4 +1,8 @@
-<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="1628407363">
+<Node
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Name="Root"
+    x:UniqueId="1628407363">
   <x:Resources>
     <BoxMesh x:Key="BoxMesh1" Size="0.5, 1, 1" />
     <NavigationMesh x:Key="NavigationMesh1" CellSize="0.5" />

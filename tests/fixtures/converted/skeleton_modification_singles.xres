@@ -1,5 +1,6 @@
 <SkeletonModification2DLookAt
     xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
     Bone2DNode="Skeleton2D/bone_2"
     BoneIndex="2"
     Metadata.extra='[SubResource("SkeletonModification2DStackHolder1"), SubResource("SkeletonModification2DTwoBoneIK1")]'

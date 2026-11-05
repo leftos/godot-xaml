@@ -1,4 +1,8 @@
-<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="242511420">
+<Node
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Name="Root"
+    x:UniqueId="242511420">
   <x:Resources>
     <Animation
         x:Key="Animation1"

@@ -1,3 +1,7 @@
-<Node2D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root" x:UniqueId="571779315">
+<Node2D
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.7"
+    Name="Root"
+    x:UniqueId="571779315">
   <Sprite2D Name="Sprite" Material="res://cases/material.tres" x:UniqueId="1981545549" />
 </Node2D>

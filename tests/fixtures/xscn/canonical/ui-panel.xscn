@@ -1,4 +1,4 @@
-<PanelContainer xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+<PanelContainer xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.7" Name="Root">
   <VBoxContainer Name="Column" Alignment="Center" ThemeOverrideConstants.separation="12">
     <Label
         Name="Title"
