@@ -14,8 +14,11 @@ line, and the no-secret check catches it), and plays the tool's part for the cas
 - codesign --verify exits GX_STUB_VERIFY_EXIT.
 - xcrun notarytool submit prints a JSON submission whose status is GX_STUB_NOTARY_STATUS, or plain text when that is
   <nojson>, and exits GX_STUB_NOTARY_EXIT.
-- security list-keychains prints one keychain, security find-identity prints two identities, one of them named by
-  MACOS_SIGN_APP_IDENTITY, and ditto writes the zip it is asked for.
+- security list-keychains prints one keychain, and security find-identity prints two identities, one of them named by
+  MACOS_SIGN_APP_IDENTITY.
+- ditto writes a real zip of the layout GX_STUB_ZIP_LAYOUT names: good (the default, one entry, GodotXaml.LanguageServer
+  at the zip's root with mode 0755), nested (bin/GodotXaml.LanguageServer), mode644 (GodotXaml.LanguageServer at the
+  root with mode 0644) or extra (the good entry and __MACOSX/._GodotXaml.LanguageServer).
 
 Every case gets its own temporary root, used as sign-macos.ps1's -TempRoot, and only the made-up secrets of the step it
 runs, so a step that reads the other step's secrets fails.
@@ -23,8 +26,8 @@ runs, so a step that reads the other step's secrets fails.
 The cases:
 - SignAllToolsSucceed: the Sign calls come in order; security import grants -T /usr/bin/codesign and not -A; codesign
   signs with the identity's SHA-1 and --keychain names the keychain the run created; the search list is restored.
-- NotariseAllToolsSucceed: ditto -c -k zips the executable at the zip's root into -Zip, notarytool submit sends that
-  zip with --wait, --timeout 30m and --output-format json, and the zip is left in place.
+- NotariseAllToolsSucceed: ditto -c -k --norsrc zips the executable at the zip's root into -Zip, notarytool submit
+  sends that zip with --wait, --timeout 30m and --output-format json, and the zip is left in place.
 - SignMissingSecretFailsBeforeAnyTool: one Sign secret is empty, the script fails naming it and calls no tool.
 - NotariseTwoMissingSecretsBothNamed: two Notarise secrets are empty, the failure names both and no tool runs.
 - SignFailedVerifyFails: codesign --verify fails, the script fails.
@@ -34,6 +37,12 @@ The cases:
   and calls notarytool log for the submission.
 - AcceptedWithNonZeroExitFails: notarytool reports Accepted but exits 1, the script fails.
 - NoJsonFails: notarytool prints no JSON, the script fails with "notarisation returned no status".
+- NotariseNestedZipFailsBeforeNotarytool: the zip holds bin/GodotXaml.LanguageServer, so the layout check fails before
+  notarytool runs and the zip is deleted.
+- NotariseNonExecutableZipFailsBeforeNotarytool: the zip's GodotXaml.LanguageServer is mode 0644, so the layout check
+  fails before notarytool runs and the zip is deleted.
+- NotariseExtraEntryFailsBeforeNotarytool: the zip holds a __MACOSX entry beside the executable, so the layout check
+  fails before notarytool runs and the zip is deleted.
 
 Every case asserts that the run did not hang (a run past -GuardSeconds is killed and fails as a hang), that the
 temporary root is empty after the run, that no secret value, encoded or decoded, appears in the script's output, and
@@ -108,7 +117,29 @@ switch ($call) {
         [Console]::Out.WriteLine('  2) 0123456789ABCDEF0123456789ABCDEF01234567 "' + $env:MACOS_SIGN_APP_IDENTITY + '"')
         [Console]::Out.WriteLine('     2 valid identities found')
     }
-    'ditto--c' { Set-Content -LiteralPath $rest[-1] -Value 'zip' -NoNewline }
+    'ditto--c' {
+        Add-Type -AssemblyName System.IO.Compression
+        $files = if ($env:GX_STUB_ZIP_LAYOUT -eq 'nested') {
+            @{ 'bin/GodotXaml.LanguageServer' = 0x81ED }
+        } elseif ($env:GX_STUB_ZIP_LAYOUT -eq 'mode644') {
+            @{ 'GodotXaml.LanguageServer' = 0x81A4 }
+        } elseif ($env:GX_STUB_ZIP_LAYOUT -eq 'extra') {
+            @{ 'GodotXaml.LanguageServer' = 0x81ED; '__MACOSX/._GodotXaml.LanguageServer' = 0x81A4 }
+        } else {
+            @{ 'GodotXaml.LanguageServer' = 0x81ED }
+        }
+        $stream = [System.IO.File]::Create($rest[-1])
+        try {
+            $zip = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create)
+            try {
+                foreach ($name in $files.Keys) {
+                    # ExternalAttributes is an Int32 whose high 16 bits hold the unix mode; 0x81ED0000 overflows a signed 32-bit shift.
+                    $entry = $zip.CreateEntry($name)
+                    $entry.ExternalAttributes = [int]($files[$name] -shl 16)
+                }
+            } finally { $zip.Dispose() }
+        } finally { $stream.Dispose() }
+    }
 }
 exit 0
 '@
@@ -275,7 +306,8 @@ function Invoke-SignCase {
         [string] $Fail = '',
         [int] $VerifyExit = 0,
         [string] $NotaryStatus = 'Accepted',
-        [int] $NotaryExit = 0
+        [int] $NotaryExit = 0,
+        [string] $ZipLayout = 'good'
     )
     $root = Join-Path ([System.IO.Path]::GetTempPath()) ('gx-test-sign-' + [guid]::NewGuid().ToString('N'))
     $failures = [System.Collections.Generic.List[string]]::new()
@@ -294,6 +326,7 @@ function Invoke-SignCase {
             GX_STUB_VERIFY_EXIT = "$VerifyExit"
             GX_STUB_NOTARY_STATUS = $NotaryStatus
             GX_STUB_NOTARY_EXIT = "$NotaryExit"
+            GX_STUB_ZIP_LAYOUT = $ZipLayout
         }
         foreach ($name in $stepSecrets[$Step]) {
             if ($MissingSecrets -notcontains $name) { $environment[$name] = $secrets[$name] }
@@ -373,7 +406,7 @@ $notariseAllSucceed = {
         return
     }
     $ditto = @($calls[0].args)
-    $expectedDitto = @('-c', '-k', $paths.Exe, $paths.Zip)
+    $expectedDitto = @('-c', '-k', '--norsrc', $paths.Exe, $paths.Zip)
     if ($ditto.Count -ne $expectedDitto.Count -or ($ditto -join ' ') -ne ($expectedDitto -join ' ')) {
         $failures.Add("ditto was called with [$($ditto -join ' ')] where [$($expectedDitto -join ' ')] zips the executable at the zip's root")
     }
@@ -459,6 +492,19 @@ $noJson = {
     Add-FailedRunFailures -Run $run -Expected 'notarisation returned no status' -Failures $failures
 }
 
+# A zip of the wrong layout: the run fails on the layout check, calls nothing past ditto, and deletes the zip.
+$notariseLayoutFails = {
+    param($run, $calls, $paths, $failures)
+    Add-FailedRunFailures -Run $run -Expected 'must hold exactly one entry' -Failures $failures
+    $names = @($calls | ForEach-Object { Get-CallName $_ })
+    if (($names -join ' | ') -ne 'ditto -c') {
+        $failures.Add("the calls were [$($names -join ' | ')] where [ditto -c] alone is right: the layout check must fail before notarytool")
+    }
+    if (Test-Path -LiteralPath $paths.Zip) {
+        $failures.Add("the zip $($paths.Zip) survived the failed layout check")
+    }
+}
+
 $results = @(
     (Invoke-SignCase -Case 'SignAllToolsSucceed' -Step Sign -Assert $signAllSucceed)
     (Invoke-SignCase -Case 'NotariseAllToolsSucceed' -Step Notarise -Assert $notariseAllSucceed)
@@ -472,5 +518,11 @@ $results = @(
     (Invoke-SignCase -Case 'InvalidNotarisationFetchesTheLog' -Step Notarise -Assert $invalidNotarisation -NotaryStatus 'Invalid')
     (Invoke-SignCase -Case 'AcceptedWithNonZeroExitFails' -Step Notarise -Assert $acceptedNonZero -NotaryExit 1)
     (Invoke-SignCase -Case 'NoJsonFails' -Step Notarise -Assert $noJson -NotaryStatus '<nojson>')
+    (Invoke-SignCase -Case 'NotariseNestedZipFailsBeforeNotarytool' -Step Notarise -Assert $notariseLayoutFails `
+        -ZipLayout 'nested')
+    (Invoke-SignCase -Case 'NotariseNonExecutableZipFailsBeforeNotarytool' -Step Notarise -Assert $notariseLayoutFails `
+        -ZipLayout 'mode644')
+    (Invoke-SignCase -Case 'NotariseExtraEntryFailsBeforeNotarytool' -Step Notarise -Assert $notariseLayoutFails `
+        -ZipLayout 'extra')
 )
 exit $(if ($results -contains $false) { 1 } else { 0 })

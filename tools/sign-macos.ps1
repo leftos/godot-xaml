@@ -21,12 +21,15 @@ in two steps the release workflow runs with a smoke test of the signed executabl
    cleanup action that fails writes a warning, so it never hides the error that stopped the run.
 
 -Step Notarise -Exe <path> -Zip <path>:
-1. Zips the executable to -Zip with ditto -c -k, the layout tools/publish-server.ps1's zip has: the executable alone at
-   the zip's root, with its mode. (--keepParent would put it under its parent folder.)
-2. Submits the zip with xcrun notarytool submit --key <.p8> --key-id --issuer --wait --timeout 30m --output-format json.
+1. Zips the executable to -Zip with ditto -c -k --norsrc, the layout tools/publish-server.ps1's zip has: the executable
+   alone at the zip's root, with its mode. (--keepParent would put it under its parent folder, and --norsrc drops
+   extended attributes and resource forks, so no __MACOSX/ AppleDouble entry joins the zip.)
+2. Checks the zip's layout before submitting: exactly one entry, GodotXaml.LanguageServer, at the zip's root with mode
+   755. Anything else fails the run, and the finally block deletes the zip.
+3. Submits the zip with xcrun notarytool submit --key <.p8> --key-id --issuer --wait --timeout 30m --output-format json.
    Any status but Accepted, or Accepted with a non-zero exit, fails the run, after printing Apple's log through
    notarytool log (a failing notarytool log writes a warning).
-3. In a finally block: deletes the .p8, and deletes -Zip when the run failed, so no un-notarised zip is left under the
+4. In a finally block: deletes the .p8, and deletes -Zip when the run failed, so no un-notarised zip is left under the
    release's name. Notarisation does not change the executable, so the zip submitted is the zip that ships.
 
 The ticket is not stapled, because a bare executable cannot hold one. Apple's "Customizing the notarization workflow"
@@ -180,6 +183,31 @@ function Invoke-Cleanup {
     }
 }
 
+# Fails unless the zip holds one entry, GodotXaml.LanguageServer, at its root with mode 755.
+function Assert-ZipLayout {
+    param([Parameter(Mandatory)] [string] $Path)
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
+    try {
+        $entries = @($archive.Entries)
+    } finally {
+        $archive.Dispose()
+    }
+    # ExternalAttributes is an Int32 whose high 16 bits hold the unix mode.
+    $holds = @($entries | ForEach-Object {
+            $mode = ($_.ExternalAttributes -shr 16) -band 0x1FF
+            '{0} (mode {1})' -f $_.FullName, ([Convert]::ToString($mode, 8).PadLeft(4, '0'))
+        }) -join ', '
+    $right = $entries.Count -eq 1 -and $entries[0].FullName -ceq 'GodotXaml.LanguageServer' -and
+        (($entries[0].ExternalAttributes -shr 16) -band 0x1FF) -eq 0x1ED
+    if (-not $right) {
+        $rule = 'sign-macos: the zip {0} must hold exactly one entry, GodotXaml.LanguageServer ' +
+            'at its root with mode 755, and it holds: {1}; notarisation was not attempted.'
+        throw ($rule -f $Path, $holds)
+    }
+    Write-Host 'sign-macos: the zip holds GodotXaml.LanguageServer alone at its root, mode 755'
+}
+
 $work = Join-Path $TempRoot ('godot-xaml-sign-' + [guid]::NewGuid().ToString('N'))
 
 function Invoke-Sign {
@@ -217,7 +245,8 @@ function Invoke-Sign {
                 ForEach-Object { [regex]::Match($_, '^\s*\d+\)\s+([0-9A-Fa-f]{40})\s+"(.*)"\s*$') } |
                 Where-Object { $_.Success -and $_.Groups[2].Value -eq $secret.MACOS_SIGN_APP_IDENTITY })
         if ($found.Count -ne 1) {
-            throw "sign-macos: the temporary keychain holds $($found.Count) valid codesigning identities named by MACOS_SIGN_APP_IDENTITY, where one is right."
+            throw "sign-macos: the temporary keychain holds $($found.Count) valid codesigning identities named by " +
+                'MACOS_SIGN_APP_IDENTITY, where one is right.'
         }
         $sha = $found[0].Groups[1].Value
 
@@ -252,7 +281,8 @@ function Invoke-Notarise {
         if (Test-Path -LiteralPath $zipPath) {
             Remove-Item -LiteralPath $zipPath -Force
         }
-        Invoke-Tool 'ditto' 'ditto' @('-c', '-k', $exePath, $zipPath) | Out-Null
+        Invoke-Tool 'ditto' 'ditto' @('-c', '-k', '--norsrc', $exePath, $zipPath) | Out-Null
+        Assert-ZipLayout -Path $zipPath
 
         Write-Host 'sign-macos: submitting to Apple for notarisation and waiting for the result'
         $notaryAuth = @(

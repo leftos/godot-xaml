@@ -49,6 +49,8 @@ jobs:
       pull-requests: read # gh api reads the pull request's changed files
     outputs:
       legs: ${{ steps.legs.outputs.legs }}
+      ref: ${{ steps.legs.outputs.ref }}
+      dry_run: ${{ steps.legs.outputs.dry_run }}
     steps:
       - name: Check the dispatch's tag and choose the legs
         id: legs
@@ -61,6 +63,8 @@ jobs:
           set -euo pipefail
           all='[{"rid":"win-x64","runner":"windows-2025"},{"rid":"win-arm64","runner":"windows-11-arm"},{"rid":"linux-x64","runner":"ubuntu-24.04"},{"rid":"linux-arm64","runner":"ubuntu-24.04-arm"},{"rid":"osx-x64","runner":"macos-15-intel"},{"rid":"osx-arm64","runner":"macos-15"}]'
           pr='[{"rid":"win-x64","runner":"windows-2025"},{"rid":"linux-x64","runner":"ubuntu-24.04"}]'
+          ref=''
+          dry_run=false
           case "$EVENT" in
             pull_request)
               files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
@@ -79,6 +83,7 @@ jobs:
                   exit 1
                 fi
                 echo "A dry run: all six legs build from main; nothing is attached."
+                dry_run=true
                 legs="$all"
               else
                 rule='^v[0-9A-Za-z.+-]+$'
@@ -90,6 +95,7 @@ jobs:
                   echo "::error::$TAG has no GitHub release: create the release first, then dispatch this workflow again with tag $TAG."
                   exit 1
                 fi
+                ref="refs/tags/$TAG"
                 legs="$all"
               fi
               ;;
@@ -97,7 +103,7 @@ jobs:
               legs="$all"
               ;;
           esac
-          echo "legs=$legs" >> "$GITHUB_OUTPUT"
+          { echo "legs=$legs"; echo "ref=$ref"; echo "dry_run=$dry_run"; } >> "$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.rid }}
@@ -115,7 +121,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || '' }}
+          ref: ${{ needs.plan.outputs.ref }}
 
       - name: Set up .NET from global.json
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
@@ -160,7 +166,7 @@ jobs:
 
   sign-macos:
     name: Sign and notarise ${{ matrix.rid }}
-    needs: build
+    needs: [plan, build]
     if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
@@ -180,7 +186,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || '' }}
+          ref: ${{ needs.plan.outputs.ref }}
 
       - name: Download the unsigned executable
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -232,7 +238,7 @@ jobs:
   # The signed executable runs here, on a runner that never held a secret, not in sign-macos.
   smoke-signed:
     name: Smoke-test the signed ${{ matrix.rid }} zip
-    needs: sign-macos
+    needs: [plan, sign-macos]
     if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
@@ -251,7 +257,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || '' }}
+          ref: ${{ needs.plan.outputs.ref }}
 
       - name: Download the signed zip
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -289,8 +295,8 @@ jobs:
 
   attach:
     name: Attach the zips to the release
-    needs: [build, sign-macos, smoke-signed]
-    if: github.event_name != 'pull_request' && !(github.event_name == 'workflow_dispatch' && inputs.tag == '')
+    needs: [plan, build, sign-macos, smoke-signed]
+    if: github.event_name != 'pull_request' && needs.plan.outputs.dry_run != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
