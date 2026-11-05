@@ -768,6 +768,7 @@ internal static class ConvertCommand
             {
                 Seed = SeedOf(SeedKeyOf(item.Source.File.Path, item.Output)),
                 Uid = item.Uid,
+                ScriptClassOf = tally.ScriptClassOf(item.Source.File.Path),
                 SceneFiles = tally.SceneFiles,
                 SourceKey = Path.GetFullPath(item.Source.File.Path),
             };
@@ -1262,6 +1263,10 @@ internal static class ConvertCommand
         // The scenes the way back reads for the class of an instanced node, shared by every conversion of the run.
         public required RunSceneFiles SceneFiles { get; init; }
 
+        // The global class lookup of each project root the run reads the class cache of; a root with no usable cache is
+        // cached as null too, so its file is read once.
+        private readonly Dictionary<string, Func<string, string?>?> scriptClasses = new(InputFiles.PathComparer);
+
         public int Converted { get; set; }
 
         public int Refused { get; set; }
@@ -1282,6 +1287,23 @@ internal static class ConvertCommand
             {
                 Warnings++;
             }
+        }
+
+        // The global class of the script at a res:// path for the project the source belongs to, or null when no project
+        // holds it or its cache gives no answer for the script: the core's GXC0106 then reports the missing lookup.
+        public Func<string, string?>? ScriptClassOf(string sourcePath)
+        {
+            string? root = GodotProject.Find(Path.GetFullPath(sourcePath));
+            if (root is null)
+            {
+                return null;
+            }
+            if (!scriptClasses.TryGetValue(root, out Func<string, string?>? lookup))
+            {
+                lookup = GlobalClassCache.Read(root);
+                scriptClasses[root] = lookup;
+            }
+            return lookup;
         }
     }
 }

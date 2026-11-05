@@ -39,6 +39,7 @@
 - **Format pair**: an `.in.xscn`/`.out.xscn` pair under `tests/fixtures/xscn/format/`; the writer's output for the `.in` document must equal the `.out` file, which proves the canonical rewrite.
 - **Format prefix**: the XML prefix a document binds to the format's own namespace URI, `x` by convention; the first binding in a document is the one that counts.
 - **Gate**: a command a change must pass (build, test, format check), run through `./run.ps1 <verb>` and `tools/gate.ps1`, which log to `.tmp/`; the Gates section of the `godot-xaml-nextup` skill lists them and which hook runs each.
+- **Global class cache**: Godot's `.godot/global_script_class_cache.cfg`, the list of global script classes the editor's scan writes; the addon reads it through the engine, the CLI from the file, to give a resource's `script_class`.
 - **Godot property order**: the order Godot lists a section's properties in, which the way back restores (`PropertyOrder`).
 - **GodotSignal**: the `<x:Connect>` attribute holding a signal's Godot name verbatim, used where `Signal` (the C# name) would read back as another signal, as a C# script's `Finished` would as the engine's `finished`.
 - **Hover docs file**: `metadata/docs/godot-<major>.<minor>.json`, Godot's class reference converted to Markdown by `tools/class-docs/` for the language server's hover; kept outside the metadata embed glob.

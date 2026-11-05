@@ -58,6 +58,8 @@ ui/main.tscn -> ui/main.xscn
 
 New resource ids on the way back are minted from the file's `res://` path, so the same project converts to the same ids wherever it is checked out; a file with no `project.godot` above it is seeded from its full path.
 
+On the way back, a resource whose script is a global class gets `script_class="<Class>"` in its `.tres` header, read from the project's `.godot/global_script_class_cache.cfg` (the editor's scan or `godot --headless --import` writes it). A project with no readable cache, or a file in no project, gets no `script_class` and the warning `GXC0106`; a script the cache does not list gets neither.
+
 A file's uid moves with it: a `.tscn` header's `uid` is written to the new file's `.uid` sidecar (`main.xscn.uid`), and an `.xscn` with a sidecar gets that uid in the `.tscn` header.
 
 An output that already exists, or its `.uid` sidecar, is refused, and nothing is written for that file:
