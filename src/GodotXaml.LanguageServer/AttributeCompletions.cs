@@ -29,6 +29,7 @@ internal sealed partial class AttributeCompletions(CompletionScope scope, XscnCu
         IEnumerable<CompletionCandidate>? all = scope.ShapeOf(context) switch
         {
             ElementShape.ClassElement => ClassElement(),
+            ElementShape.FormatElement when context.ElementName is "Scene" && context.Class is { } cls => Format("Scene").Concat(Members(cls, false)),
             ElementShape.FormatElement when context.ElementName is { } name && XscnFormatVocabulary.Elements.Contains(name) => Format(name),
             ElementShape.SceneTag => Format(XscnFormatVocabulary.Node),
             _ => null,

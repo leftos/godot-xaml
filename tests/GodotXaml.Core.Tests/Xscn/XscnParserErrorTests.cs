@@ -671,6 +671,113 @@ public sealed class XscnParserErrorTests
         Assert.Null(result.Document.Godot);
     }
 
+    [Fact]
+    public void AnXSceneUnderFourSevenMetadataNeedsANewerGodot()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Scene ResourceName=\"A\" />\n</Control>"
+        );
+
+        Assert.Equal([("GX0122", 2, 3)], positions);
+        Assert.Equal("x:Scene needs Godot 4.8 or later; this file is read with Godot 4.7's metadata", Assert.Single(result.Diagnostics).Message);
+        Assert.Equal("resource_name", Assert.Single(Assert.IsType<XscnResource>(result.Document.Scene).Properties).GodotName);
+    }
+
+    [Fact]
+    public void ANestedSceneUnderFourSevenMetadataNeedsANewerGodot()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Resources>\n    <PackedScene x:Key=\"P\">\n      <Node Name=\"R\" />\n"
+                + "    </PackedScene>\n  </x:Resources>\n</Control>"
+        );
+
+        Assert.Equal([("GX0122", 4, 7)], positions);
+        Assert.Equal(
+            "a scene inside PackedScene needs Godot 4.8 or later; this file is read with Godot 4.7's metadata",
+            Assert.Single(result.Diagnostics).Message
+        );
+        Assert.Equal("R", Assert.IsType<XscnNode>(Assert.Single(result.Document.Resources).SceneRoot).Name);
+    }
+
+    [Fact]
+    public void ASecondXSceneIsAnError()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Scene ResourceName=\"A\" />\n  <x:Scene ResourceName=\"B\" />\n</Control>",
+            Metadata48.Version48
+        );
+
+        Assert.Equal([("GX0123", 3, 4)], positions);
+        Assert.Equal("a second x:Scene; a scene has one", Assert.Single(result.Diagnostics).Message);
+        Assert.Equal(
+            "A",
+            Assert.Single(result.Document.Scene!.Properties).Value is XscnScalar { Value: GodotString { Value: var name } } ? name : null
+        );
+    }
+
+    [Fact]
+    public void AnXSceneInAResourceFileIsMisplaced()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = ParseAs(
+            $"<Theme {X}>\n  <x:Scene />\n</Theme>",
+            XscnDocumentKind.Resource,
+            Metadata48.Version48
+        );
+
+        Assert.Equal([("GX0111", 2, 4)], positions);
+        Assert.Contains("x:Scene belongs on a scene's root node", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
+        Assert.Null(result.Document.Scene);
+    }
+
+    [Fact]
+    public void AnXSceneOnAChildNodeIsMisplaced()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <Label Name=\"A\">\n    <x:Scene />\n  </Label>\n</Control>",
+            Metadata48.Version48
+        );
+
+        Assert.Equal([("GX0111", 3, 6)], positions);
+        Assert.Contains("x:Scene belongs on a scene's root node", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
+        Assert.Null(result.Document.Scene);
+    }
+
+    [Fact]
+    public void AnXSceneInsideANestedSceneRootIsMisplaced()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Resources>\n    <PackedScene x:Key=\"P\">\n      <Node Name=\"R\">\n"
+                + "        <x:Scene />\n      </Node>\n    </PackedScene>\n  </x:Resources>\n</Control>",
+            Metadata48.Version48
+        );
+
+        Assert.Equal([("GX0111", 5, 10)], positions);
+        Assert.Contains("x:Scene belongs on a scene's root node", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
+        Assert.Null(result.Document.Scene);
+    }
+
+    [Fact]
+    public void ASecondRootInAPackedSceneIsMisplaced()
+    {
+        (XscnParseResult result, List<(string, int, int)> positions) = Parse(
+            $"<Control {X} Name=\"Root\">\n  <x:Resources>\n    <PackedScene x:Key=\"P\">\n      <Node Name=\"R\" />\n"
+                + "      <Node Name=\"S\" />\n    </PackedScene>\n  </x:Resources>\n</Control>",
+            Metadata48.Version48
+        );
+
+        Assert.Equal([("GX0111", 5, 8)], positions);
+        Assert.Contains("a PackedScene holds one scene root", Assert.Single(result.Diagnostics).Message, StringComparison.Ordinal);
+        Assert.Equal("R", Assert.IsType<XscnNode>(Assert.Single(result.Document.Resources).SceneRoot).Name);
+    }
+
+    [Fact]
+    public void AKeyOnXSceneIsAnUnknownFormatAttribute()
+    {
+        (_, List<(string, int, int)> positions) = Parse($"<Control {X} Name=\"Root\">\n  <x:Scene x:Key=\"K\" />\n</Control>", Metadata48.Version48);
+
+        Assert.Equal([("GX0102", 2, 12)], positions);
+    }
+
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text) => Parse(text, Real);
 
     private static (XscnParseResult Result, List<(string Code, int Line, int Column)> Positions) Parse(string text, GodotMetadata metadata) =>

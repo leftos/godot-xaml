@@ -540,6 +540,101 @@ public sealed class XscnParserTests
         Assert.Null(resource.Document.Godot);
     }
 
+    // A canonical scene of Godot 4.8: an x:Scene and a PackedScene holding its own scene.
+    internal const string FourEightScene = """
+        <Node3D xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.8" Name="Root">
+          <x:Resources>
+            <PackedScene x:Key="Inner" ResourceName="Hello world">
+              <Node2D Name="InnerRoot">
+                <Sprite2D Name="Icon" />
+              </Node2D>
+            </PackedScene>
+          </x:Resources>
+          <x:Scene Metadata.answer="42" Metadata.inner='SubResource("Inner")' ResourceName="Outer" />
+          <Node3D Name="Child" />
+        </Node3D>
+
+        """;
+
+    [Fact]
+    public void ReadsXSceneIntoTheDocument()
+    {
+        XscnDocument document = Parse48(FourEightScene);
+
+        XscnResource scene = Assert.IsType<XscnResource>(document.Scene);
+        Assert.Equal("PackedScene", Assert.IsType<XscnClassType>(scene.Type).Class.Name);
+        Assert.Null(scene.Key);
+        Assert.Equal(["metadata/answer", "metadata/inner", "resource_name"], scene.Properties.Select(p => p.GodotName).Order(StringComparer.Ordinal));
+        Assert.Equal("Child", ChildNode(document.Root, 0).Name);
+    }
+
+    [Fact]
+    public void ReadsANestedSceneRootInAPackedScene()
+    {
+        XscnDocument document = Parse48(FourEightScene);
+
+        XscnResource inner = Assert.Single(document.Resources);
+        Assert.Equal("Inner", inner.Key);
+        XscnNode root = Assert.IsType<XscnNode>(inner.SceneRoot);
+        Assert.Equal("InnerRoot", root.Name);
+        Assert.Equal("Node2D", Assert.IsType<XscnClassType>(root.Type).Class.Name);
+        Assert.Equal("Icon", ChildNode(root, 0).Name);
+        Assert.Equal("resource_name", Assert.Single(inner.Properties).GodotName);
+    }
+
+    [Fact]
+    public void ReadsANestedSceneInAPropertyElement()
+    {
+        XscnDocument document = Parse48(
+            $"""
+            <Node3D {X} x:Godot="4.8" Name="Root">
+              <x:Scene>
+                <x:Scene.Metadata.inner>
+                  <PackedScene>
+                    <Node Name="R" />
+                  </PackedScene>
+                </x:Scene.Metadata.inner>
+              </x:Scene>
+            </Node3D>
+            """
+        );
+
+        XscnProperty property = Assert.Single(Assert.IsType<XscnResource>(document.Scene).Properties);
+        Assert.Equal("metadata/inner", property.GodotName);
+        XscnResource packed = Assert.IsType<XscnInline>(property.Value).Resource;
+        Assert.Equal("R", Assert.IsType<XscnNode>(packed.SceneRoot).Name);
+    }
+
+    [Fact]
+    public void ReadsANestedInstanceRoot()
+    {
+        XscnDocument document = Parse48(
+            $"""
+            <Node3D {X} x:Godot="4.8" Name="Root">
+              <x:Resources>
+                <PackedScene x:Key="P">
+                  <x:Instance Name="R" Scene="res://base.tscn">
+                    <Node Name="Extra" />
+                  </x:Instance>
+                </PackedScene>
+              </x:Resources>
+            </Node3D>
+            """
+        );
+
+        XscnNode root = Assert.IsType<XscnNode>(Assert.Single(document.Resources).SceneRoot);
+        Assert.Equal(new XscnSceneType("res://base.tscn"), root.Type);
+        Assert.Equal("R", root.Name);
+        Assert.Equal("Extra", ChildNode(root, 0).Name);
+    }
+
+    private static XscnDocument Parse48(string text)
+    {
+        XscnParseResult result = XscnParser.Parse(text, XscnDocumentKind.Scene, Metadata48.Version48);
+        Assert.Empty(result.Diagnostics);
+        return result.Document;
+    }
+
     private static XscnDocument Parse(string text)
     {
         XscnParseResult result = XscnParser.Parse(text, XscnDocumentKind.Scene, Real);

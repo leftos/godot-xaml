@@ -100,4 +100,10 @@ public static class XscnCodes
 
     /// <summary>The root's <c>x:Godot</c> is not a Godot version as <c>&lt;major&gt;.&lt;minor&gt;</c>; it is not kept.</summary>
     public const string MalformedGodotMarker = "GX0121";
+
+    /// <summary>A construct only Godot 4.8 or later reads (x:Scene, a scene inside a PackedScene), in a file read with older metadata.</summary>
+    public const string NeedsNewerGodot = "GX0122";
+
+    /// <summary>A second x:Scene on a scene's root node.</summary>
+    public const string SecondScene = "GX0123";
 }

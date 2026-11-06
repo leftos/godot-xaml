@@ -30,14 +30,50 @@ public static partial class XscnWriter
         /// <summary>The root's leading comments, then the root.</summary>
         public IEnumerable<XmlItem> DocumentItems()
         {
+            CheckScenesWritable();
             XmlTag root = document.Root switch
             {
                 XscnNodeElement node => NodeTag(node, isRoot: true, parentIsContainer: false),
-                XscnResource resource => ResourceTag(resource, isRoot: true),
+                XscnResource resource => ResourceTag(resource, isRoot: true, TypeName(resource.Type)),
                 _ => throw new ArgumentException($"The root is a {document.Root.GetType().Name}, not a node or a resource.", nameof(document)),
             };
             return [.. Comments(document.Root.LeadingComments), root];
         }
+
+        // Godot reads x:Scene and a scene inside a PackedScene from 4.8 on; older metadata refuses a document holding one.
+        private void CheckScenesWritable()
+        {
+            if (document.Kind == XscnDocumentKind.Resource && document.Scene is not null)
+            {
+                throw new ArgumentException("x:Scene belongs on a scene's root node; an .xres has none");
+            }
+
+            if (XscnFormatVocabulary.ReadsScenes(metadata))
+            {
+                return;
+            }
+
+            string? construct =
+                document.Scene is not null ? "x:Scene"
+                : document.Resources.Any(HoldsSceneRoot) || HoldsSceneRoot(document.Root) ? "a scene inside PackedScene"
+                : null;
+            if (construct is not null)
+            {
+                throw new ArgumentException($"{construct} needs Godot 4.8 or later; written with Godot {metadata.Version}'s metadata");
+            }
+        }
+
+        // Whether an element or any resource inside it, at any depth, holds a scene root.
+        private static bool HoldsSceneRoot(XscnElement element) =>
+            element switch
+            {
+                XscnResource resource => resource.SceneRoot is not null || HoldsSceneRoot(resource.Properties),
+                XscnNodeElement node => HoldsSceneRoot(node.Properties) || node.Children.Any(HoldsSceneRoot),
+                _ => false,
+            };
+
+        private static bool HoldsSceneRoot(ImmutableArray<XscnProperty> properties) =>
+            properties.Any(p => p.Value is XscnInline inline && HoldsSceneRoot(inline.Resource));
 
         // A scene namespace may not take the format's prefix, so one that has it is given x1, x2, …, the first not taken.
         private static FrozenDictionary<string, string> WrittenPrefixes(ImmutableArray<XscnNamespace> namespaces)
@@ -101,21 +137,36 @@ public static partial class XscnWriter
             return new XmlTag(tag, attributes, content);
         }
 
-        private XmlTag ResourceTag(XscnResource resource, bool isRoot)
+        // A resource tagged with its class, or x:Scene. A PackedScene's scene root comes after its property elements and before
+        // its trailing comments; it is written as a node that is not the document's root, with no namespace, marker or table.
+        private XmlTag ResourceTag(XscnResource resource, bool isRoot, string tag)
         {
-            string tag = TypeName(resource.Type);
             List<PropertyOut> properties = Properties(
                 resource.Properties,
                 new PropertyOwner(tag, ClassOf(resource.Type), ResourceReserved, false, false, false)
             );
             List<XmlAttr> key = resource.Key is { } value ? [new XmlAttr(FormatPrefix + ":Key", value)] : [];
             List<XmlAttr> attributes = [.. RootAttributes(isRoot), .. key, .. OrderedAttributes(properties, [])];
-            List<XmlItem> content = [.. RootTables(isRoot), .. PropertyElements(properties), .. Comments(resource.TrailingComments)];
+            List<XmlItem> content =
+            [
+                .. RootTables(isRoot),
+                .. PropertyElements(properties),
+                .. SceneRootItems(resource),
+                .. Comments(resource.TrailingComments),
+            ];
             return new XmlTag(tag, attributes, content);
         }
 
+        private IEnumerable<XmlItem> SceneRootItems(XscnResource resource) =>
+            resource.SceneRoot is { } root ? [.. Comments(root.LeadingComments), NodeTag(root, isRoot: false, parentIsContainer: false)] : [];
+
         // An inline resource: its leading comments and its element, inside its property element.
-        private IEnumerable<XmlItem> InlineItems(XscnResource resource) => [.. Comments(resource.LeadingComments), ResourceTag(resource, false)];
+        private IEnumerable<XmlItem> InlineItems(XscnResource resource) =>
+            [.. Comments(resource.LeadingComments), ResourceTag(resource, false, TypeName(resource.Type))];
+
+        // x:Scene, the scene's own properties, written as a resource's are.
+        private IEnumerable<XmlItem> SceneItems() =>
+            document.Scene is { } scene ? [.. Comments(scene.LeadingComments), ResourceTag(scene, false, FormatPrefix + ":Scene")] : [];
 
         private static string TypeName(XscnType type) =>
             type switch
@@ -192,6 +243,7 @@ public static partial class XscnWriter
                         [.. document.Resources.SelectMany(InlineItems)],
                         document.ResourcesTrailingComments
                     ),
+                    .. SceneItems(),
                 ]
                 : [];
 

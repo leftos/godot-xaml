@@ -219,7 +219,8 @@ internal sealed partial class HoverHandler(DocumentStore store, ProjectCache pro
                 return name[..colon] == FormatPrefix() ? new Found(name, [FormatLine], context.Replace) : null;
             }
 
-            if (ClassOf(context) is not { } cls)
+            // A class tag's attribute, or x:Scene's, which names a PackedScene property.
+            if (NameRules.AttributeOwner(context) is not { } cls)
             {
                 return null;
             }

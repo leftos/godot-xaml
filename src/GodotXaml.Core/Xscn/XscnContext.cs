@@ -54,7 +54,7 @@ public sealed record XscnOpenElement(string? Prefix, string LocalName, GodotClas
 /// </param>
 /// <param name="Class">
 /// The element's Godot class when the metadata resolves it: a class tag's class, or a property element's owner class;
-/// null otherwise.
+/// <c>PackedScene</c> for <c>x:Scene</c> and for its property elements (<c>&lt;x:Scene.Prop&gt;</c>); null otherwise.
 /// </param>
 /// <param name="AttributeName">
 /// The attribute's full name as written (<c>MouseFilter</c>, <c>x:Key</c>, <c>ThemeOverrideStyles.panel</c>) when
@@ -89,11 +89,17 @@ public sealed record XscnCursorContext(
 /// <param name="metadata">The metadata a class tag is resolved with.</param>
 internal sealed class XscnContextReader(string text, int offset, GodotMetadata metadata)
 {
+    // The prefix the root binds to the format's namespace, which names x:Scene; null when it binds none.
+    private string? formatPrefix;
+
     /// <summary>Reads the context at the offset.</summary>
     /// <returns>The context.</returns>
     public XscnCursorContext Read()
     {
         XmlDocumentSyntax document = Parser.ParseText(text);
+        formatPrefix = document
+            .RootSyntax?.Attributes.FirstOrDefault(a => a.NameNode?.Prefix == "xmlns" && a.Value == XscnParser.FormatNamespace)
+            ?.NameNode?.LocalName;
         List<SyntaxNode> nodes = Descendants(document);
         if (nodes.OfType<XmlCommentSyntax>().FirstOrDefault(InComment) is { } comment)
         {
@@ -297,15 +303,21 @@ internal sealed class XscnContextReader(string text, int offset, GodotMetadata m
     }
 
     // A class tag names its class by its C# name, as the tree reader resolves it; a property element names its owner's.
+    // x:Scene, the scene's own properties, is a PackedScene's, and so is a property element of it.
     private GodotClassInfo? ClassOf(string? prefix, string? local)
     {
-        if (prefix is not null || local is null)
+        if (local is null || (prefix is not null && prefix != formatPrefix))
         {
             return null;
         }
 
         int dot = local.IndexOf('.', StringComparison.Ordinal);
         string tag = dot < 0 ? local : local[..dot];
+        if (prefix is not null)
+        {
+            return tag == "Scene" ? metadata.FindClass("PackedScene") : null;
+        }
+
         return tag.Length == 0 ? null : metadata.FindClassByCSharpName(tag);
     }
 }

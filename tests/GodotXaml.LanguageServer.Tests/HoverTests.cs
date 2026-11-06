@@ -422,6 +422,26 @@ public sealed class HoverTests
         Assert.Equal(0, await server.ShutdownAndDrainAsync());
     }
 
+    [Fact]
+    public async Task AnXSceneAttributeHoversAsPackedScenesProperty()
+    {
+        const string text = """
+            <Node3D xmlns:x="https://github.com/leftos/godot-xaml/format/1" Name="Root">
+              <x:Scene ResourceName="a" />
+            </Node3D>
+            """;
+        await using ServerHarness server = await OpenAsync(text: text);
+
+        JsonElement result = await HoverAsync(server, PositionOf(text, text.IndexOf("ResourceName", StringComparison.Ordinal) + 1));
+
+        Assert.Equal(JsonValueKind.Object, result.ValueKind);
+        string? value = result.GetProperty("contents").GetProperty("value").GetString();
+        Assert.StartsWith("```csharp\n", value, StringComparison.Ordinal);
+        Assert.Contains(" ResourceName\n```", value, StringComparison.Ordinal);
+        Assert.Contains(Member("Resource", "resource_name"), value, StringComparison.Ordinal);
+        Assert.Equal(0, await server.ShutdownAndDrainAsync());
+    }
+
     // Hovers inside the name the needle locates (its offset plus `into`) and checks the text and the name's range.
     private static async Task AssertHoverAsync(string needle, int into, string name, string expected)
     {

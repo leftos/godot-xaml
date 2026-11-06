@@ -31,6 +31,7 @@
 - **Dump**: the canonical text of one loaded scene or resource that the scene comparison and the project comparison diff.
 - **Editor checks**: `godot/editor-checks.ps1`, which runs the real addon in a real Godot editor on a hidden desktop and checks opening, editing, saving, running, instancing, a save after an assembly reload and the FileSystem dock, Paste and Save As (`tools/editor-checks/`).
 - **Effective default**: a property's default for a given class, as Godot saves against it: none for a class Godot keeps no defaults for (a virtual class such as `BaseButton`); else the class's own declaration's default (none when it declares the property without one); else its override; else its parent's effective default. `GodotMetadata.FindDefault`.
+- **Embedded scene**: a `PackedScene` sub-resource that holds its own node tree; Godot 4.8 saves it as `[node]` sections inside the resource, and the format writes it as a scene root, the last child of the `<PackedScene>` element ([format reference](format/README.md#the-scenes-own-properties-and-embedded-scenes)).
 - **Entry kind**: how Godot creates a dynamic family's entries on load, stated by each row of `DynamicPropertyFamilies`: `AnyOrder` (each name sets its value on its own, or any key creates the entry), `SizedFirst` (a named count property, ranked before the family, sizes the entries; a row may carry the declaring class's key order and a nested level), `OnKey` (only the creating key creates an entry), `ByMode`, `Ranked`, `ByName` (Godot lists the names in code-point order) or `BySource` (the order comes from a sibling property's shader or mesh).
 
   `ByMode`: the key order is chosen by a sibling property's integer value, as VisualShader `flags/` by `mode`. `Ranked`: a ranker method computes the family's whole rank, as `DynamicPropertyFamilies.AtlasTileRank` does for TileSetAtlasSource tiles; the row names a class only when the ranker reads that class's key list.
@@ -91,5 +92,6 @@
 - **`x:Instance`**: the element instancing a scene by its `res://` path, used where no scene namespace tag reads back as the same file; at the root, the scene inherits that one.
 - **`x:Override`**: the element, a direct child of an instance, that holds the changes this scene makes to one node inside it, named by `Path` relative to the instance.
 - **`x:Prop`**: the element setting a property by its Godot name with Godot value text, for a property that cannot be a plain attribute.
+- **`x:Scene`**: the element on a scene's root node that holds the scene's own properties, those of the `PackedScene` Godot saves the scene as; Godot 4.8 or later only (`GX0122` below that).
 - **`.xres`**: a Godot resource (a theme, a StyleBox) in the XAML format; the counterpart of `.tres`.
 - **`.xscn`**: a Godot scene in the XAML format; the counterpart of `.tscn`.

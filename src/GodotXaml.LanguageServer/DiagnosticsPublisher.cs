@@ -265,6 +265,8 @@ internal static class DiagnosticLinks
         [XscnCodes.PlaceholderRoot] = "gx0119-placeholder-at-the-root",
         [XscnCodes.NestingTooDeep] = "gx0120-nested-too-deep",
         [XscnCodes.MalformedGodotMarker] = "gx0121-malformed-xgodot",
+        [XscnCodes.NeedsNewerGodot] = "gx0122-needs-a-newer-godot",
+        [XscnCodes.SecondScene] = "gx0123-second-xscene",
     }.ToFrozenDictionary(StringComparer.Ordinal);
 
     /// <summary>The link to a code's heading, or to the reference itself for a code it does not know.</summary>

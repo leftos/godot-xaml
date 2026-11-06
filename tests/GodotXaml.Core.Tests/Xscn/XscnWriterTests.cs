@@ -725,6 +725,113 @@ public sealed class XscnWriterTests
         Assert.Contains("ProcessMode=", written, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WritesXSceneAfterTheResourcesTable()
+    {
+        string input = $"""
+            <Node3D {X} x:Godot="4.8" Name="Root">
+              <x:Scene ResourceName="Outer" Metadata.answer="42" Metadata.inner='SubResource("Inner")' />
+              <Node3D Name="Child" />
+              <x:Resources>
+                <PackedScene x:Key="Inner" ResourceName="Hello world">
+                  <Node2D Name="InnerRoot">
+                    <Sprite2D Name="Icon" />
+                  </Node2D>
+                </PackedScene>
+              </x:Resources>
+            </Node3D>
+            """;
+
+        Assert.Equal(XscnParserTests.FourEightScene, Rewrite48(input));
+    }
+
+    [Fact]
+    public void WritesANestedSceneRootInsideItsPackedScene()
+    {
+        string input = $"""
+            <Node3D {X} x:Godot="4.8" Name="Root">
+              <x:Resources>
+                <PackedScene x:Key="Inner" ResourceName="Hello world"><Node2D Name="InnerRoot"><Sprite2D Name="Icon"/></Node2D></PackedScene>
+              </x:Resources>
+              <x:Scene ResourceName="Outer" Metadata.answer="42" Metadata.inner='SubResource("Inner")' />
+              <Node3D Name="Child" />
+            </Node3D>
+            """;
+
+        Assert.Equal(XscnParserTests.FourEightScene, Rewrite48(input));
+    }
+
+    [Fact]
+    public void RefusesXSceneUnder47()
+    {
+        XscnDocument document = Parse48($"<Node3D {X} Name=\"Root\"><x:Scene ResourceName=\"Outer\" /></Node3D>");
+
+        ArgumentException refusal = Assert.Throws<ArgumentException>(() => XscnWriter.Write(document, Real));
+        Assert.Equal("x:Scene needs Godot 4.8 or later; written with Godot 4.7's metadata", refusal.Message);
+    }
+
+    [Fact]
+    public void RefusesANestedSceneUnder47()
+    {
+        XscnDocument document = Parse48(
+            $"""
+            <Node3D {X} Name="Root">
+              <Node3D Name="Child">
+                <Node3D.Metadata.inner>
+                  <PackedScene>
+                    <Node Name="R" />
+                  </PackedScene>
+                </Node3D.Metadata.inner>
+              </Node3D>
+            </Node3D>
+            """
+        );
+
+        ArgumentException refusal = Assert.Throws<ArgumentException>(() => XscnWriter.Write(document, Real));
+        Assert.Equal("a scene inside PackedScene needs Godot 4.8 or later; written with Godot 4.7's metadata", refusal.Message);
+    }
+
+    [Fact]
+    public void RefusesXSceneInAResourceFile()
+    {
+        XscnDocument resource = XscnParser.Parse($"<Theme {X} />", XscnDocumentKind.Resource, Metadata48.Version48).Document with
+        {
+            Scene = new XscnResource { Type = new XscnClassType(Metadata48.Version48.FindClass("PackedScene")!) },
+        };
+
+        ArgumentException refusal = Assert.Throws<ArgumentException>(() => XscnWriter.Write(resource, Metadata48.Version48));
+        Assert.Equal("x:Scene belongs on a scene's root node; an .xres has none", refusal.Message);
+    }
+
+    [Fact]
+    public void KeepsCommentsBeforeAndInsideXScene()
+    {
+        string text = $"""
+            <Node3D {X} x:Godot="4.8" Name="Root">
+              <!-- before -->
+              <x:Scene ResourceName="Outer">
+                <!-- inside -->
+              </x:Scene>
+              <Node3D Name="Child" />
+            </Node3D>
+
+            """;
+
+        Assert.Equal(text, Rewrite48(text));
+    }
+
+    [Fact]
+    public void AFourEightSceneFormatsToItself() => Assert.Equal(XscnParserTests.FourEightScene, Rewrite48(XscnParserTests.FourEightScene));
+
+    private static XscnDocument Parse48(string text)
+    {
+        XscnParseResult result = XscnParser.Parse(text, XscnDocumentKind.Scene, Metadata48.Version48);
+        Assert.Empty(result.Diagnostics);
+        return result.Document;
+    }
+
+    private static string Rewrite48(string text) => XscnWriter.Write(Parse48(text), Metadata48.Version48);
+
     // Parses, writes, and parses the written text again: the re-read has no diagnostic and writes the same text.
     private static XscnDocument RewriteStably(string text)
     {

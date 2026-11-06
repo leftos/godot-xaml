@@ -223,6 +223,9 @@ internal sealed partial class XscnTreeReader
         public ImmutableArray<int> OwnerUidPath { get; set; } = [];
 
         public int? UniqueId { get; set; }
+
+        // The root node of the scene a PackedScene holds, once it is read.
+        public XscnNode? SceneRoot { get; set; }
     }
 
     private enum ElementKind
@@ -232,5 +235,8 @@ internal sealed partial class XscnTreeReader
         Override,
         Resource,
         TableEntry,
+
+        // x:Scene, the scene's own properties, read as a PackedScene's.
+        Scene,
     }
 }

@@ -26,6 +26,7 @@ internal sealed partial class XscnTreeReader
             "Prop" => (reader, parent, element) => reader.AddProp(parent, element),
             "Uids" => (reader, parent, element) => reader.AddUidTable(parent, element),
             "Resources" => (reader, parent, element) => reader.AddResourceTable(parent, element),
+            "Scene" => (reader, parent, element) => reader.AddScene(parent, element),
             "Uid" => null,
             _ => throw new InvalidOperationException($"The vocabulary lists x:{name}, which the reader cannot read."),
         };
@@ -172,6 +173,7 @@ internal sealed partial class XscnTreeReader
             Type = type,
             Key = parts.Key,
             Properties = [.. parts.Properties],
+            SceneRoot = parts.SceneRoot,
             LeadingComments = leading,
             TrailingComments = CommentList(parts.Pending),
             Span = SpanOf(parts.Syntax.AsNode),
@@ -290,7 +292,15 @@ internal sealed partial class XscnTreeReader
 
     private void AddNode(ElementParts parent, IXmlElementSyntax element, TagKind kind)
     {
-        if (RequireNode(parent, element))
+        if (HoldsScene(parent) && !NamesResource(element, kind))
+        {
+            if (IsFirstSceneRoot(parent, element))
+            {
+                XscnType type = NodeType(element, kind);
+                parent.SceneRoot = ReadNode(new ElementParts(element, ElementKind.Node, ClassOf(type), isRoot: false), type, TakePending(parent));
+            }
+        }
+        else if (RequireNode(parent, element))
         {
             XscnType type = NodeType(element, kind);
             parent.Children.Add(ReadNode(new ElementParts(element, ElementKind.Node, ClassOf(type), isRoot: false), type, TakePending(parent)));
@@ -299,9 +309,76 @@ internal sealed partial class XscnTreeReader
 
     private void AddInstance(ElementParts parent, IXmlElementSyntax element)
     {
-        if (RequireNode(parent, element))
+        if (HoldsScene(parent))
+        {
+            if (IsFirstSceneRoot(parent, element))
+            {
+                parent.SceneRoot = ReadNode(new ElementParts(element, ElementKind.Instance, null, isRoot: false), null, TakePending(parent));
+            }
+        }
+        else if (RequireNode(parent, element))
         {
             parent.Children.Add(ReadNode(new ElementParts(element, ElementKind.Instance, null, isRoot: false), null, TakePending(parent)));
+        }
+    }
+
+    // A PackedScene resource holds its scene's root node as its one child element (Godot 4.8); x:Scene, the outer scene's
+    // own properties, holds none.
+    private bool HoldsScene(ElementParts parts) =>
+        parts.Kind is ElementKind.Resource or ElementKind.TableEntry && parts.Class is { } cls && metadata.Inherits(cls, PackedSceneClass);
+
+    // A class tag naming a Resource is no scene root: it stays the error any element but a property is in a resource.
+    private bool NamesResource(IXmlElementSyntax element, TagKind kind) =>
+        kind == TagKind.Class && metadata.FindClassByCSharpName(LocalName(element)) is { } cls && metadata.Inherits(cls, "Resource");
+
+    // The scene root is read as the document's root is, though it is not the document's: it takes no namespace
+    // declaration, no x:Godot and no table. A second one is reported and not read.
+    private bool IsFirstSceneRoot(ElementParts parent, IXmlElementSyntax element)
+    {
+        if (parent.SceneRoot is not null)
+        {
+            Report(XscnCodes.MisplacedElement, $"<{FullName(element)}> is not read: a PackedScene holds one scene root.", NameSpan(element));
+            return false;
+        }
+
+        CheckReadsScenes(element, "a scene inside PackedScene");
+        CheckPlaceholderRoot(element);
+        return true;
+    }
+
+    // x:Scene, the scene's own properties, read as a PackedScene's content. Only a scene's root node holds it, and once;
+    // a second is reported and skipped, the comments before it left to lead the next element.
+    private void AddScene(ElementParts parent, IXmlElementSyntax element)
+    {
+        if (documentKind != XscnDocumentKind.Scene || !parent.IsRoot)
+        {
+            Report(XscnCodes.MisplacedElement, $"<{FullName(element)}> is not read here: x:Scene belongs on a scene's root node.", NameSpan(element));
+            return;
+        }
+
+        if (sceneSeen)
+        {
+            Report(XscnCodes.SecondScene, "a second x:Scene; a scene has one", NameSpan(element));
+            return;
+        }
+
+        sceneSeen = true;
+        CheckReadsScenes(element, "x:Scene");
+        XscnType type = metadata.FindClass(PackedSceneClass) is { } cls ? new XscnClassType(cls) : new XscnUnknownType(PackedSceneClass);
+        scene = ReadResource(new ElementParts(element, ElementKind.Scene, ClassOf(type), isRoot: false), type, TakePending(parent));
+    }
+
+    // Godot reads x:Scene and a scene inside a PackedScene from 4.8 on; under older metadata the construct is reported
+    // over its start tag and still read.
+    private void CheckReadsScenes(IXmlElementSyntax element, string construct)
+    {
+        if (!XscnFormatVocabulary.ReadsScenes(metadata))
+        {
+            Report(
+                XscnCodes.NeedsNewerGodot,
+                $"{construct} needs Godot 4.8 or later; this file is read with Godot {metadata.Version}'s metadata",
+                element is XmlElementSyntax syntax ? SpanOf(syntax.StartTag) : SpanOf(element.AsNode)
+            );
         }
     }
 

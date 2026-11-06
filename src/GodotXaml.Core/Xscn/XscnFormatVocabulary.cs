@@ -74,7 +74,10 @@ public static class XscnFormatVocabulary
 
     private static readonly string[] RootAttributeNames = ["x:" + Godot];
 
-    private static readonly string[] ElementNames = ["Uids", "Uid", "Resources", "Instance", "Override", "Connect", "Prop"];
+    private static readonly string[] ElementNames = ["Uids", "Uid", "Resources", "Scene", "Instance", "Override", "Connect", "Prop"];
+
+    // Godot reads a scene's own properties and a scene inside a PackedScene from 4.8 on.
+    private static readonly Version ScenesSince = new(4, 8);
 
     private static readonly FrozenDictionary<string, IReadOnlyList<string>> AttributesByKind = new Dictionary<string, IReadOnlyList<string>>(
         StringComparer.Ordinal
@@ -88,6 +91,7 @@ public static class XscnFormatVocabulary
         ["Uids"] = Array.AsReadOnly<string>([]),
         ["Uid"] = Array.AsReadOnly(UidAttributes),
         ["Resources"] = Array.AsReadOnly<string>([]),
+        ["Scene"] = Array.AsReadOnly<string>([Script]),
         ["Connect"] = Array.AsReadOnly(ConnectAttributes),
         ["Prop"] = Array.AsReadOnly(PropAttributes),
     }.ToFrozenDictionary(StringComparer.Ordinal);
@@ -119,6 +123,19 @@ public static class XscnFormatVocabulary
                 $"'{elementKind}' is not an element kind: use Node, Resource, TableEntry or an x: element's name.",
                 nameof(elementKind)
             );
+    }
+
+    /// <summary>
+    /// Whether the Godot version of a metadata reads <c>x:Scene</c> and a scene inside a <c>PackedScene</c>: 4.8 or later.
+    /// A version that does not parse is taken as reading them.
+    /// </summary>
+    /// <param name="metadata">The metadata.</param>
+    /// <returns>True for 4.8 or later.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="metadata"/> is null.</exception>
+    public static bool ReadsScenes(GodotXaml.Core.Metadata.GodotMetadata metadata)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        return !System.Version.TryParse(metadata.Version, out Version? version) || version >= ScenesSince;
     }
 
     private static System.Collections.ObjectModel.ReadOnlyCollection<string> NodeKind(string kind) =>

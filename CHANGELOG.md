@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Godot 4.8 `.xscn` files can hold the scene's own properties in `x:Scene` and an embedded scene inside a `PackedScene` resource.
+
 ## 0.5.0 - 2026-11-04
 
 ### Added

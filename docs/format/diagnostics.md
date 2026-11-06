@@ -114,7 +114,9 @@ Error. An element sits where the format does not allow it. The cases:
 - an element inside `x:Uid`, `x:Prop` or `x:Connect`;
 - something other than `x:Uid` in `x:Uids`;
 - something other than a resource in `x:Resources`;
-- a format element other than `x:Instance` as the root.
+- a format element other than `x:Instance` as the root;
+- `x:Scene` anywhere but a scene's root node;
+- a second scene root inside a `PackedScene`.
 
 The message names the case.
 
@@ -159,6 +161,14 @@ Error. `Elements are nested deeper than 512; the reader stops here.` A deeper fi
 ### GX0121 Malformed x:Godot
 
 Error. `x:Godot is "4"; it names the Godot version as <major>.<minor>, such as 4.7.` The root's `x:Godot` names the Godot version whose metadata wrote the file, as its major and minor numbers joined by a dot. The marker is not kept. Correct it, such as `x:Godot="4.7"`, or remove it: a file without one reads as before, and the next save writes it.
+
+### GX0122 Needs a newer Godot
+
+Error. `x:Scene needs Godot 4.8 or later; this file is read with Godot 4.7's metadata`, or `a scene inside PackedScene needs Godot 4.8 or later; this file is read with Godot 4.7's metadata`. The file uses a construct that only Godot 4.8 or later can load: an `x:Scene` element, or a scene root inside a `PackedScene` resource. The file is read with an older Godot version's metadata, from its `x:Godot` marker or, unmarked, from the Godot that loads it. Remove the construct, or move the project to Godot 4.8 with `godot-xaml upgrade`.
+
+### GX0123 Second x:Scene
+
+Error. `a second x:Scene; a scene has one` A scene's root node holds at most one `x:Scene` element. Merge the two into one.
 
 ## Conversion to `.xscn`: `GXC00xx`
 

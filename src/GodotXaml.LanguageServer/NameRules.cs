@@ -10,28 +10,35 @@ namespace GodotXaml.LanguageServer;
 internal static class NameRules
 {
     /// <summary>
-    /// The property a class tag's attribute names: the attribute's C# name on the tag's class. A format or scene tag, a
-    /// property element, an unknown class, a prefixed attribute, a signal and an unknown name have none.
+    /// The property a class tag's attribute names: the attribute's C# name on the tag's class, PackedScene's on
+    /// <c>x:Scene</c>. Any other format or scene tag, a property element, an unknown class, a prefixed attribute, a signal
+    /// and an unknown name have none.
     /// </summary>
     /// <param name="metadata">The metadata.</param>
     /// <param name="context">A context on the attribute's name or value.</param>
     /// <returns>The property, or null.</returns>
     public static GodotPropertyInfo? PropertyOf(GodotMetadata metadata, XscnCursorContext context)
     {
-        if (
-            context.AttributeName is not { } name
-            || name.Contains(':', StringComparison.Ordinal)
-            || context.ElementPrefix is not null
-            || context.ElementName is not { } element
-            || element.Contains('.', StringComparison.Ordinal)
-            || context.Class is not { } cls
-        )
+        if (context.AttributeName is not { } name || name.Contains(':', StringComparison.Ordinal) || AttributeOwner(context) is not { } cls)
         {
             return null;
         }
 
         return metadata.FindPropertyByCSharpName(cls, name);
     }
+
+    /// <summary>
+    /// The class whose properties an element's start tag holds: a class tag's class, or PackedScene for <c>x:Scene</c> (the
+    /// context resolves a prefixed tag to a class only there); null for any other element.
+    /// </summary>
+    /// <param name="context">A context on or in the element's start tag.</param>
+    /// <returns>The class, or null.</returns>
+    public static GodotClassInfo? AttributeOwner(XscnCursorContext context) =>
+        context.ElementName is { } element
+        && !element.Contains('.', StringComparison.Ordinal)
+        && (context.ElementPrefix is null || element == "Scene")
+            ? context.Class
+            : null;
 
     /// <summary>
     /// The classes a class name or a hint's list of them allows (<c>Texture2D,-AnimatedTexture</c> allows Texture2D): every

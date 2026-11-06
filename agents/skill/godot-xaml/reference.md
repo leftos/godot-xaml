@@ -14,6 +14,8 @@ The language server (diagnostics, formatting, hover and completions over LSP on 
 | `<x:Override Path="A/B" …>` | Direct child of an instance | Changes to the node `A/B` inside the instance; new child nodes nest in it |
 | `<x:Connect Signal="…" To="…" Method="…" Flags="…" Binds='[…]' Unbinds="n" />` | Child of the emitter | A connection that is not the plain root-receiver case |
 | `<x:Resources>` | First children of the root, after `x:Uids` | Shared sub-resources, each with `x:Key` |
+| `<x:Scene … />` | Child of the root, after `x:Resources`; Godot 4.8 or later | The scene's own properties, as a `PackedScene`'s (attributes, `x:Prop`, `<x:Scene.Prop>`); one per scene |
+| `<PackedScene><Node Name="…" /></PackedScene>` | A resource element; Godot 4.8 or later | An embedded scene: the scene's root (a node class, `x:Instance` or a scene tag) is the resource's last child, with its tree under it |
 | `<x:Uids><x:Uid Path="res://…" Value="uid://…" /></x:Uids>` | First child of the root | Uids of referenced files, maintained by the tools |
 | `<x:Prop Name="godot/name" Value="value text" />` | Child of a node or resource | A property that cannot be an attribute |
 | `<Owner.Property><Class … /></Owner.Property>` | Child of `Owner` | A sub-resource used once, inline |
@@ -78,6 +80,8 @@ A line break inside a value is `&#10;`.
 | GX0108 | Missing attribute | `x:Override` needs `Path`, `x:Resources` entries need `x:Key` |
 | GX0111 | Element in the wrong place | Tables on the root only; no nodes inside a resource |
 | GX0112 | Bad property element | Name it `<ParentTag.Property>` and give it one resource |
+| GX0122 | `x:Scene` or a scene inside a `PackedScene` in a file read with Godot older than 4.8 | Remove it, or move the project to 4.8 with `godot-xaml upgrade` |
+| GX0123 | A second `x:Scene` | Merge them into one |
 | GXC0102 | `{Key}` names no `x:Resources` entry; shown on a Godot load, not by `check` | Add the entry or fix the key |
 | GXP0006 | A path a script builds was not rewritten | Edit the script by hand |
 | GXT0006 | `upgrade`: a file's `x:Godot` marker differs from `--from` | Fix or drop `--from` |

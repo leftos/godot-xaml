@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using GodotXaml.Core.Diagnostics;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Xscn;
 using GodotXaml.LanguageServer.Protocol;
@@ -9,7 +10,9 @@ namespace GodotXaml.LanguageServer;
 /// The names a tag being typed takes, by the element it is in, as the tree reader accepts them: in a node, the node classes,
 /// <c>x:Instance</c>, <c>x:Override</c>, <c>x:Connect</c>, <c>x:Prop</c> and the node's property elements; in a resource,
 /// <c>x:Prop</c> and its property elements, never a class; on the root, also
-/// <c>x:Uids</c> and <c>x:Resources</c>; in a property element, the classes of the property's hint; in <c>x:Resources</c>,
+/// <c>x:Uids</c> and <c>x:Resources</c>, and on a scene's root with Godot 4.8 or later <c>x:Scene</c> when it has none; in
+/// <c>x:Scene</c>, what a resource takes; in a <c>PackedScene</c> with Godot 4.8 or later, also the node classes and
+/// <c>x:Instance</c>, its scene's root; in a property element, the classes of the property's hint; in <c>x:Resources</c>,
 /// the resource classes; in <c>x:Uids</c>, <c>x:Uid</c>. A scene's root is a node class or <c>x:Instance</c>, a resource
 /// file's a resource class. A scene tag's or an unknown prefix gets none.
 /// </summary>
@@ -54,6 +57,8 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
         bool isRoot = index == 0;
         return scope.ShapeOf(parent) switch
         {
+            ElementShape.ClassElement when scope.IsResource(chain, index) && scope.HoldsScene(parent) && scope.ReadsScenes && !HasOtherSceneRoot() =>
+                ResourceChildren(parent, isRoot).Concat(scope.Classes(NodeClass)).Concat(scope.Keywords(["x:Instance"])),
             ElementShape.ClassElement when scope.IsResource(chain, index) => ResourceChildren(parent, isRoot),
             ElementShape.ClassElement => NodeChildren(parent, isRoot),
             ElementShape.PropertyElement => PropertyValue(parent),
@@ -69,6 +74,7 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
             "Resources" => scope.Classes(ResourceClass),
             "Uids" => scope.Keywords(["x:Uid"]),
             "Instance" or "Override" => NodeChildren(null, isRoot),
+            "Scene" => ResourceChildren(parent, false),
             _ => null,
         };
 
@@ -86,7 +92,54 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
         return format.Concat(PropertyElements(resource));
     }
 
-    private IEnumerable<CompletionCandidate> FormatElements(string[] names, bool isRoot) => scope.Keywords(isRoot ? names.Concat(RootTables) : names);
+    private IEnumerable<CompletionCandidate> FormatElements(string[] names, bool isRoot) =>
+        scope.Keywords(isRoot ? names.Concat(RootTables).Concat(SceneElement()) : names);
+
+    // x:Scene on a scene's root, when its Godot reads it (4.8 or later) and the root has none but the one being typed.
+    private IEnumerable<string> SceneElement()
+    {
+        if (scope.Kind != XscnDocumentKind.Scene || !scope.ReadsScenes)
+        {
+            return [];
+        }
+
+        return scope.Parse.Document.Scene is { Span: var span } && !AtCursor(span) ? [] : ["x:Scene"];
+    }
+
+    // Whether the innermost PackedScene of the parse around the cursor holds a scene root other than the one being typed.
+    private bool HasOtherSceneRoot()
+    {
+        XscnResource? packed = Resources(scope.Parse.Document).Where(r => r.SceneRoot is not null && AtCursor(r.Span)).MinBy(r => r.Span.Length);
+        return packed?.SceneRoot is { Span: var span } && !AtCursor(span);
+    }
+
+    private bool AtCursor(TextSpan span) => span.Start <= context.Replace.Start && context.Replace.Start <= span.End;
+
+    // Every resource of a document, at any depth: the tables, x:Scene, inline resources and those inside scene roots.
+    private static IEnumerable<XscnResource> Resources(XscnDocument document)
+    {
+        List<XscnResource> top = [.. document.Resources];
+        if (document.Scene is { } scene)
+        {
+            top.Add(scene);
+        }
+
+        if (document.Root is XscnResource root)
+        {
+            top.Add(root);
+        }
+
+        IEnumerable<XscnResource> inNodes = document.Root is XscnNodeElement node ? InNode(node) : [];
+        return top.SelectMany(WithInner).Concat(inNodes);
+    }
+
+    private static IEnumerable<XscnResource> WithInner(XscnResource resource) =>
+        [resource, .. Inline(resource.Properties), .. resource.SceneRoot is { } root ? InNode(root) : []];
+
+    private static IEnumerable<XscnResource> InNode(XscnNodeElement node) => [.. Inline(node.Properties), .. node.Children.SelectMany(InNode)];
+
+    private static IEnumerable<XscnResource> Inline(ImmutableArray<XscnProperty> properties) =>
+        properties.Select(p => p.Value).OfType<XscnInline>().SelectMany(i => WithInner(i.Resource));
 
     // Owner.Property for each stored property of the owner's class that holds a resource.
     private IEnumerable<CompletionCandidate> PropertyElements(XscnOpenElement owner)
@@ -96,10 +149,12 @@ internal sealed class TagCompletions(CompletionScope scope, XscnCursorContext co
             return [];
         }
 
+        // x:Scene's property elements keep the format's prefix: <x:Scene.Property>.
+        string tag = owner.Prefix is { } prefix ? $"{prefix}:{owner.LocalName}" : owner.LocalName;
         return scope
             .Metadata.PropertiesOf(cls)
             .Where(p => p.IsStored && !p.Name.Contains('/') && HoldsResource(p))
-            .Select(p => Named($"{owner.LocalName}.{p.CSharpName}", scope.TypeName(p.Type, p.ClassName)));
+            .Select(p => Named($"{tag}.{p.CSharpName}", scope.TypeName(p.Type, p.ClassName)));
     }
 
     // A property element's name, its label and its insert alike.

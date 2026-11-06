@@ -14,6 +14,7 @@ Every value type's text is in [values.md](values.md), and every error and warnin
 - [Resources](#resources)
 - [Files and uids](#files-and-uids)
 - [Instanced scenes](#instanced-scenes)
+- [The scene's own properties and embedded scenes](#the-scenes-own-properties-and-embedded-scenes)
 - [Signals](#signals)
 - [`x:` attributes on a node](#x-attributes-on-a-node)
 - [`x:Prop`](#xprop)
@@ -43,7 +44,7 @@ A `.tscn` lists its nodes as flat sections, each naming its parent by path, and 
 
 - Each node is an element, tagged with its class's C# name (`VBoxContainer`, `CpuParticles2D`).
 - Each property is an attribute, named in PascalCase as in C# (`SizeFlagsHorizontal`), with enum values by their C# member names (`ExpandFill`), never by integer.
-- Everything the format adds to Godot's own property list takes the `x:` prefix: tables, overrides, groups, and the bookkeeping a `.tscn` keeps.
+- Everything the format adds to Godot's own property list takes the `x:` prefix: tables, overrides, groups, the scene's own properties (`<x:Scene>`, Godot 4.8 or later), and the bookkeeping a `.tscn` keeps.
 
 ## The file
 
@@ -303,6 +304,35 @@ A node loaded later through `InstancePlaceholder` is an `<InstancePlaceholder>` 
 
 A placeholder's properties are never dropped as defaults, since Godot saves them against the instanced scene.
 
+## The scene's own properties and embedded scenes
+
+Two constructs exist only for Godot 4.8 or later, which saves a scene's own properties and a `PackedScene` that holds a node tree. A file that uses either, read with the metadata of an older Godot, is an error (`GX0122`), though the node inside a `PackedScene` is still read. The examples here need Godot 4.8, so the docs tests do not check them against the 4.7 metadata.
+
+**`x:Scene`** holds the scene's own properties, those of the `PackedScene` that Godot saves the scene as. It is a child of the root node, written after `x:Resources`, and takes the properties of `PackedScene` as attributes, `x:Prop` and property elements (`<x:Scene.Prop>`). A scene has one (`GX0123`), and only on its root node (`GX0111`), so an `.xres` has none:
+
+```xml
+<Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.8" Name="Root">
+  <x:Scene Script="res://scene_data.gd" />
+  <Node Name="Child" />
+</Node>
+```
+
+**An embedded scene** is a `PackedScene` resource that holds its own node tree, which Godot 4.8 saves as `[node]` sections inside the resource. In the format the scene's root is the resource element's last child, after its property elements, with its whole tree under it. The root is a node class, an `x:Instance` or a scene-namespace tag, and a resource holds at most one (`GX0111`):
+
+```xml
+<Control xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.8" Name="Root">
+  <x:Resources>
+    <PackedScene x:Key="Inner">
+      <Node Name="Inner">
+        <Label Name="Title" Text="Hi" />
+      </Node>
+    </PackedScene>
+  </x:Resources>
+</Control>
+```
+
+The embedded tree declares no namespaces, `x:Godot` marker or tables of its own: it uses the file's.
+
 ## Signals
 
 A connection is written on the node that emits the signal.
@@ -468,9 +498,11 @@ Every save, by the editor or by `godot-xaml format`, writes one fixed layout, so
 - **Content order** inside an element:
   1. `x:Uids`, sorted by path;
   2. `x:Resources`;
-  3. property elements and `x:Prop`, sorted by Godot name;
-  4. `x:Connect`;
-  5. child nodes in scene order.
+  3. `x:Scene`, after `x:Resources`, on a scene root (Godot 4.8 or later);
+  4. property elements and `x:Prop`, sorted by Godot name;
+  5. on a `PackedScene`, its scene root (Godot 4.8 or later);
+  6. `x:Connect`;
+  7. child nodes in scene order.
 - **Defaults:** a property equal to its default is kept, so a `.tscn` that stores a default converts without loss and a hand-written default survives a format. `layout_mode` is omitted only under a Container, which decides it; elsewhere it is always written, since Godot's loader honours a written value.
 - **Signals as attributes:** only the leading run of common-case connections whose names sort in order is written as attributes. The rest are `x:Connect`.
 - **Prefix clashes:** a scene prefix that would clash with the format's is written `x1`, `x2`.

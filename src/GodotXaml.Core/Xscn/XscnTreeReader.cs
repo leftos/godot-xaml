@@ -15,6 +15,9 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
 {
     private const string ResourcePrefix = "res://";
 
+    // The class of a scene's own properties and of a resource that holds a scene.
+    private const string PackedSceneClass = "PackedScene";
+
     // A document deeper than this would exhaust the stack of every program that reads it, which .NET cannot catch; no
     // Godot scene needs the depth.
     private const int MaxElementDepth = 512;
@@ -34,6 +37,13 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
     private string? godot;
     private bool uidTableSeen;
     private bool resourceTableSeen;
+
+    // Whether the document is a scene or a resource, which decides where x:Scene belongs.
+    private XscnDocumentKind documentKind;
+
+    // The root node's x:Scene, once it is read.
+    private XscnResource? scene;
+    private bool sceneSeen;
 
     // The depth of the element being read: the root is 1, and every element inside another is one deeper.
     private int elementDepth = 1;
@@ -55,6 +65,7 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
     /// <returns>The document; a stand-in root of unknown type when the text has no root element.</returns>
     public XscnDocument Read(XscnDocumentKind kind)
     {
+        documentKind = kind;
         XmlDocumentSyntax syntax = Parser.ParseText(source);
         diagnostics.AddRange(XmlSyntaxErrors.Collect(syntax));
         IXmlElementSyntax? root = syntax.RootSyntax;
@@ -70,6 +81,7 @@ internal sealed partial class XscnTreeReader(string source, GodotMetadata metada
         return new XscnDocument(kind, namespaces, uids, [.. resources], WithDocumentComments(element, syntax), godot)
         {
             FormatPrefix = formatPrefix,
+            Scene = scene,
             UidsLeadingComments = CommentList(uidsLeading),
             UidsTrailingComments = CommentList(uidsTrailing),
             ResourcesLeadingComments = CommentList(resourcesLeading),

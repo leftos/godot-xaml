@@ -165,13 +165,16 @@ internal sealed class CompletionScope
     /// <returns>Its shape.</returns>
     public ElementShape ShapeOf(XscnOpenElement element) => ShapeOf(element.Prefix, element.LocalName);
 
-    // A scene tag's prefix is one the root binds to a scene namespace the reader accepts.
+    // A scene tag's prefix is one the root binds to a scene namespace the reader accepts. A dotted name of the format's
+    // prefix is a property element of x:Scene.
     private ElementShape ShapeOf(string? prefix, string? name) =>
         prefix switch
         {
             null when name is null => ElementShape.Unknown,
             null => name.Contains('.', StringComparison.Ordinal) ? ElementShape.PropertyElement : ElementShape.ClassElement,
-            _ when prefix == FormatPrefix => ElementShape.FormatElement,
+            _ when prefix == FormatPrefix => name is not null && name.Contains('.', StringComparison.Ordinal)
+                ? ElementShape.PropertyElement
+                : ElementShape.FormatElement,
             _ => Parse.Document.Namespaces.Any(n => n.Prefix == prefix) ? ElementShape.SceneTag : ElementShape.Unknown,
         };
 
@@ -235,10 +238,21 @@ internal sealed class CompletionScope
         {
             ElementShape.PropertyElement => true,
             ElementShape.FormatElement => parent.LocalName == "Resources",
-            ElementShape.ClassElement => IsResource(chain, index - 1),
+            ElementShape.ClassElement => !(ReadsScenes && HoldsScene(parent)) && IsResource(chain, index - 1),
             _ => false,
         };
     }
+
+    /// <summary>
+    /// Whether the document's Godot reads <c>x:Scene</c> and a scene inside a <c>PackedScene</c>: 4.8 or later, by its
+    /// metadata; a version that does not parse is taken as reading them.
+    /// </summary>
+    public bool ReadsScenes => XscnFormatVocabulary.ReadsScenes(Metadata);
+
+    /// <summary>Whether an open element is a <c>PackedScene</c>, whose child element is its scene's root node.</summary>
+    /// <param name="element">The element.</param>
+    /// <returns>True for a PackedScene class element.</returns>
+    public bool HoldsScene(XscnOpenElement element) => element.Prefix is null && element.Class is { } cls && Metadata.Inherits(cls, "PackedScene");
 
     private bool? KnownIsResource(GodotClassInfo cls) =>
         Metadata.Inherits(cls, "Node") ? false

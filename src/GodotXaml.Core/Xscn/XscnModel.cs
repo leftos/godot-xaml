@@ -64,6 +64,12 @@ public sealed record XscnDocument(
         init => field = GodotValueTables.Required(value, nameof(Resources));
     } = GodotValueTables.Required(Resources, nameof(Resources));
 
+    /// <summary>
+    /// The scene's own properties, its root node's <c>&lt;x:Scene&gt;</c> element (Godot 4.8 or later): a resource of class
+    /// <c>PackedScene</c> with no key, its comments its element's; null when the scene has none.
+    /// </summary>
+    public XscnResource? Scene { get; init; }
+
     /// <summary>The text of each comment just before the <c>&lt;x:Uids&gt;</c> start tag, in source order.</summary>
     public ImmutableArray<string> UidsLeadingComments
     {
@@ -257,6 +263,12 @@ public sealed record XscnResource : XscnElement
         get;
         init => field = GodotValueTables.Required(value, nameof(Properties));
     } = [];
+
+    /// <summary>
+    /// The root node of the scene a <c>PackedScene</c> holds, written as the resource element's one child element with the
+    /// whole tree under it (Godot 4.8 or later): a node of a class, an <c>x:Instance</c> or a scene tag; null when it holds none.
+    /// </summary>
+    public XscnNode? SceneRoot { get; init; }
 }
 
 /// <summary>A property set on an element; <c>script</c> is one like any other.</summary>

@@ -717,17 +717,107 @@ public sealed class CompletionTests
         }
     }
 
+    [Fact]
+    public async Task OffersXSceneOnASceneRoot()
+    {
+        JsonElement result = await CompleteAsync(Marked("4.8", "<|"), seams: Seams48);
+
+        Assert.Contains("x:Scene", Labels(result));
+        Assert.Contains("x:Resources", Labels(result));
+    }
+
+    [Fact]
+    public async Task DoesNotOfferXSceneUnder47()
+    {
+        JsonElement result = await CompleteAsync(Marked("4.7", "<|"), seams: Seams48);
+
+        Assert.DoesNotContain("x:Scene", Labels(result));
+        Assert.Contains("x:Resources", Labels(result));
+    }
+
+    [Fact]
+    public async Task OffersPackedScenePropertiesOnXScene()
+    {
+        JsonElement result = await CompleteAsync(Marked("4.8", "<x:Scene Res| />"), seams: Seams48);
+
+        Assert.Contains("ResourceName", Labels(result));
+    }
+
+    [Fact]
+    public async Task OffersNodeClassesInsideAPackedScene()
+    {
+        JsonElement result = await CompleteAsync(
+            Marked("4.8", "<x:Resources>\n    <PackedScene x:Key=\"P\">\n      <|\n    </PackedScene>\n  </x:Resources>"),
+            seams: Seams48
+        );
+
+        List<string> labels = Labels(result);
+        Assert.Contains("Node2D", labels);
+        Assert.Contains("x:Instance", labels);
+        Assert.Contains("x:Prop", labels);
+    }
+
+    [Fact]
+    public async Task OffersNoSecondRootInsideAPackedScene()
+    {
+        JsonElement result = await CompleteAsync(
+            Marked(
+                "4.8",
+                "<x:Resources>\n    <PackedScene x:Key=\"P\">\n      <Node2D Name=\"A\" />\n      <|\n    </PackedScene>\n  </x:Resources>"
+            ),
+            seams: Seams48
+        );
+
+        List<string> labels = Labels(result);
+        Assert.DoesNotContain("Node2D", labels);
+        Assert.DoesNotContain("x:Instance", labels);
+        Assert.Contains("x:Prop", labels);
+    }
+
+    [Fact]
+    public async Task APackedScenesChildIsNoNodeUnder47()
+    {
+        JsonElement result = await CompleteAsync(
+            Marked("4.7", "<x:Resources>\n    <PackedScene x:Key=\"P\">\n      <Foo |\n    </PackedScene>\n  </x:Resources>"),
+            seams: Seams48
+        );
+
+        List<string> labels = Labels(result);
+        Assert.DoesNotContain("Name", labels);
+        Assert.DoesNotContain("x:Groups", labels);
+    }
+
+    [Fact]
+    public async Task ABoolValueOnXSceneOffersTrueAndFalse()
+    {
+        JsonElement result = await CompleteAsync(Root("<x:Scene ResourceLocalToScene=\"|\" />"));
+
+        Assert.Equal(["False", "True"], Labels(result));
+    }
+
+    // The test server's metadata: 4.7 bundled and a hand-made 4.8, each chosen by the file's x:Godot.
+    private static ServerSeams Seams48 => ServerSeams.Default with { LoadMetadata = MetadataSeams.Loader };
+
+    // A scene marked with a Godot version whose root holds the inner text, the cursor marked '|'.
+    private static string Marked(string version, string inner) =>
+        $"<Node3D xmlns:x=\"{FormatNamespace}\" x:Godot=\"{version}\" Name=\"Root\">\n  {inner}\n</Node3D>\n";
+
     // A scene whose root holds the inner text, the cursor marked '|'.
     private static string Root(string inner) => $"<Control xmlns:x=\"{FormatNamespace}\" Name=\"Root\">\n  {inner}\n</Control>\n";
 
     // Opens the source without its marker and asks for completions at the marker.
-    private static async Task<JsonElement> CompleteAsync(string source, string? uri = null, CompletionContext? trigger = null)
+    private static async Task<JsonElement> CompleteAsync(
+        string source,
+        string? uri = null,
+        CompletionContext? trigger = null,
+        ServerSeams? seams = null
+    )
     {
         uri ??= SceneUri;
         int cursor = source.IndexOf('|', StringComparison.Ordinal);
         Assert.True(cursor >= 0, "no cursor marker");
         string text = source.Remove(cursor, 1);
-        await using ServerHarness server = new();
+        await using ServerHarness server = new(seams);
         await server.InitializeAsync();
         await server.OpenAsync(uri, 1, text);
         await server.NextAsync(server.Published, "the didOpen publish");
