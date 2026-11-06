@@ -55,6 +55,46 @@ public sealed class ReferenceValueTests
     [Fact]
     public void WritesAnEmptyObject() => Assert.Equal("Object(Node,)\n", Write(new GodotObject("Node", [])));
 
+    // Godot 4.8's text saver writes an Object across lines, one property a line (variant_parser.cpp, the OBJECT branch's
+    // p_pretty_print); 4.7 wrote the one-line layout these tests call the compact one.
+    [Fact]
+    public void ReadsAMultilineObject() =>
+        Assert.Equal(
+            GodotValueReader.Read("Object(Resource,\"resource_name\":\"a\",\"x\":1)"),
+            GodotValueReader.Read("Object(Resource,\n\"resource_name\": \"a\",\n\"x\": 1\n)")
+        );
+
+    [Fact]
+    public void ReadsAMultilineObjectWithCrLfAndIndentation() =>
+        Assert.Equal(
+            GodotValueReader.Read("Object(Resource,\"resource_name\":\"a\",\"x\":1)"),
+            GodotValueReader.Read("Object(Resource,\r\n\t\"resource_name\": \"a\",\r\n\t\"x\": 1\r\n)")
+        );
+
+    [Fact]
+    public void WritesTheMultilineObjectLayout() =>
+        Assert.Equal("Object(Resource,\n\"resource_name\": \"a\",\n\"x\": 1\n)", GodotValueWriter.Write(Object(), Multiline));
+
+    [Fact]
+    public void WritesANestedObjectMultiline() =>
+        Assert.Equal(
+            "Object(Outer,\n\"child\": [1, Object(Inner,\n\"k\": 2\n)]\n)",
+            GodotValueWriter.Write(
+                new GodotObject("Outer", [new GodotProperty("child", new GodotArray([new GodotInt(1), InnerObject()], null))]),
+                Multiline
+            )
+        );
+
+    [Fact]
+    public void TheCompactLayoutIsUnchanged() => Assert.Equal("Object(Resource,\"resource_name\":\"a\",\"x\":1)\n", Write(Object()));
+
+    [Fact]
+    public void AMultilineObjectReadsBackAsItself()
+    {
+        GodotObject value = Object();
+        Assert.Equal(value, GodotValueReader.Read(GodotValueWriter.Write(value, Multiline)));
+    }
+
     // Godot's own error texts.
     [Theory]
     [InlineData("Resource(\"uid://a\", \"uid://b\")", "Two uid:// paths in one Resource reference")]
@@ -80,6 +120,13 @@ public sealed class ReferenceValueTests
         GodotValueParseException error = Assert.Throws<GodotValueParseException>(() => GodotValueReader.Read(text));
         Assert.Equal(reason, error.Reason);
     }
+
+    private static readonly ValueWriteOptions Multiline = ValueWriteOptions.Default with { MultilineObjects = true };
+
+    private static GodotObject Object() =>
+        new("Resource", [new GodotProperty("resource_name", new GodotString("a")), new GodotProperty("x", new GodotInt(1))]);
+
+    private static GodotObject InnerObject() => new("Inner", [new GodotProperty("k", new GodotInt(2))]);
 
     private static string Write(GodotValue value) => GodotValueWriter.Write(value, ValueWriteOptions.Default);
 }

@@ -13,6 +13,13 @@ public sealed record ValueWriteOptions(bool Compat)
 {
     /// <summary>The options var_to_str uses: compat on (variant_parser.h:162-163).</summary>
     public static ValueWriteOptions Default { get; } = new(Compat: true);
+
+    /// <summary>
+    /// Godot 4.8's text saver layout for <c>Object(...)</c>: one property per line, a space after each colon, and no newline
+    /// after the closing parenthesis (variant_parser.cpp in 4.8, VariantWriter::write's p_pretty_print). Off writes 4.7's layout,
+    /// which var_to_str also keeps.
+    /// </summary>
+    public bool MultilineObjects { get; init; }
 }
 
 /// <summary>Writes values as Godot's text, a port of VariantWriter::write (core/variant/variant_parser.cpp:2012-2563).</summary>
@@ -120,23 +127,26 @@ public static class GodotValueWriter
         text.Append("RID(").Append(Itos(unchecked((long)value.Id.Value))).Append(')');
     }
 
-    // variant_parser.cpp:2213-2235: the class, then "name":value pairs with no spaces, then ")" and a newline.
+    // variant_parser.cpp:2213-2235, 4.7's layout: the class, then "name":value pairs with no spaces, then ")" and a
+    // newline, which var_to_str keeps. 4.8's writer adds p_pretty_print (:2084-2109): with it on, one property a line,
+    // a space after each colon, and no newline after the ")", the layout its text saver writes.
     private static void WriteObject(GodotObject value, ValueWriteOptions options, StringBuilder text)
     {
-        text.Append("Object(").Append(value.ClassName).Append(',');
+        bool multiline = options.MultilineObjects;
+        text.Append("Object(").Append(value.ClassName).Append(',').Append(multiline ? "\n" : "");
         for (int index = 0; index < value.Properties.Length; index++)
         {
             if (index > 0)
             {
-                text.Append(',');
+                text.Append(multiline ? ",\n" : ",");
             }
 
             GodotProperty property = value.Properties[index];
-            text.Append('"').Append(GodotStringEscape.CEscapeMultiline(property.Name)).Append("\":");
+            text.Append('"').Append(GodotStringEscape.CEscapeMultiline(property.Name)).Append(multiline ? "\": " : "\":");
             WriteValue(property.Value, options, text);
         }
 
-        text.Append(")\n");
+        text.Append(multiline ? "\n)" : ")\n");
     }
 
     // scene/resources/resource_format_text.cpp:1634-1640.

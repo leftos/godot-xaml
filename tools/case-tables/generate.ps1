@@ -34,9 +34,9 @@ param(
     [Parameter(Mandatory)]
     [string]$Out,
 
-    [string]$GodotVersion = '4.7.2',
+    [string]$GodotVersion = '4.8-beta2',
 
-    [string]$UnicodeVersion = '17.0.0'
+    [string]$UnicodeVersion = '18.0.0'
 )
 
 Set-StrictMode -Version Latest

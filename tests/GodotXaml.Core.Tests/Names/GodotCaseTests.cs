@@ -4,14 +4,14 @@ namespace GodotXaml.Core.Tests.Names;
 
 public sealed class GodotCaseTests
 {
-    // Godot 4.7.2's ucaps.h: LTU_LEN 1505, UTL_LEN 1488.
+    // Godot 4.8's ucaps.h, generated from Unicode 18.0.0: LTU_LEN 1525, UTL_LEN 1508.
     [Fact]
     public void TheTablesHaveUcapsLengths()
     {
-        Assert.Equal(1505, GodotCaseTables.UpperFrom.Length);
-        Assert.Equal(1505, GodotCaseTables.UpperTo.Length);
-        Assert.Equal(1488, GodotCaseTables.LowerFrom.Length);
-        Assert.Equal(1488, GodotCaseTables.LowerTo.Length);
+        Assert.Equal(1525, GodotCaseTables.UpperFrom.Length);
+        Assert.Equal(1525, GodotCaseTables.UpperTo.Length);
+        Assert.Equal(1508, GodotCaseTables.LowerFrom.Length);
+        Assert.Equal(1508, GodotCaseTables.LowerTo.Length);
     }
 
     [Fact]
@@ -33,6 +33,14 @@ public sealed class GodotCaseTests
     [InlineData(0x0130, 0x0069)] // I with dot above, which .NET's invariant casing leaves alone.
     [InlineData(0x10400, 0x10428)] // Deseret, beyond U+FFFF.
     public void FindLowerReturnsTheTablesLowerCase(int c, int expected) => Assert.Equal(expected, GodotCase.FindLower(c));
+
+    // A pair 4.8's ucaps.h adds with Unicode 18.0.0: caps_table gains { 0x0277, 0xA7DD } and reverse_caps_table
+    // { 0xA7DD, 0x0277 }. Neither code point appears at all in 4.7.2's ucaps.h, so 4.7's tables answer 0x0277 here.
+    [Fact]
+    public void UpperCasesACodePointNewInUnicode18() => Assert.Equal(0xA7DD, GodotCase.FindUpper(0x0277));
+
+    [Fact]
+    public void LowerCasesACodePointNewInUnicode18() => Assert.Equal(0x0277, GodotCase.FindLower(0xA7DD));
 
     private static void AssertStrictlyAscending(ReadOnlySpan<int> keys)
     {
