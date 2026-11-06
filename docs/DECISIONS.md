@@ -64,9 +64,20 @@ On an element whose class the core cannot know without opening another file (an 
 
 This typing depends on the metadata of one Godot minor version, so a new version can change how a file is read: a name that becomes ambiguous, or a property whose type or enum changes. The root's `x:Godot` marker names the metadata a file was written with; an unmarked file is valid. A marked file is rejected by godot-xaml 0.4.0, so a project updates all its godot-xaml tools together.
 
-A newer editor keeps a file's own typing and marker; only `godot-xaml upgrade` moves a project to a new Godot version, all files at once. Each Godot release that changes typing is met by that upgrader, which reads a project's files with the metadata their marker names (`--from` for an unmarked file; a marker that disagrees with `--from` is an error) and writes them with `--to`'s. A property the new version lacks is kept as a script property, an attribute under its Godot name with its value text, and warned about. `TypingDiff.Between` lists every property whose typing differs between two metadata versions, and a test runs it on each pair of consecutive bundled versions, so whether a release needs an upgrade step is always known.
+An unmarked file takes the version of the Godot that loads it: the addon reads and writes it with the running engine's major.minor, the CLI and the language server with the `config/features` version of the file's `project.godot`, and a file outside any project with the newest bundled version. A version godot-xaml does not carry falls back to the newest it carries, with one warning. A `--metadata` file still wins in the CLI.
+
+The editor follows the engine on save, as Godot resaves a `.tscn` in its own version: a save writes with the running engine's metadata and stamps its marker, so a project moved to a newer Godot upgrades file by file as files are saved. A marker godot-xaml does not carry (written by a newer godot-xaml) still refuses a write. `godot-xaml upgrade` moves a whole project at once. Each Godot release that changes typing is met by that upgrader, which reads a project's files with the metadata their marker names (`--from` for an unmarked file; a marker that disagrees with `--from` is an error) and writes them with `--to`'s. A property the new version lacks is kept as a script property, an attribute under its Godot name with its value text, and warned about. `TypingDiff.Between` lists every property whose typing differs between two metadata versions, and a test runs it on each pair of consecutive bundled versions, so whether a release needs an upgrade step is always known.
 
 Booleans are written `True` and `False` (either case is read), and a float has no trailing `.0` (`AnchorRight="1"`), as vector components already have none.
+
+## Godot 4.8 scenes: the scene's own properties and embedded scenes
+
+Godot 4.8 lets a `.tscn` hold the PackedScene's own stored properties (`resource_name`, `metadata/…`) in a `[resource]` section before its first node, and saves a built-in `PackedScene` sub-resource as its own `[node]`, `[connection]` and `[editable]` sections instead of a `_bundled` dictionary (4.8 `scene/resources/resource_format_text.cpp`: `ResourceLoaderText::load` and `_parse_node_tag`, `ResourceFormatSaverTextInstance::save` and `_parse_nodes`). Godot 4.7's loader rejects both.
+
+- The scene's own properties are an `<x:Scene>` element, a child of the root node after `x:Resources`, holding them as a resource element holds its own: attributes, `x:Prop` and property elements. There is one, on a scene's root node only.
+- An embedded scene is a nested node tree: a `<PackedScene>` resource element, in `x:Resources` or a property element, holds its scene's root node as its one child element, with the whole tree under it.
+- Both are Godot 4.8 or later only. The gate is the version of the metadata the file is read or written with: under older metadata the reader reports them, the writer refuses them, and a conversion either way refuses them.
+- A PackedScene that a Godot 4.7 file stores as `_bundled` stays value text (`_Bundled='…'`); `upgrade` does not decode it, and the next save in a Godot 4.8 editor writes the nested form.
 
 ## Format elements and attributes take the `x:` prefix
 

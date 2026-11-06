@@ -16,7 +16,7 @@ XAML-style `.xscn` scenes and `.xres` resources for Godot 4.7+ .NET, which the G
 
 ## Non-negotiables
 
-- Behaviour of Godot is cited from its 4.7.2 source or docs, never assumed: the source is `F:\Godot\src-4.7.2`; `F:\Godot\repo` is a stale 4.5.1 checkout.
+- Behaviour of Godot is cited from its source or docs, never assumed: 4.7.2 is `F:\Godot\src-4.7.2`, 4.8 is `F:\Godot\src-4.8-beta2` (engine `F:\Godot\4.8-beta2\`, until 4.8 stable replaces both); `F:\Godot\repo` is a stale 4.5.1 checkout.
 - The core (the format, its parser and writer, the `.tscn` conversion) references no Godot assembly; the addon, the CLI and the language server are hosts over it.
 - A conversion is proven by a round trip on real scenes: `.tscn` to `.xscn` and back loads as the same scene in Godot.
 
