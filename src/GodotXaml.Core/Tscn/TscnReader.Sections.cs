@@ -19,10 +19,10 @@ public static partial class TscnReader
         ["editable"] = (builder, fields) => builder.ReadEditable(fields),
     };
 
-    // The known tags only one kind of file may hold (resource_format_text.cpp:723-727, 870-874).
+    // The known tags only one kind of file may hold outside a nested scene (4.8 resource_format_text.cpp:861-867,
+    // 894-898); a scene's [resource] holds the PackedScene's own properties (4.8 :697-836).
     private static readonly Dictionary<string, TscnKind> SectionKinds = new(StringComparer.Ordinal)
     {
-        ["resource"] = TscnKind.Resource,
         ["node"] = TscnKind.Scene,
         ["connection"] = TscnKind.Scene,
         ["editable"] = TscnKind.Scene,
@@ -49,9 +49,9 @@ public static partial class TscnReader
         private readonly List<TscnExtResource> _extResources = [];
         private readonly List<TscnSubResource> _subResources = [];
         private readonly List<TscnProperty> _resourceProperties = [];
-        private readonly List<TscnNode> _nodes = [];
-        private readonly List<TscnConnection> _connections = [];
-        private readonly List<TscnEditable> _editables = [];
+        private readonly List<TscnProperty> _sceneProperties = [];
+        private readonly SceneLists _main = new();
+        private SceneLists? _nested;
         private List<TscnProperty>? _properties;
         private Action<ImmutableArray<TscnProperty>>? _finish;
         private TscnTag? _tag;
@@ -71,24 +71,14 @@ public static partial class TscnReader
             Start((TscnTag)item);
         }
 
+        // The scene the node, connection and editable tags read now go to: a PackedScene sub-resource's own, or the main one.
+        private SceneLists Scene => _nested ?? _main;
+
         public TscnDocument Build(TscnScanner scanner)
         {
             Finish();
-            if (_kind == TscnKind.Resource && !_resourceSeen)
-            {
-                // resource_format_text.cpp:1193-1200: the tag read after the header is a parse error whose text load()
-                // reports as "Unexpected end of file", whatever the file held before it.
-                throw TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
-            }
-
-            if (_kind == TscnKind.Scene && _nodes.Count == 0)
-            {
-                // resource_format_text.cpp:532-537, 646-651, 1194-1200: the resource loops and the tag read after the
-                // header end the file with the parser's ERR_FILE_EOF, which load() reports with no message; GXAML-40
-                // measured it and names it "Unexpected end of file".
-                throw TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
-            }
-
+            CloseNestedAtEnd();
+            CheckEnd(scanner);
             return new TscnDocument
             {
                 Kind = _kind,
@@ -96,10 +86,36 @@ public static partial class TscnReader
                 ExtResources = [.. _extResources],
                 SubResources = [.. _subResources],
                 ResourceProperties = [.. _resourceProperties],
-                Nodes = [.. _nodes],
-                Connections = [.. _connections],
-                Editables = [.. _editables],
+                SceneProperties = [.. _sceneProperties],
+                HasSceneResourceSection = _kind == TscnKind.Scene && _resourceSeen,
+                Nodes = [.. _main.Nodes],
+                Connections = [.. _main.Connections],
+                Editables = [.. _main.Editables],
             };
+        }
+
+        private void CheckEnd(TscnScanner scanner)
+        {
+            if (_kind == TscnKind.Scene && _tag?.Name == "resource")
+            {
+                // 4.8 resource_format_text.cpp:758-764: the file ending inside a scene's [resource] is ERR_FILE_CORRUPT.
+                throw TscnScanner.Error("Scene files need to have at least one node. None was found.", scanner.Line, scanner.Column);
+            }
+
+            if (_kind == TscnKind.Resource && !_resourceSeen)
+            {
+                // resource_format_text.cpp:1193-1200: the tag read after the header is a parse error whose text load()
+                // reports as "Unexpected end of file", whatever the file held before it.
+                throw TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
+            }
+
+            if (_kind == TscnKind.Scene && _main.Nodes.Count == 0)
+            {
+                // resource_format_text.cpp:532-537, 646-651, 1194-1200: the resource loops and the tag read after the
+                // header end the file with the parser's ERR_FILE_EOF, which load() reports with no message; GXAML-40
+                // measured it and names it "Unexpected end of file".
+                throw TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
+            }
         }
 
         public Action<ImmutableArray<TscnProperty>> ReadExtResource(TscnTagFields fields)
@@ -141,13 +157,17 @@ public static partial class TscnReader
                 );
         }
 
-        public Action<ImmutableArray<TscnProperty>> ReadResource() => properties => _resourceProperties.AddRange(properties);
+        // 4.8 resource_format_text.cpp:822-828: a scene's [resource] sets the PackedScene's own properties, and a second
+        // one adds to them, as the loop re-enters on another resource tag.
+        public Action<ImmutableArray<TscnProperty>> ReadResource() =>
+            _kind == TscnKind.Scene ? properties => _sceneProperties.AddRange(properties) : properties => _resourceProperties.AddRange(properties);
 
         public Action<ImmutableArray<TscnProperty>> ReadNode(TscnTagFields fields)
         {
-            // resource_format_text.cpp:243-253: a placeholder on the node before any other is ERR_FILE_CORRUPT, since
-            // that node has nothing to inherit from.
-            if (fields.Value("instance_placeholder") is not null && _nodes.Count == 0)
+            // resource_format_text.cpp:243-253: a placeholder on the node before any other of its scene is
+            // ERR_FILE_CORRUPT, since that node has nothing to inherit from.
+            List<TscnNode> nodes = Scene.Nodes;
+            if (fields.Value("instance_placeholder") is not null && nodes.Count == 0)
             {
                 throw Missing("Instance Placeholder can't be used for inheritance");
             }
@@ -170,7 +190,7 @@ public static partial class TscnReader
                 OwnerUidPath = fields.Ints("owner_uid_path"),
             };
             ImmutableArray<TscnField> extra = fields.Rest();
-            return properties => _nodes.Add(node with { Properties = properties, Extra = extra });
+            return properties => nodes.Add(node with { Properties = properties, Extra = extra });
         }
 
         public Action<ImmutableArray<TscnProperty>> ReadConnection(TscnTagFields fields)
@@ -186,7 +206,7 @@ public static partial class TscnReader
                 ToUidPath = fields.Ints("to_uid_path"),
                 Binds = Binds(fields),
             };
-            _connections.Add(
+            Scene.Connections.Add(
                 connection with
                 {
                     Flags = fields.Int("flags") ?? TscnConnection.PersistFlags,
@@ -200,7 +220,7 @@ public static partial class TscnReader
         public Action<ImmutableArray<TscnProperty>> ReadEditable(TscnTagFields fields)
         {
             string path = fields.Path("path") ?? throw Missing("Missing 'path' field from editable tag");
-            _editables.Add(new TscnEditable { Path = path, Extra = fields.Rest() });
+            Scene.Editables.Add(new TscnEditable { Path = path, Extra = fields.Rest() });
             return NoProperties;
         }
 
@@ -214,11 +234,6 @@ public static partial class TscnReader
 
             var fields = new TscnTagFields(tag);
             _tag = tag;
-            if (_firstAfterResources is null && tag.Name is not ("ext_resource" or "sub_resource"))
-            {
-                _firstAfterResources = tag;
-            }
-
             _properties = [];
             _finish = SectionReaders[tag.Name](this, fields);
         }
@@ -233,7 +248,46 @@ public static partial class TscnReader
                 throw TscnScanner.Error("Extra tag found when parsing main resource file", tag.Line, tag.Column);
             }
 
-            if (!SectionRanks.TryGetValue(tag.Name, out int rank) || rank < _rank)
+            if (!GoesToNestedScene(tag))
+            {
+                CheckMainSection(tag);
+            }
+        }
+
+        // 4.8 :186-408, 674-681: whether the tag belongs to a PackedScene sub-resource's own scene, opening one on its
+        // first [node]. A nested scene reads node, connection and editable tags until a sub_resource or a resource tag
+        // returns it to the resource loops; any other tag is unknown.
+        private bool GoesToNestedScene(TscnTag tag)
+        {
+            if (_nested is null)
+            {
+                if (!StartsNestedScene(tag))
+                {
+                    return false;
+                }
+
+                _nested = new SceneLists();
+                return true;
+            }
+
+            if (tag.Name is "node" or "connection" or "editable")
+            {
+                return true;
+            }
+
+            if (tag.Name is not ("sub_resource" or "resource"))
+            {
+                throw Unknown(tag);
+            }
+
+            CloseNested();
+            return false;
+        }
+
+        private void CheckMainSection(TscnTag tag)
+        {
+            // 4.8 :402-408: the main scene is not nested, so a [resource] after its first node is unknown too.
+            if (!SectionRanks.TryGetValue(tag.Name, out int rank) || rank < _rank || ResourceAfterTheMainScene(tag))
             {
                 throw Unknown(tag);
             }
@@ -248,26 +302,73 @@ public static partial class TscnReader
                 throw Unknown(tag);
             }
 
+            NoteFirstAfterResources(tag);
             _rank = rank;
             _resourceSeen |= tag.Name == "resource";
+        }
+
+        private bool ResourceAfterTheMainScene(TscnTag tag) => _firstAfterResources is not null && tag.Name == "resource";
+
+        private void NoteFirstAfterResources(TscnTag tag)
+        {
+            if (_kind == TscnKind.Scene && _firstAfterResources is null && tag.Name is not ("ext_resource" or "sub_resource" or "resource"))
+            {
+                _firstAfterResources = tag;
+            }
+        }
+
+        // 4.8 :674-681: a [node] right after a PackedScene sub-resource's properties starts that sub-resource's own
+        // scene. 4.8's loader does not look at _bundled, so it would read a 4.7 file whose last sub-resource is a
+        // PackedScene with its main nodes inside that sub-resource; the reader starts a nested scene only when the
+        // sub-resource has no _bundled (every 4.7-saved PackedScene has one), so such a file keeps its main nodes.
+        private bool StartsNestedScene(TscnTag tag) =>
+            tag.Name == "node"
+            && _tag?.Name == "sub_resource"
+            && _subResources[^1] is { Type: "PackedScene" } sub
+            && !sub.Properties.Any(property => property.Name == "_bundled");
+
+        // Attaches the nested scene read so far to its sub-resource.
+        private void CloseNested()
+        {
+            if (_nested is null)
+            {
+                return;
+            }
+
+            // No sub-resource is read while a nested scene is open, so its owner is the last one.
+            _subResources[^1] = _subResources[^1] with
+            {
+                Scene = _nested.ToScene(),
+            };
+            _nested = null;
+        }
+
+        // Godot 4.7.2 skips a property equal to its default (resource_format_text.cpp:1986-1988), so an unpacked
+        // PackedScene it saved has no _bundled, and the main scene's nodes follow it; 4.8 always ends a nested scene
+        // with [sub_resource] or [resource] (4.8 :2122-2134). A nested scene still open at the end of a scene with no
+        // main node is therefore the main scene.
+        private void CloseNestedAtEnd()
+        {
+            if (_kind == TscnKind.Scene && _nested is not null && _main.Nodes.Count == 0)
+            {
+                _main.AddFrom(_nested);
+                _nested = null;
+            }
+
+            CloseNested();
         }
 
         // :904.
         private static TscnParseException Unknown(TscnTag tag) => TscnScanner.Error($"Unknown tag '{tag.Name}' in file", tag.Line, tag.Column);
 
-        // :868-908: a scene's first tag after its resources enters _parse_node_tag only when it is [node]; a connection
-        // or an editable there is named as unknown.
+        // 4.8 :859-899: a scene's first tag after its resources and its [resource] enters _parse_node_tag only when it
+        // is [node]; a connection or an editable there is named as unknown.
         private bool FirstAfterResourcesIsNotANode(TscnTag tag) =>
-            _kind == TscnKind.Scene && _firstAfterResources is null && tag.Name is not ("ext_resource" or "sub_resource" or "node");
+            _kind == TscnKind.Scene && _firstAfterResources is null && tag.Name is not ("ext_resource" or "sub_resource" or "resource" or "node");
 
-        // :725, 872 name a [resource] in a scene and a [node] in a resource; :904 leaves the other scene-only tags unknown.
-        private TscnParseException WrongKind(TscnTag tag)
-        {
-            string file = _kind == TscnKind.Scene ? "scene" : "resource";
-            return tag.Name is "resource" or "node"
-                ? TscnScanner.Error($"Unexpected '{tag.Name}' tag in a {file} file", tag.Line, tag.Column)
-                : Unknown(tag);
-        }
+        // 4.8 :861-867 names a [node] in a resource file; :894-898 leaves the other scene-only tags unknown.
+        private static TscnParseException WrongKind(TscnTag tag) =>
+            tag.Name == "node" ? TscnScanner.Error("Unexpected 'node' tag in a resource file", tag.Line, tag.Column) : Unknown(tag);
 
         private void AddProperty(TscnAssign assign)
         {
@@ -309,5 +410,30 @@ public static partial class TscnReader
                 }
             }
         }
+    }
+
+    // The node, connection and editable sections of one scene, the main one or a PackedScene sub-resource's own.
+    private sealed class SceneLists
+    {
+        public List<TscnNode> Nodes { get; } = [];
+
+        public List<TscnConnection> Connections { get; } = [];
+
+        public List<TscnEditable> Editables { get; } = [];
+
+        public void AddFrom(SceneLists other)
+        {
+            Nodes.AddRange(other.Nodes);
+            Connections.AddRange(other.Connections);
+            Editables.AddRange(other.Editables);
+        }
+
+        public TscnNestedScene ToScene() =>
+            new()
+            {
+                Nodes = [.. Nodes],
+                Connections = [.. Connections],
+                Editables = [.. Editables],
+            };
     }
 }

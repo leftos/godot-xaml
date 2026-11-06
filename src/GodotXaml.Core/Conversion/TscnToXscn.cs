@@ -29,6 +29,11 @@ public static partial class TscnToXscn
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(options);
+        if (NeedsNewerGodot(document, metadata) is { } refused)
+        {
+            return refused;
+        }
+
         var context = new Context(document, metadata, options);
         XscnDocument converted = document.Kind == TscnKind.Scene ? context.ConvertScene() : context.ConvertResource();
         IReadOnlyDictionary<XscnResource, XscnResource> copies = new Dictionary<XscnResource, XscnResource>();
@@ -39,6 +44,29 @@ public static partial class TscnToXscn
 
         return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids(copies) };
     }
+
+    // Until the conversion carries them, a Godot 4.8 scene [resource] or embedded scene converted for an older Godot
+    // fails, with a stand-in root as the parser gives an unreadable file, rather than being dropped.
+    private static ConversionResult<XscnDocument>? NeedsNewerGodot(TscnDocument document, GodotMetadata metadata)
+    {
+        if (!HoldsFourEightScenes(document) || !OlderThanFourEight(metadata.Version))
+        {
+            return null;
+        }
+
+        bool scene = document.Kind == TscnKind.Scene;
+        XscnElement root = scene ? new XscnNode { Type = new XscnUnknownType(""), Name = "" } : new XscnResource { Type = new XscnUnknownType("") };
+        string message = $"this file holds a Godot 4.8 scene [resource] section or embedded scene, which Godot {metadata.Version} cannot load";
+        var issue = new ConversionIssue(ConversionCodes.NeedsNewerGodot, ConversionSeverity.Error, message, scene ? "[gd_scene]" : "[gd_resource]");
+        var converted = new XscnDocument(scene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource, [], [], [], root, metadata.Version);
+        return new ConversionResult<XscnDocument>(converted, [issue]);
+    }
+
+    private static bool HoldsFourEightScenes(TscnDocument document) =>
+        !document.SceneProperties.IsEmpty || document.HasSceneResourceSection || document.SubResources.Any(sub => sub.Scene is not null);
+
+    // Compared with System.Version, as GodotMetadata picks the newest bundled version.
+    private static bool OlderThanFourEight(string version) => System.Version.TryParse(version, out Version? parsed) && parsed < new Version(4, 8);
 
     private sealed partial class Context
     {

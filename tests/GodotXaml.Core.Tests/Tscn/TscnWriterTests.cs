@@ -241,6 +241,120 @@ public sealed class TscnWriterTests
         );
     }
 
+    [Fact]
+    public void RefusesAResourceDocumentWithSceneProperties()
+    {
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Resource,
+            Header = new TscnHeader { Type = "Resource" },
+            SceneProperties = [new("a", new GodotInt(1))],
+        };
+        Assert.Contains(
+            "SceneProperties",
+            Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message,
+            StringComparison.Ordinal
+        );
+    }
+
+    // Godot 4.8 resource_format_text.cpp:2122-2125: only a PackedScene sub-resource writes nodes of its own.
+    [Fact]
+    public void RefusesANestedSceneOnASubResourceThatIsNotAPackedScene()
+    {
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            SubResources =
+            [
+                new TscnSubResource
+                {
+                    Type = "Resource",
+                    Id = "Resource_1",
+                    Scene = new TscnNestedScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
+                },
+            ],
+            Nodes = [new TscnNode { Name = "R", Type = "Node" }],
+        };
+        Assert.Contains("Scene", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
+    }
+
+    // A nested scene in place of _bundled cannot hold _bundled too, and connections or editables need a node to be on.
+    [Fact]
+    public void RefusesANestedSceneOnASubResourceWithBundled()
+    {
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            SubResources =
+            [
+                new TscnSubResource
+                {
+                    Type = "PackedScene",
+                    Id = "P",
+                    Properties = [new("_bundled", new GodotInt(0))],
+                    Scene = new TscnNestedScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
+                },
+            ],
+            Nodes = [new TscnNode { Name = "R", Type = "Node" }],
+        };
+        Assert.Contains("_bundled", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void RefusesANestedSceneWithNoNodeButConnectionsOrEditables(bool connection)
+    {
+        TscnNestedScene scene = connection
+            ? new TscnNestedScene
+            {
+                Connections =
+                [
+                    new TscnConnection
+                    {
+                        Signal = "s",
+                        From = ".",
+                        To = ".",
+                        Method = "m",
+                    },
+                ],
+            }
+            : new TscnNestedScene { Editables = [new TscnEditable { Path = "A" }] };
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            SubResources =
+            [
+                new TscnSubResource
+                {
+                    Type = "PackedScene",
+                    Id = "P",
+                    Scene = scene,
+                },
+            ],
+            Nodes = [new TscnNode { Name = "R", Type = "Node" }],
+        };
+        Assert.Contains("no node", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
+    }
+
+    // Godot 4.8's own output, saved by Godot 4.8 beta 2 (resource_format_text.cpp:2025-2143, 1721-1866), reads and
+    // writes back to the same bytes.
+    [Fact]
+    public void MetaWritesBackByteIdentical() => AssertWritesBack("meta.tscn");
+
+    [Fact]
+    public void NestedWritesBackByteIdentical() => AssertWritesBack("nested.tscn");
+
+    [Fact]
+    public void NestedOnlyWritesBackByteIdentical() => AssertWritesBack("nested_only.tscn");
+
+    [Fact]
+    public void HolderWritesBackByteIdentical() => AssertWritesBack("holder.tres");
+
+    // 4.8 :2122-2130: an unpacked PackedScene sub-resource has no nodes, and the scene still gets its bare [resource].
+    [Fact]
+    public void EmptyNestedWritesBackByteIdentical() => AssertWritesBack("empty_nested.tscn");
+
     // resource_format_text.cpp:2060: groups.sort_custom<StringName::AlphCompare>, which is str_compare, code point order.
     [Fact]
     public void SortsGroupsByCodePoint()
@@ -278,6 +392,12 @@ public sealed class TscnWriterTests
     [InlineData("naïve", "\"naïve\"")]
     [InlineData("tab\there", "\"tab\there\"")]
     public void QuotesThePropertyNamesGodotQuotes(string name, string encoded) => Assert.Equal(encoded, TscnWriter.EncodePropertyName(name));
+
+    private static void AssertWritesBack(string file)
+    {
+        string text = File.ReadAllText(RepoFiles.PathOf("tests", "fixtures", "tscn48", file));
+        Assert.Equal(text, TscnWriter.Write(TscnReader.Read(text)));
+    }
 
     private static HashSet<string> SubIds(TscnDocument document) => new(document.SubResources.Select(sub => sub.Id), StringComparer.Ordinal);
 }

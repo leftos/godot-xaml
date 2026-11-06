@@ -7,8 +7,9 @@ namespace GodotXaml.Core.Tscn;
 
 /// <summary>
 /// Writes a <see cref="TscnDocument"/> as Godot 4.7.2's text saver lays it out
-/// (scene/resources/resource_format_text.cpp:1759-2159, ResourceFormatSaverTextInstance::save). Sections are written
-/// in model order; attributes the model has no field for follow the known ones.
+/// (scene/resources/resource_format_text.cpp:1759-2159, ResourceFormatSaverTextInstance::save), with Godot 4.8's
+/// scene <c>[resource]</c> and nested scenes where the document holds them (4.8 resource_format_text.cpp:1721-1866,
+/// 2025-2143). Sections are written in model order; attributes the model has no field for follow the known ones.
 /// </summary>
 public static class TscnWriter
 {
@@ -43,12 +44,19 @@ public static class TscnWriter
     }
 
     // The layout has no place for the other kind's sections: a resource file ends at its [resource] (:1920-1921) and a
-    // scene file has no [resource] (:725).
+    // scene file's [resource] holds the PackedScene's own properties (4.8 :2114-2117). Only a PackedScene sub-resource
+    // writes nodes of its own (4.8 :2122-2125).
     private static void CheckKindFields(TscnDocument document)
     {
         bool resource = document.Kind == TscnKind.Resource;
         (string Field, bool Present)[] misplaced = resource
-            ? [("Nodes", !document.Nodes.IsEmpty), ("Connections", !document.Connections.IsEmpty), ("Editables", !document.Editables.IsEmpty)]
+            ?
+            [
+                ("Nodes", !document.Nodes.IsEmpty),
+                ("Connections", !document.Connections.IsEmpty),
+                ("Editables", !document.Editables.IsEmpty),
+                ("SceneProperties", !document.SceneProperties.IsEmpty),
+            ]
             : [("ResourceProperties", !document.ResourceProperties.IsEmpty)];
         foreach ((string field, bool present) in misplaced)
         {
@@ -56,6 +64,36 @@ public static class TscnWriter
             {
                 throw new InvalidOperationException($"A {document.Kind} document cannot hold {field}");
             }
+        }
+
+        if (resource && document.HasSceneResourceSection)
+        {
+            throw new InvalidOperationException("A Resource document cannot hold HasSceneResourceSection");
+        }
+
+        foreach (TscnSubResource sub in document.SubResources)
+        {
+            CheckNestedScene(sub);
+        }
+    }
+
+    // 4.8 :2073-2075, 2122-2125: a nested scene takes _bundled's place, and its connections and editables name its nodes.
+    private static void CheckNestedScene(TscnSubResource sub)
+    {
+        if (sub.Scene is null)
+        {
+            return;
+        }
+
+        string? wrong =
+            sub.Type != "PackedScene" ? $"A sub-resource of type {sub.Type} cannot hold a Scene"
+            : sub.Properties.Any(property => property.Name == "_bundled") ? $"The sub-resource {sub.Id} cannot hold both a Scene and _bundled"
+            : sub.Scene.Nodes.IsEmpty && !(sub.Scene.Connections.IsEmpty && sub.Scene.Editables.IsEmpty)
+                ? $"The sub-resource {sub.Id}'s Scene has connections or editables but no node"
+            : null;
+        if (wrong is not null)
+        {
+            throw new InvalidOperationException(wrong);
         }
     }
 
@@ -85,10 +123,17 @@ public static class TscnWriter
         document
             .SubResources.SelectMany(sub => sub.Properties)
             .Concat(document.ResourceProperties)
-            .Concat(document.Nodes.SelectMany(node => node.Properties))
+            .Concat(document.SceneProperties)
             .Select(property => property.Value)
-            .Concat(document.Nodes.Select(node => node.Instance).OfType<GodotValue>())
-            .Concat(document.Connections.SelectMany(connection => connection.Binds));
+            .Concat(document.SubResources.Select(sub => sub.Scene).OfType<TscnNestedScene>().SelectMany(SceneValues))
+            .Concat(SceneValues(new TscnNestedScene { Nodes = document.Nodes, Connections = document.Connections }));
+
+    private static IEnumerable<GodotValue> SceneValues(TscnNestedScene scene) =>
+        scene
+            .Nodes.SelectMany(node => node.Properties)
+            .Select(property => property.Value)
+            .Concat(scene.Nodes.Select(node => node.Instance).OfType<GodotValue>())
+            .Concat(scene.Connections.SelectMany(connection => connection.Binds));
 
     // :1800-1820.
     private static void WriteHeader(StringBuilder text, TscnDocument document, int format)
@@ -123,7 +168,8 @@ public static class TscnWriter
         }
     }
 
-    // :1923-2004: each sub-resource is followed by a blank line, since the main resource or scene always follows.
+    // :1923-2004: each sub-resource is followed by a blank line, since the main resource or scene always follows. In
+    // 4.8 a PackedScene's own nodes follow its property lines directly (:2122-2125).
     private static void WriteSubResources(Context context, TscnDocument document)
     {
         foreach (TscnSubResource sub in document.SubResources)
@@ -131,26 +177,52 @@ public static class TscnWriter
             context.Text.Append("[sub_resource ").Append(Quoted("type", sub.Type)).Append(' ').Append(Quoted("id", sub.Id));
             context.Text.Append(Extra(sub.Extra)).Append("]\n");
             WriteProperties(context, sub.Properties);
+            if (sub.Scene is not null)
+            {
+                WriteNodes(context, sub.Scene.Nodes, sub.Scene.Connections, sub.Scene.Editables);
+            }
+
             context.Text.Append('\n');
         }
     }
 
-    // :2010-2151.
+    // 4.8 :2114-2117, 2127-2130, 2137-2139: the scene's [resource] is written when it has a property or the document
+    // says it has the section (4.8 writes it for any PackedScene sub-resource), then a blank line, then the main scene.
+    // 4.7.2's layout (:2010-2151) is the case with neither.
     private static void WriteScene(Context context, TscnDocument document)
     {
-        for (int i = 0; i < document.Nodes.Length; i++)
+        if (!document.SceneProperties.IsEmpty || document.HasSceneResourceSection)
         {
-            TscnNode node = document.Nodes[i];
+            context.Text.Append("[resource]\n");
+            WriteProperties(context, document.SceneProperties);
+            context.Text.Append('\n');
+        }
+
+        WriteNodes(context, document.Nodes, document.Connections, document.Editables);
+    }
+
+    // 4.8 :1721-1866 (4.7.2 :2010-2151): the nodes with a blank line between each, then the connections and the
+    // editables, each block after a blank line.
+    private static void WriteNodes(
+        Context context,
+        ImmutableArray<TscnNode> nodes,
+        ImmutableArray<TscnConnection> connections,
+        ImmutableArray<TscnEditable> editables
+    )
+    {
+        for (int i = 0; i < nodes.Length; i++)
+        {
+            TscnNode node = nodes[i];
             context.Text.Append("[node").Append(TscnNodeHeader.Write(node, context.Options)).Append(Extra(node.Extra)).Append("]\n");
             WriteProperties(context, node.Properties);
-            if (i < document.Nodes.Length - 1)
+            if (i < nodes.Length - 1)
             {
                 context.Text.Append('\n');
             }
         }
 
-        WriteBlock(context.Text, document.Connections.Select(connection => TscnNodeHeader.Connection(connection, context.Options)));
-        WriteBlock(context.Text, document.Editables.Select(editable => "[editable " + Escaped("path", editable.Path) + Extra(editable.Extra) + "]"));
+        WriteBlock(context.Text, connections.Select(connection => TscnNodeHeader.Connection(connection, context.Options)));
+        WriteBlock(context.Text, editables.Select(editable => "[editable " + Escaped("path", editable.Path) + Extra(editable.Extra) + "]"));
     }
 
     // :2100-2103, 2146-2149: one blank line before the first line of a block, none between.

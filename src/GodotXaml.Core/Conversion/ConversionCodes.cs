@@ -147,4 +147,10 @@ public static class ConversionCodes
     /// its written property order.
     /// </summary>
     public const string SourceFileUnreadable = "GXC0122";
+
+    /// <summary>
+    /// A .tscn or .tres holds a Godot 4.8 scene <c>[resource]</c> section or embedded scene, and the metadata's Godot
+    /// is older; the conversion fails rather than drop them.
+    /// </summary>
+    public const string NeedsNewerGodot = "GXC0123";
 }

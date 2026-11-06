@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[resource]
+resource_name = "Hello"
+metadata/answer = 42
+
+[node name="Root" type="Node3D" unique_id=231154534]
+
+[node name="Child" type="Node3D" parent="." unique_id=1123585615]

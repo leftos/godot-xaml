@@ -6,10 +6,16 @@ namespace GodotXaml.Core.Tscn;
 /// <summary>Whether a document is a scene (<c>gd_scene</c>, .tscn) or a resource (<c>gd_resource</c>, .tres).</summary>
 public enum TscnKind
 {
-    /// <summary>A <c>[gd_scene]</c> file: nodes, connections and editable paths, no <c>[resource]</c>.</summary>
+    /// <summary>
+    /// A <c>[gd_scene]</c> file: nodes, connections and editable paths. Godot 4.7.2 writes no <c>[resource]</c> in it;
+    /// Godot 4.8 writes one before the first node for the scene's own properties.
+    /// </summary>
     Scene,
 
-    /// <summary>A <c>[gd_resource]</c> file: a <c>[resource]</c> section, no nodes.</summary>
+    /// <summary>
+    /// A <c>[gd_resource]</c> file: a <c>[resource]</c> section and no nodes of its own. In Godot 4.8 a PackedScene
+    /// sub-resource in it may hold nodes of its own.
+    /// </summary>
     Resource,
 }
 
@@ -75,9 +81,31 @@ public sealed record TscnSubResource
 
     /// <summary>Attributes the model has no field for, in source order.</summary>
     public ImmutableArray<TscnField> Extra { get; init; } = [];
+
+    /// <summary>
+    /// The nodes, connections and editables a PackedScene sub-resource holds as its own sections (Godot 4.8 and
+    /// later), or null.
+    /// </summary>
+    public TscnNestedScene? Scene { get; init; }
 }
 
-/// <summary>A <c>[node]</c> of a scene, with every header attribute the 4.7.2 saver writes.</summary>
+/// <summary>
+/// The scene a PackedScene sub-resource holds as its own <c>[node]</c>, <c>[connection]</c> and <c>[editable]</c>
+/// sections in Godot 4.8 (scene/resources/resource_format_text.cpp:2122-2125), in place of 4.7.2's <c>_bundled</c>.
+/// </summary>
+public sealed record TscnNestedScene
+{
+    /// <summary>The <c>[node]</c> sections, in order.</summary>
+    public ImmutableArray<TscnNode> Nodes { get; init; } = [];
+
+    /// <summary>The <c>[connection]</c> sections, in order.</summary>
+    public ImmutableArray<TscnConnection> Connections { get; init; } = [];
+
+    /// <summary>The <c>[editable]</c> sections, in order.</summary>
+    public ImmutableArray<TscnEditable> Editables { get; init; } = [];
+}
+
+/// <summary>A <c>[node]</c> of a scene, with every header attribute the 4.7.2 and 4.8 savers write.</summary>
 public sealed record TscnNode
 {
     /// <summary>The node's name.</summary>
@@ -171,8 +199,9 @@ public sealed record TscnEditable
 }
 
 /// <summary>
-/// A .tscn or .tres file as Godot 4.7.2's text saver writes it (scene/resources/resource_format_text.cpp,
-/// ResourceFormatSaverTextInstance::save): the header and the sections, each in source order.
+/// A .tscn or .tres file as Godot 4.7.2's or 4.8's text saver writes it (scene/resources/resource_format_text.cpp,
+/// ResourceFormatSaverTextInstance::save): the header and the sections, each in source order. A 4.7.2 file leaves
+/// <see cref="SceneProperties"/> and every <see cref="TscnSubResource.Scene"/> empty.
 /// </summary>
 public sealed record TscnDocument
 {
@@ -188,16 +217,28 @@ public sealed record TscnDocument
     /// <summary>The <c>[sub_resource]</c> sections, in order; a sub-resource comes after those it uses.</summary>
     public ImmutableArray<TscnSubResource> SubResources { get; init; } = [];
 
-    /// <summary>The <c>[resource]</c> section's properties; resources only.</summary>
+    /// <summary>The <c>[resource]</c> section's properties in a resource file.</summary>
     public ImmutableArray<TscnProperty> ResourceProperties { get; init; } = [];
 
-    /// <summary>The <c>[node]</c> sections, in order; scenes only.</summary>
+    /// <summary>
+    /// The <c>[resource]</c> section's properties in a scene (Godot 4.8 and later): the PackedScene's own stored
+    /// properties.
+    /// </summary>
+    public ImmutableArray<TscnProperty> SceneProperties { get; init; } = [];
+
+    /// <summary>
+    /// Whether a scene has a <c>[resource]</c> section (Godot 4.8 and later). The reader sets it; the writer writes the
+    /// section when it is set or <see cref="SceneProperties"/> is non-empty.
+    /// </summary>
+    public bool HasSceneResourceSection { get; init; }
+
+    /// <summary>The main scene's <c>[node]</c> sections, in order; scenes only.</summary>
     public ImmutableArray<TscnNode> Nodes { get; init; } = [];
 
-    /// <summary>The <c>[connection]</c> sections, in order; scenes only.</summary>
+    /// <summary>The main scene's <c>[connection]</c> sections, in order; scenes only.</summary>
     public ImmutableArray<TscnConnection> Connections { get; init; } = [];
 
-    /// <summary>The <c>[editable]</c> sections, in order; scenes only.</summary>
+    /// <summary>The main scene's <c>[editable]</c> sections, in order; scenes only.</summary>
     public ImmutableArray<TscnEditable> Editables { get; init; } = [];
 
     /// <summary>

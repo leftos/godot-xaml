@@ -1,0 +1,9 @@
+[gd_resource type="Resource" format=3]
+
+[sub_resource type="PackedScene" id="PackedScene_gqxle"]
+[node name="HeldRoot" type="Node" unique_id=259796557]
+
+[node name="HeldChild" type="Node" parent="." unique_id=1469279655]
+
+[resource]
+metadata/scene = SubResource("PackedScene_gqxle")

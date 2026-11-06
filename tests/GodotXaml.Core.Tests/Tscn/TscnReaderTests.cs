@@ -361,7 +361,7 @@ public sealed class TscnReaderTests
         "missing 'from' field from connection tag"
     )]
     [InlineData("[gd_resource type=\"Resource\" format=3]\n\n[node name=\"R\"]\n", "Unexpected 'node' tag in a resource file")]
-    [InlineData("[gd_scene format=3]\n\n[resource]\n", "Unexpected 'resource' tag in a scene file")]
+    [InlineData("[gd_scene format=3]\n\n[resource]\n", "Scene files need to have at least one node. None was found.")]
     [InlineData("[gd_scene format=3]\n\n[node name=\"R\"\n", "Unexpected EOF while parsing tag 'node'")]
     [InlineData("[gd_scene format=3]\n\n[node name=\"R\"]\na = Vector2(1)\n", "Expected 2 arguments for constructor")]
     public void RejectsWhatGodotsLoaderRejects(string text, string reason) =>
@@ -391,5 +391,143 @@ public sealed class TscnReaderTests
         Assert.Throws<TscnParseException>(() => TscnReader.Read(Text));
     }
 
+    // Godot 4.8 (resource_format_text.cpp:2114-2117, 2137-2139): the scene's own properties in a [resource] section
+    // before the first node.
+    [Fact]
+    public void ReadsMeta()
+    {
+        TscnDocument document = Fixture48("meta.tscn");
+
+        Assert.Equal(TscnKind.Scene, document.Kind);
+        Assert.Empty(document.SubResources);
+        Assert.True(document.HasSceneResourceSection);
+        Assert.Equal(
+            [new TscnProperty("resource_name", new GodotString("Hello")), new TscnProperty("metadata/answer", new GodotInt(42))],
+            document.SceneProperties
+        );
+        Assert.Equal(["Root", "Child"], document.Nodes.Select(node => node.Name));
+    }
+
+    // Godot 4.8 (resource_format_text.cpp:674-681, 402-404, 2122-2125): a PackedScene sub-resource's nodes and
+    // connection follow its header, ended by the next sub-resource; the scene's [resource] refers to both.
+    [Fact]
+    public void ReadsNested()
+    {
+        TscnDocument document = Fixture48("nested.tscn");
+
+        Assert.Equal(["PackedScene", "Resource"], document.SubResources.Select(sub => sub.Type));
+        TscnSubResource packed = document.SubResources[0];
+        Assert.Empty(packed.Properties);
+        AssertInnerScene(packed.Scene);
+        Assert.Null(document.SubResources[1].Scene);
+        Assert.Equal([new TscnProperty("resource_name", new GodotString("Other"))], document.SubResources[1].Properties);
+        Assert.Equal(
+            [
+                new TscnProperty("metadata/inner", new GodotResourceRef(GodotRefKind.Sub, packed.Id)),
+                new TscnProperty("metadata/other", new GodotResourceRef(GodotRefKind.Sub, document.SubResources[1].Id)),
+            ],
+            document.SceneProperties
+        );
+        Assert.Equal(["Root", "Child"], document.Nodes.Select(node => node.Name));
+        Assert.Empty(document.Connections);
+    }
+
+    // Godot 4.8 (resource_format_text.cpp:2127-2130): a scene with a nested scene and no property of its own gets an
+    // empty [resource] section.
+    [Fact]
+    public void ReadsNestedOnly()
+    {
+        TscnDocument document = Fixture48("nested_only.tscn");
+
+        TscnSubResource packed = Assert.Single(document.SubResources);
+        AssertInnerScene(packed.Scene);
+        Assert.Empty(document.SceneProperties);
+        Assert.Equal(["Root", "Child"], document.Nodes.Select(node => node.Name));
+        Assert.Equal(
+            new TscnProperty("metadata/inner", new GodotResourceRef(GodotRefKind.Sub, packed.Id)),
+            Assert.Single(document.Nodes[0].Properties)
+        );
+    }
+
+    // Godot 4.8 (resource_format_text.cpp:674-681, 402-404): a .tres's PackedScene sub-resource holds its nodes too.
+    [Fact]
+    public void ReadsHolder()
+    {
+        TscnDocument document = Fixture48("holder.tres");
+
+        Assert.Equal(TscnKind.Resource, document.Kind);
+        TscnSubResource packed = Assert.Single(document.SubResources);
+        Assert.NotNull(packed.Scene);
+        Assert.Equal(["HeldRoot", "HeldChild"], packed.Scene.Nodes.Select(node => node.Name));
+        Assert.Empty(packed.Scene.Connections);
+        Assert.Empty(document.Nodes);
+        Assert.Equal(
+            new TscnProperty("metadata/scene", new GodotResourceRef(GodotRefKind.Sub, packed.Id)),
+            Assert.Single(document.ResourceProperties)
+        );
+    }
+
+    // Godot 4.8 resource_format_text.cpp:758-764: a scene that ends inside its [resource] has no node.
+    [Fact]
+    public void RejectsASceneThatEndsInsideItsResource() =>
+        Assert.Equal(
+            "Scene files need to have at least one node. None was found.",
+            Assert.Throws<TscnParseException>(() => TscnReader.Read("[gd_scene format=3]\n\n[resource]\nmetadata/a = 1\n")).Reason
+        );
+
+    // Godot 4.8 resource_format_text.cpp:402-408: the main scene is not nested, so a sub-resource or a [resource]
+    // after its first node is unknown.
+    [Theory]
+    [InlineData("[sub_resource type=\"Resource\" id=\"R_1\"]", "Unknown tag 'sub_resource' in file")]
+    [InlineData("[resource]", "Unknown tag 'resource' in file")]
+    public void RejectsAResourceSectionAfterTheMainScenesFirstNode(string tag, string reason) =>
+        Assert.Equal(
+            reason,
+            Assert.Throws<TscnParseException>(() => TscnReader.Read($"[gd_scene format=3]\n\n[node name=\"R\" type=\"Node\"]\n\n{tag}\n")).Reason
+        );
+
+    // Godot 4.8's loader (resource_format_text.cpp:674-681) would read the node into the sub-resource; the reader
+    // keeps it in the main scene, since a PackedScene with _bundled was saved by 4.7 and holds no nested sections.
+    [Fact]
+    public void AFourSevenSceneWhoseLastSubResourceIsABundledPackedSceneKeepsItsMainNodes()
+    {
+        TscnDocument document = TscnReader.Read(
+            "[gd_scene format=3]\n\n[sub_resource type=\"PackedScene\" id=\"P\"]\n_bundled = {\n\"names\": PackedStringArray()\n}\n\n"
+                + "[node name=\"Root\" type=\"Node\"]\n"
+        );
+
+        Assert.Equal("Root", Assert.Single(document.Nodes).Name);
+        Assert.Null(Assert.Single(document.SubResources).Scene);
+    }
+
+    // Godot 4.7.2 (resource_format_text.cpp:1986-1988) skips a property equal to its default, so an unpacked PackedScene
+    // has no _bundled; a 4.8 save always ends a nested scene with [sub_resource] or [resource] (4.8 :2122-2134), so a
+    // nested scene still open at the end of a scene with no main node is the main scene.
+    [Fact]
+    public void AFourSevenSceneWhoseLastSubResourceIsAnEmptyPackedSceneKeepsItsMainNodes()
+    {
+        TscnDocument document = TscnReader.Read(
+            "[gd_scene format=3]\n\n[sub_resource type=\"PackedScene\" id=\"P\"]\n\n"
+                + "[node name=\"Root\" type=\"Node\"]\nmetadata/s = SubResource(\"P\")\n"
+        );
+
+        TscnNode root = Assert.Single(document.Nodes);
+        Assert.Equal("Root", root.Name);
+        Assert.Equal(new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.Sub, "P")), Assert.Single(root.Properties));
+        Assert.Null(Assert.Single(document.SubResources).Scene);
+        Assert.False(document.HasSceneResourceSection);
+    }
+
+    private static void AssertInnerScene(TscnNestedScene? scene)
+    {
+        Assert.NotNull(scene);
+        Assert.Equal(["InnerRoot", "InnerChild"], scene.Nodes.Select(node => node.Name));
+        TscnConnection connection = Assert.Single(scene.Connections);
+        Assert.Equal(("visibility_changed", "InnerChild", ".", "show"), (connection.Signal, connection.From, connection.To, connection.Method));
+        Assert.Empty(scene.Editables);
+    }
+
     private static TscnDocument Fixture(string file) => TscnReader.Read(File.ReadAllText(RepoFiles.PathOf("tests", "fixtures", "scenes", file)));
+
+    private static TscnDocument Fixture48(string file) => TscnReader.Read(File.ReadAllText(RepoFiles.PathOf("tests", "fixtures", "tscn48", file)));
 }

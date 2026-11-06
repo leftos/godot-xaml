@@ -348,6 +348,10 @@ A `Resource("…")` value in a referenced `.tscn` or `.tres`, or inside an `Obje
 
 Warning. `The file "res://s.gdshader" could not be read (not found), so this section keeps its written property order.` An external `.gdshader` or mesh file that a by-source family is ordered by could not be read: `not found` when the host cannot give it, or `line L, column C: <reason>` when a mesh file does not parse. Reported once per file and reason, at the first section that meets it, which keeps its written property order rather than Godot's. Silent with no lookup or no source key, for a shader only the preprocessor could read, and for a file that is not an ArrayMesh or holds no blend shape names.
 
+### GXC0123 Needs a newer Godot
+
+Error. `this file holds a Godot 4.8 scene [resource] section or embedded scene, which Godot 4.7 cannot load` A `.tscn` or `.tres` saved by Godot 4.8 holds a scene's own properties in a `[resource]` section before its first node, or a PackedScene sub-resource with nodes of its own, and the conversion targets an older Godot, whose loader reads neither. The file is not converted, so nothing in it is dropped. Convert it for Godot 4.8 or later, or save the scene again in the older Godot.
+
 ## Project conversion: `GXP`
 
 Reported by `godot-xaml convert`; the [CLI reference](../../src/GodotXaml.Cli/README.md#convert) has every message.

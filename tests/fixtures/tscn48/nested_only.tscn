@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[sub_resource type="PackedScene" id="PackedScene_b87l8"]
+[node name="InnerRoot" type="Node2D" unique_id=23839150]
+
+[node name="InnerChild" type="Node2D" parent="." unique_id=942736347]
+
+[connection signal="visibility_changed" from="InnerChild" to="." method="show"]
+
+[resource]
+
+[node name="Root" type="Node" unique_id=595088318]
+metadata/inner = SubResource("PackedScene_b87l8")
+
+[node name="Child" type="Node" parent="." unique_id=2089714081]

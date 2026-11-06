@@ -286,6 +286,22 @@ public sealed partial class SceneForwardTests
         Assert.Empty(later.Children);
     }
 
+    // A Godot 4.8 scene [resource] or embedded scene has no place in a conversion for an older Godot, so it fails
+    // rather than dropping them.
+    [Theory]
+    [InlineData("nested.tscn")]
+    [InlineData("meta.tscn")]
+    public void AFourEightSceneUnderFourSevenMetadataNeedsANewerGodot(string file)
+    {
+        ConversionResult<XscnDocument> result = ConvertWithIssues(
+            File.ReadAllText(GodotXaml.Core.Tests.Values.RepoFiles.PathOf("tests", "fixtures", "tscn48", file))
+        );
+
+        ConversionIssue issue = Assert.Single(result.Issues);
+        Assert.Equal(ConversionCodes.NeedsNewerGodot, issue.Code);
+        Assert.Equal("this file holds a Godot 4.8 scene [resource] section or embedded scene, which Godot 4.7 cannot load", issue.Message);
+    }
+
     // Converts a scene whose issues are all Errors; returns the result for the codes and what was kept.
     private static ConversionResult<XscnDocument> ConvertWithIssues(string text) => ConvertWithIssues(TscnReader.Read(text));
 
