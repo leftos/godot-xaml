@@ -32,7 +32,7 @@ public sealed class FormattingTests
     {
         string input = File.ReadAllText(Path.Combine(FormatFolder, name + ".in.xscn"));
         string expected = File.ReadAllText(Path.Combine(FormatFolder, name + ".out.xscn"));
-        await using ServerHarness server = new();
+        await using ServerHarness server = new(MetadataSeams.Pinned47);
         await server.InitializeAsync();
         string uri = FileUri(Path.Combine(FormatFolder, name + ".in.xscn"));
         await server.OpenAsync(uri, 1, input);

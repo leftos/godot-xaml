@@ -32,11 +32,12 @@ public sealed record ConversionOptions
     public ConversionIds? KeepIds { get; init; }
 
     /// <summary>
-    /// The <c>.xscn</c> or <c>.xres</c> a forward conversion replaces: its <c>x:Resources</c> entries pair with the
-    /// sub-resources by the id <see cref="Seed"/> mints first, then by name or properties, and the keys of the pairs are
-    /// kept; its comments are carried onto the parts of the new document that match it; null converts from scratch.
+    /// The <c>.xscn</c> or <c>.xres</c> a forward conversion replaces, with the metadata it was read with: its
+    /// <c>x:Resources</c> entries pair with the sub-resources by the id <see cref="Seed"/> mints first with that metadata,
+    /// then by name or properties, and the keys of the pairs are kept; its comments are carried onto the parts of the new
+    /// document that match it; null converts from scratch.
     /// </summary>
-    public XscnDocument? Previous { get; init; }
+    public PreviousDocument? Previous { get; init; }
 
     /// <summary>
     /// The sub_resources the file being saved owns, for a forward conversion with <see cref="Previous"/>: each one's id in

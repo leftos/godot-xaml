@@ -39,6 +39,46 @@ public sealed class StableKeyTests
         AssertKeys(forward, "Panel");
     }
 
+    // An editor running an older Godot saves over a file a newer one wrote: the file's ids were minted with the metadata
+    // it was read with, which knows its newer classes, so its entries pair by those ids rather than failing on a class the
+    // running metadata lacks.
+    [Fact]
+    public void APreviousFileReadWithNewerMetadataPairsItsEntriesWithThatMetadata()
+    {
+        var newer = GodotMetadata.LoadBundled("4.8");
+        const string previousText = """
+            <Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.8" Name="Root">
+              <x:Resources>
+                <StyleBoxFlat x:Key="Kept" BgColor="1, 0, 0, 1" />
+              </x:Resources>
+              <Line3D Name="Line" />
+              <Panel Name="A" ThemeOverrideStyles.panel="{Kept}" />
+              <Panel Name="B" ThemeOverrideStyles.panel="{Kept}" />
+            </Node>
+            """;
+        XscnParseResult parsed = XscnParser.Parse(previousText, XscnDocumentKind.Scene, newer);
+        Assert.Empty(parsed.Diagnostics);
+        ConversionResult<TscnDocument> saved = XscnToTscn.Convert(parsed.Document, newer, Options);
+        Assert.Empty(saved.Issues);
+        // The save being converted holds the entry's sub_resource; the Line3D, which the older metadata would warn about,
+        // is left out of it, so only the previous file holds a class the older metadata lacks.
+        TscnDocument withoutLine = saved.Document with
+        {
+            Nodes = [.. saved.Document.Nodes.Where(node => node.Type != "Line3D")],
+        };
+
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(
+            withoutLine,
+            Metadata,
+            Options with
+            {
+                Previous = new PreviousDocument(parsed.Document, newer),
+            }
+        );
+
+        AssertKeys(forward, "Kept");
+    }
+
     [Fact]
     public void TheSameResourceNameKeepsItsKey()
     {
@@ -416,7 +456,15 @@ public sealed class StableKeyTests
     private static ConversionResult<XscnDocument> Forward(string text, XscnDocument? previous) => Forward(text, previous, owned: null);
 
     private static ConversionResult<XscnDocument> Forward(string text, XscnDocument? previous, IReadOnlyDictionary<string, string>? owned) =>
-        TscnToXscn.Convert(TscnReader.Read(text), Metadata, Options with { Previous = previous, OwnedSubResourceIds = owned });
+        TscnToXscn.Convert(
+            TscnReader.Read(text),
+            Metadata,
+            Options with
+            {
+                Previous = previous is null ? null : new PreviousDocument(previous, Metadata),
+                OwnedSubResourceIds = owned,
+            }
+        );
 
     private static void AssertKeys(ConversionResult<XscnDocument> forward, params string[] keys)
     {

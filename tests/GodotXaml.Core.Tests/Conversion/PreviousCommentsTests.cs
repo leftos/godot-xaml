@@ -870,7 +870,7 @@ public sealed class PreviousCommentsTests
     {
         XscnParseResult parsed = XscnParser.Parse(previousText, kind, Metadata);
         Assert.False(parsed.HasErrors);
-        return TscnToXscn.Convert(TscnReader.Read(tscnText), Metadata, Options with { Previous = parsed.Document });
+        return TscnToXscn.Convert(TscnReader.Read(tscnText), Metadata, Options with { Previous = new PreviousDocument(parsed.Document, Metadata) });
     }
 
     // The one warning a save reports for a comment it could not carry.

@@ -138,6 +138,18 @@ public partial class Checks : Node
         + "  <Label Name=\"Label\" Text=\"hi\" />\n"
         + "</Control>\n";
 
+    // C152's scene: a 4.8 file with a class 4.7 lacks, a keyed entry and a comment.
+    private const string NewerScene =
+        "<Node xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" x:Godot=\"4.8\" Name=\"Root\">\n"
+        + "  <x:Resources>\n"
+        + "    <StyleBoxFlat x:Key=\"Kept\" BgColor=\"1, 0, 0, 1\" />\n"
+        + "  </x:Resources>\n"
+        + "  <!-- a 4.8 line -->\n"
+        + "  <Line3D Name=\"Line\" />\n"
+        + "  <Panel Name=\"P1\" ThemeOverrideStyles.panel=\"{Kept}\" />\n"
+        + "  <Panel Name=\"P2\" ThemeOverrideStyles.panel=\"{Kept}\" />\n"
+        + "</Node>\n";
+
     // C64's scene: the same warning beside a parse error, a node without a Name (GX0104).
     private const string FailedParseScene =
         "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
@@ -285,10 +297,18 @@ public partial class Checks : Node
             ("C26", SavingOverUnparsableTextWritesAParsableFile),
             ("C27", SaveToAMissingFolderWritesNothing),
             ("C144", SaveOfARefusedDocumentPushesTheErrorAndWritesNothing),
-            // Each file is read and written with the metadata its x:Godot marker names, when the addon carries it (GXAML-238).
+            // Each file is read with the metadata its x:Godot marker names when the addon carries it, and written with the
+            // running engine's.
             ("C145", AFileMarkedWithAnUncarriedVersionLoadsWithAWarning),
             ("C146", TheSaveRouteRefusesAFileMarkedWithAnUncarriedVersion),
-            ("C147", TheSaveRouteKeepsACarriedMarker),
+            // A save writes with the running engine's version, an unmarked file reads with it, an uncarried running version
+            // falls back to the newest carried, and a rename keeps the file's own version.
+            ("C147", TheSaveRouteWritesWithTheRunningVersion),
+            ("C148", AnUnmarkedFileReadsWithTheRunningVersion),
+            ("C149", AnUncarriedRunningVersionFallsBackToTheNewestWithOneWarning),
+            ("C150", TheRunningVersionIsTheEngines),
+            ("C151", ARenameKeepsTheFilesOwnVersion),
+            ("C152", ASaveInAnOlderEditorRestampsWithItsVersion),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -5281,8 +5301,9 @@ public partial class Checks : Node
         return string.Join("; ", failures);
     }
 
-    // A file whose marker names a version the addon does not carry loads with the newest version it carries, and the first
-    // such load warns, naming the file and both versions; a second load of the same marker does not warn again.
+    // A file whose marker names a version the addon does not carry loads with the running engine's version (pinned to 4.7
+    // here, so the check proves the rule under either engine), and the first such load warns, naming the file, the marker
+    // and the version used; a second load of the same marker does not warn again.
     private static string AFileMarkedWithAnUncarriedVersionLoadsWithAWarning()
     {
         const string path = OutFolder + "uncarried.xscn";
@@ -5291,6 +5312,7 @@ public partial class Checks : Node
         int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
         var log = new WarningLog();
         OS.AddLogger(log);
+        XscnMetadata.RunningVersion = () => "4.7";
         try
         {
             File.WriteAllText(ProjectSettings.GlobalizePath(path), UncarriedScene);
@@ -5306,7 +5328,7 @@ public partial class Checks : Node
                 GC.KeepAlive(loaded);
             }
 
-            string warning = XscnMarker.NotCarried(UncarriedMarker, XscnMetadata.Value.Version);
+            string warning = XscnMarker.NotCarried(UncarriedMarker, "4.7");
             int warnings = log.Entries.Count(entry =>
                 entry.Type == Logger.ErrorType.Warning
                 && entry.Text.Contains("uncarried.xscn", StringComparison.Ordinal)
@@ -5321,14 +5343,16 @@ public partial class Checks : Node
         }
         finally
         {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
             OS.RemoveLogger(log);
             DeleteKeptTempFiles(tempPathsBeforeLoad);
             DeleteFolder(OutFolder);
         }
     }
 
-    // A save over a file whose marker names a version the addon does not carry would restamp it with the version it has, so
-    // the save is refused: InvalidData, the refusal naming both versions pushed once, and the file's bytes left as they were.
+    // A save over a file whose marker names a version the addon does not carry would restamp it with the running engine's
+    // version (pinned to 4.7 here, so the check proves the rule under either engine), so the save is refused: InvalidData,
+    // the refusal naming the marker and that version pushed once, and the file's bytes left as they were.
     private static string TheSaveRouteRefusesAFileMarkedWithAnUncarriedVersion()
     {
         const string sourcePath = CasesPath + "scene.xscn";
@@ -5342,53 +5366,220 @@ public partial class Checks : Node
         string target = ProjectSettings.GlobalizePath(savedPath);
         File.WriteAllText(target, UncarriedScene);
         byte[] before = File.ReadAllBytes(target);
-        (Error error, WarningLog log) = SaveLogged(scene, savedPath);
-        var failures = new List<string>();
-        if (error != Error.InvalidData)
+        XscnMetadata.RunningVersion = () => "4.7";
+        try
         {
-            failures.Add($"ResourceSaver.Save({savedPath}) returned {error}, not InvalidData");
-        }
+            (Error error, WarningLog log) = SaveLogged(scene, savedPath);
+            var failures = new List<string>();
+            if (error != Error.InvalidData)
+            {
+                failures.Add($"ResourceSaver.Save({savedPath}) returned {error}, not InvalidData");
+            }
 
-        string refusal = XscnMarker.NotWritten(UncarriedMarker, XscnMetadata.Value.Version);
-        int refusals = log.Entries.Count(entry =>
-            entry.Type == Logger.ErrorType.Error
-            && entry.Text.Contains("uncarried.xscn", StringComparison.Ordinal)
-            && entry.Text.Contains(refusal, StringComparison.Ordinal)
-        );
-        if (refusals != 1)
+            string refusal = XscnMarker.NotWritten(UncarriedMarker, "4.7");
+            int refusals = log.Entries.Count(entry =>
+                entry.Type == Logger.ErrorType.Error
+                && entry.Text.Contains("uncarried.xscn", StringComparison.Ordinal)
+                && entry.Text.Contains(refusal, StringComparison.Ordinal)
+            );
+            if (refusals != 1)
+            {
+                failures.Add($"the log holds {refusals} Error entries naming the path and \"{refusal}\", not one: [{LogText(log.Entries)}]");
+            }
+
+            if (!File.ReadAllBytes(target).AsSpan().SequenceEqual(before))
+            {
+                failures.Add($"{savedPath} changed");
+            }
+
+            string[] staging = Directory.GetFiles(ProjectSettings.GlobalizePath(SavesFolder), "*.tmp");
+            if (staging.Length > 0)
+            {
+                failures.Add($"staging files left in {SavesFolder}: [{string.Join(", ", staging)}]");
+            }
+
+            return string.Join("; ", failures);
+        }
+        finally
         {
-            failures.Add($"the log holds {refusals} Error entries naming the path and \"{refusal}\", not one: [{LogText(log.Entries)}]");
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
         }
-
-        if (!File.ReadAllBytes(target).AsSpan().SequenceEqual(before))
-        {
-            failures.Add($"{savedPath} changed");
-        }
-
-        string[] staging = Directory.GetFiles(ProjectSettings.GlobalizePath(SavesFolder), "*.tmp");
-        if (staging.Length > 0)
-        {
-            failures.Add($"staging files left in {SavesFolder}: [{string.Join(", ", staging)}]");
-        }
-
-        return string.Join("; ", failures);
     }
 
-    // A save over a file whose marker names a version the addon carries writes it with that version's metadata, so the
-    // marker stays.
-    private static string TheSaveRouteKeepsACarriedMarker()
+    // A save over a file whose marker names a version the addon carries writes it with the running engine's metadata and
+    // stamps that version, as Godot resaves a .tscn in its own version: a 4.7 file saved under 4.8 becomes a 4.8 file.
+    private static string TheSaveRouteWritesWithTheRunningVersion() =>
+        string.Join("; ", PinnedVersions.Select(running => SavedOverFailure(CarriedScene, "carried.xscn", running)).Where(f => f.Length > 0));
+
+    // A save in an older editor over a file marked with a newer version, which uses a class only the newer version has,
+    // succeeds and stamps the older version: the file being replaced is read with the newer metadata its marker names, so
+    // its class does not make the save throw.
+    private static string ASaveInAnOlderEditorRestampsWithItsVersion()
     {
         const string sourcePath = CasesPath + "scene.xscn";
-        const string savedPath = SavesFolder + "carried.xscn";
+        const string savedPath = SavesFolder + "newer.xscn";
         if (ResourceLoader.Load(sourcePath) is not PackedScene scene)
         {
             return $"loading {sourcePath} did not return a PackedScene";
         }
 
         Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
-        File.WriteAllText(ProjectSettings.GlobalizePath(savedPath), CarriedScene);
-        string text = Encoding.UTF8.GetString(SaveAndRead(scene, savedPath));
-        return text.Contains("x:Godot=\"4.7\"", StringComparison.Ordinal) ? "" : $"{savedPath} was written without x:Godot=\"4.7\": {text}";
+        string target = ProjectSettings.GlobalizePath(savedPath);
+        File.WriteAllText(target, NewerScene);
+        XscnMetadata.RunningVersion = () => "4.7";
+        try
+        {
+            (Error error, WarningLog log) = SaveLogged(scene, savedPath);
+            if (error != Error.Ok)
+            {
+                return $"ResourceSaver.Save({savedPath}) returned {error}, not Ok: [{LogText(log.Entries)}]";
+            }
+
+            string text = File.ReadAllText(target);
+            return text.Contains("x:Godot=\"4.7\"", StringComparison.Ordinal) ? "" : $"{savedPath} was written without x:Godot=\"4.7\": {text}";
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+        }
+    }
+
+    // The running versions C147 and C148 pin, both carried.
+    private static readonly string[] PinnedVersions = ["4.7", "4.8"];
+
+    // An unmarked file reads with the running engine's version, and a save over it stamps that version.
+    private static string AnUnmarkedFileReadsWithTheRunningVersion()
+    {
+        var failures = new List<string>();
+        foreach (string running in PinnedVersions)
+        {
+            XscnMetadata.RunningVersion = () => running;
+            try
+            {
+                string version = XscnMetadata.For(null).Version;
+                if (version != running)
+                {
+                    failures.Add($"with the running version {running}, an unmarked file reads with {version}");
+                }
+            }
+            finally
+            {
+                XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+            }
+
+            failures.Add(SavedOverFailure(CleanScene, "unmarked.xscn", running));
+        }
+
+        return string.Join("; ", failures.Where(f => f.Length > 0));
+    }
+
+    // A running version the addon does not carry reads with the newest it carries, and only the first use warns.
+    private static string AnUncarriedRunningVersionFallsBackToTheNewestWithOneWarning()
+    {
+        string newest = GodotMetadata.NewestVersion(GodotMetadata.BundledVersions);
+        var log = new WarningLog();
+        OS.AddLogger(log);
+        XscnMetadata.RunningVersion = () => "4.99";
+        try
+        {
+            var failures = new List<string>();
+            for (int use = 1; use <= 2; use++)
+            {
+                string version = XscnMetadata.For(null).Version;
+                if (version != newest)
+                {
+                    failures.Add($"use {use} of an unmarked file under Godot 4.99 read with {version}, not {newest}");
+                }
+            }
+
+            string warning = "Godot 4.99 has no bundled metadata; using " + newest;
+            int warnings = log.Entries.Count(entry =>
+                entry.Type == Logger.ErrorType.Warning && entry.Text.Contains(warning, StringComparison.Ordinal)
+            );
+            if (warnings != 1)
+            {
+                failures.Add($"two uses logged {warnings} Warning entries holding \"{warning}\", not one: [{LogText(log.Entries)}]");
+            }
+
+            return string.Join("; ", failures);
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+            OS.RemoveLogger(log);
+        }
+    }
+
+    // The seam's default asks the engine: its version info's major and minor, as Engine.GetVersionInfo() gives them.
+    private static string TheRunningVersionIsTheEngines()
+    {
+        using Godot.Collections.Dictionary info = Engine.GetVersionInfo();
+        using Variant major = info["major"];
+        using Variant minor = info["minor"];
+        string expected = $"{major.AsInt32()}.{minor.AsInt32()}";
+        string running = XscnMetadata.RunningVersion();
+        return running == expected ? "" : $"the running version is {running}, the engine's {expected}";
+    }
+
+    // A rename rewrites a file's paths and keeps its marker's version, whatever the running engine's.
+    private static string ARenameKeepsTheFilesOwnVersion()
+    {
+        const string outPath = OutFolder + "marked_holder.xscn";
+        const string movedPath = CasesPath + "moved.xres";
+        DeleteFolder(OutFolder);
+        XscnMetadata.RunningVersion = () => "4.8";
+        try
+        {
+            string outFile = ProjectSettings.GlobalizePath(outPath);
+            Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+            string holder = File.ReadAllText(ProjectSettings.GlobalizePath(HolderPath));
+            File.WriteAllText(outFile, holder.Replace("Name=\"Holder\"", "x:Godot=\"4.7\" Name=\"Holder\"", StringComparison.Ordinal));
+            using var loader = new XscnFormatLoader();
+            Error error = loader._RenameDependencies(outPath, new Godot.Collections.Dictionary { [ThemePath] = movedPath });
+            if (error != Error.Ok)
+            {
+                return $"_RenameDependencies({outPath}) returned {error}";
+            }
+
+            string renamed = File.ReadAllText(outFile);
+            string[] failures =
+            [
+                renamed.Contains(movedPath, StringComparison.Ordinal) ? "" : $"the renamed file does not name {movedPath}",
+                renamed.Contains("x:Godot=\"4.7\"", StringComparison.Ordinal) ? "" : "the renamed file lost x:Godot=\"4.7\"",
+            ];
+            return string.Join("; ", failures.Where(f => f.Length > 0)) + (failures.Any(f => f.Length > 0) ? $":\n{renamed}" : "");
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // Writes the text to a file under SavesFolder, saves res://checks/cases/scene.xscn over it with the running version
+    // pinned, and checks the saved text's marker names that version; the failure, or "".
+    private static string SavedOverFailure(string previousText, string file, string running)
+    {
+        const string sourcePath = CasesPath + "scene.xscn";
+        string savedPath = SavesFolder + file;
+        if (ResourceLoader.Load(sourcePath) is not PackedScene scene)
+        {
+            return $"loading {sourcePath} did not return a PackedScene";
+        }
+
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(SavesFolder));
+        File.WriteAllText(ProjectSettings.GlobalizePath(savedPath), previousText);
+        XscnMetadata.RunningVersion = () => running;
+        try
+        {
+            string text = Encoding.UTF8.GetString(SaveAndRead(scene, savedPath));
+            string marker = $"x:Godot=\"{running}\"";
+            return text.Contains(marker, StringComparison.Ordinal) ? "" : $"{savedPath} saved under {running} was written without {marker}: {text}";
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+        }
     }
 
     // Saves the resource, then parses the saved file; the failure, or "" with the parsed document.

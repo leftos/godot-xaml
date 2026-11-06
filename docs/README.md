@@ -8,6 +8,7 @@
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): the components, what each owns, and where to start for a change.
 - [`DEVELOPMENT.md`](DEVELOPMENT.md): the toolchain, the `run.ps1` verbs, the hooks, the Godot-side harnesses and regenerating the metadata file.
 - [`DECISIONS.md`](DECISIONS.md): the owner's decisions and the Godot source facts behind them.
+- [`research/2026-11-06-godot-4.8-beta2-metadata.md`](research/2026-11-06-godot-4.8-beta2-metadata.md): the Godot 4.8 beta 2 metadata and hover docs, what changed from 4.7.
 - [`plans/v1-design.md`](plans/v1-design.md): version 1's components, order of work and open questions.
 - [`plans/MAIN.md`](plans/MAIN.md): a snapshot of the Linear plan (team GXAML), generated, never edited by hand.
 
@@ -60,7 +61,7 @@
 - **Notarisation**: Apple's scan of a signed macOS executable, which leaves a ticket Gatekeeper finds online; a bare executable cannot be stapled, so a Mac's first launch of the language server checks it online (`tools/sign-macos.ps1 -Step Notarise`).
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
 - **Preview server**: the listener in the open Godot editor's addon that renders the `.xscn` text a client sends and returns an image and each node's rectangle; off unless `godot_xaml/preview_server/enabled` is set.
-- **Previous document**: the file a save replaces, parsed before the save (`ConversionOptions.Previous`); its keys and comments carry onto the new document.
+- **Previous document**: the file a save replaces, parsed before the save (`ConversionOptions.Previous`, a `PreviousDocument` of the document and the metadata its own marker names); its keys and comments carry onto the new document, paired with that metadata.
 - **Project comparison**: `godot/compare-project.ps1`, which dumps every scene and resource of a whole Godot project as Godot loads it into a stage and diffs two stages; the trial of the round trip on a real project.
 - **Project root**: the folder holding the nearest `project.godot` above a file; `res://` paths are relative to it, and `convert` rewrites references only within one project root (`ProjectRoot`).
 - **Property element**: an element named `<Owner.Property>` that holds one inline resource as a property's value (`<Button.Theme><Theme … /></Button.Theme>`), where `Owner` is the parent element's own tag.

@@ -169,7 +169,7 @@ public sealed class CompletionTests
     [Fact]
     public async Task TheRootsChildrenTakeTheTablesAndTheNodesFormatElements()
     {
-        JsonElement result = await CompleteAsync(Root("<x:|"));
+        JsonElement result = await CompleteAsync(Root("<x:|"), seams: MetadataSeams.Pinned47);
 
         Assert.Equal(["x:Connect", "x:Instance", "x:Override", "x:Prop", "x:Resources", "x:Uids"], StartingWith(Labels(result), "x:"));
         Assert.Equal(14, Item(result, "x:Resources").GetProperty("kind").GetInt32());
@@ -281,7 +281,7 @@ public sealed class CompletionTests
     {
         string source = Root("<Control SizeFlagsHorizontal=\"Expand, |\" />");
 
-        JsonElement result = await CompleteAsync(source);
+        JsonElement result = await CompleteAsync(source, seams: MetadataSeams.Pinned47);
 
         Assert.Equal(["ExpandFill", "Fill", "ShrinkBegin", "ShrinkCenter", "ShrinkEnd"], Labels(result));
         Assert.Equal(20, Item(result, "Fill").GetProperty("kind").GetInt32());
@@ -293,7 +293,7 @@ public sealed class CompletionTests
     {
         string source = Root("<Control SizeFlagsHorizontal=\"Exp|and\" />");
 
-        JsonElement result = await CompleteAsync(source);
+        JsonElement result = await CompleteAsync(source, seams: MetadataSeams.Pinned47);
 
         Assert.Equal(["Expand", "ExpandFill", "Fill", "ShrinkBegin", "ShrinkCenter", "ShrinkEnd"], Labels(result));
         AssertEveryEdit(result, WholeValue(source));
@@ -390,7 +390,10 @@ public sealed class CompletionTests
     [Fact]
     public async Task AFlagsValueAtTheEndOfTheDocumentOffersItsMembers()
     {
-        JsonElement result = await CompleteAsync($"<Control xmlns:x=\"{FormatNamespace}\" Name=\"Root\">\n  <Control SizeFlagsHorizontal=\"|");
+        JsonElement result = await CompleteAsync(
+            $"<Control xmlns:x=\"{FormatNamespace}\" Name=\"Root\">\n  <Control SizeFlagsHorizontal=\"|",
+            seams: MetadataSeams.Pinned47
+        );
 
         Assert.Equal(["Expand", "ExpandFill", "Fill", "ShrinkBegin", "ShrinkCenter", "ShrinkEnd"], Labels(result));
     }
@@ -658,7 +661,11 @@ public sealed class CompletionTests
     [Fact]
     public async Task ASpaceInAFlagsValueStillOffersFlags()
     {
-        JsonElement result = await CompleteAsync(Root("<Control SizeFlagsHorizontal=\"Expand |\" />"), trigger: new CompletionContext(2, " "));
+        JsonElement result = await CompleteAsync(
+            Root("<Control SizeFlagsHorizontal=\"Expand |\" />"),
+            trigger: new CompletionContext(2, " "),
+            seams: MetadataSeams.Pinned47
+        );
 
         Assert.Equal(["ExpandFill", "Fill", "ShrinkBegin", "ShrinkCenter", "ShrinkEnd"], Labels(result));
     }

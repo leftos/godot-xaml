@@ -5,10 +5,12 @@
 ### Added
 
 - Godot 4.8 `.xscn` files can hold the scene's own properties in `x:Scene` and an embedded scene inside a `PackedScene` resource.
+- Godot 4.8 projects get 4.8's classes, property typing and hover docs, taken from Godot 4.8 beta 2.
 
 ### Changed
 
 - The CLI reads a file with no `x:Godot` marker with its project's Godot version, warning `GXT0009` when it lacks that version's metadata.
+- The editor reads a file with no `x:Godot` marker with the running Godot's version, and every editor save stamps the running version.
 
 ## 0.5.0 - 2026-11-04
 

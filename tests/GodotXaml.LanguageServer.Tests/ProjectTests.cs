@@ -54,9 +54,10 @@ public sealed class ProjectTests : IDisposable
         Assert.Equal(MessageType.Warning, shown.Type);
         Assert.Contains("4.2", shown.Message, StringComparison.Ordinal);
         Assert.Equal(["4.2"], asked);
+        string newest = "Godot " + GodotMetadata.NewestVersion(GodotMetadata.BundledVersions);
         Assert.Contains(
             ServerHarness.Remaining(server.Logged),
-            log => log.Type == MessageType.Info && log.Message.Contains("Godot 4.7", StringComparison.Ordinal)
+            log => log.Type == MessageType.Info && log.Message.Contains(newest, StringComparison.Ordinal)
         );
     }
 

@@ -100,7 +100,7 @@ dotnet godot-xaml upgrade --to <version> --check <root>   # names the files that
 dotnet godot-xaml upgrade --to <version> <root>           # all or nothing, backed up beside the project, to ../.godot-xaml-backup/<project name>/
 ```
 
-Run these only when the owner asks. A newer editor keeps a file's `x:Godot` marker, so only `upgrade` moves a project to another version's metadata. Pass `--from <version>` for files with no marker. `GXT0006`, `GXT0007` and `GXT0008` are in [reference.md](reference.md#codes-you-will-meet); `addons/` is not upgraded.
+Run these only when the owner asks. An editor save restamps a file's `x:Godot` marker with the running Godot's version, so files move one by one as they are saved; `upgrade` moves a whole project at once. Pass `--from <version>` for files with no marker. `GXT0006`, `GXT0007` and `GXT0008` are in [reference.md](reference.md#codes-you-will-meet); `addons/` is not upgraded.
 
 ## When godot-xaml itself is wrong
 

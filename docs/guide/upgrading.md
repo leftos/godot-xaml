@@ -1,6 +1,6 @@
 # Upgrading to a new Godot version
 
-Each `.xscn` and `.xres` records, in the `x:Godot` marker on its root, the Godot version whose metadata it was written with. A newer editor keeps a file's own typing and marker when it saves, so opening a project in a newer Godot changes nothing in its files. Only `godot-xaml upgrade` moves a project to another version's metadata, and it moves every file at once. Every option and message is in [the CLI reference](../../src/GodotXaml.Cli/README.md#upgrade).
+Each `.xscn` and `.xres` records, in the `x:Godot` marker on its root, the Godot version whose metadata it was written with. Opening a project in a newer Godot changes nothing in its files, but the editor saves a file with the running Godot's metadata and restamps its marker, as Godot resaves a `.tscn` in its own version, so a project upgrades file by file as files are saved (an older editor restamps a newer file the same way). `godot-xaml upgrade` moves a project to another version's metadata, and it moves every file at once. Every option and message is in [the CLI reference](../../src/GodotXaml.Cli/README.md#upgrade).
 
 ## When to run it
 

@@ -1,6 +1,6 @@
 # metadata-dump
 
-Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent, whether it can be instantiated, its own enums and its own properties, plus the defaults it changes for inherited ones, each property with its Variant type, enum or bitfield type, hint, hint string, usage flags, class name and default value. The file is committed; `metadata/godot-4.7.json` is the current one.
+Writes `metadata/godot-<major>.<minor>.json`: every engine class with its parent, whether it can be instantiated, its own enums and its own properties, plus the defaults it changes for inherited ones, each property with its Variant type, enum or bitfield type, hint, hint string, usage flags, class name and default value. The file is committed; one file per bundled Godot minor version (4.7 and 4.8).
 
 ## What it reads
 

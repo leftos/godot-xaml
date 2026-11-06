@@ -48,7 +48,7 @@ internal static class PreviousKeys
     /// sub_resource keeps through a save. An entry nothing reaches has no id and is left out.
     /// </summary>
     /// <param name="previous">The document the conversion replaces.</param>
-    /// <param name="metadata">The engine classes, for the conversion back.</param>
+    /// <param name="metadata">The metadata the previous document was read with, which its loader minted its ids with.</param>
     /// <param name="seed">The seed the host gave the conversion, so the ids come out as its loader minted them.</param>
     /// <returns>Each id the document gives an entry, and that entry.</returns>
     public static IReadOnlyDictionary<string, XscnResource> EntriesById(XscnDocument previous, GodotMetadata metadata, ulong seed)

@@ -319,7 +319,8 @@ internal static class XscnLoading
             return Error.Ok;
         }
 
-        // A write would restamp the file with the version the addon carries, so a file whose marker it lacks is left alone.
+        // A write would restamp the file with the running engine's version (or the newest carried), so a file whose marker it
+        // lacks is left alone.
         if (!XscnMetadata.Carries(document.Godot))
         {
             GD.PushError(XscnMetadata.NotWritten(path, document.Godot!));

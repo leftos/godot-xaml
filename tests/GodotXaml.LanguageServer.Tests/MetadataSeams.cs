@@ -16,6 +16,16 @@ internal static class MetadataSeams
     /// <summary>The loader: 4.7 bundled, 4.8 hand-made, and the newest (4.8) with a warning for any other version.</summary>
     public static MetadataLoader Loader { get; } = Load;
 
+    /// <summary>
+    /// A test server that reads every file with the bundled 4.7, for the tests whose subject is not the choice of version and
+    /// whose expected text is 4.7's.
+    /// </summary>
+    public static ServerSeams Pinned47 { get; } =
+        ServerSeams.Default with
+        {
+            LoadMetadata = _ => new LoadedMetadata(GodotMetadata.LoadBundled("4.7"), "4.7", null),
+        };
+
     private static LoadedMetadata Load(string? version) =>
         version switch
         {

@@ -39,7 +39,7 @@ public static partial class TscnToXscn
         IReadOnlyDictionary<XscnResource, XscnResource> copies = new Dictionary<XscnResource, XscnResource>();
         if (options.Previous is { } previous)
         {
-            (converted, copies) = PreviousComments.Carry(previous, converted, context.KeptPreviousKeys, context.Issues);
+            (converted, copies) = PreviousComments.Carry(previous.Document, converted, context.KeptPreviousKeys, context.Issues);
         }
 
         return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids(copies) };
@@ -82,13 +82,13 @@ public static partial class TscnToXscn
             ReportExtra(document);
             XscnPropertyNames names = XscnParser.NamesOf(metadata);
             IReadOnlyDictionary<string, XscnResource> previousById = options.Previous is { } previous
-                ? PreviousKeys.EntriesById(previous, metadata, options.Seed)
+                ? PreviousKeys.EntriesById(previous.Document, previous.Metadata, options.Seed)
                 : new Dictionary<string, XscnResource>();
             references = TscnReferences.Analyze(
                 document,
                 Issues,
                 (cls, name) => names.AttributeName(cls is null ? null : metadata.FindClass(cls), name) is not null,
-                options.Previous,
+                options.Previous?.Document,
                 previousById,
                 options.OwnedSubResourceIds
             );

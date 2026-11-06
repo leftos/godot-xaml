@@ -199,7 +199,14 @@ public sealed class SubResourceIdTests
         XscnDocument previous = Parse(text);
         TscnDocument saved = Convert(previous).Document;
 
-        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(saved, Metadata, Options with { Previous = previous });
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(
+            saved,
+            Metadata,
+            Options with
+            {
+                Previous = new PreviousDocument(previous, Metadata),
+            }
+        );
 
         Assert.Equal(["Shared", "Shaded"], forward.Document.Resources.Select(entry => entry.Key));
         ConversionIds ids = Assert.IsType<ConversionIds>(forward.Ids);

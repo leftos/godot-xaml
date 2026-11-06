@@ -51,7 +51,8 @@ public sealed class HoverTests
             "<Button",
             1,
             "Button",
-            Markdown("class Button : BaseButton", Docs.Class("Button")!.Brief!, Docs.Class("Button")!.Description!)
+            Markdown("class Button : BaseButton", Docs.Class("Button")!.Brief!, Docs.Class("Button")!.Description!),
+            MetadataSeams.Pinned47
         );
 
     [Fact]
@@ -60,7 +61,8 @@ public sealed class HoverTests
             "MouseFilter=",
             2,
             "MouseFilter",
-            Markdown("int MouseFilter", "Default: 0", "Values: Stop, Pass, Ignore", Member("Control", "mouse_filter"))
+            Markdown("int MouseFilter", "Default: 0", "Values: Stop, Pass, Ignore", Member("Control", "mouse_filter")),
+            MetadataSeams.Pinned47
         );
 
     [Fact]
@@ -74,27 +76,35 @@ public sealed class HoverTests
                 "Default: 1",
                 "Flags: ShrinkBegin, Fill, Expand, ExpandFill, ShrinkCenter, ShrinkEnd",
                 Member("Control", "size_flags_horizontal")
-            )
+            ),
+            MetadataSeams.Pinned47
         );
 
     [Fact]
     public async Task ASignalWithoutArgumentsShowsItsSignature() =>
-        await AssertHoverAsync("Pressed=", 3, "Pressed", Markdown("signal Pressed()", Signal("BaseButton", "pressed")));
+        await AssertHoverAsync("Pressed=", 3, "Pressed", Markdown("signal Pressed()", Signal("BaseButton", "pressed")), MetadataSeams.Pinned47);
 
     [Fact]
     public async Task ASignalShowsItsArgumentsByTheirCSharpNames() =>
-        await AssertHoverAsync("Toggled=", 3, "Toggled", Markdown("signal Toggled(bool toggledOn)", Signal("BaseButton", "toggled")));
+        await AssertHoverAsync(
+            "Toggled=",
+            3,
+            "Toggled",
+            Markdown("signal Toggled(bool toggledOn)", Signal("BaseButton", "toggled")),
+            MetadataSeams.Pinned47
+        );
 
     [Fact]
     public async Task AnEnumValueShowsTheMemberItsValueAndItsDescription() =>
-        await AssertHoverAsync("\"Ignore\"", 3, "Ignore", Markdown("Ignore = 2", Constant("Control", "MOUSE_FILTER_IGNORE")));
+        await AssertHoverAsync("\"Ignore\"", 3, "Ignore", Markdown("Ignore = 2", Constant("Control", "MOUSE_FILTER_IGNORE")), MetadataSeams.Pinned47);
 
     [Fact]
     public async Task AFlagsValueShowsTheMemberUnderTheCursor() =>
-        await AssertHoverAsync("Fill\"", 2, "Fill", Markdown("Fill = 1", Constant("Control", "SIZE_FILL")));
+        await AssertHoverAsync("Fill\"", 2, "Fill", Markdown("Fill = 1", Constant("Control", "SIZE_FILL")), MetadataSeams.Pinned47);
 
     [Fact]
-    public async Task AKeyReferenceShowsTheEntrysClass() => await AssertHoverAsync("{Panel}", 3, "{Panel}", Markdown("{Panel}: StyleBoxFlat"));
+    public async Task AKeyReferenceShowsTheEntrysClass() =>
+        await AssertHoverAsync("{Panel}", 3, "{Panel}", Markdown("{Panel}: StyleBoxFlat"), ServerSeams.Default);
 
     // The entry's key and the value are both decoded before they are compared, so escaped text still finds its entry.
     [Fact]
@@ -251,7 +261,8 @@ public sealed class HoverTests
     }
 
     [Fact]
-    public async Task AFormatAttributeLinksTheFormat() => await AssertHoverAsync("x:Groups", 4, "x:Groups", Markdown("x:Groups", FormatLink));
+    public async Task AFormatAttributeLinksTheFormat() =>
+        await AssertHoverAsync("x:Groups", 4, "x:Groups", Markdown("x:Groups", FormatLink), ServerSeams.Default);
 
     // The format prefix is the one the root binds: a prefix bound only in a comment links no format attribute.
     [Fact]
@@ -327,15 +338,16 @@ public sealed class HoverTests
 
     // A hint that lists classes, some excluded with '-', names the property's type by its first class.
     [Fact]
-    public Task AnExcludingClassHintNamesItsFirstClass() => AssertTypedAsync("TextureNormal", "Texture2D TextureNormal");
+    public Task AnExcludingClassHintNamesItsFirstClass() => AssertTypedAsync(MetadataSeams.Pinned47, "TextureNormal", "Texture2D TextureNormal");
 
     [Fact]
-    public Task AHintOfTwoClassesNamesTheFirst() => AssertTypedAsync("Material=", "BaseMaterial3D Material");
+    public Task AHintOfTwoClassesNamesTheFirst() => AssertTypedAsync(MetadataSeams.Pinned47, "Material=", "BaseMaterial3D Material");
 
     // An argument named like a C# keyword is escaped with '@', as GodotSharp names it.
     [Fact]
     public Task AKeywordArgumentIsEscaped() =>
         AssertTypedAsync(
+            MetadataSeams.Pinned47,
             "InputEvent",
             "signal InputEvent(Node viewport, InputEvent @event, int shapeIdx)",
             Signal("CollisionObject2D", "input_event")
@@ -443,12 +455,13 @@ public sealed class HoverTests
     }
 
     // Hovers inside the name the needle locates (its offset plus `into`) and checks the text and the name's range.
-    private static async Task AssertHoverAsync(string needle, int into, string name, string expected)
+    // The test server runs with the given seams.
+    private static async Task AssertHoverAsync(string needle, int into, string name, string expected, ServerSeams seams)
     {
         int found = Scene.IndexOf(needle, StringComparison.Ordinal);
         Assert.True(found >= 0, $"no {needle} in the scene");
         int start = Scene.IndexOf(name, found, StringComparison.Ordinal);
-        await using ServerHarness server = await OpenAsync();
+        await using ServerHarness server = await OpenAsync(seams);
 
         JsonElement result = await HoverAsync(server, PositionOf(Scene, found + into));
 
@@ -482,9 +495,9 @@ public sealed class HoverTests
     }
 
     // Hovers the second character of the needle in the typed document; the text starts with the signature, then the paragraphs.
-    private static async Task AssertTypedAsync(string needle, string signature, params string[] paragraphs)
+    private static async Task AssertTypedAsync(ServerSeams seams, string needle, string signature, params string[] paragraphs)
     {
-        await using ServerHarness server = await OpenAsync(text: Typed);
+        await using ServerHarness server = await OpenAsync(seams, Typed);
 
         JsonElement result = await HoverAsync(server, PositionOf(Typed, Typed.IndexOf(needle, StringComparison.Ordinal) + 1));
 

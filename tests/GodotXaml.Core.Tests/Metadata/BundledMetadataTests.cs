@@ -18,10 +18,12 @@ public sealed class BundledMetadataTests
     }
 
     [Fact]
-    public void ListsTheVersionsTheAssemblyCarries() => Assert.Equal(["4.7"], GodotMetadata.BundledVersions);
+    public void ListsTheVersionsTheAssemblyCarries() => Assert.Equal(["4.7", "4.8"], GodotMetadata.BundledVersions);
 
-    [Fact]
-    public void TheBundledMetadataNamesItsVersion() => Assert.Equal("4.7", GodotMetadata.LoadBundled("4.7").Version);
+    [Theory]
+    [InlineData("4.7")]
+    [InlineData("4.8")]
+    public void TheBundledMetadataNamesItsVersion(string version) => Assert.Equal(version, GodotMetadata.LoadBundled(version).Version);
 
     [Fact]
     public void RejectsAVersionTheAssemblyDoesNotCarry()

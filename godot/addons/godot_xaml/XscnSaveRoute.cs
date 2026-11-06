@@ -31,10 +31,14 @@ internal static class XscnSaveRoute
     /// <returns><see cref="Error.Ok"/>, or the error that stopped the save; nothing is written on an error.</returns>
     public static Error Save(Resource resource, string path, uint flags)
     {
-        if (MetadataOfPrevious(path) is not { } metadata)
+        if (MetadataOfPrevious(path) is not { } previousMetadata)
         {
             return Error.InvalidData;
         }
+
+        // The file is written with the running engine's metadata and stamped with its version, as Godot resaves a .tscn in
+        // its own version (docs/DECISIONS.md); the previous file's own metadata only parses it.
+        GodotMetadata metadata = XscnMetadata.Value;
 
         bool isScene = resource is PackedScene;
         Error textError = SaveAsText(resource, path, flags, isScene, out string tscnText);
@@ -54,12 +58,12 @@ internal static class XscnSaveRoute
             return Error.InvalidData;
         }
 
-        XscnDocument? previous = Previous(path, isScene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource, metadata);
+        XscnDocument? previous = Previous(path, isScene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource, previousMetadata);
         var options = new ConversionOptions
         {
             Seed = XscnLoading.Seed,
             ScriptClassOf = GodotProjectLookups.ScriptClassOf,
-            Previous = previous,
+            Previous = previous is null ? null : new PreviousDocument(previous, previousMetadata),
             OwnedSubResourceIds = OwnedSubResourceIds(resource, path, previous),
         };
         TscnDocument withUids = WithProjectUids(tscn, path, previous);
@@ -293,8 +297,9 @@ internal static class XscnSaveRoute
     }
 
     // The metadata the x:Godot marker of the file being replaced names, read from its text whether or not the rest parses,
-    // so the save keeps the file's typing and marker; the newest carried for no file or no marker. A save would restamp a
-    // file whose marker the addon does not carry with the version it has, so such a file is refused: null after the error.
+    // so the file is parsed with the typing it was written with (its x:Resources keys and comments are kept); the running
+    // engine's for no file or no marker. The save writes with the running engine's metadata either way. A file whose marker
+    // the addon does not carry cannot be parsed with its own typing, so such a file is refused: null after the error.
     private static GodotMetadata? MetadataOfPrevious(string path)
     {
         string? marker = FileAccess.FileExists(path) ? XscnMarker.Read(FileAccess.GetFileAsString(path)) : null;
