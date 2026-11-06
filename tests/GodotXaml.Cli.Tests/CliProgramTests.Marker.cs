@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using GodotXaml.Core.Metadata;
+using GodotXaml.Core.Projects;
 using GodotXaml.Core.Xscn;
 
 namespace GodotXaml.Cli.Tests;
@@ -142,6 +143,222 @@ public sealed partial class CliProgramTests
         );
         Assert.Equal("2 converted, 0 refused, 0 error(s), 1 warning(s)", run.Lines[^1]);
     }
+
+    [Fact]
+    public void AnUnmarkedFileReadsWithItsProjectsVersion()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        Write("project.godot", ProjectNaming(Older));
+        string file = Write("scene.xscn", TextScene);
+
+        RunResult run = RunWith(versions, "check", file);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Equal(2, run.Lines.Length);
+        Assert.StartsWith($"{file}(1,", run.Lines[0], StringComparison.Ordinal);
+        Assert.Contains("error GX0105", run.Lines[0], StringComparison.Ordinal);
+        Assert.Equal("1 file(s) checked, 1 error(s), 0 warning(s)", run.Lines[1]);
+    }
+
+    [Fact]
+    public void FormatStampsAnUnmarkedFileWithItsProjectsVersion()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        Write("project.godot", ProjectNaming(Older));
+        string file = Write("scene.xscn", "<Control  Name=\"Root\" />");
+
+        RunResult run = RunWith(versions, "format", file);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal([$"formatted {file}", "1 of 1 file(s) changed"], run.Lines);
+        string written = File.ReadAllText(file);
+        Assert.Contains($"x:Godot=\"{Older}\"", written, StringComparison.Ordinal);
+        Assert.DoesNotContain($"x:Godot=\"{NewestCarried}\"", written, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AProjectNamingAnUncarriedVersionWarnsOncePerProject()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        string project = Write("project.godot", ProjectNaming(Unknown));
+        Write("a.xscn", TextScene);
+        Write("b.xscn", TextScene);
+
+        RunResult run = RunWith(versions, "check", folder);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(
+            [
+                $"{project}: warning GXT0009: Godot {Unknown} has no bundled metadata; " + $"reading its unmarked files with {NewestCarried}",
+                "2 file(s) checked, 0 error(s), 1 warning(s)",
+            ],
+            run.Lines
+        );
+    }
+
+    [Fact]
+    public void AProjectNamingNoVersionReadsWithTheNewestSilently()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        Write("project.godot", "config_version=5\n\n[application]\nrun/main_scene=\"res://scene.xscn\"\n");
+        string file = Write("scene.xscn", TextScene);
+
+        RunResult run = RunWith(versions, "check", file);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(["1 file(s) checked, 0 error(s), 0 warning(s)"], run.Lines);
+    }
+
+    [Fact]
+    public void AnUnmarkedFileOutsideAProjectReadsWithTheNewest()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        string outside = Directory.CreateTempSubdirectory("godot-xaml-outside-").FullName;
+        try
+        {
+            string file = Path.Combine(outside, "scene.xscn");
+            File.WriteAllText(file, TextScene);
+            Assert.Null(GodotProject.Find(file));
+
+            RunResult run = RunWith(versions, "check", file);
+
+            Assert.Equal(0, run.ExitCode);
+            Assert.Equal(["1 file(s) checked, 0 error(s), 0 warning(s)"], run.Lines);
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AnUncarriedMarkerReadsWithItsProjectsVersion()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        Write("project.godot", ProjectNaming(Older));
+        string file = Write("scene.xscn", WithMarker(TextScene, Unknown));
+
+        RunResult run = RunWith(versions, "check", file);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Equal(3, run.Lines.Length);
+        Assert.Equal(
+            $"{file}: warning GXT0004: written with Godot {Unknown}'s metadata, which this tool does not carry; " + $"reading it with {Older}'s",
+            run.Lines[0]
+        );
+        Assert.Contains("error GX0105", run.Lines[1], StringComparison.Ordinal);
+        Assert.Equal("1 file(s) checked, 1 error(s), 1 warning(s)", run.Lines[2]);
+    }
+
+    [Fact]
+    public void ConvertForwardStampsTheProjectsVersion()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        Write("project.godot", ProjectNaming(Older));
+        string tscn = Write("scene.tscn", "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n");
+        string xscn = Path.ChangeExtension(tscn, ".xscn");
+
+        RunResult run = RunWith(versions, "convert", tscn);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains($"x:Godot=\"{Older}\"", File.ReadAllText(xscn), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ConvertWithMetadataFileIgnoresTheProjectsVersion()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        Write("project.godot", ProjectNaming(Unknown));
+        string metadata = Write("older.json", OlderMetadata.Value.ToJsonString());
+        string tscn = Write("scene.tscn", "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n");
+        string xscn = Path.ChangeExtension(tscn, ".xscn");
+
+        RunResult run = RunWith(versions, "convert", tscn, "--metadata", metadata);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("GXT0009", StringComparison.Ordinal));
+        Assert.Contains($"x:Godot=\"{Older}\"", File.ReadAllText(xscn), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFileThatPrintsTwoWarningsCountsTwo()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        Write("project.godot", ProjectNaming(Unknown));
+        string file = Write("scene.xscn", WithMarker("<Control Name=\"Root\" />", "4.8"));
+
+        RunResult run = RunWith(versions, "check", file);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(3, run.Lines.Length);
+        Assert.Contains("GXT0009", run.Lines[0], StringComparison.Ordinal);
+        Assert.Contains("GXT0004", run.Lines[1], StringComparison.Ordinal);
+        Assert.Equal("1 file(s) checked, 0 error(s), 2 warning(s)", run.Lines[2]);
+    }
+
+    [Fact]
+    public void TwoSpellingsOfOneProjectWarnOnce()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "two spellings of one path name one file only on a case-insensitive file system");
+        MetadataVersions versions = CarryingAnOlderVersion();
+        Write("project.godot", ProjectNaming(Unknown));
+        string first = Write("a.xscn", TextScene);
+        Write("b.xscn", TextScene);
+        string second = Path.Combine(Path.GetDirectoryName(folder)!.ToUpperInvariant(), Path.GetFileName(folder), "b.xscn");
+
+        RunResult run = RunWith(versions, "check", first, second);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(1, run.Lines.Count(line => line.Contains("GXT0009", StringComparison.Ordinal)));
+        Assert.Equal("2 file(s) checked, 0 error(s), 1 warning(s)", run.Lines[^1]);
+    }
+
+    [Fact]
+    public void AnUnreadableProjectGodotWarnsCannotBeRead()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "only Windows keeps another handle from reading a file opened with FileShare.None");
+        MetadataVersions versions = CarryingAnOlderVersion();
+        string project = Write("project.godot", ProjectNaming(Older));
+        string file = Write("scene.xscn", TextScene);
+
+        using (File.Open(project, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            RunResult run = RunWith(versions, "check", file);
+
+            Assert.Equal(
+                [
+                    $"{project}: warning GXT0009: cannot be read; reading its unmarked files with {NewestCarried}",
+                    "1 file(s) checked, 0 error(s), 1 warning(s)",
+                ],
+                run.Lines
+            );
+        }
+    }
+
+    [Fact]
+    public void TwoProjectsInOneRunEachWarnOnce()
+    {
+        MetadataVersions versions = CarryingAnOlderVersion();
+        string first = Write("one/project.godot", ProjectNaming(Unknown));
+        Write("one/a.xscn", TextScene);
+        string second = Write("two/project.godot", ProjectNaming(Unknown));
+        Write("two/b.xscn", TextScene);
+
+        RunResult run = RunWith(versions, "check", folder);
+
+        string[] expected =
+        [
+            $"{first}: warning GXT0009: Godot {Unknown} has no bundled metadata; reading its unmarked files with {NewestCarried}",
+            $"{second}: warning GXT0009: Godot {Unknown} has no bundled metadata; reading its unmarked files with {NewestCarried}",
+        ];
+        string[] warned = [.. run.Lines.Where(line => line.Contains("GXT0009", StringComparison.Ordinal)).Order(StringComparer.Ordinal)];
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal([.. expected.Order(StringComparer.Ordinal)], warned);
+        Assert.Equal("2 file(s) checked, 0 error(s), 2 warning(s)", run.Lines[^1]);
+    }
+
+    // A project.godot naming a Godot version, as Godot writes it: the version is the first config/features element.
+    private static string ProjectNaming(string version) => $"[application]\nconfig/features=PackedStringArray(\"{version}\", \"Forward Plus\")\n";
 
     // The two attributes a root carries before its own: the format namespace, and the marker this test sets.
     private static string WithMarker(string scene, string marker)

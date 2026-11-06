@@ -13,16 +13,17 @@ internal static class CheckCommand
 
     /// <summary>The command, its paths argument and its metadata option.</summary>
     /// <param name="enumerate">The files of a folder and its subfolders.</param>
+    /// <param name="workingDirectory">The folder a relative path is resolved against before its project is found.</param>
     /// <param name="versions">The Godot versions this run carries, and how it loads one's metadata.</param>
     /// <returns>The command.</returns>
-    internal static Command Create(Func<string, IEnumerable<string>> enumerate, MetadataVersions versions)
+    internal static Command Create(Func<string, IEnumerable<string>> enumerate, string workingDirectory, MetadataVersions versions)
     {
         Argument<string[]> paths = PathsArgument("A .xscn or .xres file, or a folder searched recursively for both.");
         Option<string> metadata = MetadataOption();
         var command = new Command("check", "Parses .xscn and .xres files and reports every problem found.");
         command.Arguments.Add(paths);
         command.Options.Add(metadata);
-        command.SetAction(parseResult => Run(parseResult, paths, metadata, enumerate, versions));
+        command.SetAction(parseResult => Run(parseResult, paths, metadata, enumerate, workingDirectory, versions));
         return command;
     }
 
@@ -77,6 +78,7 @@ internal static class CheckCommand
         Argument<string[]> paths,
         Option<string> metadata,
         Func<string, IEnumerable<string>> enumerate,
+        string workingDirectory,
         MetadataVersions versions
     )
     {
@@ -86,7 +88,7 @@ internal static class CheckCommand
         {
             return 2;
         }
-        var choice = MetadataChoice.For(parseResult.GetValue(metadata), versions, invocation.Error, invocation.Output);
+        var choice = MetadataChoice.For(parseResult.GetValue(metadata), versions, workingDirectory, invocation.Error, invocation.Output);
         if (choice is null)
         {
             return 2;
@@ -106,8 +108,8 @@ internal static class CheckCommand
         int warnings = 0;
         foreach ((InputFile<XscnDocumentKind> file, string text) in read)
         {
-            (GodotMetadata Metadata, bool Warned) chosen = choice.Of(file.Path, text);
-            warnings += chosen.Warned ? 1 : 0;
+            (GodotMetadata Metadata, int Warnings) chosen = choice.Of(file.Path, text);
+            warnings += chosen.Warnings;
             XscnParseResult result = XscnParser.Parse(text, file.Kind, chosen.Metadata);
             LineMap map = new(text);
             foreach (XscnDiagnostic diagnostic in result.Diagnostics)

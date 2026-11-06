@@ -13,9 +13,10 @@ internal static class FormatCommand
 
     /// <summary>The command, its paths argument and its options.</summary>
     /// <param name="enumerate">The files directly in a folder.</param>
+    /// <param name="workingDirectory">The folder a relative path is resolved against before its project is found.</param>
     /// <param name="versions">The Godot versions this run carries, and how it loads one's metadata.</param>
     /// <returns>The command.</returns>
-    internal static Command Create(Func<string, IEnumerable<string>> enumerate, MetadataVersions versions)
+    internal static Command Create(Func<string, IEnumerable<string>> enumerate, string workingDirectory, MetadataVersions versions)
     {
         Argument<string[]> paths = CheckCommand.PathsArgument("A .xscn or .xres file, or a folder searched recursively for both.");
         Option<string> metadata = CheckCommand.MetadataOption();
@@ -32,7 +33,7 @@ internal static class FormatCommand
             {
                 return 2;
             }
-            var choice = MetadataChoice.For(parseResult.GetValue(metadata), versions, invocation.Error, invocation.Output);
+            var choice = MetadataChoice.For(parseResult.GetValue(metadata), versions, workingDirectory, invocation.Error, invocation.Output);
             if (choice is null)
             {
                 return 2;

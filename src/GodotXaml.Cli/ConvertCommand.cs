@@ -117,7 +117,7 @@ internal static class ConvertCommand
     )
     {
         InvocationConfiguration invocation = parseResult.InvocationConfiguration;
-        var choice = MetadataChoice.For(parseResult.GetValue(options.Metadata), versions, invocation.Error, invocation.Output);
+        var choice = MetadataChoice.For(parseResult.GetValue(options.Metadata), versions, workingDirectory, invocation.Error, invocation.Output);
         if (choice is null)
         {
             return 2;
@@ -581,11 +581,10 @@ internal static class ConvertCommand
     // reported an error. A .tscn or .tres has no marker, so it takes the unmarked choice; a .xscn or .xres its own.
     private static Planned? Prepare(Source source, string outputPath, MetadataChoice choice, Tally tally, TextWriter output)
     {
-        (GodotMetadata Metadata, bool Warned) chosen = source.File.Kind.FromTscn ? choice.Unmarked : choice.Of(source.File.Path, source.Text);
-        if (chosen.Warned)
-        {
-            tally.Warnings++;
-        }
+        (GodotMetadata Metadata, int Warnings) chosen = source.File.Kind.FromTscn
+            ? choice.Unmarked(source.File.Path)
+            : choice.Of(source.File.Path, source.Text);
+        tally.Warnings += chosen.Warnings;
         GodotMetadata metadata = chosen.Metadata;
         var options = new ConversionOptions { Seed = SeedOf(SeedKeyOf(source.File.Path, outputPath)), Uid = source.Uid };
         (XscnDocument? Document, string? Uid) prepared;

@@ -36,7 +36,10 @@ internal static class CliCodes
     /// <summary>A <c>.tres</c> holding a scene or a <c>.tscn</c> holding a resource; the file is not converted.</summary>
     internal const string KindMismatch = "GXT0003";
 
-    /// <summary>A file whose <c>x:Godot</c> marker names a Godot version this tool does not carry; it is read with the newest it carries.</summary>
+    /// <summary>
+    /// A file whose <c>x:Godot</c> marker names a Godot version this tool does not carry; it is read with its project's
+    /// version, else the newest it carries.
+    /// </summary>
     internal const string MarkerNotCarried = "GXT0004";
 
     /// <summary>A file whose <c>x:Godot</c> marker names a Godot version this tool does not carry; it is not written.</summary>
@@ -50,4 +53,10 @@ internal static class CliCodes
 
     /// <summary>A property an <c>upgrade</c>'s new metadata no longer has, kept as a script property with its value text.</summary>
     internal const string PropertyRemoved = "GXT0008";
+
+    /// <summary>
+    /// A project whose Godot version this tool does not carry, or whose project.godot cannot be read; its unmarked files are
+    /// read with the newest it carries.
+    /// </summary>
+    internal const string ProjectVersionNotCarried = "GXT0009";
 }

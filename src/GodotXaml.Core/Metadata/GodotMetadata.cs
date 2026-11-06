@@ -137,6 +137,17 @@ public sealed class GodotMetadata
             : throw new InvalidDataException($"The bundled metadata for {godotMinor} says its version is {metadata.Version}.");
     }
 
+    /// <summary>The newest of a set of Godot minor versions, by <see cref="System.Version"/>.</summary>
+    /// <param name="versions">The versions to choose from (<c>4.7</c>, <c>4.10</c>).</param>
+    /// <returns>The greatest version whose text parses as a <see cref="System.Version"/>.</returns>
+    /// <exception cref="InvalidOperationException">No version parses, so there is no newest.</exception>
+    public static string NewestVersion(IEnumerable<string> versions)
+    {
+        ArgumentNullException.ThrowIfNull(versions);
+        return versions.Where(version => System.Version.TryParse(version, out _)).MaxBy(version => System.Version.Parse(version))
+            ?? throw new InvalidOperationException("No metadata version is carried.");
+    }
+
     /// <summary>
     /// Loads the bundled metadata for a project's Godot version, or the newest bundled version when the assembly does
     /// not carry the project's or the project names none.
@@ -145,7 +156,7 @@ public sealed class GodotMetadata
     /// <param name="version">The version whose metadata was loaded.</param>
     /// <param name="warning">Why the newest version stands in for the project's, or null when the project's was loaded.</param>
     /// <returns>The loaded version's classes and enums.</returns>
-    /// <exception cref="InvalidOperationException">The assembly carries no metadata at all.</exception>
+    /// <exception cref="InvalidOperationException">The assembly carries no metadata version at all.</exception>
     public static GodotMetadata LoadBundledForProject(string? projectVersion, out string version, out string? warning)
     {
         if (projectVersion is not null && BundledVersions.Contains(projectVersion, StringComparer.Ordinal))
@@ -155,9 +166,7 @@ public sealed class GodotMetadata
             return LoadBundled(version);
         }
 
-        version =
-            BundledVersions.Where(v => System.Version.TryParse(v, out _)).MaxBy(v => System.Version.Parse(v))
-            ?? throw new InvalidOperationException("This assembly carries no metadata.");
+        version = NewestVersion(BundledVersions);
         warning = projectVersion is null
             ? $"the project names no Godot version; using {version}"
             : $"Godot {projectVersion} has no bundled metadata; using {version}";

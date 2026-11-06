@@ -21,7 +21,7 @@ Dotnet writes `.config/dotnet-tools.json` with CRLF line endings and no final ne
 godot-xaml check <path>...
 ```
 
-Each path is a `.xscn` or `.xres` file, or a folder searched recursively for both. `--metadata <file>` selects the Godot metadata file, which reads every file; the default is the bundled metadata a file's `x:Godot` marker names, else the newest bundled version.
+Each path is a `.xscn` or `.xres` file, or a folder searched recursively for both. `--metadata <file>` selects the Godot metadata file, which reads every file; the default is the bundled metadata a file's `x:Godot` marker names, else the version its project's `project.godot` names in `config/features`, else the newest bundled version. A project naming a version the tool does not carry warns `GXT0009` once and reads with the newest.
 
 A file whose text is not UTF-8 is refused, so it is never misread: a file holding a NUL byte, BOM-less UTF-16 text included, prints `<path>: not UTF-8 text.` and exits 2. A folder given as `--metadata` prints `<path>: is a folder, not a metadata file.` and exits 2, for `check`, `format` and `convert`.
 

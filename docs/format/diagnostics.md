@@ -400,7 +400,7 @@ Error. A `.tres` holding a scene, or a `.tscn` holding a resource. The file is n
 
 ### GXT0004 Version not carried
 
-Warning. `written with Godot 4.8's metadata, which this tool does not carry; reading it with 4.7's` A file's `x:Godot` marker names a Godot version whose metadata this tool does not carry, so the file is read with the newest version it carries. One line is printed per marker value in a run, at the first file that carries it.
+Warning. `written with Godot 4.8's metadata, which this tool does not carry; reading it with 4.7's` A file's `x:Godot` marker names a Godot version whose metadata this tool does not carry, so the file is read with the version its project names, else the newest version it carries. One line is printed per marker value in a run, at the first file that carries it.
 
 ### GXT0005 Not written
 
@@ -417,3 +417,7 @@ Error. `no x:Godot marker; pass --from with the version it was written with` An 
 ### GXT0008 Property removed
 
 Warning. `Label.legacy_text is not in Godot 4.7's metadata; kept as a script property with its value text` The version an `upgrade` writes with no longer has a property the file sets, so the property is written as a script property: an attribute under its Godot name holding its Godot value text (`legacy_text='"old"'`). One line per class and property in a file.
+
+### GXT0009 Project version not carried
+
+Warning. `Godot 4.9 has no bundled metadata; reading its unmarked files with 4.8` A file with no `x:Godot` marker is read with the Godot version its project's `project.godot` names in `config/features`. When the tool does not carry that version, or the `project.godot` cannot be read, the project's unmarked files are read with the newest version the tool carries. One line is printed per project in a run, naming its `project.godot`. A project that names no version reads with the newest version with no warning.

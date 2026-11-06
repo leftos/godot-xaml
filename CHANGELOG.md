@@ -6,6 +6,10 @@
 
 - Godot 4.8 `.xscn` files can hold the scene's own properties in `x:Scene` and an embedded scene inside a `PackedScene` resource.
 
+### Changed
+
+- The CLI reads a file with no `x:Godot` marker with its project's Godot version, warning `GXT0009` when it lacks that version's metadata.
+
 ## 0.5.0 - 2026-11-04
 
 ### Added

@@ -26,6 +26,12 @@ public sealed class BundledForProjectTests
     }
 
     [Fact]
+    public void NewestVersionPicksTheGreatestParsedVersion() => Assert.Equal("4.10", GodotMetadata.NewestVersion(["4.7", "4.10", "x"]));
+
+    [Fact]
+    public void NewestVersionThrowsWhenNoneParses() => Assert.Throws<InvalidOperationException>(() => GodotMetadata.NewestVersion(["x"]));
+
+    [Fact]
     public void FallsBackToTheNewestWhenTheProjectNamesNoVersion()
     {
         GodotMetadata.LoadBundledForProject(null, out string version, out string? warning);
