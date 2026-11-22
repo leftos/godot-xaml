@@ -1,0 +1,9 @@
+<Node
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.8"
+    Name="Root"
+    x:UniqueId="984374456">
+  <Node.Metadata.empty>
+    <PackedScene />
+  </Node.Metadata.empty>
+</Node>

@@ -1,0 +1,14 @@
+<Node
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.8"
+    Name="Root"
+    x:UniqueId="893639766">
+  <Node.Metadata.inner>
+    <PackedScene>
+      <Node2D Name="InnerRoot" x:UniqueId="831680324">
+        <Node2D Name="InnerChild" VisibilityChanged="show" x:UniqueId="95650220" />
+      </Node2D>
+    </PackedScene>
+  </Node.Metadata.inner>
+  <Node Name="Child" x:UniqueId="928444050" />
+</Node>

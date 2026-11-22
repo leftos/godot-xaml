@@ -291,6 +291,9 @@ public sealed partial class SceneForwardTests
     [Theory]
     [InlineData("embedded_scene.tscn")]
     [InlineData("scene_meta.tscn")]
+    [InlineData("embedded_only.tscn")]
+    [InlineData("embedded_empty.tscn")]
+    [InlineData("embedded_instance.tscn")]
     public void AFourEightSceneUnderFourSevenMetadataNeedsANewerGodot(string file)
     {
         ConversionResult<XscnDocument> result = ConvertWithIssues(

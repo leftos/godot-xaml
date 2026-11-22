@@ -1,0 +1,30 @@
+<Node
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    xmlns:cases="res://cases/"
+    x:Godot="4.8"
+    Name="Root"
+    x:UniqueId="900974965">
+  <Node.Metadata.inner>
+    <PackedScene>
+      <Node2D Name="InnerRoot" x:UniqueId="284512517">
+        <x:Instance
+            Name="Held"
+            Scene="res://cases/embedded_target.tscn"
+            x:Editable="True"
+            x:UniqueId="555163277">
+          <x:Connect Signal="VisibilityChanged" Method="show" />
+          <x:Override Path="Part" Position="Vector2(3, 1)" x:Index="0" x:UniqueId="570835941" />
+        </x:Instance>
+        <Node2D Name="Tinted" x:UniqueId="748590856">
+          <Node2D.Material>
+            <CanvasItemMaterial BlendMode="Add" />
+          </Node2D.Material>
+        </Node2D>
+      </Node2D>
+    </PackedScene>
+  </Node.Metadata.inner>
+  <Node.Metadata.main>
+    <Resource ResourceName="Main" />
+  </Node.Metadata.main>
+  <Node Name="Child" x:UniqueId="1080463239" />
+</Node>

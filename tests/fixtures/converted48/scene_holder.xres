@@ -1,0 +1,9 @@
+<Resource xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.8">
+  <Resource.Metadata.scene>
+    <PackedScene>
+      <Node Name="HeldRoot" x:UniqueId="1754665546">
+        <Node Name="HeldChild" x:UniqueId="1917902731" />
+      </Node>
+    </PackedScene>
+  </Resource.Metadata.scene>
+</Resource>

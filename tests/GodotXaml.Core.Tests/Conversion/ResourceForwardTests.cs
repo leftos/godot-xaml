@@ -12,6 +12,8 @@ public sealed class ResourceForwardTests
 {
     private static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
 
+    private static readonly GodotMetadata Metadata48 = GodotMetadata.LoadBundled("4.8");
+
     private static readonly ConversionOptions Options = new() { ScriptClassOf = path => path == "res://tagged.gd" ? "TaggedResource" : null };
 
     public static TheoryData<string> Resources =>
@@ -59,6 +61,44 @@ public sealed class ResourceForwardTests
 
         Assert.Empty(parsed.Diagnostics);
         Assert.Equal(golden, XscnWriter.Write(parsed.Document, Metadata));
+    }
+
+    [Fact]
+    public void ConvertsAFourEightSceneHolderToItsGoldenXres()
+    {
+        TscnDocument source = TscnReader.Read(ReadFixture("tscn48", "scene_holder.tres"));
+
+        ConversionResult<XscnDocument> result = TscnToXscn.Convert(source, Metadata48, Options);
+
+        Assert.Empty(result.Issues);
+        Assert.Equal(ReadFixture("converted48", "scene_holder.xres"), XscnWriter.Write(result.Document, Metadata48));
+    }
+
+    [Fact]
+    public void AFourEightGoldenXresIsCanonical()
+    {
+        string golden = ReadFixture("converted48", "scene_holder.xres");
+
+        XscnParseResult parsed = XscnParser.Parse(golden, XscnDocumentKind.Resource, Metadata48);
+
+        Assert.Empty(parsed.Diagnostics);
+        Assert.Equal(golden, XscnWriter.Write(parsed.Document, Metadata48));
+    }
+
+    [Fact]
+    public void ASceneHolderKeepsItsEmbeddedScene()
+    {
+        TscnDocument source = TscnReader.Read(ReadFixture("tscn48", "scene_holder.tres"));
+
+        ConversionResult<XscnDocument> result = TscnToXscn.Convert(source, Metadata48, Options);
+
+        Assert.Empty(result.Issues);
+        Assert.Equal(XscnDocumentKind.Resource, result.Document.Kind);
+        XscnResource root = Assert.IsType<XscnResource>(result.Document.Root);
+        XscnValue value = Assert.Single(root.Properties, property => property.GodotName == "metadata/scene").Value;
+        XscnNode held = Assert.IsType<XscnNode>(SceneForwardTests.ResourceOf(result.Document, value).SceneRoot);
+        Assert.Equal("HeldRoot", held.Name);
+        Assert.Equal("HeldChild", Assert.IsType<XscnNode>(Assert.Single(held.Children)).Name);
     }
 
     internal static string ReadFixture(string folder, string file) =>

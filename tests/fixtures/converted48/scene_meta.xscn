@@ -1,0 +1,8 @@
+<Node3D
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.8"
+    Name="Root"
+    x:UniqueId="1149809883">
+  <x:Scene Metadata.answer="42" ResourceName="Hello" />
+  <Node3D Name="Child" x:UniqueId="124652553" />
+</Node3D>

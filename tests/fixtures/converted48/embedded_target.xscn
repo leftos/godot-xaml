@@ -1,0 +1,7 @@
+<Node2D
+    xmlns:x="https://github.com/leftos/godot-xaml/format/1"
+    x:Godot="4.8"
+    Name="Root"
+    x:UniqueId="555163277">
+  <Node2D Name="Part" x:UniqueId="570835941" />
+</Node2D>

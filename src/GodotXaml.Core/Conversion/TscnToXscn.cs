@@ -45,8 +45,8 @@ public static partial class TscnToXscn
         return new ConversionResult<XscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids(copies) };
     }
 
-    // Until the conversion carries them, a Godot 4.8 scene [resource] or embedded scene converted for an older Godot
-    // fails, with a stand-in root as the parser gives an unreadable file, rather than being dropped.
+    // A Godot 4.8 scene [resource] or embedded scene converts under 4.8 metadata; converted for an older Godot, which
+    // cannot load it, it fails, with a stand-in root as the parser gives an unreadable file, rather than being dropped.
     private static ConversionResult<XscnDocument>? NeedsNewerGodot(TscnDocument document, GodotMetadata metadata)
     {
         if (!HoldsFourEightScenes(document) || !OlderThanFourEight(metadata.Version))
@@ -143,6 +143,7 @@ public static partial class TscnToXscn
                 Type = TypeOf(sub.Type, $"[sub_resource id=\"{sub.Id}\"]"),
                 Key = key,
                 Properties = Properties(sub.Properties, $"[sub_resource id=\"{sub.Id}\"]"),
+                SceneRoot = sub.Scene is { Nodes.IsEmpty: false } scene ? ConvertTree(scene, $"[sub_resource id=\"{sub.Id}\"]") : null,
             };
             subIds[resource] = sub.Id;
             return resource;

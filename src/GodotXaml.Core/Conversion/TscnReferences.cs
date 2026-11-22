@@ -143,31 +143,44 @@ internal sealed class TscnReferences
         return false;
     }
 
+    // A PackedScene sub-resource's own scene counts from the sub-resource, so what its nodes use are edges of the graph.
     private void Count(TscnDocument document)
     {
         foreach (TscnSubResource sub in subResources)
         {
-            CountProperties(sub.Properties, sub.Type, sub.Id, $"[sub_resource id=\"{sub.Id}\"]");
+            string location = $"[sub_resource id=\"{sub.Id}\"]";
+            CountProperties(sub.Properties, sub.Type, sub.Id, location);
+            if (sub.Scene is { } scene)
+            {
+                CountScene(scene, sub.Id, location + " ");
+            }
         }
 
         CountProperties(document.ResourceProperties, document.Header.Type, null, "[resource]");
-        foreach (TscnNode node in document.Nodes)
+        CountProperties(document.SceneProperties, "PackedScene", null, "[resource]");
+        CountScene(document.MainScene, null, "");
+    }
+
+    // One scene's node instances, node properties and connection binds; where prefixes each location.
+    private void CountScene(TscnScene scene, string? from, string where)
+    {
+        foreach (TscnNode node in scene.Nodes)
         {
-            string location = $"[node name=\"{node.Name}\"]";
+            string location = $"{where}[node name=\"{node.Name}\"]";
             if (node.Instance is { } instance)
             {
-                ValueReferences.Visit(instance, reference => Note(reference, null, false, location));
+                ValueReferences.Visit(instance, reference => Note(reference, from, false, location));
             }
 
-            CountProperties(node.Properties, node.Type, null, location);
+            CountProperties(node.Properties, node.Type, from, location);
         }
 
-        foreach (TscnConnection connection in document.Connections)
+        foreach (TscnConnection connection in scene.Connections)
         {
-            string location = $"[connection signal=\"{connection.Signal}\" from=\"{connection.From}\"]";
+            string location = $"{where}[connection signal=\"{connection.Signal}\" from=\"{connection.From}\"]";
             foreach (GodotValue bind in connection.Binds)
             {
-                ValueReferences.Visit(bind, reference => Note(reference, null, false, location));
+                ValueReferences.Visit(bind, reference => Note(reference, from, false, location));
             }
         }
     }

@@ -16,41 +16,68 @@ public static partial class TscnToXscn
         // The class Godot builds for a placeholder at load (packed_scene.cpp:241-257); the .tscn writes no type for it.
         private const string PlaceholderClass = "InstancePlaceholder";
 
-        // Every converted node and override by its path from the root, as a .tscn's parent= and from= give it.
-        private readonly Dictionary<string, SceneElement> elements = new(StringComparer.Ordinal);
+        // Every converted node and override of the tree being built by its path from its root, as a .tscn's parent= and
+        // from= give it.
+        private Dictionary<string, SceneElement> elements = new(StringComparer.Ordinal);
 
-        // The paths of the nodes that were not converted, whose subtrees are not converted either.
-        private readonly HashSet<string> lost = new(StringComparer.Ordinal);
+        // The paths of the tree's nodes that were not converted, whose subtrees are not converted either.
+        private HashSet<string> lost = new(StringComparer.Ordinal);
+
+        // What the locations of the tree's sections start with: empty for the main scene, the sub-resource for a scene a
+        // PackedScene holds.
+        private string where = "";
 
         // A .tscn becomes an .xscn whose elements nest as the nodes' parent= paths say: a node inside an instance goes
         // into an x:Override for its path inside that instance, made when the .tscn has none, and a connection sits on
-        // its emitter's element.
+        // its emitter's element. The scene's own [resource] properties become x:Scene; an empty section leaves none.
         public XscnDocument ConvertScene()
         {
             ImmutableArray<XscnResource> table = Table();
-            SceneElement root = AddRoot();
-            foreach (TscnNode node in document.Nodes.Skip(1))
+            XscnNode built = ConvertTree(document.MainScene, "");
+            XscnResource? scene = document.SceneProperties.IsEmpty
+                ? null
+                : new XscnResource { Type = TypeOf("PackedScene", "[resource]"), Properties = Properties(document.SceneProperties, "[resource]") };
+            return new XscnDocument(XscnDocumentKind.Scene, Namespaces(built, table, scene), Uids(), table, built, metadata.Version)
             {
-                AddNode(node);
-            }
-
-            foreach (TscnConnection connection in document.Connections)
-            {
-                AddConnection(connection);
-            }
-
-            foreach (TscnEditable editable in document.Editables)
-            {
-                MarkEditable(editable);
-            }
-
-            XscnNodeElement built = root.Build();
-            return new XscnDocument(XscnDocumentKind.Scene, Namespaces(built), Uids(), table, built, metadata.Version);
+                Scene = scene,
+            };
         }
 
-        private SceneElement AddRoot()
+        // One scene's tree, built with its own elements while a tree that holds it may be half built: a PackedScene
+        // sub-resource is converted where a value of that tree names it.
+        private XscnNode ConvertTree(TscnScene scene, string location)
         {
-            TscnNode? node = document.Nodes.FirstOrDefault();
+            (Dictionary<string, SceneElement> outerElements, HashSet<string> outerLost, string outerWhere) = (elements, lost, where);
+            (elements, lost, where) = (new(StringComparer.Ordinal), new(StringComparer.Ordinal), location);
+            try
+            {
+                SceneElement root = AddRoot(scene);
+                foreach (TscnNode node in scene.Nodes.Skip(1))
+                {
+                    AddNode(node);
+                }
+
+                foreach (TscnConnection connection in scene.Connections)
+                {
+                    AddConnection(connection);
+                }
+
+                foreach (TscnEditable editable in scene.Editables)
+                {
+                    MarkEditable(editable);
+                }
+
+                return (XscnNode)root.Build();
+            }
+            finally
+            {
+                (elements, lost, where) = (outerElements, outerLost, outerWhere);
+            }
+        }
+
+        private SceneElement AddRoot(TscnScene scene)
+        {
+            TscnNode? node = scene.Nodes.FirstOrDefault();
             string location = node is null ? "[gd_scene]" : NodeLocation(node);
             XscnType? type = null;
             if (node is not null)
@@ -188,7 +215,7 @@ public static partial class TscnToXscn
 
         private void AddConnection(TscnConnection connection)
         {
-            string location = $"[connection signal=\"{connection.Signal}\" from=\"{connection.From}\"]";
+            string location = Located($"[connection signal=\"{connection.Signal}\" from=\"{connection.From}\"]");
             ReportExtra(connection.Extra, location);
             if (IsLost(connection.From) || ElementAt(connection.From) is not { } emitter)
             {
@@ -213,7 +240,7 @@ public static partial class TscnToXscn
 
         private void MarkEditable(TscnEditable editable)
         {
-            string location = $"[editable path=\"{editable.Path}\"]";
+            string location = Located($"[editable path=\"{editable.Path}\"]");
             ReportExtra(editable.Extra, location);
             if (IsLost(editable.Path) || ElementAt(editable.Path) is not { } target)
             {
@@ -309,21 +336,44 @@ public static partial class TscnToXscn
                 UniqueId = writeNodeIds ? node.UniqueId : null,
             };
 
-        private static string NodeLocation(TscnNode node) =>
-            node.Parent is { } parent ? $"[node name=\"{node.Name}\" parent=\"{parent}\"]" : $"[node name=\"{node.Name}\"]";
+        private string NodeLocation(TscnNode node) =>
+            Located(node.Parent is { } parent ? $"[node name=\"{node.Name}\" parent=\"{parent}\"]" : $"[node name=\"{node.Name}\"]");
 
-        // One namespace per res:// folder of the scenes the elements instance, in pre-order; the prefix is the folder's
-        // last segment as an XML name, res for res:// itself, and a counter from 2 when an earlier folder took it.
-        private static ImmutableArray<XscnNamespace> Namespaces(XscnNodeElement root)
+        // A section's location, after the sub-resource whose scene holds it.
+        private string Located(string section) => where.Length == 0 ? section : $"{where} {section}";
+
+        // One namespace per res:// folder of the scenes the elements instance: the main tree's first, in pre-order, then
+        // those of the scenes the document's resources hold. The prefix is the folder's last segment as an XML name, res
+        // for res:// itself, and a counter from 2 when an earlier folder took it.
+        private static ImmutableArray<XscnNamespace> Namespaces(XscnElement root, ImmutableArray<XscnResource> table, XscnResource? scene)
         {
             HashSet<string> taken = new(StringComparer.Ordinal);
-            return
-            [
-                .. SceneFolders(root)
-                    .Distinct(StringComparer.Ordinal)
-                    .Select(folder => new XscnNamespace(FreePrefix(PrefixOf(folder), taken), folder)),
-            ];
+            IEnumerable<string> folders = root is XscnNodeElement tree ? SceneFolders(tree) : [];
+            folders = folders.Concat(table.SelectMany(ResourceFolders)).Concat(scene is null ? [] : ResourceFolders(scene));
+            folders = folders.Concat(
+                root switch
+                {
+                    XscnNodeElement node => HeldFolders(node),
+                    XscnResource resource => ResourceFolders(resource),
+                    _ => [],
+                }
+            );
+            return [.. folders.Distinct(StringComparer.Ordinal).Select(folder => new XscnNamespace(FreePrefix(PrefixOf(folder), taken), folder))];
         }
+
+        // The folders of the scenes the inline resources of a tree's properties hold, at any depth.
+        private static IEnumerable<string> HeldFolders(XscnNodeElement element) =>
+            InlineFolders(element.Properties).Concat(element.Children.SelectMany(HeldFolders));
+
+        // The folders of a resource's scene, then of the scenes inside it and inside its inline resources.
+        private static IEnumerable<string> ResourceFolders(XscnResource resource)
+        {
+            IEnumerable<string> folders = resource.SceneRoot is { } root ? SceneFolders(root).Concat(HeldFolders(root)) : [];
+            return folders.Concat(InlineFolders(resource.Properties));
+        }
+
+        private static IEnumerable<string> InlineFolders(ImmutableArray<XscnProperty> properties) =>
+            properties.Select(property => property.Value).OfType<XscnInline>().SelectMany(inline => ResourceFolders(inline.Resource));
 
         private static IEnumerable<string> SceneFolders(XscnNodeElement element)
         {
