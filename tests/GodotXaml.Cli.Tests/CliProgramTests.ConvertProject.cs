@@ -1304,6 +1304,24 @@ public sealed partial class CliProgramTests
         );
     }
 
+    // One run prints the backup line once and each built path once, both on stdout only.
+    [Fact]
+    public void ProjectPrintsTheBackupLineAndEachBuiltPathOnce()
+    {
+        WriteThreeScenes(ThemedButton);
+        string script = Write("scripts/paths.gd", "var aa = \"x\" + \".tscn\"\nvar bb = \"x\" + \".tscn\"\n");
+
+        RunResult run = RunProject();
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Single(run.Lines, line => line.Contains(" file(s) backed up to ", StringComparison.Ordinal));
+        Assert.Equal(2, run.Lines.Count(line => line.Contains("warning GXP0006", StringComparison.Ordinal)));
+        Assert.Single(run.Lines, line => line == $"{script}(1,16): warning GXP0006: {Fragment}");
+        Assert.Single(run.Lines, line => line == $"{script}(2,16): warning GXP0006: {Fragment}");
+        Assert.DoesNotContain(run.ErrorLines, line => line.Contains(" file(s) backed up to ", StringComparison.Ordinal));
+        Assert.DoesNotContain(run.ErrorLines, line => line.Contains("GXP0006", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void ProjectPrintsNoSharedUidWhenRemoved()
     {

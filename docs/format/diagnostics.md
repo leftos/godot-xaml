@@ -260,7 +260,7 @@ Warning. An entry nothing refers to, which Godot would not save; it is dropped.
 
 ### GXC0106 Script class unknown
 
-Warning. A resource with a script whose global class name the host could not give, so the `.tres` header gets no `script_class=`. The CLI reads the project's global class cache (`.godot/global_script_class_cache.cfg`, written by the editor's scan or `godot --headless --import`) and gives this warning when the project has none, it cannot be read, or the source is in no project; the editor's loader gives the class on the main thread.
+Warning. A resource with a script whose global class name the host could not give, so the `.tres` header gets no `script_class=`. The CLI reads the project's global class cache (`.godot/global_script_class_cache.cfg`, or `godot/global_script_class_cache.cfg` when the project sets `config/use_hidden_project_data_directory=false`; written by the editor's scan or `godot --headless --import`) and gives this warning when the project has none, it cannot be read, or the source is in no project; the editor's loader gives the class on the main thread.
 
 ### GXC0107 Not a resource
 

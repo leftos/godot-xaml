@@ -128,6 +128,54 @@ public sealed partial class CliProgramTests
         Assert.DoesNotContain(run.Lines, line => line.Contains("GXC0106", StringComparison.Ordinal));
     }
 
+    // A project.godot that keeps the project data folder visible, so Godot writes the cache to `godot/`.
+    private const string VisibleDataFolderProject = "config_version=5\n\n[application]\n\nconfig/use_hidden_project_data_directory=false\n";
+
+    // A project.godot that names the hidden data folder explicitly, the default.
+    private const string HiddenDataFolderProject = "config_version=5\n\n[application]\n\nconfig/use_hidden_project_data_directory=true\n";
+
+    [Fact]
+    public void BackKeepsAGlobalClassWithAVisibleDataFolder()
+    {
+        string xres = ScriptedProject();
+        Write("project.godot", VisibleDataFolderProject);
+        Write("godot/global_script_class_cache.cfg", ArrowLookCache);
+
+        RunResult run = RunProject("--back");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("script_class=\"ArrowLook\"", FirstLine(Path.ChangeExtension(xres, ".tres")), StringComparison.Ordinal);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("GXC0106", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BackWithAVisibleDataFolderIgnoresTheHiddenCache()
+    {
+        string xres = ScriptedProject();
+        Write("project.godot", VisibleDataFolderProject);
+        Write(".godot/global_script_class_cache.cfg", ArrowLookCache);
+
+        RunResult run = RunIn(folder, "convert", xres);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("script_class=", FirstLine(Path.ChangeExtension(xres, ".tres")), StringComparison.Ordinal);
+        Assert.Single(run.Lines, line => line.Contains("warning GXC0106", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BackKeepsAGlobalClassWithTheHiddenDataFolderNamed()
+    {
+        string xres = ScriptedProject();
+        Write("project.godot", HiddenDataFolderProject);
+        Write(".godot/global_script_class_cache.cfg", ArrowLookCache);
+
+        RunResult run = RunIn(folder, "convert", xres);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("script_class=\"ArrowLook\"", FirstLine(Path.ChangeExtension(xres, ".tres")), StringComparison.Ordinal);
+        Assert.DoesNotContain(run.Lines, line => line.Contains("GXC0106", StringComparison.Ordinal));
+    }
+
     // A project holding one scripted resource, the script it names and the config that keeps a config above the temp
     // folder out of the run; the class cache is written by the test that needs one.
     private string ScriptedProject()

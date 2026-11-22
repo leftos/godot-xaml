@@ -603,6 +603,8 @@ internal static class ConvertCommand
             return null;
         }
         var item = new Planned(source, outputPath, prepared.Document, prepared.Uid, metadata);
+        // Resolved once, so the class lookup, the rename map and the scan share one walk of the folders above the source.
+        item.Root = GodotProject.Find(item.Source.File.Path);
         // The text is produced once with the unrewritten document, so a document the writer refuses or a conversion
         // that reports an error drops the source before the rename map is built from it. It is kept: a document the
         // rewrite leaves as it was is not produced again.
@@ -617,8 +619,7 @@ internal static class ConvertCommand
         var listings = new Dictionary<string, string[]>(StringComparer.Ordinal);
         foreach (Planned item in planned)
         {
-            string? root = GodotProject.Find(item.Source.File.Path);
-            item.Root = root;
+            string? root = item.Root;
             if (root is null)
             {
                 Warn(output, tally, item.Source.File.Path, CliCodes.NoProjectRoot, NoRootMessage, 1);
@@ -767,7 +768,7 @@ internal static class ConvertCommand
             {
                 Seed = SeedOf(SeedKeyOf(item.Source.File.Path, item.Output)),
                 Uid = item.Uid,
-                ScriptClassOf = tally.ScriptClassOf(item.Source.File.Path),
+                ScriptClassOf = tally.ScriptClassOf(item.Root),
                 SceneFiles = tally.SceneFiles,
                 SourceKey = Path.GetFullPath(item.Source.File.Path),
             };
@@ -1288,11 +1289,10 @@ internal static class ConvertCommand
             }
         }
 
-        // The global class of the script at a res:// path for the project the source belongs to, or null when no project
-        // holds it or its cache gives no answer for the script: the core's GXC0106 then reports the missing lookup.
-        public Func<string, string?>? ScriptClassOf(string sourcePath)
+        // null when the item is in no project or its project has no cache this reader can use; the core's GXC0106 then
+        // reports the missing lookup.
+        public Func<string, string?>? ScriptClassOf(string? root)
         {
-            string? root = GodotProject.Find(Path.GetFullPath(sourcePath));
             if (root is null)
             {
                 return null;

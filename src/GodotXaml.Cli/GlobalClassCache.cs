@@ -1,15 +1,18 @@
+using GodotXaml.Core.Projects;
 using GodotXaml.Core.Values;
 
 namespace GodotXaml.Cli;
 
 /// <summary>
 /// The global classes a Godot project's editor scan recorded, read from the project cache Godot 4.7.2 writes
-/// (<c>ProjectSettings::store_global_class_list</c>, <c>core/config/project_settings.cpp</c>), so a back conversion can
-/// write a resource header's <c>script_class</c>.
+/// (<c>ProjectSettings::store_global_class_list</c>, <c>core/config/project_settings.cpp</c>) in the project's data
+/// folder, so a back conversion can write a resource header's <c>script_class</c>.
 /// </summary>
 internal static class GlobalClassCache
 {
-    private const string Folder = ".godot";
+    private const string HiddenFolder = ".godot";
+    private const string VisibleFolder = "godot";
+    private const string SettingsFileName = "project.godot";
     private const string FileName = "global_script_class_cache.cfg";
     private const string ListKey = "list=";
 
@@ -41,7 +44,7 @@ internal static class GlobalClassCache
     // the core's GXC0106 says the lookup is missing, which is exactly the case.
     private static string? TryReadText(string root)
     {
-        string path = Path.Combine(root, Folder, FileName);
+        string path = Path.Combine(root, DataFolderOf(root), FileName);
         try
         {
             return File.Exists(path) ? File.ReadAllText(path) : null;
@@ -53,6 +56,27 @@ internal static class GlobalClassCache
         catch (UnauthorizedAccessException)
         {
             return null;
+        }
+    }
+
+    // Godot names the data folder `godot` instead of `.godot` when the project sets
+    // application/config/use_hidden_project_data_directory=false (project_settings.cpp:885-886), reading that setting
+    // after its own load. A project.godot that cannot be read counts as hidden, as Godot's default does: the core's
+    // GXC0106 already reports a cache this reader cannot find.
+    private static string DataFolderOf(string root)
+    {
+        try
+        {
+            string settings = File.ReadAllText(Path.Combine(root, SettingsFileName));
+            return GodotProjectSettings.UsesHiddenDataFolder(settings) ? HiddenFolder : VisibleFolder;
+        }
+        catch (IOException)
+        {
+            return HiddenFolder;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return HiddenFolder;
         }
     }
 

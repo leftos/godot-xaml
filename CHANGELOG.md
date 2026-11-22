@@ -15,6 +15,7 @@
 ### Fixed
 
 - Converting back to `.tscn`, a reference to a `.glb`, `.gltf`, `.fbx`, `.blend`, `.dae` or `.obj` file gets its scene or mesh type, without warning GXC0101.
+- Converting a `.xres` back keeps its global class's `script_class` in a project whose data folder is the visible `godot/`.
 
 ## 0.5.0 - 2026-11-04
 
