@@ -124,6 +124,116 @@ public sealed partial class SceneBackTests
         Assert.DoesNotContain("[resource]", TscnWriter.Write(back.Document), StringComparison.Ordinal);
     }
 
+    // Godot saves a scene as a .tscn, never as a .tres, and its loader refuses a node after a resource file's [resource]; the
+    // refusal comes before the older Godot's, which the root's own scene does not reach.
+    [Theory]
+    [InlineData("4.8")]
+    [InlineData("4.7")]
+    public void AnXresRootPackedSceneWithASceneIsRefused(string version)
+    {
+        GodotMetadata metadata = version == "4.8" ? Metadata48 : TestMetadata;
+        XscnParseResult parsed = XscnParser.Parse(
+            $"""<PackedScene {X} x:Godot="4.8" ResourceName="P"><Node2D Name="R" /></PackedScene>""",
+            XscnDocumentKind.Resource,
+            Metadata48
+        );
+        Assert.Empty(parsed.Diagnostics);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, metadata, Options);
+
+        ConversionIssue issue = Assert.Single(back.Issues);
+        Assert.Equal((ConversionCodes.NotAResource, ConversionSeverity.Error), (issue.Code, issue.Severity));
+        Assert.Equal(
+            "an .xres whose root PackedScene holds a scene cannot be written as a .tres: Godot saves a scene as a .tscn, so convert it as an .xscn",
+            issue.Message
+        );
+        Assert.Equal("root", issue.Location);
+        string written = TscnWriter.Write(back.Document);
+        Assert.DoesNotContain("[node", written, StringComparison.Ordinal);
+        Assert.Contains("resource_name = \"P\"", written, StringComparison.Ordinal);
+    }
+
+    // A resource whose property holds an embedded scene is refused under older metadata at the PackedScene.
+    [Fact]
+    public void AFourEightSceneHolderUnderFourSevenMetadataIsRefused()
+    {
+        XscnParseResult parsed = XscnParser.Parse(ReadFixture("converted48", "scene_holder.xres"), XscnDocumentKind.Resource, Metadata48);
+        Assert.Empty(parsed.Diagnostics);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, TestMetadata, Options);
+
+        ConversionIssue issue = Assert.Single(back.Issues);
+        Assert.Equal((ConversionCodes.NeedsNewerGodot, ConversionSeverity.Error, "PackedScene"), (issue.Code, issue.Severity, issue.Location));
+        Assert.Equal(TscnKind.Resource, back.Document.Kind);
+        Assert.Empty(back.Document.SubResources);
+    }
+
+    // x:Scene's site key is its own, so a root property named scene, whose resource holds one at the same property, takes
+    // no seeded id from it.
+    [Fact]
+    public void AnXSceneInlineIdDoesNotMoveWhenARootSceneRootPropertyChanges()
+    {
+        string alone = XSceneInlineId(withRootScene: false);
+        string beside = XSceneInlineId(withRootScene: true);
+
+        Assert.Equal(alone, beside);
+    }
+
+    [Fact]
+    public void APackedSceneWithASceneRootAndBundledDropsBundled()
+    {
+        var packed = new XscnResource
+        {
+            Type = Class48("PackedScene"),
+            Properties = [new XscnProperty("_bundled", new XscnScalar(new GodotInt(0)))],
+            SceneRoot = new XscnNode { Type = Class48("Node"), Name = "InnerRoot" },
+        };
+        var root = new XscnNode
+        {
+            Type = Class48("Node"),
+            Name = "Root",
+            Properties = [new XscnProperty("metadata/scene", new XscnInline(packed))],
+        };
+        var document = new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, Metadata48, Options);
+
+        ConversionIssue issue = Assert.Single(back.Issues);
+        Assert.Equal((ConversionCodes.InvalidValue, ConversionSeverity.Warning), (issue.Code, issue.Severity));
+        Assert.Equal("_bundled is dropped: this PackedScene holds an embedded scene, which replaces it", issue.Message);
+        TscnSubResource sub = Assert.Single(back.Document.SubResources);
+        Assert.Empty(sub.Properties);
+        Assert.Equal("InnerRoot", Assert.Single(Assert.IsType<TscnScene>(sub.Scene).Nodes).Name);
+        Assert.DoesNotContain("_bundled", TscnWriter.Write(back.Document), StringComparison.Ordinal);
+    }
+
+    // The sub_resource id x:Scene's inline metadata/m gets, with or without a root property named scene holding a resource
+    // whose own metadata/m holds one.
+    private static string XSceneInlineId(bool withRootScene)
+    {
+        var holder = new XscnResource { Type = Class48("Resource"), Properties = [new XscnProperty("metadata/m", new XscnInline(Named("Held")))] };
+        var root = new XscnNode
+        {
+            Type = Class48("Node"),
+            Name = "Root",
+            Properties = withRootScene ? [new XscnProperty("scene", new XscnInline(holder))] : [],
+        };
+        var document = new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null)
+        {
+            Scene = new XscnResource { Type = Class48("PackedScene"), Properties = [new XscnProperty("metadata/m", new XscnInline(Named("Own")))] },
+        };
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, Metadata48, Options);
+
+        Assert.Empty(back.Issues);
+        return Assert.IsType<GodotResourceRef>(Assert.Single(back.Document.SceneProperties).Value).Id;
+    }
+
+    private static XscnResource Named(string name) =>
+        new() { Type = Class48("Resource"), Properties = [new XscnProperty("resource_name", new XscnScalar(new GodotString(name)))] };
+
+    private static XscnClassType Class48(string name) => new(Metadata48.FindClass(name)!);
+
     // A scene whose root holds a Resource at metadata/m and a PackedScene embedding the given root.
     private static string EmbeddingScene(string innerRoot) =>
         $$"""

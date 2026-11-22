@@ -264,7 +264,7 @@ Warning. A resource with a script whose global class name the host could not giv
 
 ### GXC0107 Not a resource
 
-Error. A resource whose tag names a scene, or a resource document whose root is a node; it is written as `Resource`.
+Error. A resource whose tag names a scene, or a resource document whose root is a node; it is written as `Resource`. An `.xres` whose root `PackedScene` holds a scene is refused too, under any Godot version, since Godot saves a scene only as a `.tscn`: the root's own properties are written and its nodes are not, so convert the file as an `.xscn`.
 
 ### GXC0108 Resource cycle
 
@@ -350,7 +350,9 @@ Warning. `The file "res://s.gdshader" could not be read (not found), so this sec
 
 ### GXC0123 Needs a newer Godot
 
-Error. `this file holds a Godot 4.8 scene [resource] section or embedded scene, which Godot 4.7 cannot load` A `.tscn` or `.tres` saved by Godot 4.8, or an `.xscn` or `.xres` holding an `x:Scene` element or an embedded scene, holds a scene's own properties (a `[resource]` section before the first node, or `x:Scene`) or a PackedScene with nodes of its own, and the conversion targets an older Godot, whose loader reads neither. The file is not converted, either way, so nothing in it is dropped; converting an `.xscn` back says `this file holds a Godot 4.8 x:Scene element or embedded scene, which Godot 4.7 cannot load`. Convert it for Godot 4.8 or later, or save the scene again in the older Godot.
+Error. `this file holds a Godot 4.8 scene [resource] section or embedded scene, which Godot 4.7 cannot load` A `.tscn` or `.tres` saved by Godot 4.8, or an `.xscn` or `.xres` holding an `x:Scene` element or an embedded scene, holds a scene's own properties (a `[resource]` section before the first node, or `x:Scene`) or a PackedScene with nodes of its own, and the conversion targets an older Godot, whose loader reads neither.
+
+The file is not converted, either way, so nothing in it is dropped; converting an `.xscn` back says `this file holds a Godot 4.8 x:Scene element or embedded scene, which Godot 4.7 cannot load`. Convert it for Godot 4.8 or later, or save the scene again in the older Godot.
 
 ## Project conversion: `GXP`
 

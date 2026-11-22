@@ -16,9 +16,9 @@ public static partial class XscnToTscn
         // Control::_set_layout_mode's LAYOUT_MODE_CONTAINER, the mode a Container gives every Control child it lays out.
         private const int ContainerLayoutMode = 2;
 
-        // An .xscn becomes a .tscn: the element tree flattened in pre-order (packed_scene.cpp:1129-1131), the files found
-        // per node, its instanced scene before its properties' (packed_scene.cpp:844-853, 1000), and the connections'
-        // binds after every node (packed_scene.cpp:1325, 1372); the header takes the uid the host passes.
+        // An .xscn becomes a .tscn: the element tree flattened in pre-order (4.7.2 packed_scene.cpp:1129-1131), the files
+        // found per node, its instanced scene before its properties' (4.7.2 :844-853, 1000), and the connections' binds
+        // after every node (4.7.2 :1325, 1372); the header takes the uid the host passes.
         public TscnDocument ConvertScene()
         {
             if (document.Root is not XscnNode root)
@@ -37,10 +37,12 @@ public static partial class XscnToTscn
             placed.ForEach(DiscoverElement);
             placed.ForEach(DiscoverBinds);
 
-            // The scene's own properties sort after _bundled (resource_format_text.cpp:1645), so after its nodes and binds.
+            // Every built-in property of the scene sorts after _bundled (4.8 resource_format_text.cpp:1645, by code point), so
+            // after its nodes and binds; only a script property starting with an uppercase letter or a digit sorts first.
+            // The site key holds a ':', which no node name or table site does.
             if (document.Scene is { } own)
             {
-                Discover(own, SceneLocation, TscnNodePaths.Root + "|scene");
+                Discover(own, SceneLocation, SceneSite);
             }
 
             ReportUnusedEntries();
@@ -67,7 +69,7 @@ public static partial class XscnToTscn
                 Editables = [.. placed.Where(element => element.Element.Editable).Select(element => new TscnEditable { Path = element.Path })],
             };
 
-        // resource_format_text.cpp:2114-2130: Godot 4.8 writes [resource] for a scene with its own properties or with any
+        // 4.8 resource_format_text.cpp:2114-2130: Godot 4.8 writes [resource] for a scene with its own properties or with any
         // PackedScene sub-resource; .xscn records no flag for it. An older Godot's PackedScene holds _bundled and gets none.
         private bool HasSceneResourceSection(TscnDocument minted, ImmutableArray<TscnProperty> sceneProperties) =>
             XscnFormatVocabulary.ReadsScenes(metadata) && (!sceneProperties.IsEmpty || minted.SubResources.Any(sub => sub.Type == "PackedScene"));
@@ -135,7 +137,7 @@ public static partial class XscnToTscn
                 DiscoverFile(scene, "PackedScene", null, location);
             }
 
-            // The node's files in the order its section writes its properties (packed_scene.cpp:860-866): the same class and
+            // The node's files in the order its section writes its properties (4.7.2 packed_scene.cpp:860-866): the same class and
             // sort NodeProperties uses, so the two agree.
             ImmutableArray<XscnProperty> sorted = SortedProperties(placed.Element);
             GodotClassInfo? cls = NodeClass(placed, sorted, location);
@@ -156,7 +158,7 @@ public static partial class XscnToTscn
             }
         }
 
-        // A placeholder holds its scene's path, not the scene (packed_scene.cpp:842-845), so it has no ext_resource.
+        // A placeholder holds its scene's path, not the scene (4.7.2 packed_scene.cpp:842-845), so it has no ext_resource.
         private static string? InstancedScene(XscnNodeElement element) =>
             element is XscnNode { Type: XscnSceneType scene, InstancePlaceholder: null } ? scene.Path : null;
 
@@ -284,7 +286,7 @@ public static partial class XscnToTscn
         }
 
         // An instanced, inherited or placeholder node is made by its scene, so the .tscn names no class for it
-        // (packed_scene.cpp:1052-1063); neither does an override. A placeholder tagged otherwise than InstancePlaceholder
+        // (4.7.2 packed_scene.cpp:1052-1063); neither does an override. A placeholder tagged otherwise than InstancePlaceholder
         // loses its tag.
         private string? NodeTypeName(XscnNodeElement element, string location)
         {

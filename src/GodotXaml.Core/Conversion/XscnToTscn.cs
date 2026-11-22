@@ -8,12 +8,13 @@ using GodotXaml.Core.Xscn;
 namespace GodotXaml.Core.Conversion;
 
 /// <summary>
-/// Converts an .xscn or .xres model to a .tscn or .tres model, making the sections and ids again as Godot 4.7.2's text
-/// saver orders them (resource_format_text.cpp:1652-1748): ext_resources numbered in first-use order and written in
-/// natural id order, sub_resources after the resources they use, a resource's references followed in the sorted order of
-/// its property names (resource_format_text.cpp:1680-1683) and a node's in the list order its section writes them in
-/// (packed_scene.cpp:860-866). A scene's nodes are flattened in tree order, each node's instanced scene found before its
-/// properties' files and the connections' binds after every node's (packed_scene.cpp:844-853, 1000, 1325), then come the
+/// Converts an .xscn or .xres model to a .tscn or .tres model, making the sections and ids again as the text savers of
+/// Godot 4.7.2 and 4.8 order them (4.7.2 resource_format_text.cpp:1652-1748, 4.8 :1614-1710): ext_resources numbered in
+/// first-use order and written in natural id order, sub_resources after the resources they use, a resource's references
+/// followed in the sorted order of its property names (4.7.2 :1680-1683, 4.8 :1642-1645) and a node's in the list order
+/// its section writes them in (4.7.2 packed_scene.cpp:860-866). A scene's nodes are flattened in tree order, each node's
+/// instanced scene found before its properties' files and the connections' binds after every node's (4.7.2
+/// packed_scene.cpp:844-853, 1000, 1325), then come the
 /// connections and the editable instances in the same order. What the .tscn cannot hold is reported as an issue, never
 /// thrown.
 /// </summary>
@@ -93,10 +94,17 @@ public static partial class XscnToTscn
     }
 
     // x:Scene and a scene inside a PackedScene convert under 4.8 metadata; converted for an older Godot, which cannot load
-    // them, the document fails with a stand-in, as the forward conversion fails on a 4.8 file, rather than losing them.
+    // them, the document fails with a stand-in, as the forward conversion fails on a 4.8 file, rather than losing them. An
+    // .xres root's own scene is left to ConvertResource, which refuses it under any metadata: no Godot saves it as a .tres.
     private static ConversionResult<TscnDocument>? NeedsNewerGodot(XscnDocument document, GodotMetadata metadata, ConversionOptions options)
     {
-        if (XscnFormatVocabulary.ReadsScenes(metadata) || (document.Scene is null && !XscnFormatVocabulary.HoldsSceneRoot(document)))
+        XscnDocument judged = document is { Kind: XscnDocumentKind.Resource, Root: XscnResource { SceneRoot: not null } own }
+            ? document with
+            {
+                Root = own with { SceneRoot = null },
+            }
+            : document;
+        if (XscnFormatVocabulary.ReadsScenes(metadata) || (judged.Scene is null && !XscnFormatVocabulary.HoldsSceneRoot(judged)))
         {
             return null;
         }
@@ -109,7 +117,10 @@ public static partial class XscnToTscn
             Kind = document.Kind == XscnDocumentKind.Scene ? TscnKind.Scene : TscnKind.Resource,
             Header = new TscnHeader { Uid = options.Uid },
         };
-        return new ConversionResult<TscnDocument>(standIn, [issue]);
+        return new ConversionResult<TscnDocument>(standIn, [issue])
+        {
+            Ids = new ConversionIds(new Dictionary<string, string>(), new Dictionary<XscnResource, string>()),
+        };
     }
 
     // FNV-1a 64 over the key's UTF-8 bytes: the same on every run and platform, which string.GetHashCode is not.
@@ -127,6 +138,9 @@ public static partial class XscnToTscn
 
     private sealed partial class Context
     {
+        // A PackedScene's packed nodes (4.8 packed_scene.cpp:2700), which an embedded scene's sections replace.
+        private const string BundledProperty = "_bundled";
+
         private readonly XscnDocument document;
         private readonly GodotMetadata metadata;
         private readonly ConversionOptions options;
@@ -186,7 +200,7 @@ public static partial class XscnToTscn
             }
         }
 
-        // _find_resources (resource_format_text.cpp:1680-1714): a resource's properties in sorted name order, each
+        // _find_resources (4.7.2 :1680-1714, 4.8 :1642-1676): a resource's properties in sorted name order, each
         // reference followed where it is met. The site is the site key of the element or resource that holds them: a
         // resource held inline gets "<holder's site>|<property>", and a table entry "key:<x:Key>" wherever it is used.
         private void Discover(XscnResource resource, string location, string site) =>
@@ -247,7 +261,7 @@ public static partial class XscnToTscn
             }
         }
 
-        // resource_format_text.cpp:1669: an external resource is numbered when it is first met. A uid written with the
+        // 4.7.2 :1669, 4.8 :1631: an external resource is numbered when it is first met. A uid written with the
         // path in value text is the file's uid when x:Uids has none.
         private void DiscoverFile(string path, string? declaredType, string? uid, string location)
         {
@@ -274,9 +288,9 @@ public static partial class XscnToTscn
             }
         }
 
-        // resource_format_text.cpp:1674-1714: a resource is saved after the resources it uses, once. An embedded scene is the
-        // PackedScene's _bundled, which sorts before its other properties (resource_format_text.cpp:1645): its nodes, then its
-        // connections' binds (packed_scene.cpp:1441-1463), then the PackedScene's own properties.
+        // 4.7.2 :1674-1714, 4.8 :1636-1676: a resource is saved after the resources it uses, once. An embedded scene is the
+        // PackedScene's _bundled, which sorts before every built-in property (4.8 :1645): its nodes, then its connections'
+        // binds (4.8 packed_scene.cpp:1441-1463), then the PackedScene's own properties.
         private void DiscoverResource(XscnResource resource, string location, string site)
         {
             if (found.Contains(resource))
@@ -339,7 +353,7 @@ public static partial class XscnToTscn
         }
 
         // The ids, ext_resources numbered in discovery order and written in Godot's natural id order
-        // (resource_format_text.cpp:1868-1877), sub_resources after what they use; the sections get their properties
+        // (4.7.2 :1868-1877, 4.8 :1986), sub_resources after what they use; the sections get their properties
         // once every id is known. A new sub_resource id is seeded from its site key, so an edit elsewhere in the file
         // leaves it as it was; one that would repeat an earlier id takes the next free one.
         private TscnDocument MintIds(TscnDocument shell)
@@ -363,14 +377,33 @@ public static partial class XscnToTscn
             return result with
             {
                 ExtResources = [.. result.ExtResources.OrderBy(ext => ext.Id, GodotNaturalOrder.NoCase)],
-                SubResources =
-                [
-                    .. result.SubResources.Select((sub, i) => sub with { Properties = Properties(subUses[i]), Scene = EmbeddedScene(subUses[i]) }),
-                ],
+                SubResources = [.. result.SubResources.Select((sub, i) => WithContent(sub, subUses[i]))],
             };
         }
 
-        private TscnScene? EmbeddedScene(SubUse use) => scenes.TryGetValue(use.Resource, out List<PlacedElement>? placed) ? SceneOf(placed) : null;
+        // A sub_resource's properties and, for a PackedScene, its embedded scene, which takes _bundled's place (4.8 :2073-2075,
+        // 2122-2125): a _bundled beside it is dropped.
+        private TscnSubResource WithContent(TscnSubResource sub, SubUse use)
+        {
+            ImmutableArray<TscnProperty> properties = Properties(use);
+            if (!scenes.TryGetValue(use.Resource, out List<PlacedElement>? placed))
+            {
+                return sub with { Properties = properties };
+            }
+
+            if (properties.Any(property => property.Name == BundledProperty))
+            {
+                string message = "_bundled is dropped: this PackedScene holds an embedded scene, which replaces it";
+                Report(ConversionCodes.InvalidValue, ConversionSeverity.Warning, message, use.Location + "." + BundledProperty);
+                properties = [.. properties.Where(property => property.Name != BundledProperty)];
+            }
+
+            return sub with
+            {
+                Properties = properties,
+                Scene = SceneOf(placed),
+            };
+        }
 
         private TscnDocument MintExtIds(TscnDocument shell)
         {

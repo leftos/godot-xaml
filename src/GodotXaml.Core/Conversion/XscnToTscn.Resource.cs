@@ -10,8 +10,13 @@ public static partial class XscnToTscn
         private const string RootLocation = "root";
         private const string SceneLocation = "x:Scene";
 
+        // The site key of x:Scene's own properties.
+        private const string SceneSite = "x:Scene";
+
         // An .xres becomes a .tres: the root resource's properties are the [resource] section's, and the header takes
-        // its type, the script's global class and the uid the host passes (resource_format_text.cpp:1801-1819).
+        // its type, the script's global class and the uid the host passes (4.7.2 resource_format_text.cpp:1801-1819). A
+        // root PackedScene's own scene is refused: Godot saves a scene as a .tscn only (4.8 :1871-1873, 2228-2233), and its
+        // loader refuses a node after a resource file's [resource] (4.8 :830-833).
         public TscnDocument ConvertResource()
         {
             if (document.Scene is not null)
@@ -27,6 +32,14 @@ public static partial class XscnToTscn
                     Kind = TscnKind.Resource,
                     Header = new TscnHeader { Uid = options.Uid },
                 };
+            }
+
+            if (root.SceneRoot is not null)
+            {
+                const string message =
+                    "an .xres whose root PackedScene holds a scene cannot be written as a .tres: "
+                    + "Godot saves a scene as a .tscn, so convert it as an .xscn";
+                Report(ConversionCodes.NotAResource, ConversionSeverity.Error, message, RootLocation);
             }
 
             Discover(root, RootLocation, TscnNodePaths.Root);
@@ -55,7 +68,7 @@ public static partial class XscnToTscn
             }
         }
 
-        // resource_format_text.cpp:1803-1807: script_class is the script's global name, which only the host can read.
+        // 4.7.2 resource_format_text.cpp:1803-1807: script_class is the script's global name, which only the host can read.
         private string? ScriptClass(XscnResource root)
         {
             if (root.Properties.LastOrDefault(property => property.GodotName == "script")?.Value is not XscnFile script)

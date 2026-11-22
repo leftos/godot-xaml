@@ -150,7 +150,8 @@ internal sealed class TscnReferences
         {
             string location = $"[sub_resource id=\"{sub.Id}\"]";
             CountProperties(sub.Properties, sub.Type, sub.Id, location);
-            if (sub.Scene is { } scene)
+            // The condition TscnToXscn.Resource gives a sub-resource a scene root by, so what is counted is converted.
+            if (sub.Scene is { Nodes.IsEmpty: false } scene)
             {
                 CountScene(scene, sub.Id, location + " ");
             }

@@ -321,6 +321,78 @@ public sealed class SceneRoundTripTests
         AssertRoundTrips(Text);
     }
 
+    // The saver records a resource after what it uses: the inner PackedScene, its nodes with it, before the outer one.
+    [Fact]
+    public void AnEmbeddedSceneInsideAnEmbeddedSceneRoundTrips() =>
+        AssertRoundTrips48(
+            """
+            [gd_scene format=3]
+
+            [sub_resource type="PackedScene" id="PackedScene_inner"]
+            [node name="Deep" type="Node" unique_id=284512517]
+
+            [sub_resource type="PackedScene" id="PackedScene_outer"]
+            [node name="Middle" type="Node" unique_id=555163277]
+            metadata/inner = SubResource("PackedScene_inner")
+
+            [resource]
+
+            [node name="Root" type="Node" unique_id=900974965]
+            metadata/outer = SubResource("PackedScene_outer")
+
+            """
+        );
+
+    // The scene's own properties are walked after its nodes, so a file x:Scene alone uses is numbered after the nodes' files.
+    [Fact]
+    public void AnExtResourceFirstMetInXSceneIsNumberedAfterTheNodesFiles() =>
+        AssertRoundTrips48(
+            """
+            [gd_scene format=3]
+
+            [ext_resource type="Texture2D" path="res://art/main.png" id="1_main"]
+            [ext_resource type="Texture2D" path="res://art/own.png" id="2_own"]
+
+            [resource]
+            metadata/icon = ExtResource("2_own")
+
+            [node name="Root" type="Sprite2D" unique_id=900974965]
+            texture = ExtResource("1_main")
+
+            """
+        );
+
+    // A resource the embedded scene meets first and the main tree uses again is one section, where first met.
+    [Fact]
+    public void ASubResourceSharedByTheMainAndAnEmbeddedSceneIsOneSection() =>
+        AssertRoundTrips48(
+            """
+            [gd_scene format=3]
+
+            [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_shared"]
+            blend_mode = 1
+
+            [sub_resource type="PackedScene" id="PackedScene_embed"]
+            [node name="InnerRoot" type="Node2D" unique_id=284512517]
+            material = SubResource("CanvasItemMaterial_shared")
+
+            [resource]
+
+            [node name="Root" type="Node" unique_id=900974965]
+            metadata/inner = SubResource("PackedScene_embed")
+
+            [node name="Child" type="Node2D" parent="." unique_id=1080463239]
+            material = SubResource("CanvasItemMaterial_shared")
+
+            """
+        );
+
+    private static void AssertRoundTrips48(string text)
+    {
+        Assert.Equal(text, ThroughModel(text, XscnDocumentKind.Scene, Metadata48));
+        Assert.Equal(Comparable(TscnReader.Read(text)), Comparable(ThroughText(text, XscnDocumentKind.Scene, Metadata48)));
+    }
+
     private static void AssertRoundTrips(string text, XscnDocumentKind kind = XscnDocumentKind.Scene)
     {
         Assert.Equal(text, ThroughModel(text, kind, Metadata));
