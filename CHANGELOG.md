@@ -12,6 +12,10 @@
 - The CLI reads a file with no `x:Godot` marker with its project's Godot version, warning `GXT0009` when it lacks that version's metadata.
 - The editor reads a file with no `x:Godot` marker with the running Godot's version, and every editor save stamps the running version.
 
+### Fixed
+
+- Converting back to `.tscn`, a reference to a `.glb`, `.gltf`, `.fbx`, `.blend`, `.dae` or `.obj` file gets its scene or mesh type, without warning GXC0101.
+
 ## 0.5.0 - 2026-11-04
 
 ### Added

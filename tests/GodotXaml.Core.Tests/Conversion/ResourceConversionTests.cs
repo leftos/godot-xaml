@@ -273,6 +273,60 @@ public sealed partial class ResourceConversionTests
         Assert.Equal("Resource", Assert.Single(back.Document.ExtResources).Type);
     }
 
+    // The scene importer takes glb and gltf, fbx, blend and dae, and gives the class its import type
+    // (resource_importer_scene.cpp, ResourceImporterScene::get_resource_type). Of the scene import types, PackedScene is
+    // registered first (editor_node.cpp, EditorNode::EditorNode), and an extension's importer is the first with the highest
+    // priority (resource_importer.cpp, ResourceFormatImporter::get_importer_by_file). Letter case does not matter.
+    [Theory]
+    [InlineData("res://cockpit.glb")]
+    [InlineData("res://a.gltf")]
+    [InlineData("res://a.fbx")]
+    [InlineData("res://a.blend")]
+    [InlineData("res://a.dae")]
+    [InlineData("res://A.GLB")]
+    public void ExtResourceOfAnImportedSceneExtensionIsPackedScene(string path)
+    {
+        string text = $"""
+            [gd_resource type="Resource" format=3]
+
+            [ext_resource type="Resource" path="{path}" id="1_imp0r"]
+
+            [resource]
+            metadata/thing = ExtResource("1_imp0r")
+
+            """;
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(TscnReader.Read(text), Metadata, Options);
+        Assert.Empty(forward.Issues);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, Metadata, Options);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal("PackedScene", Assert.Single(back.Document.ExtResources).Type);
+    }
+
+    // OBJ's default importer is ResourceImporterOBJ, which gives a Mesh (resource_importer_obj.cpp, get_resource_type); it is
+    // registered before the scene importer at the same priority (editor_node.cpp, resource_importer.cpp get_importer_by_file).
+    [Fact]
+    public void ExtResourceOfObjIsAMesh()
+    {
+        const string text = """
+            [gd_resource type="Resource" format=3]
+
+            [ext_resource type="Resource" path="res://a.obj" id="1_0bj00"]
+
+            [resource]
+            metadata/thing = ExtResource("1_0bj00")
+
+            """;
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(TscnReader.Read(text), Metadata, Options);
+        Assert.Empty(forward.Issues);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, Metadata, Options);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal("Mesh", Assert.Single(back.Document.ExtResources).Type);
+    }
+
     // Godot's text, as the harness's order input O1: the files are found in sorted property-name order, alpha's first.
     [Fact]
     public void ExtResourcesAreNumberedInSortedPropertyOrder() =>
