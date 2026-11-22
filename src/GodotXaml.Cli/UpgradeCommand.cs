@@ -277,11 +277,15 @@ internal static class UpgradeCommand
         }
     }
 
-    // Every property set on an element of a class the metadata knows: nodes, overrides' children, table resources and
-    // inline resources, in no promised order.
+    // Every property set on an element of a class the metadata knows: nodes, overrides' children, table resources,
+    // x:Scene, inline resources and the nodes of the scenes a PackedScene embeds, in no promised order.
     private static IEnumerable<(GodotClassInfo Class, XscnProperty Property)> ClassProperties(XscnDocument document)
     {
-        var pending = new Stack<XscnElement>([document.Root, .. document.Resources]);
+        var pending = new Stack<XscnElement>([
+            document.Root,
+            .. document.Resources,
+            .. document.Scene is { } scene ? [scene] : Array.Empty<XscnElement>(),
+        ]);
         while (pending.Count > 0)
         {
             XscnElement element = pending.Pop();
@@ -289,7 +293,7 @@ internal static class UpgradeCommand
             {
                 XscnNode node => (node.Type, node.Properties, node.Children),
                 XscnNodeElement other => ((XscnType?)null, other.Properties, other.Children),
-                XscnResource resource => (resource.Type, resource.Properties, []),
+                XscnResource resource => (resource.Type, resource.Properties, resource.SceneRoot is { } root ? [root] : []),
                 _ => (null, [], []),
             };
             foreach (XscnElement child in children.Concat(properties.Select(p => p.Value).OfType<XscnInline>().Select(i => i.Resource)))

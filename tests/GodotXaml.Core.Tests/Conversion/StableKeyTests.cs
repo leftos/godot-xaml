@@ -79,6 +79,59 @@ public sealed class StableKeyTests
         AssertKeys(forward, "Kept");
     }
 
+    // Two PackedScene entries with no properties of their own differ only in the scenes they embed: the sub_resource
+    // takes the key of the one whose scene has its shape, never the first.
+    [Fact]
+    public void APackedSceneEntryKeepsTheKeyOfTheEntryWithTheSameScene()
+    {
+        var metadata = GodotMetadata.LoadBundled("4.8");
+        const string previousText = """
+            <Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.8" Name="Root">
+              <x:Resources>
+                <PackedScene x:Key="PackedScene1">
+                  <Node Name="A" />
+                </PackedScene>
+                <PackedScene x:Key="PackedScene2">
+                  <Node Name="B" />
+                </PackedScene>
+              </x:Resources>
+              <Node Name="One" Metadata.a="{PackedScene1}" Metadata.b="{PackedScene2}" />
+              <Node Name="Two" Metadata.a="{PackedScene1}" Metadata.b="{PackedScene2}" />
+            </Node>
+            """;
+        XscnParseResult parsed = XscnParser.Parse(previousText, XscnDocumentKind.Scene, metadata);
+        Assert.Empty(parsed.Diagnostics);
+        const string text = """
+            [gd_scene format=3]
+
+            [sub_resource type="PackedScene" id="1"]
+            [node name="B" type="Node"]
+
+            [resource]
+
+            [node name="Root" type="Node"]
+
+            [node name="One" type="Node" parent="."]
+            metadata/b = SubResource("1")
+
+            [node name="Two" type="Node" parent="."]
+            metadata/b = SubResource("1")
+            """;
+
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(
+            TscnReader.Read(text),
+            metadata,
+            Options with
+            {
+                Previous = new PreviousDocument(parsed.Document, metadata),
+                // No sub_resource is the save's own, so none pairs by the id it loaded with: only the content pairs.
+                OwnedSubResourceIds = new Dictionary<string, string>(),
+            }
+        );
+
+        Assert.Equal(["PackedScene2"], KeysOf(forward.Document));
+    }
+
     [Fact]
     public void TheSameResourceNameKeepsItsKey()
     {

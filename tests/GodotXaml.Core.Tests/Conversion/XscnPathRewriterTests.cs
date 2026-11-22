@@ -11,6 +11,7 @@ public sealed class XscnPathRewriterTests
 {
     private const string X = "xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\"";
     private static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
+    private static readonly GodotMetadata Metadata48 = GodotMetadata.LoadBundled("4.8");
 
     [Fact]
     public void RewritesAnInstanceScenePath()
@@ -410,6 +411,76 @@ public sealed class XscnPathRewriterTests
         XscnPathRewriteResult result = Rewrite(document, ("res://art/frame.png", "res://art/frame.xres"));
 
         Assert.True(result.Changed);
+    }
+
+    [Fact]
+    public void AMoveRewritesAScenePathInsideAnEmbeddedScene()
+    {
+        string text = File.ReadAllText(RepoFiles.PathOf("tests", "fixtures", "converted48", "embedded_instance.xscn"));
+        XscnDocument document = Parse48(text);
+
+        XscnPathRewriteResult result = Rewrite(document, ("res://cases/embedded_target.tscn", "res://cases/embedded_target.xscn"));
+
+        XscnNode embedded = Assert.IsType<XscnNode>(EmbeddedRoot(Root(result.Document)).Children[0]);
+        Assert.Equal("Held", embedded.Name);
+        Assert.Equal(new XscnSceneType("res://cases/embedded_target.xscn"), embedded.Type);
+        Assert.True(result.Changed);
+    }
+
+    [Fact]
+    public void AMoveRewritesAPathInXScene()
+    {
+        XscnDocument document = Parse48(
+            $"""
+            <Node {X} x:Godot="4.8" Name="Root">
+              <x:Scene Metadata.icon='Resource("uid://atres", "res://a.tres")' />
+            </Node>
+            """
+        );
+
+        XscnPathRewriteResult result = Rewrite(document, ("res://a.tres", "res://b.tres"));
+
+        XscnResource scene = Assert.IsType<XscnResource>(result.Document.Scene);
+        GodotPathRef path = Assert.IsType<GodotPathRef>(Assert.IsType<XscnScalar>(Assert.Single(scene.Properties).Value).Value);
+        Assert.Equal("res://b.tres", path.Path);
+        Assert.Equal("uid://atres", path.Uid);
+        Assert.True(result.Changed);
+    }
+
+    [Fact]
+    public void AnEmbeddedScenesInstancedFolderGetsItsNamespace()
+    {
+        XscnDocument document = Parse48(
+            $"""
+            <Node {X} xmlns:cases="res://cases/" x:Godot="4.8" Name="Root">
+              <Node.Metadata.inner>
+                <PackedScene>
+                  <Node2D Name="InnerRoot">
+                    <cases:target Name="Held" />
+                  </Node2D>
+                </PackedScene>
+              </Node.Metadata.inner>
+            </Node>
+            """
+        );
+
+        XscnDocument rewritten = Rewrite(document, ("res://cases/target.xscn", "res://moved/target.xscn")).Document;
+
+        XscnNamespace scope = Assert.Single(rewritten.Namespaces);
+        Assert.Equal("res://moved/", scope.Folder);
+        string written = XscnWriter.Write(rewritten, Metadata48);
+        Assert.Contains($"xmlns:{scope.Prefix}=\"res://moved/\"", written, StringComparison.Ordinal);
+        Assert.Contains($"<{scope.Prefix}:target", written, StringComparison.Ordinal);
+    }
+
+    private static XscnNode EmbeddedRoot(XscnNode node) =>
+        Assert.IsType<XscnNode>(node.Properties.Select(property => property.Value).OfType<XscnInline>().First().Resource.SceneRoot);
+
+    private static XscnDocument Parse48(string text)
+    {
+        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, Metadata48);
+        Assert.Empty(parsed.Diagnostics);
+        return parsed.Document;
     }
 
     private static XscnPathRewriteResult Rewrite(XscnDocument document, params (string Old, string New)[] renames) =>

@@ -11,6 +11,8 @@ public sealed partial class CliProgramTests
     // a Label property, legacy_text, that 4.7 does not have.
     private const string UpgradeFrom = "4.6";
     private const string UpgradeTo = "4.7";
+    private const string EmbeddedSceneFrom = "4.8";
+    private const string EmbeddedSceneTo = "4.9";
     private const string SkipScene = "<Control Name=\"Root\" MouseFilter=\"Skip\" />";
     private const string IgnoreScene = "<Control Name=\"Root\" MouseFilter=\"Ignore\" />";
 
@@ -102,6 +104,34 @@ public sealed partial class CliProgramTests
         string written = File.ReadAllText(file);
         Assert.Contains("legacy_text='\"old\"'", written, StringComparison.Ordinal);
         Assert.DoesNotContain("LegacyText", written, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UpgradeWarnsAboutARemovedPropertyInsideAnEmbeddedScene()
+    {
+        const string scene = """
+            <Node Name="Root">
+              <Node.Metadata.inner>
+                <PackedScene>
+                  <Label Name="Inner" LegacyText="old" />
+                </PackedScene>
+              </Node.Metadata.inner>
+            </Node>
+            """;
+        string file = WriteUpgradeProject("main.xscn", WithMarker(scene, EmbeddedSceneFrom));
+
+        RunResult run = RunWith(EmbeddedScenePair(), ["upgrade", "--to", EmbeddedSceneTo, folder]);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(
+            [
+                $"{file}: warning GXT0008: Label.legacy_text is not in Godot {EmbeddedSceneTo}'s metadata; "
+                    + "kept as a script property with its value text",
+                $"{file}: upgraded",
+                "1 of 1 file(s) upgraded, 1 warning(s)",
+            ],
+            [.. run.Lines.Where(line => !line.Contains("backed up", StringComparison.Ordinal))]
+        );
     }
 
     [Fact]
@@ -231,6 +261,13 @@ public sealed partial class CliProgramTests
         JsonArray members = classes["Control"]!.AsObject()["enums"]!.AsObject()["MouseFilter"]!.AsObject()["values"]!.AsArray();
         JsonArray ignore = members.First(member => (string?)member![0] == "MOUSE_FILTER_IGNORE")!.AsArray();
         ignore[0] = "MOUSE_FILTER_SKIP";
+        AddLegacyText(classes);
+        return json;
+    }
+
+    // Label.legacy_text, a property the version an upgrade goes to does not have.
+    private static void AddLegacyText(JsonObject classes)
+    {
         JsonArray properties = classes["Label"]!.AsObject()["properties"]!.AsArray();
         properties.Add(
             new JsonObject
@@ -246,6 +283,30 @@ public sealed partial class CliProgramTests
                 ["usage"] = 6,
             }
         );
-        return json;
     }
+
+    // The pair for scenes Godot 4.8 embeds: 4.8 is the bundled 4.8 JSON with Label.legacy_text, and 4.9 the same JSON
+    // without it, under its own version.
+    private static MetadataVersions EmbeddedScenePair()
+    {
+        string bundled = File.ReadAllText(RepoRoot.PathOf("metadata", "godot-4.8.json"));
+        JsonObject older = JsonNode.Parse(bundled)!.AsObject();
+        AddLegacyText(older["classes"]!.AsObject());
+        JsonObject newer = JsonNode.Parse(bundled)!.AsObject();
+        newer["version"] = EmbeddedSceneTo;
+        GodotMetadata from = FromJson(older);
+        GodotMetadata to = FromJson(newer);
+        return new MetadataVersions(
+            [EmbeddedSceneFrom, EmbeddedSceneTo],
+            version =>
+                version switch
+                {
+                    EmbeddedSceneFrom => from,
+                    EmbeddedSceneTo => to,
+                    _ => throw new ArgumentException($"This test carries no metadata for Godot {version}.", nameof(version)),
+                }
+        );
+    }
+
+    private static GodotMetadata FromJson(JsonObject json) => GodotMetadata.Load(new MemoryStream(Encoding.UTF8.GetBytes(json.ToJsonString())));
 }

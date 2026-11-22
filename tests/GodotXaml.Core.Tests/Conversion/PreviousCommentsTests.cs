@@ -11,7 +11,7 @@ namespace GodotXaml.Core.Tests.Conversion;
 // carry (docs/DECISIONS.md, "Canonical formatting on save").
 // A written document ends with a newline, which a raw string literal leaves out before its closing quotes; each expected
 // text of a whole document adds it back.
-public sealed class PreviousCommentsTests
+public sealed partial class PreviousCommentsTests
 {
     private const string X = "xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\"";
 

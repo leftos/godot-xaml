@@ -12,7 +12,8 @@ public sealed record XscnPathRewriteResult(XscnDocument Document, ImmutableArray
 
 /// <summary>
 /// Rewrites the <c>res://</c> paths a document refers to from a map of old path to new path, so a converted or moved file
-/// is still found: every site the model holds a path in, then the scene namespaces the paths' folders name.
+/// is still found: every site the model holds a path in (the main tree, the <c>x:Resources</c> table, <c>x:Scene</c>, inline
+/// resources and the scenes a <c>PackedScene</c> embeds, at any depth), then the scene namespaces the paths' folders name.
 /// </summary>
 public static class XscnPathRewriter
 {
@@ -36,9 +37,10 @@ public static class XscnPathRewriter
 
         public XscnPathRewriteResult Run()
         {
-            ImmutableArray<(string Old, string New)> scenes = [.. SceneFolders(document.Root)];
+            ImmutableArray<(string Old, string New)> scenes = [.. SceneFolders()];
             // The tables come before the root in the text, so their warnings come first.
             ImmutableArray<XscnResource> resources = [.. document.Resources.Select(resource => RewriteResource(resource, TableLocation(resource)))];
+            XscnResource? scene = document.Scene is { } own ? RewriteResource(own, "x:Scene") : null;
             XscnElement root = document.Root switch
             {
                 XscnNodeElement element => RewriteNode(element, NodeLocation(element)),
@@ -53,6 +55,7 @@ public static class XscnPathRewriter
                     Namespaces = namespaces,
                     Uids = [.. document.Uids.Select(uid => uid with { Path = Mapped(uid.Path) ?? uid.Path })],
                     Resources = resources,
+                    Scene = scene,
                     Root = root,
                 },
                 [.. warnings],
@@ -60,14 +63,42 @@ public static class XscnPathRewriter
             );
         }
 
-        // Every scene path in pre-order as its folder before and after the rewrite, which the namespaces are rebuilt from.
-        private IEnumerable<(string Old, string New)> SceneFolders(XscnElement element) =>
-            element switch
-            {
-                XscnNodeElement node => FolderOf((node as XscnNode)?.Type).Concat(node.Children.SelectMany(SceneFolders)),
-                XscnResource resource => FolderOf(resource.Type),
-                _ => [],
-            };
+        // Every scene path as its folder before and after the rewrite, which the namespaces are rebuilt from: the main tree's
+        // nodes, then the table's, then x:Scene's, then the scenes the main tree's inline resources hold, in the order the
+        // conversion from a .tscn declares them.
+        private IEnumerable<(string Old, string New)> SceneFolders()
+        {
+            IEnumerable<(string Old, string New)> folders = document.Root is XscnNodeElement tree ? TreeFolders(tree) : [];
+            folders = folders.Concat(document.Resources.SelectMany(ResourceFolders));
+            folders = folders.Concat(document.Scene is { } scene ? ResourceFolders(scene) : []);
+            return folders.Concat(
+                document.Root switch
+                {
+                    XscnNodeElement node => HeldFolders(node),
+                    XscnResource resource => ResourceFolders(resource),
+                    _ => [],
+                }
+            );
+        }
+
+        // The scene paths of a tree's nodes, in pre-order.
+        private IEnumerable<(string Old, string New)> TreeFolders(XscnNodeElement element) =>
+            FolderOf((element as XscnNode)?.Type).Concat(element.Children.SelectMany(TreeFolders));
+
+        // The scene paths the inline resources of a tree's properties hold, at any depth.
+        private IEnumerable<(string Old, string New)> HeldFolders(XscnNodeElement element) =>
+            InlineFolders(element.Properties).Concat(element.Children.SelectMany(HeldFolders));
+
+        // A resource's own scene path, then its embedded scene's, then those inside its inline resources.
+        private IEnumerable<(string Old, string New)> ResourceFolders(XscnResource resource)
+        {
+            IEnumerable<(string Old, string New)> folders = FolderOf(resource.Type);
+            folders = folders.Concat(resource.SceneRoot is { } root ? TreeFolders(root).Concat(HeldFolders(root)) : []);
+            return folders.Concat(InlineFolders(resource.Properties));
+        }
+
+        private IEnumerable<(string Old, string New)> InlineFolders(ImmutableArray<XscnProperty> properties) =>
+            properties.Select(property => property.Value).OfType<XscnInline>().SelectMany(inline => ResourceFolders(inline.Resource));
 
         private IEnumerable<(string Old, string New)> FolderOf(XscnType? type)
         {
@@ -160,6 +191,7 @@ public static class XscnPathRewriter
             {
                 Type = RewriteType(resource.Type),
                 Properties = [.. resource.Properties.Select(property => RewriteProperty(property, location))],
+                SceneRoot = resource.SceneRoot is { } root ? (XscnNode)RewriteNode(root, ChildLocation(location, root)) : null,
             };
 
         private XscnProperty RewriteProperty(XscnProperty property, string location) =>

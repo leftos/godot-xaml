@@ -99,15 +99,52 @@ internal static class PreviousKeys
     private static bool Matches(TscnSubResource sub, XscnResource entry, Func<string, string?> extPath) =>
         TypeName(entry) is { } type
         && string.Equals(type, sub.Type, StringComparison.Ordinal)
+        && SameScene(sub, entry)
         && (SameResourceName(sub, entry) || SameProperties(sub, entry, extPath));
 
-    private static string? TypeName(XscnResource entry) =>
-        entry.Type switch
+    private static string? TypeName(XscnResource entry) => ClassName(entry.Type);
+
+    private static string? ClassName(XscnType type) =>
+        type switch
         {
             XscnClassType known => known.Class.Name,
             XscnUnknownType unknown => unknown.Name,
             _ => null,
         };
+
+    // A PackedScene matches only one that embeds a scene of the same shape, each node's name, class and parent path in
+    // tree order, so an entry is never taken for another whose properties merely match; two that embed none are alike.
+    private static bool SameScene(TscnSubResource sub, XscnResource entry)
+    {
+        List<(string Name, string? Type, string? Parent)> theirs = entry.SceneRoot is { } root ? [.. Shape(root, parent: null)] : [];
+        List<(string Name, string? Type, string? Parent)> ours = sub.Scene is { } scene
+            ? [.. scene.Nodes.Select(node => (node.Name, node.Type, node.Parent))]
+            : [];
+        return theirs.SequenceEqual(ours);
+    }
+
+    // The .tscn node sections a tree becomes: a node by its name and class (none for an instance), an override by the
+    // last part of its path under the parent its path names.
+    private static IEnumerable<(string Name, string? Type, string? Parent)> Shape(XscnNodeElement element, string? parent)
+    {
+        string relative = element switch
+        {
+            XscnNode node => node.Name,
+            XscnOverride change => change.Path,
+            _ => throw new ArgumentException($"A {element.GetType().Name} is not a node element.", nameof(element)),
+        };
+        int slash = relative.LastIndexOf('/');
+        string? own = slash < 0 || parent is null ? parent : Join(parent, relative[..slash]);
+        string? type = element is XscnNode { Type: var nodeType } ? ClassName(nodeType) : null;
+        yield return (relative[(slash + 1)..], type, own);
+        string path = parent is null ? TscnNodePaths.Root : Join(parent, relative);
+        foreach ((string Name, string? Type, string? Parent) section in element.Children.SelectMany(child => Shape(child, path)))
+        {
+            yield return section;
+        }
+    }
+
+    private static string Join(string parent, string relative) => parent == TscnNodePaths.Root ? relative : parent + "/" + relative;
 
     // A resource_name the two set to the same text matches them whatever else changed.
     private static bool SameResourceName(TscnSubResource sub, XscnResource entry) =>

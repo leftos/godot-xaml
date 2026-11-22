@@ -8,7 +8,9 @@ namespace GodotXaml.Core.Conversion;
 /// goes through <c>.tscn</c> text keeps them (docs/DECISIONS.md, "Canonical formatting on save"). A node element matches
 /// by its unique id first, when the id occurs once in both documents, and otherwise by its path from the root; an
 /// <c>x:Resources</c> entry matches by the key the conversion kept for it, a property by its Godot name within a matched
-/// element, a connection by its signal, target and method, and a uid by its path. A part of the new document with no match
+/// element, a connection by its signal, target and method, and a uid by its path. <c>x:Scene</c> matches <c>x:Scene</c>, and
+/// the scene a matched <c>PackedScene</c> embeds matches the one its previous resource embedded, its nodes by the unique ids
+/// and paths of that scene alone, so a node never takes the comments of a node of another scene. A part of the new document with no match
 /// takes no comments, a document of the other kind takes none at all, and every comment the new document cannot carry is
 /// reported as a <see cref="ConversionCodes.CommentDropped"/> warning, naming the part by its place in the previous
 /// document.
@@ -48,6 +50,7 @@ internal static class PreviousComments
     {
         private const string NoLongerInScene = "it is no longer in the scene";
         private const string NoLongerInline = "its value is no longer an inline resource";
+        private const string SceneElement = "x:Scene";
 
         // The characters of a dropped comment's first line that a warning quotes, before the ellipsis.
         private const int QuotedLength = 60;
@@ -58,11 +61,9 @@ internal static class PreviousComments
         private readonly List<ConversionIssue> issues;
         private readonly Index index;
 
-        // The previous node elements already matched, by unique id or by path, so each is matched at most once.
-        private readonly HashSet<XscnNodeElement> used = new(ReferenceEqualityComparer.Instance);
-
-        // The new node elements matched to a previous one by a unique id that occurs once in each document.
-        private readonly Dictionary<XscnNodeElement, XscnNodeElement> byId;
+        // The main tree's matching, then each embedded scene's in the order the carry paired them.
+        private readonly List<SceneIndex> scenes = [];
+        private readonly SceneIndex main;
 
         // Each resource of the new document the carry rebuilt, to its copy.
         private readonly Dictionary<XscnResource, XscnResource> copies = new(ReferenceEqualityComparer.Instance);
@@ -74,12 +75,13 @@ internal static class PreviousComments
             this.keptKeys = keptKeys;
             this.issues = issues;
             index = new Index(previous);
-            byId = UniqueIdMatches([.. NodeElements(previous.Root)], [.. NodeElements(next.Root)]);
-            used.UnionWith(byId.Values);
+            main = new SceneIndex(previous.Root as XscnNodeElement, next.Root as XscnNodeElement, owner: null);
             if (previous.Kind == next.Kind && previous.Root is XscnNodeElement root)
             {
-                used.Add(root);
+                main.Used.Add(root);
             }
+
+            scenes.Add(main);
         }
 
         public IReadOnlyDictionary<XscnResource, XscnResource> Copies => copies;
@@ -102,6 +104,7 @@ internal static class PreviousComments
                 Resources = CarryResources(next.Resources),
                 ResourcesLeadingComments = resources ? previous.ResourcesLeadingComments : [],
                 ResourcesTrailingComments = resources ? previous.ResourcesTrailingComments : [],
+                Scene = CarryScene(),
                 Root = CarryRoot(next.Root),
             };
             ReportUnmatched(NoLongerInScene);
@@ -127,37 +130,54 @@ internal static class PreviousComments
         private XscnElement CarryRoot(XscnElement nextRoot) =>
             (previous.Root, nextRoot) switch
             {
-                (XscnNodeElement before, XscnNodeElement after) => CarryNode(before, TscnNodePaths.Root, after),
-                (XscnResource before, XscnResource after) => CarryResource(before, TscnNodePaths.Root, after),
+                (XscnNodeElement before, XscnNodeElement after) => CarryNode(main, before, TscnNodePaths.Root, after),
+                (XscnResource before, XscnResource after) => CarryResource(before, TscnNodePaths.Root, after, TscnNodePaths.Root),
                 _ => nextRoot,
             };
 
+        // x:Scene matches x:Scene; one the new document no longer has drops its comments and everything inside it.
+        private XscnResource? CarryScene()
+        {
+            if (previous.Scene is not { } before)
+            {
+                return next.Scene;
+            }
+
+            if (next.Scene is { } after)
+            {
+                return CarryResource(before, SceneElement, after, SceneElement);
+            }
+
+            ReportDroppedScene(before, NoLongerInScene);
+            return null;
+        }
+
         // A node element and its subtree: its properties and connections take their comments from the parts of the
         // previous element that match them, reported at that element's place in the previous document, and its children
-        // look up their own matches by unique id first, then by their path in the new document.
-        private XscnNodeElement CarryNode(XscnNodeElement before, string path, XscnNodeElement after)
+        // look up their own matches by unique id first, then by their path in the new document, within the same scene.
+        private XscnNodeElement CarryNode(SceneIndex scene, XscnNodeElement before, string path, XscnNodeElement after)
         {
             var carried = (XscnNodeElement)CarryComments(before, after);
-            string reported = index.PathOf(before);
+            string reported = scene.PathOf(before);
             return carried with
             {
                 Properties = CarryProperties(before.Properties, reported, after.Properties),
                 Connections = CarryConnections(before.Connections, reported, after.Connections),
-                Children = [.. after.Children.Select(child => CarryChild(path, child))],
+                Children = [.. after.Children.Select(child => CarryChild(scene, path, child))],
             };
         }
 
-        private XscnNodeElement CarryChild(string parent, XscnNodeElement nextChild)
+        private XscnNodeElement CarryChild(SceneIndex scene, string parent, XscnNodeElement nextChild)
         {
             string path = ChildPath(parent, nextChild);
-            return Match(path, nextChild) is { } before ? CarryNode(before, path, nextChild) : CarryBare(path, nextChild);
+            return Match(scene, path, nextChild) is { } before ? CarryNode(scene, before, path, nextChild) : CarryBare(scene, path, nextChild);
         }
 
         // A new element with no previous one: its own subtree still takes the comments of the elements that match it.
-        private XscnNodeElement CarryBare(string path, XscnNodeElement after) =>
+        private XscnNodeElement CarryBare(SceneIndex scene, string path, XscnNodeElement after) =>
             after with
             {
-                Children = [.. after.Children.Select(child => CarryChild(path, child))],
+                Children = [.. after.Children.Select(child => CarryChild(scene, path, child))],
             };
 
         // A child's path from its parent's: a node's name, or an override's path inside the instance it belongs to.
@@ -174,27 +194,54 @@ internal static class PreviousComments
 
         // The previous element a new one matches: by its unique id when the id occurs once in each document, else by its
         // path, and never an element already matched.
-        private XscnNodeElement? Match(string path, XscnNodeElement after)
+        private static XscnNodeElement? Match(SceneIndex scene, string path, XscnNodeElement after)
         {
-            if (byId.TryGetValue(after, out XscnNodeElement? matched))
+            if (scene.ById.TryGetValue(after, out XscnNodeElement? matched))
             {
                 return matched;
             }
 
-            if (index.Nodes.GetValueOrDefault(path) is not { } atPath)
+            if (scene.Nodes.GetValueOrDefault(path) is not { } atPath)
             {
                 return null;
             }
 
-            return used.Add(atPath) ? atPath : null;
+            return scene.Used.Add(atPath) ? atPath : null;
         }
 
-        private XscnResource CarryResource(XscnResource before, string path, XscnResource after)
+        // A matched resource, and the scene it embeds matched to the one its previous resource embedded, named by its
+        // owner: the table key, x:Scene, or the property that holds the inline resource.
+        private XscnResource CarryResource(XscnResource before, string path, XscnResource after, string owner)
         {
             var carried = (XscnResource)CarryComments(before, after);
-            XscnResource copy = carried with { Properties = CarryProperties(before.Properties, path, after.Properties) };
+            XscnResource copy = carried with
+            {
+                Properties = CarryProperties(before.Properties, path, after.Properties),
+                SceneRoot = CarrySceneRoot(before.SceneRoot, after.SceneRoot, owner),
+            };
             copies[after] = copy;
             return copy;
+        }
+
+        // An embedded scene is a matching domain of its own: its roots match each other, and its other nodes match by the
+        // unique ids and paths of that scene alone.
+        private XscnNode? CarrySceneRoot(XscnNode? before, XscnNode? after, string owner)
+        {
+            if (before is null)
+            {
+                return after;
+            }
+
+            if (after is null)
+            {
+                ReportDroppedTree(before, owner, TscnNodePaths.Root, NoLongerInScene);
+                return null;
+            }
+
+            var scene = new SceneIndex(before, after, owner);
+            scene.Used.Add(before);
+            scenes.Add(scene);
+            return (XscnNode)CarryNode(scene, before, TscnNodePaths.Root, after);
         }
 
         // The x:Resources table: an entry takes comments only when the forward conversion kept its key from the previous
@@ -227,7 +274,7 @@ internal static class PreviousComments
             }
 
             matched.Add(before);
-            return CarryResource(before, key, entry);
+            return CarryResource(before, key, entry, key);
         }
 
         // A part with no match loses its comments: what they described is gone.
@@ -254,7 +301,7 @@ internal static class PreviousComments
                 return matched with
                 {
                     TrailingComments = before.TrailingComments,
-                    Value = new XscnInline(CarryResource(earlier.Resource, path, inline.Resource)),
+                    Value = new XscnInline(CarryResource(earlier.Resource, path, inline.Resource, $"{before.GodotName} of {path}")),
                 };
             }
 
@@ -386,25 +433,44 @@ internal static class PreviousComments
         // whole carry is done, so an element a later branch of the new document claims is never reported.
         private void ReportUnmatched(string why)
         {
-            if (previous.Root is XscnNodeElement root)
+            foreach (SceneIndex scene in scenes)
             {
-                ReportUnmatchedNode(root, TscnNodePaths.Root, why);
+                if (scene.PreviousRoot is { } root)
+                {
+                    ReportUnmatchedNode(scene, root, TscnNodePaths.Root, why);
+                }
             }
         }
 
         // An unmatched element is reported at its path in the previous document, and the walk goes on through a matched
         // one, whose own parts the carry already reported.
-        private void ReportUnmatchedNode(XscnNodeElement element, string path, string why)
+        private void ReportUnmatchedNode(SceneIndex scene, XscnNodeElement element, string path, string why)
         {
-            if (!used.Contains(element))
+            if (!scene.Used.Contains(element))
             {
-                ReportDroppedElement(element, path, why);
+                ReportDroppedElement(element, scene.Where(path), why);
             }
 
             foreach (XscnNodeElement child in element.Children)
             {
-                ReportUnmatchedNode(child, ChildPath(path, child), why);
+                ReportUnmatchedNode(scene, child, ChildPath(path, child), why);
             }
+        }
+
+        // Every element of an embedded scene the new document no longer holds, at its path in that scene.
+        private void ReportDroppedTree(XscnNodeElement element, string owner, string path, string why)
+        {
+            ReportDroppedElement(element, ScenePath(owner, path), why);
+            foreach (XscnNodeElement child in element.Children)
+            {
+                ReportDroppedTree(child, owner, ChildPath(path, child), why);
+            }
+        }
+
+        private void ReportDroppedScene(XscnResource scene, string why)
+        {
+            Report("the x:Scene element", SceneElement, ElementComments(scene), why);
+            ReportDroppedInnerProperties(scene, SceneElement, SceneElement, why);
         }
 
         private void ReportDroppedElement(XscnNodeElement element, string path, string why)
@@ -433,11 +499,17 @@ internal static class PreviousComments
             }
         }
 
+        // A dropped resource's properties, and the scene it embeds, named by the resource's owner.
         private void ReportDroppedInnerProperties(XscnResource resource, string location, string owner, string why)
         {
             foreach (XscnProperty property in resource.Properties)
             {
                 ReportDroppedProperty(property, location, owner, why);
+            }
+
+            if (resource.SceneRoot is { } root)
+            {
+                ReportDroppedTree(root, owner, TscnNodePaths.Root, why);
             }
         }
 
@@ -457,6 +529,11 @@ internal static class PreviousComments
             {
                 Report("the resource root", TscnNodePaths.Root, ElementComments(resource), why);
                 ReportDroppedInnerProperties(resource, TscnNodePaths.Root, TscnNodePaths.Root, why);
+            }
+
+            if (previous.Scene is { } scene)
+            {
+                ReportDroppedScene(scene, why);
             }
 
             Report("the x:Uids table", "x:Uids", [.. previous.UidsLeadingComments, .. previous.UidsTrailingComments], why);
@@ -520,19 +597,21 @@ internal static class PreviousComments
                 ? [.. property.LeadingComments, .. property.TrailingComments]
                 : [.. property.LeadingComments, .. property.TrailingComments, .. inline.LeadingComments, .. inline.TrailingComments];
 
-        // The new elements that match a previous one by unique id: an id used once in each document, between two roots or
+        // Where a report names a node of an embedded scene: its path in that scene, and the scene's owner.
+        private static string ScenePath(string owner, string path) => $"{path} in the scene of {owner}";
+
+        // The new elements that match a previous one by unique id: an id used once in each scene, between two roots or
         // between two elements that are not, since the roots always match each other at the root's path.
-        private Dictionary<XscnNodeElement, XscnNodeElement> UniqueIdMatches(
-            IReadOnlyList<XscnNodeElement> previousNodes,
-            IReadOnlyList<XscnNodeElement> nextNodes
-        )
+        private static Dictionary<XscnNodeElement, XscnNodeElement> UniqueIdMatches(XscnNodeElement? previousRoot, XscnNodeElement? nextRoot)
         {
+            List<XscnNodeElement> previousNodes = [.. NodeElements(previousRoot)];
+            List<XscnNodeElement> nextNodes = [.. NodeElements(nextRoot)];
             Dictionary<int, XscnNodeElement> earlier = UniqueIdElements(previousNodes);
             Dictionary<int, int> after = IdCounts(nextNodes);
             var matches = new Dictionary<XscnNodeElement, XscnNodeElement>(ReferenceEqualityComparer.Instance);
             foreach (XscnNodeElement element in nextNodes)
             {
-                if (Pair(element, earlier, after) is { } match && SameRootness(element, match, previous.Root, next.Root))
+                if (Pair(element, earlier, after) is { } match && SameRootness(element, match, previousRoot, nextRoot))
                 {
                     matches[element] = match;
                 }
@@ -560,7 +639,7 @@ internal static class PreviousComments
         private static XscnNodeElement? Pair(XscnNodeElement element, Dictionary<int, XscnNodeElement> earlier, Dictionary<int, int> after) =>
             element.UniqueId is { } id && after.GetValueOrDefault(id) == 1 && earlier.GetValueOrDefault(id) is { } match ? match : null;
 
-        private static bool SameRootness(XscnNodeElement element, XscnNodeElement match, XscnElement previousRoot, XscnElement nextRoot) =>
+        private static bool SameRootness(XscnNodeElement element, XscnNodeElement match, XscnElement? previousRoot, XscnElement? nextRoot) =>
             ReferenceEquals(element, nextRoot) == ReferenceEquals(match, previousRoot);
 
         // How many node elements a document has under each unique id, so that an id there twice is never used to match.
@@ -578,7 +657,7 @@ internal static class PreviousComments
             return counts;
         }
 
-        private static IEnumerable<XscnNodeElement> NodeElements(XscnElement root)
+        private static IEnumerable<XscnNodeElement> NodeElements(XscnElement? root)
         {
             if (root is not XscnNodeElement node)
             {
@@ -592,16 +671,11 @@ internal static class PreviousComments
             }
         }
 
-        /// <summary>What a previous document offers a match: its node elements by path, its table entries by key.</summary>
+        /// <summary>What a previous document offers a match outside its node trees: its table entries by key.</summary>
         private sealed class Index
         {
             public Index(XscnDocument previous)
             {
-                if (previous.Root is XscnNodeElement root)
-                {
-                    Collect(root, TscnNodePaths.Root, Nodes, Paths);
-                }
-
                 foreach (XscnResource entry in previous.Resources)
                 {
                     if (entry.Key is { } key)
@@ -611,31 +685,60 @@ internal static class PreviousComments
                 }
             }
 
-            /// <summary>Its node elements, by their path from the root.</summary>
-            public Dictionary<string, XscnNodeElement> Nodes { get; } = new(StringComparer.Ordinal);
-
-            /// <summary>Its node elements' paths, for reporting a part where the previous document had it.</summary>
-            public Dictionary<XscnNodeElement, string> Paths { get; } = new(ReferenceEqualityComparer.Instance);
-
             /// <summary>Its <c>x:Resources</c> entries, by key.</summary>
             public Dictionary<string, XscnResource> Resources { get; } = new(StringComparer.Ordinal);
+        }
+
+        /// <summary>
+        /// One scene's matching: the main tree, or a scene a <c>PackedScene</c> embeds, whose unique ids and paths are its own.
+        /// </summary>
+        private sealed class SceneIndex
+        {
+            public SceneIndex(XscnNodeElement? previousRoot, XscnNodeElement? nextRoot, string? owner)
+            {
+                PreviousRoot = previousRoot;
+                Owner = owner;
+                if (previousRoot is not null)
+                {
+                    Collect(previousRoot, TscnNodePaths.Root);
+                }
+
+                ById = UniqueIdMatches(previousRoot, nextRoot);
+                Used.UnionWith(ById.Values);
+            }
+
+            /// <summary>The previous scene's root, or null when the previous document's root is not a node.</summary>
+            public XscnNodeElement? PreviousRoot { get; }
+
+            /// <summary>Its previous node elements, by their path from the scene's root.</summary>
+            public Dictionary<string, XscnNodeElement> Nodes { get; } = new(StringComparer.Ordinal);
+
+            /// <summary>The new node elements matched to a previous one by a unique id that occurs once in each scene.</summary>
+            public Dictionary<XscnNodeElement, XscnNodeElement> ById { get; }
+
+            /// <summary>The previous node elements already matched, by unique id or by path, so each is matched at most once.</summary>
+            public HashSet<XscnNodeElement> Used { get; } = new(ReferenceEqualityComparer.Instance);
+
+            // The embedded scene's owner, null for the main tree.
+            private string? Owner { get; }
+
+            // Its previous node elements' places, for reporting a part where the previous document had it.
+            private Dictionary<XscnNodeElement, string> Paths { get; } = new(ReferenceEqualityComparer.Instance);
 
             public string PathOf(XscnNodeElement element) => Paths[element];
 
-            private static void Collect(
-                XscnNodeElement element,
-                string path,
-                Dictionary<string, XscnNodeElement> nodes,
-                Dictionary<XscnNodeElement, string> paths
-            )
+            /// <summary>Where a report names the node at a path of this scene.</summary>
+            public string Where(string path) => Owner is null ? path : ScenePath(Owner, path);
+
+            private void Collect(XscnNodeElement element, string path)
             {
                 // Every element gets its path, even one a repeated sibling name left without one of its own, since a
                 // unique id still matches it; only the path lookup is first-wins, and the walk goes on regardless.
-                nodes.TryAdd(path, element);
-                paths.TryAdd(element, path);
+                Nodes.TryAdd(path, element);
+                Paths.TryAdd(element, Where(path));
                 foreach (XscnNodeElement child in element.Children)
                 {
-                    Collect(child, ChildPath(path, child), nodes, paths);
+                    Collect(child, ChildPath(path, child));
                 }
             }
         }
