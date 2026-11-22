@@ -205,8 +205,8 @@ public static partial class TscnToXscn
                     connection.Flags,
                     [.. connection.Binds.Select(bind => ValueReferences.Map(bind, Rewrite))],
                     connection.Unbinds,
-                    connection.FromUidPath,
-                    connection.ToUidPath
+                    writeNodeIds ? connection.FromUidPath : [],
+                    writeNodeIds ? connection.ToUidPath : []
                 )
             );
         }
@@ -294,7 +294,9 @@ public static partial class TscnToXscn
         // unique_name_in_owner = true is the name's %; any other value stays a property.
         private static bool IsUniqueName(TscnProperty property) => property is { Name: UniqueNameProperty, Value: GodotBool { Value: true } };
 
-        private static XscnNodeElement WithNodeFields(XscnNodeElement element, TscnNode node) =>
+        // The unique_id and the id paths are left out when the options say so: Godot's pack mints an id for every node, also
+        // in a file that had none, and builds the id paths from those minted ids.
+        private XscnNodeElement WithNodeFields(XscnNodeElement element, TscnNode node) =>
             element with
             {
                 Index = node.Index,
@@ -302,9 +304,9 @@ public static partial class TscnToXscn
                 Groups = node.Groups,
                 InstancePlaceholder = node.InstancePlaceholder,
                 NodePaths = node.NodePaths,
-                ParentIdPath = node.ParentIdPath,
-                OwnerUidPath = node.OwnerUidPath,
-                UniqueId = node.UniqueId,
+                ParentIdPath = writeNodeIds ? node.ParentIdPath : [],
+                OwnerUidPath = writeNodeIds ? node.OwnerUidPath : [],
+                UniqueId = writeNodeIds ? node.UniqueId : null,
             };
 
         private static string NodeLocation(TscnNode node) =>

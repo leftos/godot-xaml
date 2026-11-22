@@ -309,6 +309,13 @@ public partial class Checks : Node
             ("C150", TheRunningVersionIsTheEngines),
             ("C151", ARenameKeepsTheFilesOwnVersion),
             ("C152", ASaveInAnOlderEditorRestampsWithItsVersion),
+            // A save keeps the replaced file's id state: no x:Uids table and no x:UniqueId where it had none.
+            ("C153", ASaveOverAFileWithNoTableAndNoIdsWritesNeither),
+            ("C154", ASaveOverAFileWithATableAndNoIdsKeepsTheTableAlone),
+            ("C155", ASaveOverAFileWithIdsAndNoTableKeepsTheIdsAlone),
+            ("C156", ASaveToANewPathWritesTheTableAndTheIds),
+            ("C157", ANodeAddedToAFileWithNoIdsGetsNoId),
+            ("C158", ASecondSaveOfAFileWithNoIdsChangesNothing),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -5129,6 +5136,242 @@ public partial class Checks : Node
             DeleteFolder(OutFolder);
         }
     }
+
+    private const string IdStatePath = OutFolder + "id-state.xscn";
+
+    // Godot's pack mints a unique_id for every node (packed_scene.cpp, SceneState::_parse_node), so each saved .tscn carries
+    // ids, and the save drops them where the replaced file had none.
+    private static string ASaveOverAFileWithNoTableAndNoIdsWritesNeither() =>
+        IdStateSave(
+            table: false,
+            ids: false,
+            IdStatePath,
+            text => Judged(text, (NoTable(text), "has an x:Uids table"), (NoIds(text), "has an x:UniqueId"))
+        );
+
+    private static string ASaveOverAFileWithATableAndNoIdsKeepsTheTableAlone() =>
+        IdStateSave(
+            table: true,
+            ids: false,
+            IdStatePath,
+            text => Judged(text, (HasThemeUid(text), "has no x:Uid for the theme"), (NoIds(text), "has an x:UniqueId"))
+        );
+
+    private static string ASaveOverAFileWithIdsAndNoTableKeepsTheIdsAlone() =>
+        IdStateSave(
+            table: false,
+            ids: true,
+            IdStatePath,
+            text =>
+                Judged(
+                    text,
+                    (NoTable(text), "has an x:Uids table"),
+                    (Occurrences(text, "x:UniqueId=\"1\"") == 1, "does not give the id 1 once"),
+                    (Occurrences(text, "x:UniqueId=\"2\"") == 1, "does not give the id 2 once")
+                )
+        );
+
+    private static string ASaveToANewPathWritesTheTableAndTheIds() =>
+        IdStateSave(
+            table: false,
+            ids: false,
+            OutFolder + "id-state-new.xscn",
+            text =>
+                Judged(
+                    text,
+                    (HasThemeUid(text), "has no x:Uid for the theme"),
+                    (Occurrences(text, "x:UniqueId=") == 2, "does not give both nodes an x:UniqueId")
+                )
+        );
+
+    // The edited tree's new node is given an id by the pack, as every node is; a script attached to a node, as godot-mcp's
+    // attach_script attaches one, adds an ext_resource with a uid.
+    private static string ANodeAddedToAFileWithNoIdsGetsNoId()
+    {
+        DeleteFolder(OutFolder);
+        try
+        {
+            Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+            File.WriteAllText(ProjectSettings.GlobalizePath(IdStatePath), IdStateText(table: false, ids: false));
+            File.WriteAllText(ProjectSettings.GlobalizePath(IdStateScriptPath), "extends Control\n");
+            if (ResourceLoader.Load(IdStatePath, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+            {
+                return $"loading {IdStatePath} did not return a PackedScene";
+            }
+
+            Node root = scene.Instantiate();
+            string failure;
+            try
+            {
+                var added = new Node { Name = "Added" };
+                root.AddChild(added);
+                added.Owner = root;
+                root.GetNode("Child").SetScript(GD.Load<Script>(IdStateScriptPath));
+                failure = PackAndSave(root, IdStatePath, "saving the edited scene");
+            }
+            finally
+            {
+                root.Free();
+            }
+
+            GC.KeepAlive(scene);
+            string text = File.ReadAllText(ProjectSettings.GlobalizePath(IdStatePath));
+            return failure.Length > 0
+                ? failure
+                : Judged(
+                    text,
+                    (text.Contains("Name=\"Added\"", StringComparison.Ordinal), "has no node Added"),
+                    (text.Contains(IdStateScriptPath, StringComparison.Ordinal), "does not attach the script"),
+                    (NoTable(text), "has an x:Uids table"),
+                    (NoIds(text), "has an x:UniqueId")
+                );
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // The pack builds an override's parent_id_path from the id it mints for the instance (packed_scene.cpp, SceneState::pack),
+    // so the path would change on every save of a file with no ids.
+    private static string ASecondSaveOfAFileWithNoIdsChangesNothing()
+    {
+        DeleteFolder(OutFolder);
+        try
+        {
+            Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+            File.WriteAllText(ProjectSettings.GlobalizePath(IdInnerPath), IdInnerScene);
+            File.WriteAllText(ProjectSettings.GlobalizePath(IdStatePath), IdOuterScene);
+            if (HiddenDeepFailure() is { Length: > 0 } loadFailure)
+            {
+                return loadFailure;
+            }
+
+            string failure = LoadAndSave(IdStatePath, IdStatePath);
+            string first = File.ReadAllText(ProjectSettings.GlobalizePath(IdStatePath));
+            failure = failure.Length > 0 ? failure : LoadAndSave(IdStatePath, IdStatePath);
+            string second = File.ReadAllText(ProjectSettings.GlobalizePath(IdStatePath));
+            return failure.Length > 0 ? failure
+                : second != first ? $"the second save changed the text:\n{first}\n---\n{second}"
+                : Judged(
+                    second,
+                    (second.Contains("Path=\"Inner/Deep\"", StringComparison.Ordinal), "has no override for Inner/Deep"),
+                    (NoTable(second), "has an x:Uids table"),
+                    (NoIds(second), "has an x:UniqueId"),
+                    (!second.Contains("IdPath", StringComparison.Ordinal), "has an x:ParentIdPath"),
+                    (!second.Contains("UidPath", StringComparison.Ordinal), "has a uid path")
+                );
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // "" when the loaded outer scene hides the instance's Inner/Deep, as its override says.
+    private static string HiddenDeepFailure()
+    {
+        if (ResourceLoader.Load(IdStatePath, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+        {
+            return $"loading {IdStatePath} did not return a PackedScene";
+        }
+
+        Node root = scene.Instantiate();
+        try
+        {
+            if (root.GetNodeOrNull<Node2D>("Part/Inner/Deep") is { Visible: false })
+            {
+                return "";
+            }
+            string children = string.Join(", ", root.GetNodeOrNull("Part")?.GetChildren().Select(c => c.Name.ToString()) ?? []);
+            return $"the loaded scene's Part/Inner/Deep is not a hidden Node2D (children of Part: {children})";
+        }
+        finally
+        {
+            root.Free();
+            GC.KeepAlive(scene);
+        }
+    }
+
+    // Written for the check alone, so no other check's script enters the cache.
+    private const string IdStateScriptPath = OutFolder + "id-state.gd";
+    private const string IdInnerPath = OutFolder + "id-inner.xscn";
+
+    // A scene whose nodes have ids, instanced by a scene whose nodes have none, with an override two levels deep; the
+    // instance's children are editable, as the pack saves a changed node inside an instance only then.
+    private const string IdInnerScene =
+        "<Node2D xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"InnerRoot\" x:UniqueId=\"30\">\n"
+        + "  <Node2D Name=\"Inner\" x:UniqueId=\"31\">\n"
+        + "    <Node2D Name=\"Deep\" x:UniqueId=\"32\" />\n"
+        + "  </Node2D>\n"
+        + "</Node2D>\n";
+
+    private const string IdOuterScene =
+        "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\">\n"
+        + "  <x:Instance Name=\"Part\" Scene=\""
+        + IdInnerPath
+        + "\" x:Editable=\"True\">\n"
+        + "    <x:Override Path=\"Inner/Deep\" Visible=\"False\" />\n"
+        + "  </x:Instance>\n"
+        + "</Control>\n";
+
+    // Writes the id-state scene at IdStatePath, loads it, saves it at target and judges the saved text; "" on success.
+    private static string IdStateSave(bool table, bool ids, string target, Func<string, string> judge)
+    {
+        DeleteFolder(OutFolder);
+        try
+        {
+            Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+            File.WriteAllText(ProjectSettings.GlobalizePath(IdStatePath), IdStateText(table, ids));
+            string failure = LoadAndSave(IdStatePath, target);
+            return failure.Length > 0 ? failure : judge(File.ReadAllText(ProjectSettings.GlobalizePath(target)));
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // Packed again, as a tool's edit packs the tree it changed, so the pack mints the ids the file lacks.
+    private static string LoadAndSave(string path, string target)
+    {
+        if (ResourceLoader.Load(path, "", ResourceLoader.CacheMode.Ignore) is not PackedScene scene)
+        {
+            return $"loading {path} did not return a PackedScene";
+        }
+
+        Node root = scene.Instantiate();
+        try
+        {
+            return PackAndSave(root, target, $"the save to {target}");
+        }
+        finally
+        {
+            root.Free();
+            GC.KeepAlive(scene);
+        }
+    }
+
+    // A Control referring to the theme, with a child, and with an x:Uids entry for the theme and ids on both nodes as asked.
+    private static string IdStateText(bool table, bool ids)
+    {
+        string Id(int id) => ids ? $" x:UniqueId=\"{id}\"" : "";
+        string uids = table ? $"  <x:Uids>\n    <x:Uid Path=\"{ThemePath}\" Value=\"{UidTextOf(ThemePath)}\" />\n  </x:Uids>\n" : "";
+        return $"<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" Name=\"Root\"{Id(1)} Theme=\"{ThemePath}\">\n"
+            + uids
+            + $"  <Panel Name=\"Child\"{Id(2)} />\n"
+            + "</Control>\n";
+    }
+
+    private static bool NoIds(string text) => !text.Contains("x:UniqueId", StringComparison.Ordinal);
+
+    private static bool NoTable(string text) => !text.Contains("x:Uids", StringComparison.Ordinal);
+
+    private static bool HasThemeUid(string text) => text.Contains($"Value=\"{UidTextOf(ThemePath)}\"", StringComparison.Ordinal);
+
+    // "" when every condition holds, else the first that does not, with the saved text.
+    private static string Judged(string text, params (bool Holds, string Failure)[] conditions) =>
+        conditions.FirstOrDefault(c => !c.Holds) is { Failure: { } failure } ? $"the saved text {failure}:\n{text}" : "";
 
     // A file copied in after the last import has a .uid but no uid_cache.bin row, and outside the editor
     // ResourceLoader.get_resource_uid reads only that cache (resource_loader.cpp:1414-1415). The scene's own x:Uids keeps

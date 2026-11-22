@@ -304,7 +304,7 @@ Warning. A placeholder (`x:InstancePlaceholder`) whose tag names a class other t
 
 ### GXC0117 Comment dropped
 
-Warning. A save could not carry a comment of the file it replaced, because what the comment preceded is gone. The message names it.
+Warning. A save could not carry a comment of the file it replaced, because what the comment preceded is gone. The message names it. A node renamed in a file with no `x:UniqueId` is matched by path only, so its comments are dropped.
 
 ### GXC0118 Instanced class unreadable
 

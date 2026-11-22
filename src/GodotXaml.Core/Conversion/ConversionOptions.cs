@@ -40,6 +40,20 @@ public sealed record ConversionOptions
     public PreviousDocument? Previous { get; init; }
 
     /// <summary>
+    /// Whether a forward conversion writes the <c>x:Uids</c> table; false leaves it out, as a save does over a file that has
+    /// none (<see cref="XscnIdState.HasUidTable"/>). True by default.
+    /// </summary>
+    public bool WriteUidTable { get; init; } = true;
+
+    /// <summary>
+    /// Whether a forward conversion gives each node and override its <c>unique_id</c> as <c>x:UniqueId</c>, and keeps the id
+    /// paths built from those ids (<c>x:ParentIdPath</c>, <c>x:OwnerUidPath</c>, a connection's <c>FromUidPath</c> and
+    /// <c>ToUidPath</c>); false leaves every one out, as a save does over a file none of whose nodes has an id
+    /// (<see cref="XscnIdState.HasNodeIds"/>). True by default.
+    /// </summary>
+    public bool WriteNodeIds { get; init; } = true;
+
+    /// <summary>
     /// The sub_resources the file being saved owns, for a forward conversion with <see cref="Previous"/>: each one's id in
     /// the <c>.tscn</c> text to the id it had when the file being replaced loaded it. Only these pair with an entry of
     /// <see cref="Previous"/> by id: a sub-resource of another file can carry an entry's id, and Godot's text saver then

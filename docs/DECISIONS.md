@@ -229,7 +229,7 @@ The first save of a hand-written file writes it in this canonical form, with no 
 
 A file's id state is kept: when the file being replaced has no `x:Uids` table the save writes none, and when none of its nodes has an `x:UniqueId` the save writes none, so a tool's one-attribute edit (godot-mcp's `attach_script`) diffs as that attribute. Godot mints a `unique_id` for every node it packs (`PackedScene::pack`), so the save drops them on the way back. A file in which some nodes carry an id is written with an id on every node.
 
-From then on a save of an unchanged scene changes nothing, so the one-time diff is the cost of a single form; keeping each file's own spelling would leave two forms of one scene and files with no uids for moves to resolve.
+From then on a save of an unchanged scene changes nothing, so the one-time diff is the cost of a single form; keeping each file's own spelling would leave two forms of one scene.
 
 ## References: paths inline, XML namespaces for scenes
 

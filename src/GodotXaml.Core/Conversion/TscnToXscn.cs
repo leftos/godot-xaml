@@ -74,11 +74,15 @@ public static partial class TscnToXscn
         private readonly GodotMetadata metadata;
         private readonly TscnReferences references;
         private readonly Dictionary<XscnResource, string> subIds = new(ReferenceEqualityComparer.Instance);
+        private readonly bool writeUidTable;
+        private readonly bool writeNodeIds;
 
         public Context(TscnDocument document, GodotMetadata metadata, ConversionOptions options)
         {
             this.document = document;
             this.metadata = metadata;
+            writeUidTable = options.WriteUidTable;
+            writeNodeIds = options.WriteNodeIds;
             ReportExtra(document);
             XscnPropertyNames names = XscnParser.NamesOf(metadata);
             IReadOnlyDictionary<string, XscnResource> previousById = options.Previous is { } previous
@@ -118,13 +122,17 @@ public static partial class TscnToXscn
             return new ConversionIds(extIds, returned);
         }
 
+        // No table when the options leave it out, as a save over a file that has none does.
         private ImmutableArray<XscnUid> Uids() =>
-            [
-                .. references
-                    .UsedExtResources.Where(ext => ext.Uid is not null)
-                    .DistinctBy(ext => ext.Path)
-                    .Select(ext => new XscnUid(ext.Path, ext.Uid!)),
-            ];
+            !writeUidTable
+                ? []
+                :
+                [
+                    .. references
+                        .UsedExtResources.Where(ext => ext.Uid is not null)
+                        .DistinctBy(ext => ext.Path)
+                        .Select(ext => new XscnUid(ext.Path, ext.Uid!)),
+                ];
 
         private ImmutableArray<XscnResource> Table() => [.. references.KeyedSubResources.Select(sub => Resource(sub, references.KeyOf(sub.Id)))];
 

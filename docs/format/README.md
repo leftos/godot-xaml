@@ -227,7 +227,7 @@ The rules:
 
 - `<x:Uids>` holds only `<x:Uid Path="…" Value="uid://…" />` entries, written sorted by path.
 - There is one table, on the root only.
-- The tools maintain it: the editor fills it on save, and rewrites an entry when a file is moved or renamed in the FileSystem dock.
+- The tools maintain it: the editor fills it on save (unless the file it replaces has no table, which a save keeps absent; a save to a new path writes one), and rewrites an entry when a file is moved or renamed in the FileSystem dock.
 
 A scene's or resource's own uid is not in the file. It lives in the `.uid` sidecar beside it (`main.xscn.uid`), as for a script, so commit those sidecars.
 
@@ -396,7 +396,7 @@ These go on a node, an instance or an override, and the writer puts them after t
 | `x:ParentIdPath` | Integers joined with `, ` | `parent_id_path=` (Godot 4.7) |
 | `x:UniqueId` | 32-bit integer | `unique_id=` (Godot 4.7), kept so a save does not churn ids |
 
-Each is written only where the `.tscn` has it. Any other `x:` attribute, or one of these on an element that cannot carry it, is `GX0102`.
+Each is written only where the `.tscn` has it. A save over a file none of whose nodes has an `x:UniqueId` writes no `x:UniqueId`, `x:ParentIdPath`, `x:OwnerUidPath`, `FromUidPath` or `ToUidPath`, so a file keeps its id state; a save to a new path writes them. Any other `x:` attribute, or one of these on an element that cannot carry it, is `GX0102`.
 
 Unprefixed attributes the format reserves:
 

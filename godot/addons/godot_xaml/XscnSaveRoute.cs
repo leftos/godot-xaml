@@ -59,14 +59,8 @@ internal static class XscnSaveRoute
         }
 
         XscnDocument? previous = Previous(path, isScene ? XscnDocumentKind.Scene : XscnDocumentKind.Resource, previousMetadata);
-        var options = new ConversionOptions
-        {
-            Seed = XscnLoading.Seed,
-            ScriptClassOf = GodotProjectLookups.ScriptClassOf,
-            Previous = previous is null ? null : new PreviousDocument(previous, previousMetadata),
-            OwnedSubResourceIds = OwnedSubResourceIds(resource, path, previous),
-        };
-        TscnDocument withUids = WithProjectUids(tscn, path, previous);
+        ConversionOptions options = OptionsFor(resource, path, previous, previousMetadata);
+        TscnDocument withUids = options.WriteUidTable ? WithProjectUids(tscn, path, previous) : tscn;
         ConversionResult<XscnDocument> converted = TscnToXscn.Convert(withUids, metadata, options);
         if (PushIssues(path, converted.Issues))
         {
@@ -92,6 +86,19 @@ internal static class XscnSaveRoute
 
         return written;
     }
+
+    // The forward conversion's options. The replaced file's id state is kept (docs/DECISIONS.md, "Canonical formatting on
+    // save"): no x:Uids table and no x:UniqueId where it had none; a new file, or one that does not parse, gets both.
+    private static ConversionOptions OptionsFor(Resource resource, string path, XscnDocument? previous, GodotMetadata previousMetadata) =>
+        new()
+        {
+            Seed = XscnLoading.Seed,
+            ScriptClassOf = GodotProjectLookups.ScriptClassOf,
+            Previous = previous is null ? null : new PreviousDocument(previous, previousMetadata),
+            OwnedSubResourceIds = OwnedSubResourceIds(resource, path, previous),
+            WriteUidTable = previous is null || XscnIdState.HasUidTable(previous),
+            WriteNodeIds = previous is null || XscnIdState.HasNodeIds(previous),
+        };
 
     // The text saver asks for an ext_resource's uid through a callback only the editor registers
     // (resource_format_text.cpp:1884, editor_file_system.cpp:3817), so outside the editor its ext_resources carry none and
@@ -324,7 +331,10 @@ internal static class XscnSaveRoute
         XscnParseResult result = XscnParser.Parse(FileAccess.GetFileAsString(path), kind, metadata);
         if (result.HasErrors)
         {
-            GD.PushWarning($"{path}: godot-xaml: the file being replaced does not parse; its x:Resources keys and comments are not kept.");
+            GD.PushWarning(
+                $"{path}: godot-xaml: the file being replaced does not parse; its x:Resources keys and comments are not kept, "
+                    + "and the save writes the x:Uids table and the ids as for a new file."
+            );
             return null;
         }
 
