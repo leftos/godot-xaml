@@ -29,7 +29,7 @@ Names are those of Godot's C# API, and values are enum names, never integers.
 
 ## Install
 
-You need a Godot 4.7 .NET project (tested on 4.7.2). The full walk-through is in [Getting started](docs/guide/getting-started.md).
+You need a Godot 4.7 .NET project (tested on 4.7.2) that targets .NET 10 or later. The full walk-through is in [Getting started](docs/guide/getting-started.md).
 
 1. Give the project a solution file (`.sln` or `.slnx`) that contains its `.csproj`, if it has none, or an export fails on the C# step: `dotnet new sln -n <AssemblyName>`, then `dotnet sln add <AssemblyName>.csproj`.
 2. Download `godot-xaml-addon-0.5.0.zip` from [the latest release](https://github.com/leftos/godot-xaml/releases/latest) and unzip it at the project root, which puts it at `addons/godot_xaml/`, dotfiles included.

@@ -4,6 +4,10 @@
 
 The project's `.csproj` does not compile `addons/godot_xaml/`, so the loader classes are not in the game's assembly. Remove any `<Compile Remove="addons\**" />` from the `.csproj`, check that `<EnableDynamicLoading>true</EnableDynamicLoading>` is set, and build again.
 
+## The build stops with CS1029 "godot-xaml's addon needs a project that targets .NET 10 or later"
+
+The project's `.csproj` targets an older .NET than the addon supports. Set both `<TargetFramework>` lines (Godot 4.7 writes `net8.0` and `net9.0` for Android) to `net10.0`, and build again. On Godot 4.7, an Android export then needs **Use Gradle Build** on (see [Limitations](limitations.md#platform)).
+
 ## The plugin turns itself off
 
 The editor found no built assembly when it opened, and disabled the plugin. Run `dotnet build` in the project, then turn the plugin on again in Project > Project Settings > Plugins.

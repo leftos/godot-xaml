@@ -15,6 +15,7 @@ The format itself is in the [format reference](../format/README.md).
 ## What you need
 
 - **A Godot 4.7 .NET project** (the editor build with C# support; tested on 4.7.2). The addon is written in C#, so a GDScript-only build of Godot cannot load it. GDScript scripts in the project are fine.
+- **A project that targets .NET 10 or later**, with a .NET 10 SDK to build it. The addon uses .NET 10 APIs. Godot 4.7 writes two `<TargetFramework>` lines in the project's `.csproj`, `net8.0` and `net9.0` for Android: set both to `net10.0` before installing; on an older target the build stops with an error that says so. On Godot 4.7, an Android export then needs a Gradle build (see [Limitations](limitations.md#platform)).
 - **The .NET SDK** that build of Godot asks for.
 
 ## Install the addon

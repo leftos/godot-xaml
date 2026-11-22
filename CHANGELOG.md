@@ -9,6 +9,7 @@
 
 ### Changed
 
+- The addon needs a project that targets .NET 10 or later, and a build on an older target stops with one error that says so.
 - The CLI reads a file with no `x:Godot` marker with its project's Godot version, warning `GXT0009` when it lacks that version's metadata.
 - The editor reads a file with no `x:Godot` marker with the running Godot's version, and every editor save stamps the running version.
 

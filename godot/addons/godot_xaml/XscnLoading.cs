@@ -118,7 +118,7 @@ internal static class XscnLoading
     /// <returns>
     /// <see cref="Error.Ok"/>; <see cref="Error.FileCorrupt"/> when the file does not parse; <see cref="Error.InvalidData"/>
     /// when a path changed in a file whose <c>x:Godot</c> marker names a version the addon does not carry; the read or write error;
-    /// <see cref="Error.Failed"/> on an unexpected exception. Nothing is written on an error.
+    /// <see cref="Error.Failed"/> on an unexpected exception or a document the writer refuses. Nothing is written on an error.
     /// </returns>
     public static Error RenameDependencies(string path, Godot.Collections.Dictionary renames)
     {
@@ -313,6 +313,8 @@ internal static class XscnLoading
 
         XscnDocument rewritten = XscnPathRewriter.Rewrite(document, full).Document;
         GodotMetadata metadata = XscnMetadata.For(document.Godot, path);
+        // A document the writer refuses (a rename target holding a character XML forbids) throws here; RenameDependencies
+        // catches it, pushes the error and returns Error.Failed.
         string text = XscnWriter.Write(XscnRenameUids.Retarget(rewritten, targets), metadata);
         if (text == XscnWriter.Write(document, metadata))
         {
