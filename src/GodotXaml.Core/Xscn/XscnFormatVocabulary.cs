@@ -138,6 +138,21 @@ public static class XscnFormatVocabulary
         return !System.Version.TryParse(metadata.Version, out Version? version) || version >= ScenesSince;
     }
 
+    // Whether a table entry or the root, or any resource inside them at any depth, holds a scene root: what a metadata
+    // ReadsScenes refuses besides x:Scene.
+    internal static bool HoldsSceneRoot(XscnDocument document) => document.Resources.Any(HoldsSceneRoot) || HoldsSceneRoot(document.Root);
+
+    private static bool HoldsSceneRoot(XscnElement element) =>
+        element switch
+        {
+            XscnResource resource => resource.SceneRoot is not null || HoldsSceneRoot(resource.Properties),
+            XscnNodeElement node => HoldsSceneRoot(node.Properties) || node.Children.Any(HoldsSceneRoot),
+            _ => false,
+        };
+
+    private static bool HoldsSceneRoot(System.Collections.Immutable.ImmutableArray<XscnProperty> properties) =>
+        properties.Any(p => p.Value is XscnInline inline && HoldsSceneRoot(inline.Resource));
+
     private static System.Collections.ObjectModel.ReadOnlyCollection<string> NodeKind(string kind) =>
         Array.AsReadOnly<string>([
             .. SpecialAttributes.Where(a => a.Kind == kind).Select(a => a.Name),

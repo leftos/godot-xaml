@@ -33,18 +33,24 @@ public static partial class XscnToTscn
             }
 
             List<PlacedElement> placed = [];
-            Place(root, null, placed);
+            Place(root, null, placed, SceneHome.Main);
             placed.ForEach(DiscoverElement);
             placed.ForEach(DiscoverBinds);
-            ReportUnusedEntries();
-            TscnDocument converted = MintIds(new TscnDocument { Kind = TscnKind.Scene }) with
+
+            // The scene's own properties sort after _bundled (resource_format_text.cpp:1645), so after its nodes and binds.
+            if (document.Scene is { } own)
             {
-                MainScene = new TscnScene
-                {
-                    Nodes = [.. placed.Where(WritesNode).Select(SceneNode)],
-                    Connections = [.. placed.SelectMany(SceneConnections)],
-                    Editables = [.. placed.Where(element => element.Element.Editable).Select(element => new TscnEditable { Path = element.Path })],
-                },
+                Discover(own, SceneLocation, TscnNodePaths.Root + "|scene");
+            }
+
+            ReportUnusedEntries();
+            TscnDocument minted = MintIds(new TscnDocument { Kind = TscnKind.Scene });
+            ImmutableArray<TscnProperty> sceneProperties = document.Scene is { } scene ? Properties(scene, SceneLocation) : [];
+            TscnDocument converted = minted with
+            {
+                MainScene = SceneOf(placed),
+                SceneProperties = sceneProperties,
+                HasSceneResourceSection = HasSceneResourceSection(minted, sceneProperties),
             };
             return converted with
             {
@@ -52,15 +58,31 @@ public static partial class XscnToTscn
             };
         }
 
+        // The sections a placed scene writes: its nodes, its connections and its editable instances.
+        private TscnScene SceneOf(List<PlacedElement> placed) =>
+            new()
+            {
+                Nodes = [.. placed.Where(WritesNode).Select(SceneNode)],
+                Connections = [.. placed.SelectMany(SceneConnections)],
+                Editables = [.. placed.Where(element => element.Element.Editable).Select(element => new TscnEditable { Path = element.Path })],
+            };
+
+        // resource_format_text.cpp:2114-2130: Godot 4.8 writes [resource] for a scene with its own properties or with any
+        // PackedScene sub-resource; .xscn records no flag for it. An older Godot's PackedScene holds _bundled and gets none.
+        private bool HasSceneResourceSection(TscnDocument minted, ImmutableArray<TscnProperty> sceneProperties) =>
+            XscnFormatVocabulary.ReadsScenes(metadata) && (!sceneProperties.IsEmpty || minted.SubResources.Any(sub => sub.Type == "PackedScene"));
+
         // An override's path is relative to the instance it is a direct child of (DECISIONS "Overrides inside an
-        // instance are named by path"); elsewhere it is reported and taken under its parent all the same.
-        private void Place(XscnNodeElement element, PlacedElement? parent, List<PlacedElement> placed)
+        // instance are named by path"); elsewhere it is reported and taken under its parent all the same. home says which
+        // scene the element belongs to: the main one, or one a PackedScene embeds.
+        private void Place(XscnNodeElement element, PlacedElement? parent, List<PlacedElement> placed, SceneHome home)
         {
             PlacedElement? here = element switch
             {
                 XscnNode node => new PlacedElement(element, node.Name, TscnNodePaths.PathOf(parent?.Path, node.Name), parent?.Path)
                 {
                     ParentElement = parent,
+                    Home = home,
                 },
                 XscnOverride over => PlaceOverride(over, parent!),
                 _ => throw new InvalidOperationException($"No conversion for a {element.GetType().Name}."),
@@ -73,7 +95,7 @@ public static partial class XscnToTscn
             placed.Add(here);
             foreach (XscnNodeElement child in element.Children)
             {
-                Place(child, here, placed);
+                Place(child, here, placed, home);
             }
         }
 
@@ -84,7 +106,7 @@ public static partial class XscnToTscn
                 string message =
                     $"This x:Override has no Path, or a Path with an empty, . or .. segment (\"{over.Path}\"), so it names no node; "
                     + "it and what it holds are not written.";
-                Report(ConversionCodes.OverrideWithoutPath, ConversionSeverity.Error, message, Location(parent.Path));
+                Report(ConversionCodes.OverrideWithoutPath, ConversionSeverity.Error, message, Location(parent));
                 return null;
             }
 
@@ -93,7 +115,7 @@ public static partial class XscnToTscn
             if (instanced is null)
             {
                 string message = $"x:Override Path=\"{over.Path}\" is not a direct child of an instance; its path is taken under its parent.";
-                Report(ConversionCodes.OverrideOutsideInstance, ConversionSeverity.Error, message, Location(path));
+                Report(ConversionCodes.OverrideOutsideInstance, ConversionSeverity.Error, message, parent.Home.Location + Location(path));
             }
 
             int slash = path.LastIndexOf('/');
@@ -101,12 +123,13 @@ public static partial class XscnToTscn
             {
                 InstancedBy = instanced,
                 ParentElement = parent,
+                Home = parent.Home,
             };
         }
 
         private void DiscoverElement(PlacedElement placed)
         {
-            string location = Location(placed.Path);
+            string location = Location(placed);
             if (InstancedScene(placed.Element) is { } scene)
             {
                 DiscoverFile(scene, "PackedScene", null, location);
@@ -118,22 +141,17 @@ public static partial class XscnToTscn
             GodotClassInfo? cls = NodeClass(placed, sorted, location);
             ImmutableArray<XscnProperty> ordered = order.Sort(cls, RestoreLayoutMode(placed, sorted), sources);
             ReportSourceFailures(location);
-            DiscoverInOrder((placed.Element as XscnNode)?.Type, ordered, location, placed.Path);
+            DiscoverInOrder((placed.Element as XscnNode)?.Type, ordered, location, placed.Home.Site + placed.Path);
         }
 
         private void DiscoverBinds(PlacedElement placed)
         {
             foreach (XscnConnection connection in placed.Element.Connections)
             {
-                string site = $"{placed.Path}|signal {connection.Signal}|{connection.To}|{connection.Method}";
+                string site = $"{placed.Home.Site}{placed.Path}|signal {connection.Signal}|{connection.To}|{connection.Method}";
                 for (int i = 0; i < connection.Binds.Length; i++)
                 {
-                    DiscoverValue(
-                        new XscnScalar(connection.Binds[i]),
-                        null,
-                        $"{Location(placed.Path)} signal {connection.Signal}",
-                        $"{site}|bind[{i}]"
-                    );
+                    DiscoverValue(new XscnScalar(connection.Binds[i]), null, $"{Location(placed)} signal {connection.Signal}", $"{site}|bind[{i}]");
                 }
             }
         }
@@ -161,7 +179,7 @@ public static partial class XscnToTscn
             return new TscnNode
             {
                 Name = placed.Name,
-                Type = NodeTypeName(element, Location(placed.Path)),
+                Type = NodeTypeName(element, Location(placed)),
                 Parent = placed.Parent,
                 Owner = element.Owner,
                 Index = element.Index,
@@ -172,7 +190,7 @@ public static partial class XscnToTscn
                 Instance = InstancedScene(element) is { } scene ? new GodotResourceRef(GodotRefKind.External, extIds[scene]) : null,
                 ParentIdPath = element.ParentIdPath,
                 OwnerUidPath = element.OwnerUidPath,
-                Properties = NodeProperties(placed, Location(placed.Path)),
+                Properties = NodeProperties(placed, Location(placed)),
             };
         }
 
@@ -316,6 +334,15 @@ public static partial class XscnToTscn
 
         private static string Location(string path) => $"node \"{path}\"";
 
+        private static string Location(PlacedElement placed) => placed.Home.Location + Location(placed.Path);
+
+        // Where a placed scene lives: the prefix of its elements' site keys and of their issues' locations; both empty for
+        // the main scene, so its ids and messages read as they did before scenes could be embedded.
+        private sealed record SceneHome(string Site, string Location)
+        {
+            public static SceneHome Main { get; } = new("", "");
+        }
+
         // An element with its name and its path as the .tscn writes them, and its parent's path (null for the root).
         private sealed record PlacedElement(XscnNodeElement Element, string Name, string Path, string? Parent)
         {
@@ -324,6 +351,9 @@ public static partial class XscnToTscn
 
             // The element this one was placed under, whose class decides a Control child's layout_mode.
             public PlacedElement? ParentElement { get; init; }
+
+            // The scene the element belongs to.
+            public SceneHome Home { get; init; } = SceneHome.Main;
         }
     }
 }

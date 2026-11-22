@@ -77,6 +77,36 @@ public sealed partial class ResourceConversionTests
         Assert.Equal(Renumber(UnorderedNames.Text(fixture, text)), Renumber(TscnWriter.Write(UnorderedNames.Sort(fixture, back.Document))));
     }
 
+    // A Godot 4.8 resource holding a PackedScene whose nodes are its own sections: with the forward ids kept, Godot's bytes.
+    [Fact]
+    public void ConvertsAFourEightSceneHolderThereAndBackByteIdentical()
+    {
+        var metadata = GodotMetadata.LoadBundled("4.8");
+        string text = ReadFixture48("scene_holder.tres");
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(TscnReader.Read(text), metadata, Options);
+        Assert.Empty(forward.Issues);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, metadata, Options with { KeepIds = forward.Ids });
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(text, TscnWriter.Write(back.Document));
+    }
+
+    // With ids minted again, the 4.8 scene holder differs from Godot's file only in the ids.
+    [Fact]
+    public void ConvertsAFourEightSceneHolderThereAndBackWithNewIds()
+    {
+        var metadata = GodotMetadata.LoadBundled("4.8");
+        string text = ReadFixture48("scene_holder.tres");
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(TscnReader.Read(text), metadata, Options);
+        Assert.Empty(forward.Issues);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, metadata, Options);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(Renumber(text), Renumber(TscnWriter.Write(back.Document)));
+    }
+
     // A file Godot 4.8 saved, whose triangles come from _get_property_list: the way back writes them before the script, and with
     // ids minted again the text differs from Godot's only in the ids.
     [Fact]
@@ -534,6 +564,9 @@ public sealed partial class ResourceConversionTests
 
     private static string ReadFixture(string file) =>
         new UTF8Encoding(false, true).GetString(File.ReadAllBytes(RepoFiles.PathOf("tests", "fixtures", "scenes", file)));
+
+    private static string ReadFixture48(string file) =>
+        new UTF8Encoding(false, true).GetString(File.ReadAllBytes(RepoFiles.PathOf("tests", "fixtures", "tscn48", file)));
 
     // Every section id and every id an ExtResource(…) or SubResource(…) names becomes #1, #2, … in the order the ids
     // first appear, so two files that differ only in their ids are equal.

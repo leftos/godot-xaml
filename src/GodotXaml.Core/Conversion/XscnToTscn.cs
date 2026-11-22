@@ -82,9 +82,34 @@ public static partial class XscnToTscn
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(options);
+        if (NeedsNewerGodot(document, metadata, options) is { } refused)
+        {
+            return refused;
+        }
+
         var context = new Context(document, metadata, options, siteHash);
         TscnDocument converted = document.Kind == XscnDocumentKind.Scene ? context.ConvertScene() : context.ConvertResource();
         return new ConversionResult<TscnDocument>(converted, [.. context.Issues]) { Ids = context.Ids() };
+    }
+
+    // x:Scene and a scene inside a PackedScene convert under 4.8 metadata; converted for an older Godot, which cannot load
+    // them, the document fails with a stand-in, as the forward conversion fails on a 4.8 file, rather than losing them.
+    private static ConversionResult<TscnDocument>? NeedsNewerGodot(XscnDocument document, GodotMetadata metadata, ConversionOptions options)
+    {
+        if (XscnFormatVocabulary.ReadsScenes(metadata) || (document.Scene is null && !XscnFormatVocabulary.HoldsSceneRoot(document)))
+        {
+            return null;
+        }
+
+        string message = $"this file holds a Godot 4.8 x:Scene element or embedded scene, which Godot {metadata.Version} cannot load";
+        string location = document.Scene is not null ? "x:Scene" : "PackedScene";
+        var issue = new ConversionIssue(ConversionCodes.NeedsNewerGodot, ConversionSeverity.Error, message, location);
+        var standIn = new TscnDocument
+        {
+            Kind = document.Kind == XscnDocumentKind.Scene ? TscnKind.Scene : TscnKind.Resource,
+            Header = new TscnHeader { Uid = options.Uid },
+        };
+        return new ConversionResult<TscnDocument>(standIn, [issue]);
     }
 
     // FNV-1a 64 over the key's UTF-8 bytes: the same on every run and platform, which string.GetHashCode is not.
@@ -119,6 +144,9 @@ public static partial class XscnToTscn
         private readonly HashSet<XscnResource> found = new(ReferenceEqualityComparer.Instance);
         private readonly Dictionary<string, string> extIds = new(StringComparer.Ordinal);
         private readonly Dictionary<XscnResource, string> subIds = new(ReferenceEqualityComparer.Instance);
+
+        // Each PackedScene's embedded scene, placed when the PackedScene is discovered.
+        private readonly Dictionary<XscnResource, List<PlacedElement>> scenes = new(ReferenceEqualityComparer.Instance);
 
         public Context(XscnDocument document, GodotMetadata metadata, ConversionOptions options, Func<string, ulong> siteHash)
         {
@@ -246,7 +274,9 @@ public static partial class XscnToTscn
             }
         }
 
-        // resource_format_text.cpp:1674-1714: a resource is saved after the resources it uses, once.
+        // resource_format_text.cpp:1674-1714: a resource is saved after the resources it uses, once. An embedded scene is the
+        // PackedScene's _bundled, which sorts before its other properties (resource_format_text.cpp:1645): its nodes, then its
+        // connections' binds (packed_scene.cpp:1441-1463), then the PackedScene's own properties.
         private void DiscoverResource(XscnResource resource, string location, string site)
         {
             if (found.Contains(resource))
@@ -259,6 +289,15 @@ public static partial class XscnToTscn
                 string message = "This resource refers back to itself through others, which Godot cannot load; the loop is not followed.";
                 Report(ConversionCodes.ResourceCycle, ConversionSeverity.Error, message, location);
                 return;
+            }
+
+            if (resource.SceneRoot is { } sceneRoot)
+            {
+                List<PlacedElement> placed = [];
+                Place(sceneRoot, null, placed, new SceneHome(site + "|scene|", location + " scene "));
+                placed.ForEach(DiscoverElement);
+                placed.ForEach(DiscoverBinds);
+                scenes[resource] = placed;
             }
 
             Discover(resource, location, site);
@@ -324,9 +363,14 @@ public static partial class XscnToTscn
             return result with
             {
                 ExtResources = [.. result.ExtResources.OrderBy(ext => ext.Id, GodotNaturalOrder.NoCase)],
-                SubResources = [.. result.SubResources.Select((sub, i) => sub with { Properties = Properties(subUses[i]) })],
+                SubResources =
+                [
+                    .. result.SubResources.Select((sub, i) => sub with { Properties = Properties(subUses[i]), Scene = EmbeddedScene(subUses[i]) }),
+                ],
             };
         }
+
+        private TscnScene? EmbeddedScene(SubUse use) => scenes.TryGetValue(use.Resource, out List<PlacedElement>? placed) ? SceneOf(placed) : null;
 
         private TscnDocument MintExtIds(TscnDocument shell)
         {

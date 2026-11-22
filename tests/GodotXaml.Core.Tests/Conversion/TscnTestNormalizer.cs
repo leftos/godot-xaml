@@ -21,7 +21,8 @@ internal static class TscnTestNormalizer
     /// Renumbers the ext_resource ids <c>1</c>, <c>2</c>, … and the sub_resource ids <c>&lt;Type&gt;_&lt;n&gt;</c>, both
     /// in section order (n counts every sub_resource from 1), and rewrites every <c>ExtResource</c> and
     /// <c>SubResource</c> reference in node, sub_resource, <c>[resource]</c> and connection values and in each node's
-    /// <c>instance=</c>. Section and property order are left as they are; a reference to an id no section has is kept.
+    /// <c>instance=</c>, those of every scene a PackedScene sub_resource embeds included. Section and property order are
+    /// left as they are; a reference to an id no section has is kept.
     /// </summary>
     /// <param name="document">The document.</param>
     /// <returns>The document with its ids renumbered.</returns>
@@ -45,6 +46,22 @@ internal static class TscnTestNormalizer
         ImmutableArray<TscnProperty> Properties(ImmutableArray<TscnProperty> properties) =>
             [.. properties.Select(property => property with { Value = Rewrite(property.Value) })];
 
+        TscnScene Scene(TscnScene scene) =>
+            scene with
+            {
+                Nodes =
+                [
+                    .. scene.Nodes.Select(node =>
+                        node with
+                        {
+                            Instance = node.Instance is { } instance ? Rewrite(instance) : null,
+                            Properties = Properties(node.Properties),
+                        }
+                    ),
+                ],
+                Connections = [.. scene.Connections.Select(connection => connection with { Binds = [.. connection.Binds.Select(Rewrite)] })],
+            };
+
         return document with
         {
             ExtResources = [.. document.ExtResources.Select(ext => ext with { Id = extIds.GetValueOrDefault(ext.Id, ext.Id) })],
@@ -55,24 +72,13 @@ internal static class TscnTestNormalizer
                     {
                         Id = subIds.GetValueOrDefault(sub.Id, sub.Id),
                         Properties = Properties(sub.Properties),
+                        Scene = sub.Scene is { } scene ? Scene(scene) : null,
                     }
                 ),
             ],
             ResourceProperties = Properties(document.ResourceProperties),
-            MainScene = document.MainScene with
-            {
-                Nodes =
-                [
-                    .. document.Nodes.Select(node =>
-                        node with
-                        {
-                            Instance = node.Instance is { } instance ? Rewrite(instance) : null,
-                            Properties = Properties(node.Properties),
-                        }
-                    ),
-                ],
-                Connections = [.. document.Connections.Select(connection => connection with { Binds = [.. connection.Binds.Select(Rewrite)] })],
-            },
+            SceneProperties = Properties(document.SceneProperties),
+            MainScene = Scene(document.MainScene),
         };
     }
 

@@ -15,6 +15,8 @@ public sealed class SceneRoundTripTests
 
     private static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
 
+    private static readonly GodotMetadata Metadata48 = GodotMetadata.LoadBundled("4.8");
+
     private static readonly ConversionOptions Options = new() { Seed = 7 };
 
     public static TheoryData<string> Fixtures =>
@@ -54,7 +56,7 @@ public sealed class SceneRoundTripTests
     {
         string text = ReadFixture(FixtureFolder(fixture), fixture + ".tscn");
 
-        Assert.Equal(text, ThroughModel(text, XscnDocumentKind.Scene));
+        Assert.Equal(text, ThroughModel(text, XscnDocumentKind.Scene, Metadata));
     }
 
     [Theory]
@@ -63,7 +65,29 @@ public sealed class SceneRoundTripTests
     {
         string text = ReadFixture(FixtureFolder(fixture), fixture + ".tscn");
 
-        Assert.Equal(Comparable(TscnReader.Read(text)), Comparable(ThroughText(text, XscnDocumentKind.Scene)));
+        Assert.Equal(Comparable(TscnReader.Read(text)), Comparable(ThroughText(text, XscnDocumentKind.Scene, Metadata)));
+    }
+
+    // Godot 4.8's saves of a scene's own properties and of scenes embedded in PackedScene sub-resources.
+    public static TheoryData<string> Fixtures48 =>
+        new("scene_meta", "embedded_scene", "embedded_only", "embedded_empty", "embedded_target", "embedded_instance");
+
+    [Theory]
+    [MemberData(nameof(Fixtures48))]
+    public void ConvertsAFourEightSceneThereAndBackByteIdentical(string fixture)
+    {
+        string text = ReadFixture("tscn48", fixture + ".tscn");
+
+        Assert.Equal(text, ThroughModel(text, XscnDocumentKind.Scene, Metadata48));
+    }
+
+    [Theory]
+    [MemberData(nameof(Fixtures48))]
+    public void ConvertsAFourEightSceneThroughXscnTextAndBack(string fixture)
+    {
+        string text = ReadFixture("tscn48", fixture + ".tscn");
+
+        Assert.Equal(Comparable(TscnReader.Read(text)), Comparable(ThroughText(text, XscnDocumentKind.Scene, Metadata48)));
     }
 
     [Fact]
@@ -255,8 +279,8 @@ public sealed class SceneRoundTripTests
 
             """;
 
-        Assert.Equal(Sections(text), Sections(ThroughModel(text, XscnDocumentKind.Scene)));
-        Assert.Equal(Sections(Comparable(TscnReader.Read(text))), Sections(Comparable(ThroughText(text, XscnDocumentKind.Scene))));
+        Assert.Equal(Sections(text), Sections(ThroughModel(text, XscnDocumentKind.Scene, Metadata)));
+        Assert.Equal(Sections(Comparable(TscnReader.Read(text))), Sections(Comparable(ThroughText(text, XscnDocumentKind.Scene, Metadata))));
     }
 
     [Fact]
@@ -290,7 +314,7 @@ public sealed class SceneRoundTripTests
 
             """;
 
-        string xscn = XscnWriter.Write(Forward(TscnReader.Read(Text), XscnDocumentKind.Scene).Document, Metadata);
+        string xscn = XscnWriter.Write(Forward(TscnReader.Read(Text), XscnDocumentKind.Scene, Metadata).Document, Metadata);
 
         Assert.Contains("<x:Prop Name=\"libraries/\"", xscn, StringComparison.Ordinal);
         Assert.Empty(XscnParser.Parse(xscn, XscnDocumentKind.Scene, Metadata).Diagnostics);
@@ -299,38 +323,38 @@ public sealed class SceneRoundTripTests
 
     private static void AssertRoundTrips(string text, XscnDocumentKind kind = XscnDocumentKind.Scene)
     {
-        Assert.Equal(text, ThroughModel(text, kind));
-        Assert.Equal(Comparable(TscnReader.Read(text)), Comparable(ThroughText(text, kind)));
+        Assert.Equal(text, ThroughModel(text, kind, Metadata));
+        Assert.Equal(Comparable(TscnReader.Read(text)), Comparable(ThroughText(text, kind, Metadata)));
     }
 
     // Forward, then back with the forward ids kept; the written text.
-    private static string ThroughModel(string text, XscnDocumentKind kind)
+    private static string ThroughModel(string text, XscnDocumentKind kind, GodotMetadata metadata)
     {
         TscnDocument source = TscnReader.Read(text);
-        ConversionResult<XscnDocument> forward = Forward(source, kind);
+        ConversionResult<XscnDocument> forward = Forward(source, kind, metadata);
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, Metadata, BackOptions(source) with { KeepIds = forward.Ids });
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, metadata, BackOptions(source) with { KeepIds = forward.Ids });
 
         Assert.Empty(back.Issues);
         return TscnWriter.Write(back.Document);
     }
 
     // Forward, written as .xscn text and parsed again, then back with new ids.
-    private static TscnDocument ThroughText(string text, XscnDocumentKind kind)
+    private static TscnDocument ThroughText(string text, XscnDocumentKind kind, GodotMetadata metadata)
     {
         TscnDocument source = TscnReader.Read(text);
-        XscnParseResult parsed = XscnParser.Parse(XscnWriter.Write(Forward(source, kind).Document, Metadata), kind, Metadata);
+        XscnParseResult parsed = XscnParser.Parse(XscnWriter.Write(Forward(source, kind, metadata).Document, metadata), kind, metadata);
         Assert.Empty(parsed.Diagnostics);
 
-        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, Metadata, BackOptions(source));
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, metadata, BackOptions(source));
 
         Assert.Empty(back.Issues);
         return back.Document;
     }
 
-    private static ConversionResult<XscnDocument> Forward(TscnDocument source, XscnDocumentKind kind)
+    private static ConversionResult<XscnDocument> Forward(TscnDocument source, XscnDocumentKind kind, GodotMetadata metadata)
     {
-        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(source, Metadata, Options);
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(source, metadata, Options);
         Assert.Empty(forward.Issues);
         Assert.Equal(kind, forward.Document.Kind);
         return forward;

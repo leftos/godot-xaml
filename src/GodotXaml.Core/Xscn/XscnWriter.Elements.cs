@@ -55,25 +55,13 @@ public static partial class XscnWriter
 
             string? construct =
                 document.Scene is not null ? "x:Scene"
-                : document.Resources.Any(HoldsSceneRoot) || HoldsSceneRoot(document.Root) ? "a scene inside PackedScene"
+                : XscnFormatVocabulary.HoldsSceneRoot(document) ? "a scene inside PackedScene"
                 : null;
             if (construct is not null)
             {
                 throw new ArgumentException($"{construct} needs Godot 4.8 or later; written with Godot {metadata.Version}'s metadata");
             }
         }
-
-        // Whether an element or any resource inside it, at any depth, holds a scene root.
-        private static bool HoldsSceneRoot(XscnElement element) =>
-            element switch
-            {
-                XscnResource resource => resource.SceneRoot is not null || HoldsSceneRoot(resource.Properties),
-                XscnNodeElement node => HoldsSceneRoot(node.Properties) || node.Children.Any(HoldsSceneRoot),
-                _ => false,
-            };
-
-        private static bool HoldsSceneRoot(ImmutableArray<XscnProperty> properties) =>
-            properties.Any(p => p.Value is XscnInline inline && HoldsSceneRoot(inline.Resource));
 
         // A scene namespace may not take the format's prefix, so one that has it is given x1, x2, …, the first not taken.
         private static FrozenDictionary<string, string> WrittenPrefixes(ImmutableArray<XscnNamespace> namespaces)
