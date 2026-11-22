@@ -225,7 +225,9 @@ Only a sub-resource the saved file owns pairs by id, because Godot's text saver 
 
 When an id pairs, the original keeps the key and a value-equal duplicate takes `Type1`; a resource whose type changed under the same id gets a new key; a keyed entry used once goes inline and drops its key, which no duplicate then takes.
 
-The first save of a hand-written file writes it in this canonical form, with no attempt to keep the file's own spelling: an instance written `x:Instance` becomes its scene's namespace tag, the `x:Uids` table and the nodes' `x:UniqueId` are added, and a relative reference is written as its `res://` path, since loading resolves it before Godot sees the scene. Comments still carry.
+The first save of a hand-written file writes it in this canonical form, with no attempt to keep the file's own spelling: an instance written `x:Instance` becomes its scene's namespace tag, and a relative reference is written as its `res://` path, since loading resolves it before Godot sees the scene. Comments still carry.
+
+A file's id state is kept: when the file being replaced has no `x:Uids` table the save writes none, and when none of its nodes has an `x:UniqueId` the save writes none, so a tool's one-attribute edit (godot-mcp's `attach_script`) diffs as that attribute. Godot mints a `unique_id` for every node it packs (`PackedScene::pack`), so the save drops them on the way back. A file in which some nodes carry an id is written with an id on every node.
 
 From then on a save of an unchanged scene changes nothing, so the one-time diff is the cost of a single form; keeping each file's own spelling would leave two forms of one scene and files with no uids for moves to resolve.
 
