@@ -22,10 +22,10 @@ What godot-xaml does not do, or does differently from a `.tscn`.
 - **A path a script builds at runtime is not rewritten** by `convert --project`; it warns about them (`GXP0006`).
 - **Files outside the project, code that tests a `.tscn` extension, and code that reads scene files as text are not rewritten** by `convert --project`, which edits only the project's scripts and `project.godot` where a string is exactly a converted path. A project's tests and tools beside the game are the usual case ([Converting a project](converting.md#what-it-does-not-rewrite)).
 - **`godot-xaml check` reports parse problems only.** Problems found while converting a file for a load (`GXC` codes) show in the editor's Output panel.
-- **The first open after installing** does not list `.xscn` files; the second does ([Working in the editor](editor.md#the-first-open)).
+- **The first open after installing** does not list `.xscn` and `.xres` files; the second does ([Working in the editor](editor.md#the-first-open)).
 - **The editor loads each changed `.xscn` in full to read its node groups** (for Project Settings > Global Groups), where Godot reads a `.tscn` as text. It does this on the first open of a project without `.godot/scene_groups_cache.cfg` (on a fresh clone that is the second open, since the first lists no `.xscn`), after a file scan for each new or changed scene, and on each save or update of a scene for that one file.
 
-  It runs on the main thread, so the editor waits under "Updating Scene Groups". A scene costs roughly ten times what it costs as `.tscn`: a few seconds for a thousand scenes on a desktop. A broken `.xscn` logs its load errors at each of these points. Godot 4.7.2 gives a loader no cheaper way to answer.
+  It runs on the main thread, so the editor waits under "Updating Scene Groups". A `.xscn` costs about fifty times what it costs as `.tscn`, which Godot reads as text: on a desktop, 200 scenes take about two and a half seconds against 50 milliseconds, roughly ten seconds for a thousand scenes. A broken `.xscn` logs its load errors at each of these points. Godot 4.7.2 gives a loader no cheaper way to answer.
 - **A headless export exits 0** even when a file failed to convert; check the log for `ERROR: godot-xaml:` ([Exporting a game](export.md)).
 
 ## Tooling
