@@ -346,20 +346,26 @@ public sealed class TscnWriterTests
     // Godot 4.8's own output, saved by Godot 4.8 beta 2 (resource_format_text.cpp:2025-2143, 1721-1866), reads and
     // writes back to the same bytes.
     [Fact]
-    public void MetaWritesBackByteIdentical() => AssertWritesBack("meta.tscn");
+    public void SceneMetaWritesBackByteIdentical() => AssertWritesBack("scene_meta.tscn");
 
     [Fact]
-    public void NestedWritesBackByteIdentical() => AssertWritesBack("nested.tscn");
+    public void EmbeddedSceneWritesBackByteIdentical() => AssertWritesBack("embedded_scene.tscn");
 
     [Fact]
-    public void NestedOnlyWritesBackByteIdentical() => AssertWritesBack("nested_only.tscn");
+    public void EmbeddedOnlyWritesBackByteIdentical() => AssertWritesBack("embedded_only.tscn");
 
     [Fact]
-    public void HolderWritesBackByteIdentical() => AssertWritesBack("holder.tres");
+    public void SceneHolderWritesBackByteIdentical() => AssertWritesBack("scene_holder.tres");
 
     // 4.8 :2122-2130: an unpacked PackedScene sub-resource has no nodes, and the scene still gets its bare [resource].
     [Fact]
-    public void EmptyNestedWritesBackByteIdentical() => AssertWritesBack("empty_nested.tscn");
+    public void EmbeddedEmptyWritesBackByteIdentical() => AssertWritesBack("embedded_empty.tscn");
+
+    [Fact]
+    public void EmbeddedInstanceWritesBackByteIdentical() => AssertWritesBack("embedded_instance.tscn");
+
+    [Fact]
+    public void EmbeddedTargetWritesBackByteIdentical() => AssertWritesBack("embedded_target.tscn");
 
     // resource_format_text.cpp:2060: groups.sort_custom<StringName::AlphCompare>, which is str_compare, code point order.
     [Fact]

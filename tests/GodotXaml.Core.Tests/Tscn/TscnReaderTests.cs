@@ -396,7 +396,7 @@ public sealed class TscnReaderTests
     [Fact]
     public void ReadsMeta()
     {
-        TscnDocument document = Fixture48("meta.tscn");
+        TscnDocument document = Fixture48("scene_meta.tscn");
 
         Assert.Equal(TscnKind.Scene, document.Kind);
         Assert.Empty(document.SubResources);
@@ -413,7 +413,7 @@ public sealed class TscnReaderTests
     [Fact]
     public void ReadsNested()
     {
-        TscnDocument document = Fixture48("nested.tscn");
+        TscnDocument document = Fixture48("embedded_scene.tscn");
 
         Assert.Equal(["PackedScene", "Resource"], document.SubResources.Select(sub => sub.Type));
         TscnSubResource packed = document.SubResources[0];
@@ -437,7 +437,7 @@ public sealed class TscnReaderTests
     [Fact]
     public void ReadsNestedOnly()
     {
-        TscnDocument document = Fixture48("nested_only.tscn");
+        TscnDocument document = Fixture48("embedded_only.tscn");
 
         TscnSubResource packed = Assert.Single(document.SubResources);
         AssertInnerScene(packed.Scene);
@@ -489,7 +489,7 @@ public sealed class TscnReaderTests
     [Fact]
     public void ReadsHolder()
     {
-        TscnDocument document = Fixture48("holder.tres");
+        TscnDocument document = Fixture48("scene_holder.tres");
 
         Assert.Equal(TscnKind.Resource, document.Kind);
         TscnSubResource packed = Assert.Single(document.SubResources);

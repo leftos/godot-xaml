@@ -289,8 +289,8 @@ public sealed partial class SceneForwardTests
     // A Godot 4.8 scene [resource] or embedded scene has no place in a conversion for an older Godot, so it fails
     // rather than dropping them.
     [Theory]
-    [InlineData("nested.tscn")]
-    [InlineData("meta.tscn")]
+    [InlineData("embedded_scene.tscn")]
+    [InlineData("scene_meta.tscn")]
     public void AFourEightSceneUnderFourSevenMetadataNeedsANewerGodot(string file)
     {
         ConversionResult<XscnDocument> result = ConvertWithIssues(

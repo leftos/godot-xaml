@@ -1,14 +1,11 @@
 extends SceneTree
-## Writes the scene fixtures: .tscn and .tres files saved by Godot's own text saver.
-##
+## Writes the scene fixtures: .tscn and .tres files saved by Godot's own text saver, the 4.7 cases
+## into tests/fixtures/scenes/ and the 4.8 ones into tests/fixtures/tscn48/ with --four-eight.
 ## Run: godot --headless --path tools/scene-fixtures --script res://generate.gd --
-##     --out-dir <absolute tests/fixtures/scenes folder>
-## Each case builds a scene or resource in code, saves it with ResourceSaver.save under
-## res://cases/ (cases reference each other there) and copies the saved bytes unchanged to
-## <out-dir>/<case>.tscn or .tres. Ext and sub-resource ids are pinned; node unique_id values
-## are random on every run (Node.set_unique_scene_id is not exposed to scripts).
+##     --out-dir <absolute folder> [--four-eight]
 
 const FamilyCases := preload("res://family_cases.gd")
+const Scene48Cases := preload("res://scene48_cases.gd")
 const CASES_DIR := "res://cases"
 ## Scene inheritance cannot be set up from a script (Node.set_scene_inherited_state is not
 ## exposed), so the inherited case loads this one-node scene that inherits nested.tscn, edits
@@ -36,6 +33,12 @@ func _run() -> String:
 	_out_dir = _arg_value("--out-dir")
 	if _out_dir.is_empty():
 		return "pass -- --out-dir <absolute folder>"
+	var four_eight := OS.get_cmdline_user_args().has("--four-eight")
+	var version_error := Scene48Cases.version_error(four_eight)
+	if not version_error.is_empty():
+		return version_error
+	if four_eight:
+		return Scene48Cases.run(self)
 	for folder in [ProjectSettings.globalize_path(CASES_DIR), _out_dir]:
 		var error := _clear(folder)
 		if not error.is_empty():
