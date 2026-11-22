@@ -52,8 +52,12 @@ internal sealed class XscnPreviewInstances : IDisposable
     /// nothing is read, classified or copied.
     /// </summary>
     /// <param name="document">A converted scene whose ext_resource paths are resource paths.</param>
+    /// <param name="resPath">
+    /// The document's <c>res://</c> path, which an issue about the document itself names; when null, the issue names it
+    /// the previewed scene.
+    /// </param>
     /// <returns>The document to load; when <see cref="Issues"/> is not empty, one that must not be loaded.</returns>
-    internal TscnDocument Stripped(TscnDocument document)
+    internal TscnDocument Stripped(TscnDocument document, string? resPath = null)
     {
         // Godot registers a global class whose native base is ResourceFormatLoader as a loader, and a built-in loader that
         // fails on a file hands that file on to them (resource_loader.cpp, add_custom_loaders), which runs the class's
@@ -64,7 +68,7 @@ internal sealed class XscnPreviewInstances : IDisposable
             Failed(path, LoaderClassRefusal(className));
         }
 
-        return loaderClasses.Count > 0 ? document : Stripped(document, out _);
+        return loaderClasses.Count > 0 ? document : Stripped(document, resPath ?? "the previewed scene", out _);
     }
 
     // Why a project's loader class leaves nothing to preview.
@@ -89,19 +93,35 @@ internal sealed class XscnPreviewInstances : IDisposable
         copies.Clear();
     }
 
-    private TscnDocument Stripped(TscnDocument document, out HashSet<string> lost)
+    private TscnDocument Stripped(TscnDocument document, string location, out HashSet<string> lost)
     {
+        RefuseEmbeddedInstances(document, location);
+
         // The editor stops Godot making placeholder nodes (editor_node.cpp) and loads each placeholder's scene as a real
-        // instance, so a placeholder is pointed at that scene's stripped copy too (packed_scene.cpp). The ext_resources
-        // are redirected first, so a copy is written before a placeholder that names it can reach it.
-        TscnDocument redirected = document with
-        {
-            ExtResources = [.. document.ExtResources.Select(Redirected)],
-            MainScene = document.MainScene with { Nodes = [.. document.Nodes.Select(RedirectedPlaceholder)] },
-        };
+        // instance, so a placeholder is pointed at that scene's stripped copy too (packed_scene.cpp), in every scene the
+        // document holds. The ext_resources are redirected first, so a copy is written before a placeholder that names it
+        // can reach it.
+        TscnDocument redirected = XscnPreviewScene.WithEveryScene(
+            document with
+            {
+                ExtResources = [.. document.ExtResources.Select(Redirected)],
+            },
+            scene => scene with { Nodes = [.. scene.Nodes.Select(RedirectedPlaceholder)] }
+        );
         HashSet<string> instanced = LostUnderInstances(document);
         lost = [.. instanced, .. XscnPreviewScene.ScriptedNodePaths(document)];
         return XscnPreviewScene.WithoutScripts(redirected, instanced, KindOf, RefusePathValue);
+    }
+
+    // A node whose instance= names a sub_resource instances that embedded scene as written (packed_scene.cpp, SceneState
+    // instantiate), which no copy can stand in for, so the document is refused. Only a hand-written .tscn holds one: the
+    // saver writes every instance as an ext_resource.
+    private void RefuseEmbeddedInstances(TscnDocument document, string location)
+    {
+        if (document.Scenes.SelectMany(scene => scene.Nodes).Any(node => node.Instance is GodotResourceRef { Kind: GodotRefKind.Sub }))
+        {
+            Failed(location, $"{location} instances an embedded scene directly (instance=SubResource), which the preview cannot strip");
+        }
     }
 
     private PreviewReferenceKind KindOf(string resolved) => Classified(resolved).Kind;
@@ -342,7 +362,7 @@ internal sealed class XscnPreviewInstances : IDisposable
             Header = document.Header with { Uid = null },
             ExtResources = [.. document.ExtResources.Select(ext => ext with { Path = XscnLoading.Localized(resPath, ext.Path) })],
         };
-        File.WriteAllText(copy, TscnWriter.Write(Stripped(localized, out HashSet<string> lost)));
+        File.WriteAllText(copy, TscnWriter.Write(Stripped(localized, resPath, out HashSet<string> lost)));
         lostScripts[resPath] = lost;
         return copy;
     }

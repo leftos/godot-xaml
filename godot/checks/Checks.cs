@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Godot;
 using GodotXaml.Addon;
@@ -325,6 +326,17 @@ public partial class Checks : Node
             ("C163", TheReferenceWalkReachesEmbeddedScenes),
             ("C164", ScenePathsIncludeEmbeddedScenes),
             ("C165", TheSaveRouteHoldsEmbeddedSubResources),
+            // With scripts off the preview strips every scene a document holds and the scene's own properties, and refuses an
+            // instance of an embedded scene.
+            ("C166", AnEmbeddedScenesScriptIsStripped),
+            ("C167", AnObjectScriptValueInAnEmbeddedSceneIsNulled),
+            ("C168", AScriptOnTheSceneResourceIsRemoved),
+            ("C169", AScriptInSceneMetadataIsNulled),
+            ("C170", AnEmbeddedSceneInsideAnEmbeddedSceneIsStripped),
+            ("C171", AConnectionFromAStrippedEmbeddedNodeIsDropped),
+            ("C172", AnInstanceOfAnEmbeddedSceneIsRefused),
+            ("C173", AReferencedFourEightTscnIsStrippedSceneByScene),
+            ("C174", ADocumentWithoutEmbeddedScenesStripsAsBefore),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -8259,4 +8271,260 @@ public partial class Checks : Node
             ? "setup: the 4.8 text does not parse: " + string.Join("; ", result.Diagnostics.Select(d => $"{d.Code} {d.Message}"))
             : null;
     }
+
+    // The script every embedded-scene strip check names, declared as a Script ext_resource.
+    private const string EmbeddedScriptExt = "[ext_resource type=\"Script\" path=\"" + CasesPath + "preview_signals.gd\" id=\"1_s\"]\n\n";
+
+    // A 4.8 scene whose embedded scene's root has a script, a flat sub_resource with a script held by that scene's child,
+    // and a main root holding the embedded scene.
+    private const string EmbeddedScriptedScene =
+        "[gd_scene format=3]\n\n"
+        + EmbeddedScriptExt
+        + "[sub_resource type=\"Resource\" id=\"Resource_s\"]\nscript = ExtResource(\"1_s\")\n\n"
+        + "[sub_resource type=\"PackedScene\" id=\"PackedScene_e\"]\n"
+        + "[node name=\"Inner\" type=\"Control\"]\nscript = ExtResource(\"1_s\")\n\n"
+        + "[node name=\"Child\" type=\"Control\" parent=\".\"]\nmetadata/held = SubResource(\"Resource_s\")\n\n"
+        + "[resource]\n\n"
+        + "[node name=\"Root\" type=\"Control\"]\nmetadata/inner = SubResource(\"PackedScene_e\")\n";
+
+    // With scripts off, an embedded scene's node loses its script, and nothing the text holds names the script or a removed
+    // resource.
+    private static string AnEmbeddedScenesScriptIsStripped()
+    {
+        string written = TscnWriter.Write(XscnPreviewScene.WithoutScripts(TscnReader.Read(EmbeddedScriptedScene)));
+        return Failures(NoScriptFailure(written), DanglingFailure(written));
+    }
+
+    // An Object() value of a Script class in an embedded scene's node property becomes null.
+    private static string AnObjectScriptValueInAnEmbeddedSceneIsNulled()
+    {
+        const string text =
+            "[gd_scene format=3]\n\n"
+            + "[sub_resource type=\"PackedScene\" id=\"PackedScene_e\"]\n"
+            + "[node name=\"Inner\" type=\"Control\"]\nmetadata/o = Object(GDScript,\"script/source\":\"\")\n\n"
+            + "[resource]\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\nmetadata/inner = SubResource(\"PackedScene_e\")\n";
+        TscnDocument stripped = XscnPreviewScene.WithoutScripts(TscnReader.Read(text));
+        TscnProperty? value = stripped.SubResources.Single().Scene?.Nodes.Single().Properties.FirstOrDefault(p => p.Name == "metadata/o");
+        return value?.Value is GodotNull ? "" : $"the embedded node's metadata/o is {value?.Value.ToString() ?? "missing"}, not null";
+    }
+
+    // A script on the scene resource itself leaves the [resource] section, and its ext_resource leaves the text.
+    private static string AScriptOnTheSceneResourceIsRemoved()
+    {
+        const string text =
+            "[gd_scene format=3]\n\n"
+            + "[ext_resource type=\"Resource\" path=\""
+            + PreviewPlainPath
+            + "\" id=\"2_r\"]\n\n"
+            + "[resource]\nscript = ExtResource(\"2_r\")\nresource_name = \"S\"\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\n";
+        TscnDocument stripped = XscnPreviewScene.WithoutScripts(TscnReader.Read(text));
+        string[] names = [.. stripped.SceneProperties.Select(property => property.Name)];
+        string written = TscnWriter.Write(stripped);
+        return Failures(
+            names.SequenceEqual(["resource_name"], StringComparer.Ordinal)
+                ? ""
+                : $"the scene's properties after the strip are [{string.Join(", ", names)}], not [resource_name]",
+            written.Contains("ExtResource(\"2_r\")", StringComparison.Ordinal) || written.Contains("id=\"2_r\"", StringComparison.Ordinal)
+                ? $"the written text still names the scene's script: {Escaped(written)}"
+                : "",
+            DanglingFailure(written)
+        );
+    }
+
+    // A Resource() value naming a script in the scene resource's metadata becomes null.
+    private static string AScriptInSceneMetadataIsNulled()
+    {
+        const string text =
+            "[gd_scene format=3]\n\n"
+            + "[resource]\nmetadata/x = Resource(\""
+            + CasesPath
+            + "preview_signals.gd\")\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\n";
+        TscnDocument stripped = XscnPreviewScene.WithoutScripts(TscnReader.Read(text));
+        TscnProperty? value = stripped.SceneProperties.FirstOrDefault(property => property.Name == "metadata/x");
+        return value?.Value is GodotNull ? "" : $"the scene's metadata/x is {value?.Value.ToString() ?? "missing"}, not null";
+    }
+
+    // An embedded scene held by another embedded scene's node is stripped as the outer one is.
+    private static string AnEmbeddedSceneInsideAnEmbeddedSceneIsStripped()
+    {
+        const string text =
+            "[gd_scene format=3]\n\n"
+            + EmbeddedScriptExt
+            + "[sub_resource type=\"PackedScene\" id=\"PackedScene_in\"]\n"
+            + "[node name=\"Deep\" type=\"Control\"]\nscript = ExtResource(\"1_s\")\n\n"
+            + "[sub_resource type=\"PackedScene\" id=\"PackedScene_out\"]\n"
+            + "[node name=\"Outer\" type=\"Control\"]\nscript = ExtResource(\"1_s\")\nmetadata/inner = SubResource(\"PackedScene_in\")\n\n"
+            + "[resource]\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\nmetadata/outer = SubResource(\"PackedScene_out\")\n";
+        string written = TscnWriter.Write(XscnPreviewScene.WithoutScripts(TscnReader.Read(text)));
+        return Failures(NoScriptFailure(written), DanglingFailure(written));
+    }
+
+    // A connection from an embedded scene's node that lost its script is dropped, by that scene's own paths; the main
+    // scene's connections, one from a node of the same name included, stay.
+    private static string AConnectionFromAStrippedEmbeddedNodeIsDropped()
+    {
+        const string text =
+            "[gd_scene format=3]\n\n"
+            + EmbeddedScriptExt
+            + "[sub_resource type=\"PackedScene\" id=\"PackedScene_e\"]\n"
+            + "[node name=\"Inner\" type=\"Control\"]\n\n"
+            + "[node name=\"Emitter\" type=\"Control\" parent=\".\"]\nscript = ExtResource(\"1_s\")\n\n"
+            + "[node name=\"Plain\" type=\"Control\" parent=\".\"]\n\n"
+            + "[connection signal=\"poked\" from=\"Emitter\" to=\"Plain\" method=\"hide\"]\n\n"
+            + "[connection signal=\"hidden\" from=\"Plain\" to=\".\" method=\"show\"]\n\n"
+            + "[resource]\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\nmetadata/inner = SubResource(\"PackedScene_e\")\n\n"
+            + "[node name=\"Emitter\" type=\"Control\" parent=\".\"]\n\n"
+            + "[connection signal=\"hidden\" from=\"Emitter\" to=\".\" method=\"show\"]\n";
+        TscnDocument stripped = XscnPreviewScene.WithoutScripts(TscnReader.Read(text));
+        string[] embedded = [.. (stripped.SubResources.Single().Scene?.Connections ?? []).Select(c => $"{c.From}>{c.To}")];
+        string[] main = [.. stripped.Connections.Select(c => $"{c.From}>{c.To}")];
+        return Failures(
+            embedded.SequenceEqual(["Plain>."], StringComparer.Ordinal)
+                ? ""
+                : $"the embedded scene's connections are [{string.Join(", ", embedded)}], not [Plain>.]",
+            main.SequenceEqual(["Emitter>."], StringComparer.Ordinal)
+                ? ""
+                : $"the main scene's connections are [{string.Join(", ", main)}], not [Emitter>.]"
+        );
+    }
+
+    // A node instancing an embedded scene directly is refused with GXC0121, in a referenced scene and in the previewed one.
+    private static string AnInstanceOfAnEmbeddedSceneIsRefused()
+    {
+        const string held =
+            "[gd_scene format=3]\n\n"
+            + "[sub_resource type=\"PackedScene\" id=\"PackedScene_e\"]\n"
+            + "[node name=\"Inner\" type=\"Control\"]\n\n"
+            + "[resource]\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\n\n"
+            + "[node name=\"Held\" parent=\".\" instance=SubResource(\"PackedScene_e\")]\n";
+        string path = OutFolder + "embedded_instance_ref.tscn";
+        string message = $"{path} instances an embedded scene directly (instance=SubResource), which the preview cannot strip";
+        return WithOutFile(
+            path,
+            held,
+            () =>
+            {
+                using var referencing = new XscnPreviewInstances();
+                referencing.Stripped(ReferencingDocument(path));
+                using var direct = new XscnPreviewInstances();
+                direct.Stripped(TscnReader.Read(held));
+                return Failures(
+                    referencing.Issues is [{ Code: ConversionCodes.InstanceNotStripped, Severity: ConversionSeverity.Error } issue]
+                    && issue.Message == message
+                    && issue.Location == path
+                        ? ""
+                        : $"the referenced scene gave [{IssueText([.. referencing.Issues])}], not the one {ConversionCodes.InstanceNotStripped} "
+                            + $"error \"{message}\" at {path}",
+                    direct.Issues.Any(issue => issue.Code == ConversionCodes.InstanceNotStripped)
+                        ? ""
+                        : $"the previewed scene gave no {ConversionCodes.InstanceNotStripped} issue: [{IssueText([.. direct.Issues])}]"
+                );
+            }
+        );
+    }
+
+    // A raw .tscn the document references, holding an embedded scene with a script, is copied stripped scene by scene.
+    private static string AReferencedFourEightTscnIsStrippedSceneByScene()
+    {
+        string path = OutFolder + "embedded_scripted_ref.tscn";
+        return WithOutFile(
+            path,
+            EmbeddedScriptedScene,
+            () =>
+            {
+                using var instances = new XscnPreviewInstances();
+                TscnExtResource redirected = instances.Stripped(ReferencingDocument(path)).ExtResources.Single();
+                return Failures(
+                    instances.Issues.Count == 0 ? "" : $"issues: [{IssueText([.. instances.Issues])}]",
+                    CopyFailure(redirected),
+                    File.Exists(redirected.Path) ? DanglingFailure(File.ReadAllText(redirected.Path)) : ""
+                );
+            }
+        );
+    }
+
+    // C81's scene, converted, strips to the text it stripped to before the strip covered embedded scenes.
+    private static string ADocumentWithoutEmbeddedScenesStripsAsBefore()
+    {
+        TscnDocument converted = XscnLoading
+            .ToTscn(XscnParser.Parse(PreviewSignalsScene, XscnDocumentKind.Scene, XscnMetadata.Value).Document, PreviewPath)
+            .Document;
+        string written = TscnWriter.Write(XscnPreviewScene.WithoutScripts(converted));
+        return written == SignalsSceneStripped ? "" : $"the strip wrote \"{Escaped(written)}\", not \"{Escaped(SignalsSceneStripped)}\"";
+    }
+
+    // C81's scene as the strip wrote it before it covered embedded scenes: every connection touches a node that lost its script.
+    private const string SignalsSceneStripped =
+        "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n\n[node name=\"Emitter\" type=\"Control\" parent=\".\"]\n\n"
+        + "[node name=\"Plain\" type=\"Control\" parent=\".\"]\n\n[node name=\"Ok\" type=\"Button\" parent=\".\"]\n";
+
+    // A scene whose only node instances the scene at the path.
+    private static TscnDocument ReferencingDocument(string path) =>
+        new()
+        {
+            Kind = TscnKind.Scene,
+            ExtResources =
+            [
+                new TscnExtResource
+                {
+                    Type = "PackedScene",
+                    Path = path,
+                    Id = "1_ref",
+                },
+            ],
+            MainScene = new TscnScene { Nodes = [new TscnNode { Name = "Root", Instance = new GodotResourceRef(GodotRefKind.External, "1_ref") }] },
+        };
+
+    // Writes the text at the path under the out folder, runs the check, and removes the folder.
+    private static string WithOutFile(string path, string text, Func<string> check)
+    {
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), text);
+            return check();
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // Whether the written text names no script: no script line, no script file and no Script-typed resource.
+    private static string NoScriptFailure(string written) =>
+        written.Contains("script =", StringComparison.Ordinal)
+        || written.Contains(".gd\"", StringComparison.Ordinal)
+        || written.Contains("type=\"Script\"", StringComparison.Ordinal)
+            ? $"the stripped text still holds a script: {Escaped(written)}"
+            : "";
+
+    // Whether every ExtResource and SubResource id the written text references is declared in it.
+    private static string DanglingFailure(string written)
+    {
+        var declared = new HashSet<string>(
+            Regex.Matches(written, "^\\[(?:ext|sub)_resource [^\\n]*\\bid=\"([^\"]+)\"", RegexOptions.Multiline).Select(m => m.Groups[1].Value),
+            StringComparer.Ordinal
+        );
+        string[] dangling =
+        [
+            .. Regex
+                .Matches(written, "(?:Ext|Sub)Resource\\(\"([^\"]+)\"\\)")
+                .Select(m => m.Groups[1].Value)
+                .Where(id => !declared.Contains(id))
+                .Distinct(StringComparer.Ordinal),
+        ];
+        return dangling.Length == 0 ? "" : $"the stripped text references undeclared [{string.Join(", ", dangling)}]: {Escaped(written)}";
+    }
+
+    private static string Escaped(string text) =>
+        text.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal);
 }

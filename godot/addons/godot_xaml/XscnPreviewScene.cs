@@ -82,7 +82,7 @@ internal static class XscnPreviewScene
 
         // Each scene the text instances, at any depth, is loaded from a stripped copy, deleted once the load is done.
         using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(converted);
+        TscnDocument stripped = instances.Stripped(converted, resPath);
         return instances.Issues.Count > 0
             ? new PreviewScene(null, parsed.Diagnostics, [.. result.Issues, .. instances.Issues], parsed.Document)
             : new PreviewScene(LoadAndInstantiate(resPath, stripped), parsed.Diagnostics, result.Issues, parsed.Document);
@@ -122,9 +122,11 @@ internal static class XscnPreviewScene
     /// stays), no Script-class sub-resource, no ext_resource whose resolved file is a script
     /// (<see cref="XscnPreviewReferences.Classify(TscnExtResource, Func{string, PreviewReferenceKind})"/>) or whose type is a
     /// Script class, no tag field the model does not hold, and no connection from or to a node whose script was removed.
-    /// Every other property stays: Godot sets each stored node property with <c>node->set</c> and is silent on one the class
-    /// lacks (packed_scene.cpp:372-383), so a script's exported values stay where the class has them. The scenes the
-    /// document instances are stripped apart (<see cref="XscnPreviewInstances"/>).
+    /// Every scene it holds is stripped so, the main scene and each embedded scene by paths from its own root, and the
+    /// <c>[resource]</c> section's properties as a sub-resource's are, in a scene as in a resource. Every other property
+    /// stays: Godot sets each stored node property with <c>node->set</c> and is silent on one the class lacks
+    /// (packed_scene.cpp:372-383), so a script's exported values stay where the class has them. The scenes the document
+    /// instances are stripped apart (<see cref="XscnPreviewInstances"/>).
     /// </summary>
     /// <remarks>
     /// A test seam: each file is classified afresh and no path value is reported, so every <c>Resource()</c> value of a
@@ -172,13 +174,11 @@ internal static class XscnPreviewScene
             document.SubResources.Where(sub => IsScriptClass(sub.Type)).Select(sub => sub.Id),
             StringComparer.Ordinal
         );
-        var strippedNodes = new HashSet<string>(lostScripts, StringComparer.Ordinal);
-        foreach (TscnNode node in document.Nodes)
+        // Every scene's nodes, every sub_resource and both [resource] forms name the resources to remove before any is
+        // filtered, so a reference from one scene to a script another names is nulled too.
+        foreach (TscnNode node in document.Scenes.SelectMany(scene => scene.Nodes))
         {
-            if (AddScriptReferences(node.Properties, removedExts, removedSubs))
-            {
-                strippedNodes.Add(NodePath(node));
-            }
+            AddScriptReferences(node.Properties, removedExts, removedSubs);
         }
 
         foreach (TscnSubResource sub in document.SubResources)
@@ -187,7 +187,9 @@ internal static class XscnPreviewScene
         }
 
         AddScriptReferences(document.ResourceProperties, removedExts, removedSubs);
+        AddScriptReferences(document.SceneProperties, removedExts, removedSubs);
         var removed = new RemovedResources(removedExts, removedSubs, kindOf, pathValue);
+        var none = new HashSet<string>(StringComparer.Ordinal);
         return WithoutUnknownFields(
             document with
             {
@@ -196,51 +198,77 @@ internal static class XscnPreviewScene
                 [
                     .. document
                         .SubResources.Where(sub => !removedSubs.Contains(sub.Id))
-                        .Select(sub => sub with { Properties = Stripped(sub.Properties, removed) }),
-                ],
-                ResourceProperties = Stripped(document.ResourceProperties, removed),
-                MainScene = document.MainScene with
-                {
-                    // The text loader parses a node's instance= as a value too, a Resource() path loading as it is parsed.
-                    Nodes =
-                    [
-                        .. document.Nodes.Select(node =>
-                            node with
+                        .Select(sub =>
+                            sub with
                             {
-                                Properties = Stripped(node.Properties, removed),
-                                Instance = node.Instance is { } instance ? Nulled(instance, removed) : null,
+                                Properties = Stripped(sub.Properties, removed),
+                                // An embedded scene is not part of an instance tree, so only its own scripted nodes lose connections.
+                                Scene = sub.Scene is { } scene ? StrippedScene(scene, none, removed) : null,
                             }
                         ),
-                    ],
-                    // Godot logs an error for each connection whose signal or method went with the script (object.cpp:1529,1550).
-                    Connections =
-                    [
-                        .. document
-                            .Connections.Where(connection =>
-                                !strippedNodes.Contains(Simplified(connection.From)) && !strippedNodes.Contains(Simplified(connection.To))
-                            )
-                            .Select(connection => connection with { Binds = [.. connection.Binds.Select(bind => Nulled(bind, removed))] }),
-                    ],
-                },
+                ],
+                ResourceProperties = Stripped(document.ResourceProperties, removed),
+                SceneProperties = Stripped(document.SceneProperties, removed),
+                MainScene = StrippedScene(document.MainScene, lostScripts, removed),
             }
         );
     }
 
-    // The document with no tag field the model does not hold, in any section. The text loader parses every tag field as a
-    // value, a Resource() path loading as it is parsed (variant_parser.cpp, _parse_tag, with no Resource( hook set by
-    // resource_format_text.cpp), and the model holds every field Godot reads.
+    // One scene with no script: each node's script removed and its values, instance and binds nulled where they name a
+    // removed resource, each connection from or to a node that lost its script dropped (by paths from the scene's own
+    // root), and no tag field the model does not hold.
+    private static TscnScene StrippedScene(TscnScene scene, IReadOnlySet<string> lostScripts, RemovedResources removed)
+    {
+        var strippedNodes = new HashSet<string>(lostScripts, StringComparer.Ordinal);
+        strippedNodes.UnionWith(ScriptedNodePaths(scene));
+        return scene with
+        {
+            // The text loader parses a node's instance= as a value too, a Resource() path loading as it is parsed.
+            Nodes =
+            [
+                .. scene.Nodes.Select(node =>
+                    node with
+                    {
+                        Properties = Stripped(node.Properties, removed),
+                        Instance = node.Instance is { } instance ? Nulled(instance, removed) : null,
+                        Extra = [],
+                    }
+                ),
+            ],
+            // Godot logs an error for each connection whose signal or method went with the script (object.cpp:1529,1550).
+            Connections =
+            [
+                .. scene
+                    .Connections.Where(connection =>
+                        !strippedNodes.Contains(Simplified(connection.From)) && !strippedNodes.Contains(Simplified(connection.To))
+                    )
+                    .Select(connection => connection with { Binds = [.. connection.Binds.Select(bind => Nulled(bind, removed))], Extra = [] }),
+            ],
+            Editables = [.. scene.Editables.Select(editable => editable with { Extra = [] })],
+        };
+    }
+
+    // The document with no tag field the model does not hold in its header, ext_resources and sub_resources; each scene's
+    // sections lose theirs as the scene is stripped. The text loader parses every tag field as a value, a Resource() path
+    // loading as it is parsed (variant_parser.cpp, _parse_tag, with no Resource( hook set by resource_format_text.cpp), and
+    // the model holds every field Godot reads.
     private static TscnDocument WithoutUnknownFields(TscnDocument document) =>
         document with
         {
             Header = document.Header with { Extra = [] },
             ExtResources = [.. document.ExtResources.Select(ext => ext with { Extra = [] })],
             SubResources = [.. document.SubResources.Select(sub => sub with { Extra = [] })],
-            MainScene = document.MainScene with
-            {
-                Nodes = [.. document.Nodes.Select(node => node with { Extra = [] })],
-                Connections = [.. document.Connections.Select(connection => connection with { Extra = [] })],
-                Editables = [.. document.Editables.Select(editable => editable with { Extra = [] })],
-            },
+        };
+
+    /// <summary>The document with the map applied to every scene it holds: the main scene and each embedded scene.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="map">What each scene becomes.</param>
+    /// <returns>The mapped document.</returns>
+    internal static TscnDocument WithEveryScene(TscnDocument document, Func<TscnScene, TscnScene> map) =>
+        document with
+        {
+            MainScene = map(document.MainScene),
+            SubResources = [.. document.SubResources.Select(sub => sub.Scene is { } scene ? sub with { Scene = map(scene) } : sub)],
         };
 
     /// <summary>
@@ -275,8 +303,11 @@ internal static class XscnPreviewScene
     /// <summary>The paths of the document's nodes whose script the strip removes.</summary>
     /// <param name="document">The converted scene.</param>
     /// <returns>Each path from the root, simplified.</returns>
-    internal static IEnumerable<string> ScriptedNodePaths(TscnDocument document) =>
-        document.Nodes.Where(node => node.Properties.Any(IsScriptReference)).Select(NodePath);
+    internal static IEnumerable<string> ScriptedNodePaths(TscnDocument document) => ScriptedNodePaths(document.MainScene);
+
+    // The paths of the scene's nodes whose script the strip removes, from the scene's own root.
+    private static IEnumerable<string> ScriptedNodePaths(TscnScene scene) =>
+        scene.Nodes.Where(node => node.Properties.Any(IsScriptReference)).Select(NodePath);
 
     /// <summary>Whether the node sets its script to something other than a script, as an instance does to detach its scene's.</summary>
     /// <param name="node">The node.</param>
