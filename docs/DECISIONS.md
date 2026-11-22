@@ -175,6 +175,12 @@ The core parses `.xscn` and `.xres` with GuiLabs.Language.Xml (formerly Microsof
 
 A comment is legal XML only between elements, never inside a start tag (XML 1.0, production `STag`), so a comment attaches to the element it precedes.
 
+
+## The language server's LSP library
+
+The language server speaks LSP through StreamJsonRpc, with hand-written LSP types for the messages it uses and source-generated JSON. StreamJsonRpc is the RPC layer Visual Studio itself depends on, so it carries no abandonment risk, and a small set of its own types keeps the server trimmable and NativeAOT-compatible.
+
+Rejected: OmniSharp.Extensions.LanguageServer (its 0.19 line rests on Newtonsoft.Json and reflection, so it is not AOT-compatible, and its 1.0 is unlisted on nuget.org), Microsoft.VisualStudio.LanguageServer.Protocol (unmaintained since 2022, LSP 3.16 era) and CLaSP (a single prerelease, consumed by Roslyn from source).
 ## Canonical layout
 
 - A start tag stays on one line when it fits in 100 columns; otherwise every attribute goes on its own line, indented 4 spaces from the tag.

@@ -1,6 +1,6 @@
 # Language server: exploration map
 
-The code map behind GXAML-14 (the language server) and its open design decisions, read before the design interview that starts that work. The library and shipping research is in [language-server-libraries.md](language-server-libraries.md). Line numbers are against `195e7a4`; re-check them before a brief cites one.
+The code map behind GXAML-14 (the language server) and its open design decisions, read before the design interview that starts that work. The library choice is in [DECISIONS.md](../DECISIONS.md#the-language-servers-lsp-library); the research behind it is archived in [language-server-libraries.md](archive/language-server-libraries.md). Line numbers are against `195e7a4`; re-check them before a brief cites one.
 
 PROTOCOL: 1 overlay: none (no docs/agents/explore.md), read CLAUDE.md; 2 README: done; 3 Task Index: no row for the language server (nearest rows: "Parse an .xscn/.xres or change a diagnostic", "Change the godot-xaml command line"); 4 design docs: done (v1-design.md, DECISIONS.md, format/README.md); 5 source: done (Xscn parser/model, Diagnostics, Metadata, CLI, csproj/props/run.ps1/pack-release); 6 tree search: done for "language server|LSP" only.
 
