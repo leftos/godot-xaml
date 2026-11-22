@@ -207,6 +207,30 @@ public sealed partial class SceneBackTests
         Assert.DoesNotContain("_bundled", TscnWriter.Write(back.Document), StringComparison.Ordinal);
     }
 
+    // A _bundled the embedded scene replaces is never written, so what it refers to gets no section of its own.
+    [Fact]
+    public void ABundledDroppedForAnEmbeddedSceneLeavesNoUnusedSection()
+    {
+        var packed = new XscnResource
+        {
+            Type = Class48("PackedScene"),
+            Properties = [new XscnProperty("_bundled", new XscnInline(Named("Unused")))],
+            SceneRoot = new XscnNode { Type = Class48("Node"), Name = "InnerRoot" },
+        };
+        var root = new XscnNode
+        {
+            Type = Class48("Node"),
+            Name = "Root",
+            Properties = [new XscnProperty("metadata/scene", new XscnInline(packed))],
+        };
+        var document = new XscnDocument(XscnDocumentKind.Scene, [], [], [], root, null);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, Metadata48, Options);
+
+        Assert.Equal("PackedScene", Assert.Single(back.Document.SubResources).Type);
+        Assert.DoesNotContain("Unused", TscnWriter.Write(back.Document), StringComparison.Ordinal);
+    }
+
     // The sub_resource id x:Scene's inline metadata/m gets, with or without a root property named scene holding a resource
     // whose own metadata/m holds one.
     private static string XSceneInlineId(bool withRootScene)

@@ -8,6 +8,39 @@ namespace GodotXaml.Core.Conversion;
 
 public static partial class XscnToTscn
 {
+    /// <summary>
+    /// Whether a node element of a scene writes a node section: every node does, and an override only when it changes
+    /// something of its node; one that changes nothing is only the way to its children and connections.
+    /// </summary>
+    /// <param name="element">The node or override.</param>
+    /// <returns>True when the <c>.tscn</c> holds a section for it.</returns>
+    internal static bool WritesSection(XscnNodeElement element) =>
+        element is XscnNode || !element.Properties.IsEmpty || !element.Groups.IsEmpty || HasHeaderFields(element);
+
+    /// <summary>
+    /// The class a node element's section names: an instanced, inherited or placeholder node is made by its scene, so the
+    /// <c>.tscn</c> names no class for it (4.7.2 packed_scene.cpp:1052-1063); neither does an override.
+    /// </summary>
+    /// <param name="element">The node or override.</param>
+    /// <returns>The class's name, or null when the section names none.</returns>
+    internal static string? SectionType(XscnNodeElement element) =>
+        element switch
+        {
+            XscnNode { InstancePlaceholder: not null } => null,
+            XscnNode { Type: XscnClassType classType } => classType.Class.Name,
+            XscnNode { Type: XscnUnknownType unknown } => unknown.Name,
+            _ => null,
+        };
+
+    private static bool HasHeaderFields(XscnNodeElement element) =>
+        element.Index is not null
+        || element.Owner is not null
+        || element.UniqueId is not null
+        || element.InstancePlaceholder is not null
+        || !element.NodePaths.IsEmpty
+        || !element.ParentIdPath.IsEmpty
+        || !element.OwnerUidPath.IsEmpty;
+
     private sealed partial class Context
     {
         private const string UniqueNameProperty = "unique_name_in_owner";
@@ -162,18 +195,7 @@ public static partial class XscnToTscn
         private static string? InstancedScene(XscnNodeElement element) =>
             element is XscnNode { Type: XscnSceneType scene, InstancePlaceholder: null } ? scene.Path : null;
 
-        // An override that changes nothing of its node is only the way to its children and connections.
-        private static bool WritesNode(PlacedElement placed) =>
-            placed.Element is XscnNode || !placed.Element.Properties.IsEmpty || !placed.Element.Groups.IsEmpty || HasHeaderFields(placed.Element);
-
-        private static bool HasHeaderFields(XscnNodeElement element) =>
-            element.Index is not null
-            || element.Owner is not null
-            || element.UniqueId is not null
-            || element.InstancePlaceholder is not null
-            || !element.NodePaths.IsEmpty
-            || !element.ParentIdPath.IsEmpty
-            || !element.OwnerUidPath.IsEmpty;
+        private static bool WritesNode(PlacedElement placed) => WritesSection(placed.Element);
 
         private TscnNode SceneNode(PlacedElement placed)
         {
@@ -285,30 +307,21 @@ public static partial class XscnToTscn
             return found.Class;
         }
 
-        // An instanced, inherited or placeholder node is made by its scene, so the .tscn names no class for it
-        // (4.7.2 packed_scene.cpp:1052-1063); neither does an override. A placeholder tagged otherwise than InstancePlaceholder
-        // loses its tag.
+        // The section's class (SectionType); a placeholder tagged otherwise than InstancePlaceholder loses its tag.
         private string? NodeTypeName(XscnNodeElement element, string location)
         {
-            if (element is XscnNode { InstancePlaceholder: { } placeholder } node)
+            if (
+                element is XscnNode { InstancePlaceholder: { } placeholder } node
+                && node.Type is not XscnClassType { Class.Name: "InstancePlaceholder" }
+            )
             {
-                if (node.Type is not XscnClassType { Class.Name: "InstancePlaceholder" })
-                {
-                    string message =
-                        $"x:InstancePlaceholder makes this node a placeholder for {placeholder}; its tag {TagOf(node.Type)} has no place in "
-                        + "the .tscn and is dropped.";
-                    Report(ConversionCodes.PlaceholderTypeDropped, ConversionSeverity.Warning, message, location);
-                }
-
-                return null;
+                string message =
+                    $"x:InstancePlaceholder makes this node a placeholder for {placeholder}; its tag {TagOf(node.Type)} has no place in "
+                    + "the .tscn and is dropped.";
+                Report(ConversionCodes.PlaceholderTypeDropped, ConversionSeverity.Warning, message, location);
             }
 
-            return element switch
-            {
-                XscnNode { Type: XscnClassType classType } => classType.Class.Name,
-                XscnNode { Type: XscnUnknownType unknown } => unknown.Name,
-                _ => null,
-            };
+            return SectionType(element);
         }
 
         private static string TagOf(XscnType type) =>

@@ -66,7 +66,7 @@ public sealed partial class PreviousCommentsTests
     }
 
     [Fact]
-    public void AnEmbeddedNodeWithTheMainRootsUniqueIdDoesNotTakeItsComment()
+    public void AnEmbeddedNodeSharingAMainNodesUniqueIdDoesNotTakeItsComment()
     {
         string previous = EmbeddedWithIds("<!-- about the inner child -->", "<!-- about the main child -->");
 
@@ -78,6 +78,174 @@ public sealed partial class PreviousCommentsTests
         XscnNode mainChild = Assert.Single(Assert.IsType<XscnNode>(forward.Document.Root).Children.OfType<XscnNode>());
         Assert.Equal(" about the main child ", Assert.Single(mainChild.LeadingComments));
     }
+
+    // A node moved from the main tree into an embedded scene keeps its unique id and its path, but the two scenes match
+    // apart, so its comment drops.
+    [Fact]
+    public void AMovedNodeKeepsNoCommentAcrossScenes()
+    {
+        string previous = $"""
+            <Node {X} x:Godot="4.8" Name="Root">
+              <Node.Metadata.inner>
+                <PackedScene>
+                  <Node2D Name="InnerRoot" />
+                </PackedScene>
+              </Node.Metadata.inner>
+              <!-- about moved -->
+              <Node Name="Moved" x:UniqueId="7" />
+            </Node>
+            """;
+        string next = $"""
+            <Node {X} x:Godot="4.8" Name="Root">
+              <Node.Metadata.inner>
+                <PackedScene>
+                  <Node2D Name="InnerRoot">
+                    <Node Name="Moved" x:UniqueId="7" />
+                  </Node2D>
+                </PackedScene>
+              </Node.Metadata.inner>
+            </Node>
+            """;
+
+        ConversionResult<XscnDocument> forward = Carried48(previous, next);
+
+        ConversionIssue issue = Dropped(forward);
+        Assert.Contains("about moved", issue.Message, StringComparison.Ordinal);
+        XscnNode moved = Assert.IsType<XscnNode>(Assert.Single(EmbeddedRoot(forward.Document).Children));
+        Assert.Empty(moved.LeadingComments);
+    }
+
+    [Fact]
+    public void ACommentInsideATableEntrysEmbeddedSceneIsCarried()
+    {
+        string previous = TableEntry("<!-- about the item -->");
+
+        ConversionResult<XscnDocument> forward = Carried48(previous, TableEntry(""));
+
+        Assert.DoesNotContain(forward.Issues, issue => issue.Code == ConversionCodes.CommentDropped);
+        XscnResource entry = Assert.Single(forward.Document.Resources);
+        XscnNode item = Assert.IsType<XscnNode>(Assert.Single(Assert.IsType<XscnNode>(entry.SceneRoot).Children));
+        Assert.Equal(" about the item ", Assert.Single(item.LeadingComments));
+    }
+
+    [Fact]
+    public void ACommentInsideASceneNestedInAnEmbeddedScenesInlineResourceIsCarried()
+    {
+        string previous = Nested("<!-- about the deep child -->");
+
+        ConversionResult<XscnDocument> forward = Carried48(previous, Nested(""));
+
+        Assert.DoesNotContain(forward.Issues, issue => issue.Code == ConversionCodes.CommentDropped);
+        XscnNode deepRoot = EmbeddedRoot(EmbeddedRoot(forward.Document));
+        XscnNode deepChild = Assert.IsType<XscnNode>(Assert.Single(deepRoot.Children));
+        Assert.Equal(" about the deep child ", Assert.Single(deepChild.LeadingComments));
+    }
+
+    [Fact]
+    public void ACommentOnAnXScenePropertyElementIsCarried()
+    {
+        string previous = WithXSceneStyle(sceneComment: "", styleComment: "<!-- about the style -->");
+
+        ConversionResult<XscnDocument> forward = Carried48(previous, WithXSceneStyle(sceneComment: "", styleComment: ""));
+
+        Assert.DoesNotContain(forward.Issues, issue => issue.Code == ConversionCodes.CommentDropped);
+        XscnResource scene = Assert.IsType<XscnResource>(forward.Document.Scene);
+        Assert.Equal(" about the style ", Assert.Single(Assert.Single(scene.Properties).LeadingComments));
+    }
+
+    [Fact]
+    public void ADroppedXSceneWarnsGXC0117ForEachCommentItHeld()
+    {
+        string previous = WithXSceneStyle(sceneComment: "<!-- about the scene -->", styleComment: "<!-- about the style -->");
+        string next = $"""
+            <Node {X} x:Godot="4.8" Name="Root">
+              <Node Name="Child" />
+            </Node>
+            """;
+
+        ConversionResult<XscnDocument> forward = Carried48(previous, next);
+
+        ConversionIssue[] dropped = [.. forward.Issues.Where(issue => issue.Code == ConversionCodes.CommentDropped)];
+        Assert.Equal(2, dropped.Length);
+        Assert.Contains(dropped, issue => issue.Message.Contains("about the scene", StringComparison.Ordinal));
+        Assert.Contains(dropped, issue => issue.Message.Contains("about the style", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void APackedScenePropertyThatLosesItsSceneWarnsGXC0117()
+    {
+        string previous = Embedded(innerChildComment: "<!-- about the inner child -->");
+        string next = $"""
+            <Node {X} x:Godot="4.8" Name="Root">
+              <Node.Metadata.inner>
+                <PackedScene ResourceName="Hollow" />
+              </Node.Metadata.inner>
+              <Node Name="Child" />
+            </Node>
+            """;
+
+        ConversionResult<XscnDocument> forward = Carried48(previous, next);
+
+        ConversionIssue issue = Dropped(forward);
+        Assert.Contains("about the inner child", issue.Message, StringComparison.Ordinal);
+        Assert.Contains("InnerChild", issue.Message, StringComparison.Ordinal);
+    }
+
+    // A PackedScene entry used twice, so it stays in the table, whose scene's child carries the comment given.
+    private static string TableEntry(string itemComment) =>
+        $$"""
+            <Node {{X}} x:Godot="4.8" Name="Root">
+              <x:Resources>
+                <PackedScene x:Key="Menu">
+                  <Node Name="MenuRoot">
+                    {{itemComment}}
+                    <Node Name="Item" />
+                  </Node>
+                </PackedScene>
+              </x:Resources>
+              <Node Name="One" Metadata.a="{Menu}" />
+              <Node Name="Two" Metadata.a="{Menu}" />
+            </Node>
+            """;
+
+    // An embedded scene whose root holds another embedded scene, whose child carries the comment given.
+    private static string Nested(string deepChildComment) =>
+        $"""
+            <Node {X} x:Godot="4.8" Name="Root">
+              <Node.Metadata.inner>
+                <PackedScene>
+                  <Node2D Name="InnerRoot">
+                    <Node2D.Metadata.deep>
+                      <PackedScene>
+                        <Node Name="DeepRoot">
+                          {deepChildComment}
+                          <Node Name="DeepChild" />
+                        </Node>
+                      </PackedScene>
+                    </Node2D.Metadata.deep>
+                  </Node2D>
+                </PackedScene>
+              </Node.Metadata.inner>
+            </Node>
+            """;
+
+    // x:Scene with its comment, holding an inline resource in a property element with its own.
+    private static string WithXSceneStyle(string sceneComment, string styleComment) =>
+        $"""
+            <Node {X} x:Godot="4.8" Name="Root">
+              {sceneComment}
+              <x:Scene>
+                {styleComment}
+                <x:Scene.Metadata.style>
+                  <StyleBoxFlat BgColor="1, 0, 0, 1" />
+                </x:Scene.Metadata.style>
+              </x:Scene>
+              <Node Name="Child" />
+            </Node>
+            """;
+
+    private static XscnNode EmbeddedRoot(XscnNode node) =>
+        Assert.IsType<XscnNode>(node.Properties.Select(property => property.Value).OfType<XscnInline>().First().Resource.SceneRoot);
 
     private static string Embedded(string innerChildComment) =>
         $"""

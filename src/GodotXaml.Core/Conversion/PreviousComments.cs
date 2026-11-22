@@ -6,7 +6,7 @@ namespace GodotXaml.Core.Conversion;
 /// <summary>
 /// Carries a previous document's comments onto the parts of a freshly converted document that match it, so a save that
 /// goes through <c>.tscn</c> text keeps them (docs/DECISIONS.md, "Canonical formatting on save"). A node element matches
-/// by its unique id first, when the id occurs once in both documents, and otherwise by its path from the root; an
+/// by its unique id first, when the id occurs once in its scene in both documents, and otherwise by its path from the root; an
 /// <c>x:Resources</c> entry matches by the key the conversion kept for it, a property by its Godot name within a matched
 /// element, a connection by its signal, target and method, and a uid by its path. <c>x:Scene</c> matches <c>x:Scene</c>, and
 /// the scene a matched <c>PackedScene</c> embeds matches the one its previous resource embedded, its nodes by the unique ids
@@ -192,8 +192,8 @@ internal static class PreviousComments
             return parent == TscnNodePaths.Root ? relative : parent + "/" + relative;
         }
 
-        // The previous element a new one matches: by its unique id when the id occurs once in each document, else by its
-        // path, and never an element already matched.
+        // The previous element a new one matches: by its unique id when the id occurs once in the scene on each side, else
+        // by its path, and never an element already matched.
         private static XscnNodeElement? Match(SceneIndex scene, string path, XscnNodeElement after)
         {
             if (scene.ById.TryGetValue(after, out XscnNodeElement? matched))
@@ -620,7 +620,7 @@ internal static class PreviousComments
             return matches;
         }
 
-        // The previous document's elements by a unique id that occurs exactly once there.
+        // The previous scene's elements by a unique id that occurs exactly once there.
         private static Dictionary<int, XscnNodeElement> UniqueIdElements(IReadOnlyList<XscnNodeElement> elements)
         {
             Dictionary<int, int> counts = IdCounts(elements);
@@ -642,7 +642,7 @@ internal static class PreviousComments
         private static bool SameRootness(XscnNodeElement element, XscnNodeElement match, XscnElement? previousRoot, XscnElement? nextRoot) =>
             ReferenceEquals(element, nextRoot) == ReferenceEquals(match, previousRoot);
 
-        // How many node elements a document has under each unique id, so that an id there twice is never used to match.
+        // How many node elements a scene has under each unique id, so that an id there twice is never used to match.
         private static Dictionary<int, int> IdCounts(IReadOnlyList<XscnNodeElement> elements)
         {
             Dictionary<int, int> counts = [];

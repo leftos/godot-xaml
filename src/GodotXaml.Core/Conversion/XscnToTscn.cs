@@ -204,7 +204,12 @@ public static partial class XscnToTscn
         // reference followed where it is met. The site is the site key of the element or resource that holds them: a
         // resource held inline gets "<holder's site>|<property>", and a table entry "key:<x:Key>" wherever it is used.
         private void Discover(XscnResource resource, string location, string site) =>
-            DiscoverProperties(resource.Type, resource.Properties, location, site);
+            DiscoverProperties(resource.Type, WrittenProperties(resource), location, site);
+
+        // A resource's properties as its section writes them: an embedded scene takes _bundled's place (4.8 :2073-2075,
+        // 2122-2125), so a _bundled beside it is dropped and what it refers to is never discovered.
+        private static ImmutableArray<XscnProperty> WrittenProperties(XscnResource resource) =>
+            resource.SceneRoot is null ? resource.Properties : [.. resource.Properties.Where(property => property.GodotName != BundledProperty)];
 
         private void DiscoverProperties(XscnType? owner, ImmutableArray<XscnProperty> properties, string location, string site) =>
             DiscoverInOrder(owner, properties.OrderBy(property => property.GodotName, StringComparer.Ordinal), location, site);
@@ -381,26 +386,25 @@ public static partial class XscnToTscn
             };
         }
 
-        // A sub_resource's properties and, for a PackedScene, its embedded scene, which takes _bundled's place (4.8 :2073-2075,
-        // 2122-2125): a _bundled beside it is dropped.
+        // A sub_resource's properties and, for a PackedScene, its embedded scene, which takes _bundled's place: a _bundled
+        // beside it is dropped (WrittenProperties).
         private TscnSubResource WithContent(TscnSubResource sub, SubUse use)
         {
-            ImmutableArray<TscnProperty> properties = Properties(use);
             if (!scenes.TryGetValue(use.Resource, out List<PlacedElement>? placed))
             {
-                return sub with { Properties = properties };
+                return sub with { Properties = Properties(use) };
             }
 
-            if (properties.Any(property => property.Name == BundledProperty))
+            XscnResource resource = use.Resource;
+            if (resource.Properties.Any(property => property.GodotName == BundledProperty))
             {
                 string message = "_bundled is dropped: this PackedScene holds an embedded scene, which replaces it";
                 Report(ConversionCodes.InvalidValue, ConversionSeverity.Warning, message, use.Location + "." + BundledProperty);
-                properties = [.. properties.Where(property => property.Name != BundledProperty)];
             }
 
             return sub with
             {
-                Properties = properties,
+                Properties = Properties(resource.Type, WrittenProperties(resource), use.Location),
                 Scene = SceneOf(placed),
             };
         }

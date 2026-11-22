@@ -10,7 +10,8 @@ namespace GodotXaml.Core.Conversion;
 /// a save changes only what changed: first the id its conversion back gives an entry, which a loaded sub_resource keeps
 /// through a save, and otherwise the same type and either the same non-empty <c>resource_name</c> or equal properties. A
 /// reference to another sub_resource compares as any reference (<c>SubResource("?")</c>) and an ext_resource as its path,
-/// so a resource whose only change is which other sub_resource it uses still matches.
+/// so a resource whose only change is which other sub_resource it uses still matches. A <c>PackedScene</c> matches by
+/// content only one that embeds a scene of the same shape, or that embeds none as it does.
 /// </summary>
 internal static class PreviousKeys
 {
@@ -123,8 +124,9 @@ internal static class PreviousKeys
         return theirs.SequenceEqual(ours);
     }
 
-    // The .tscn node sections a tree becomes: a node by its name and class (none for an instance), an override by the
-    // last part of its path under the parent its path names.
+    // The .tscn node sections a tree becomes, by the conversion back's own rules: each element that writes a section, by
+    // its name and the class its section names, an override by the last part of its path under the parent its path
+    // names; an element that writes none still leads to its children.
     private static IEnumerable<(string Name, string? Type, string? Parent)> Shape(XscnNodeElement element, string? parent)
     {
         string relative = element switch
@@ -135,8 +137,11 @@ internal static class PreviousKeys
         };
         int slash = relative.LastIndexOf('/');
         string? own = slash < 0 || parent is null ? parent : Join(parent, relative[..slash]);
-        string? type = element is XscnNode { Type: var nodeType } ? ClassName(nodeType) : null;
-        yield return (relative[(slash + 1)..], type, own);
+        if (XscnToTscn.WritesSection(element))
+        {
+            yield return (relative[(slash + 1)..], XscnToTscn.SectionType(element), own);
+        }
+
         string path = parent is null ? TscnNodePaths.Root : Join(parent, relative);
         foreach ((string Name, string? Type, string? Parent) section in element.Children.SelectMany(child => Shape(child, path)))
         {

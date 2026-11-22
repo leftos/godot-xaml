@@ -473,6 +473,36 @@ public sealed class XscnPathRewriterTests
         Assert.Contains($"<{scope.Prefix}:target", written, StringComparison.Ordinal);
     }
 
+    // A node of an embedded scene is named as the comment carry names it, by its path in that scene and the scene's owner.
+    [Fact]
+    public void ARewriteWarningInsideAnEmbeddedSceneNamesItsScene()
+    {
+        XscnDocument document = XscnParser
+            .Parse(
+                $"""
+                <Node {X} x:Godot="4.8" Name="Root">
+                  <Node.Metadata.inner>
+                    <PackedScene>
+                      <Node2D Name="InnerRoot">
+                        <Control Name="Held" Visible="res://ui/button.tscn" />
+                      </Node2D>
+                    </PackedScene>
+                  </Node.Metadata.inner>
+                </Node>
+                """,
+                XscnDocumentKind.Scene,
+                Metadata48
+            )
+            .Document;
+
+        XscnPathRewriteResult result = Rewrite(document, ("res://ui/button.tscn", "res://ui/button.xscn"));
+
+        Assert.Equal(
+            ["Held in the scene of metadata/inner of Root: unparsed text holds res://ui/button.tscn; it is not rewritten."],
+            result.Warnings
+        );
+    }
+
     private static XscnNode EmbeddedRoot(XscnNode node) =>
         Assert.IsType<XscnNode>(node.Properties.Select(property => property.Value).OfType<XscnInline>().First().Resource.SceneRoot);
 

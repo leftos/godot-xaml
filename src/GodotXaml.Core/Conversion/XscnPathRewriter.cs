@@ -39,12 +39,15 @@ public static class XscnPathRewriter
         {
             ImmutableArray<(string Old, string New)> scenes = [.. SceneFolders()];
             // The tables come before the root in the text, so their warnings come first.
-            ImmutableArray<XscnResource> resources = [.. document.Resources.Select(resource => RewriteResource(resource, TableLocation(resource)))];
-            XscnResource? scene = document.Scene is { } own ? RewriteResource(own, "x:Scene") : null;
+            ImmutableArray<XscnResource> resources =
+            [
+                .. document.Resources.Select(resource => RewriteResource(resource, TableLocation(resource), resource.Key ?? "x:Resources")),
+            ];
+            XscnResource? scene = document.Scene is { } own ? RewriteResource(own, "x:Scene", "x:Scene") : null;
             XscnElement root = document.Root switch
             {
-                XscnNodeElement element => RewriteNode(element, NodeLocation(element)),
-                XscnResource resource => RewriteResource(resource, "root"),
+                XscnNodeElement element => RewriteNode(element, new NodePlace(NodeLocation(element), Owner: null)),
+                XscnResource resource => RewriteResource(resource, "root", TscnNodePaths.Root),
                 _ => throw new ArgumentException($"The root is a {document.Root.GetType().Name}, not a node or a resource.", nameof(document)),
             };
             ImmutableArray<XscnNamespace> namespaces = Namespaces(scenes);
@@ -159,11 +162,12 @@ public static class XscnPathRewriter
             }
         }
 
-        private XscnNodeElement RewriteNode(XscnNodeElement element, string location)
+        private XscnNodeElement RewriteNode(XscnNodeElement element, NodePlace place)
         {
+            string location = place.ToString();
             ImmutableArray<XscnProperty> properties = [.. element.Properties.Select(property => RewriteProperty(property, location))];
             ImmutableArray<XscnConnection> connections = [.. element.Connections.Select(RewriteConnection)];
-            ImmutableArray<XscnNodeElement> children = [.. element.Children.Select(child => RewriteNode(child, ChildLocation(location, child)))];
+            ImmutableArray<XscnNodeElement> children = [.. element.Children.Select(child => RewriteNode(child, place.Child(NodeLocation(child))))];
             string? placeholder = element.InstancePlaceholder is { } path ? Mapped(path) ?? path : null;
             return element switch
             {
@@ -186,28 +190,26 @@ public static class XscnPathRewriter
             };
         }
 
-        private XscnResource RewriteResource(XscnResource resource, string location) =>
+        // A resource's properties are named at location; the scene it embeds is named by its owner, as the comment carry
+        // names one: the table key, x:Scene, the root's path for a resource root, or the property that holds it.
+        private XscnResource RewriteResource(XscnResource resource, string location, string owner) =>
             resource with
             {
                 Type = RewriteType(resource.Type),
                 Properties = [.. resource.Properties.Select(property => RewriteProperty(property, location))],
-                SceneRoot = resource.SceneRoot is { } root ? (XscnNode)RewriteNode(root, ChildLocation(location, root)) : null,
+                SceneRoot = resource.SceneRoot is { } root ? (XscnNode)RewriteNode(root, new NodePlace(TscnNodePaths.Root, owner)) : null,
             };
 
-        private XscnProperty RewriteProperty(XscnProperty property, string location) =>
-            property with
-            {
-                Value = RewriteValue(property.Value, location),
-            };
+        private XscnProperty RewriteProperty(XscnProperty property, string location) => property with { Value = RewriteValue(property, location) };
 
-        private XscnValue RewriteValue(XscnValue value, string location) =>
-            value switch
+        private XscnValue RewriteValue(XscnProperty property, string location) =>
+            property.Value switch
             {
                 XscnFile file => Mapped(file.Path) is { } path ? file with { Path = path } : file,
                 XscnScalar scalar => RewriteScalar(scalar),
-                XscnInline inline => inline with { Resource = RewriteResource(inline.Resource, location) },
+                XscnInline inline => inline with { Resource = RewriteResource(inline.Resource, location, $"{property.GodotName} of {location}") },
                 XscnInvalid invalid => WarnInvalid(invalid, location),
-                _ => value,
+                var value => value,
             };
 
         private XscnScalar RewriteScalar(XscnScalar scalar)
@@ -257,9 +259,16 @@ public static class XscnPathRewriter
                 _ => "",
             };
 
-        private static string ChildLocation(string location, XscnNodeElement child) => location + "/" + NodeLocation(child);
-
         private static string TableLocation(XscnResource resource) => resource.Key is { } key ? "x:Resources[" + key + "]" : "x:Resources";
+
+        // Where a warning names a node: the main tree's by its path from the root's name, a node of an embedded scene as
+        // the comment carry names one, by its path in that scene and the scene's owner.
+        private readonly record struct NodePlace(string Path, string? Owner)
+        {
+            public NodePlace Child(string relative) => this with { Path = Path == TscnNodePaths.Root ? relative : Path + "/" + relative };
+
+            public override string ToString() => Owner is null ? Path : $"{Path} in the scene of {Owner}";
+        }
 
         // The folders the document's scenes name, and the folders and prefixes the rebuilt namespaces have taken so far.
         private sealed class NamespaceClaims(IEnumerable<string> used)

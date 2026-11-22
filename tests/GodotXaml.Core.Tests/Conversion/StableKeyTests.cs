@@ -132,6 +132,79 @@ public sealed class StableKeyTests
         Assert.Equal(["PackedScene2"], KeysOf(forward.Document));
     }
 
+    // A placeholder's section names no class, so the entry's scene and the save's have one shape.
+    [Fact]
+    public void AnUnchangedEntryWithAPlaceholderKeepsItsKey()
+    {
+        string text = PackedEntry(
+            """
+            <Node Name="MenuRoot">
+                      <InstancePlaceholder Name="Later" x:InstancePlaceholder="res://later.tscn" />
+                    </Node>
+            """
+        );
+
+        Assert.Equal(["Menu"], KeysThroughASave(text, text));
+    }
+
+    // An override that changes nothing of its node writes no section, so the shape leaves it out too.
+    [Fact]
+    public void AnUnchangedEntryWithAnEmptyOverrideKeepsItsKey()
+    {
+        string text = PackedEntry(
+            """
+            <Node Name="MenuRoot">
+                      <x:Instance Name="Btn" Scene="res://btn.tscn">
+                        <x:Override Path="Panel">
+                          <Label Name="Extra" />
+                        </x:Override>
+                      </x:Instance>
+                    </Node>
+            """
+        );
+
+        Assert.Equal(["Menu"], KeysThroughASave(text, text));
+    }
+
+    [Fact]
+    public void TwoPackedScenesThatEmbedNoSceneKeepTheKey()
+    {
+        string text = PackedEntry("");
+
+        Assert.Equal(["Menu"], KeysThroughASave(text, text));
+    }
+
+    [Fact]
+    public void APackedSceneThatNoLongerEmbedsASceneGetsANewKey()
+    {
+        string previousText = PackedEntry("""<Node Name="MenuRoot" />""");
+
+        Assert.NotEqual(["Menu"], KeysThroughASave(previousText, PackedEntry("")));
+    }
+
+    [Fact]
+    public void AnEmbeddedSceneWithItsNodesReorderedGetsANewKey()
+    {
+        string previousText = PackedEntry(
+            """
+            <Node Name="MenuRoot">
+                      <Node Name="A" />
+                      <Node Name="B" />
+                    </Node>
+            """
+        );
+        string text = PackedEntry(
+            """
+            <Node Name="MenuRoot">
+                      <Node Name="B" />
+                      <Node Name="A" />
+                    </Node>
+            """
+        );
+
+        Assert.NotEqual(["Menu"], KeysThroughASave(previousText, text));
+    }
+
     [Fact]
     public void TheSameResourceNameKeepsItsKey()
     {
@@ -526,6 +599,45 @@ public sealed class StableKeyTests
     }
 
     private static string?[] KeysOf(XscnDocument document) => [.. document.Resources.Select(entry => entry.Key)];
+
+    // A 4.8 scene whose one PackedScene entry, Menu, embeds the scene given, used twice so it stays in the table.
+    private static string PackedEntry(string scene) =>
+        $$"""
+            <Node xmlns:x="https://github.com/leftos/godot-xaml/format/1" x:Godot="4.8" Name="Root">
+              <x:Resources>
+                <PackedScene x:Key="Menu">
+                  {{scene}}
+                </PackedScene>
+              </x:Resources>
+              <Node Name="One" Metadata.a="{Menu}" />
+              <Node Name="Two" Metadata.a="{Menu}" />
+            </Node>
+            """;
+
+    // The keys a save of the next text keeps from the previous one, paired by content alone: no sub_resource is the
+    // save's own, so none pairs by the id it loaded with.
+    private static string?[] KeysThroughASave(string previousText, string nextText)
+    {
+        var metadata = GodotMetadata.LoadBundled("4.8");
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(Parsed48(nextText, metadata), metadata, Options);
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(
+            back.Document,
+            metadata,
+            Options with
+            {
+                Previous = new PreviousDocument(Parsed48(previousText, metadata), metadata),
+                OwnedSubResourceIds = new Dictionary<string, string>(),
+            }
+        );
+        return KeysOf(forward.Document);
+    }
+
+    private static XscnDocument Parsed48(string text, GodotMetadata metadata)
+    {
+        XscnParseResult parsed = XscnParser.Parse(text, XscnDocumentKind.Scene, metadata);
+        Assert.Empty(parsed.Diagnostics);
+        return parsed.Document;
+    }
 
     private static string Scene(params string[] sections) => "[gd_scene format=3]\n\n" + string.Join("\n\n", sections);
 
