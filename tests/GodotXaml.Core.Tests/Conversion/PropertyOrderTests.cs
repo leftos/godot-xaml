@@ -1174,6 +1174,61 @@ public sealed class PropertyOrderTests
         );
     }
 
+    // Godot 4.8 no longer binds AnimationNodeBlendSpace2D's triangles in ClassDB: _get_property_list lists it after the blend
+    // points (scene/animation/animation_blend_space_2d.cpp), so it comes before the script and the script's exports.
+    [Fact]
+    public void FourEightTrianglesComeAfterTheBlendPointsAndBeforeTheScript()
+    {
+        var metadata = GodotMetadata.LoadBundled("4.8");
+        XscnParseResult parsed = XscnParser.Parse(
+            $$"""
+            <AnimationNodeBlendSpace2D {{X}} x:Godot="4.8" Script="res://s.gd" AutoTriangles="False" extra="5"
+                triangles="PackedInt32Array(0, 1, 2)">
+              <x:Prop Name="blend_point_0/node" Value='Resource("res://a.tres")' />
+              <x:Prop Name="blend_point_1/node" Value='Resource("res://a.tres")' />
+              <x:Prop Name="blend_point_2/node" Value='Resource("res://a.tres")' />
+            </AnimationNodeBlendSpace2D>
+            """,
+            XscnDocumentKind.Resource,
+            metadata
+        );
+        Assert.Empty(parsed.Diagnostics);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, metadata, Options with { ScriptClassOf = _ => null });
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(
+            ["auto_triangles", "blend_point_0/node", "blend_point_1/node", "blend_point_2/node", "triangles", "script", "extra"],
+            PropertyNames(back.Document.ResourceProperties)
+        );
+    }
+
+    // Godot 4.7 binds triangles in ClassDB, so its class list ranks it before the blend points the family places.
+    [Fact]
+    public void FourSevenTrianglesKeepTheClassListPlace()
+    {
+        XscnParseResult parsed = XscnParser.Parse(
+            $$"""
+            <AnimationNodeBlendSpace2D {{X}} Script="res://s.gd" AutoTriangles="False" Triangles="PackedInt32Array(0, 1, 2)" extra="5">
+              <x:Prop Name="blend_point_0/node" Value='Resource("res://a.tres")' />
+              <x:Prop Name="blend_point_1/node" Value='Resource("res://a.tres")' />
+              <x:Prop Name="blend_point_2/node" Value='Resource("res://a.tres")' />
+            </AnimationNodeBlendSpace2D>
+            """,
+            XscnDocumentKind.Resource,
+            TestMetadata
+        );
+        Assert.Empty(parsed.Diagnostics);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(parsed.Document, TestMetadata, Options with { ScriptClassOf = _ => null });
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(
+            ["auto_triangles", "triangles", "blend_point_0/node", "blend_point_1/node", "blend_point_2/node", "script", "extra"],
+            PropertyNames(back.Document.ResourceProperties)
+        );
+    }
+
     // Skeleton3D::_get_property_list lists a bone's bone_meta/ names after its own keys.
     [Fact]
     public void ABoneMetaKeyComesLastInItsBone()

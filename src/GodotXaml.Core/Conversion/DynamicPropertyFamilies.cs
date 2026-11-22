@@ -9,8 +9,9 @@ namespace GodotXaml.Core.Conversion;
 /// The names each Godot class adds in its <c>_get_property_list</c> (or through a <c>PropertyListHelper</c>), which ClassDB
 /// does not list and the metadata dump cannot see, since an instance shows only the names that exist at that moment. Each
 /// class's families are in the order its function adds them, so the way back can place such a name in its declaring
-/// class's slot of Godot's list. Read from the Godot 4.7.2 source; editor-only classes, the Missing* and script classes,
-/// <c>InstancePlaceholder</c> and the theme overrides of Control and Window are left out, and so is
+/// class's slot of Godot's list. Read from the Godot 4.7.2 source; a row may name a property an older version's ClassDB
+/// lists, where the class list ranks it first. Editor-only classes, the Missing* and script classes, <c>InstancePlaceholder</c>
+/// and the theme overrides of Control and Window are left out, and so is
 /// <c>OpenXRCompositionLayer</c>, which adds any slash name a GDExtension supplies (the engine ships none). Every row states
 /// how Godot creates its entries on load (<see cref="EntryCreation"/>): in any order; sized first by a count property ranked
 /// before the family, named on the row; listed by number in a fixed key order; or in any order but listed in a key order a
@@ -693,6 +694,9 @@ internal static class DynamicPropertyFamilies
         Row.OnKey("AnimationNodeBlendSpace1D", @"^blend_point_(?<index>[0-9]+)/(?<key>[^/]*)", BlendPointKeys),
         // scene/animation/animation_blend_space_2d.cpp, AnimationNodeBlendSpace2D::_get_property_list
         Row.OnKey("AnimationNodeBlendSpace2D", @"^blend_point_(?<index>[0-9]+)/(?<key>[^/]*)", BlendPointKeys),
+        // scene/animation/animation_blend_space_2d.cpp, AnimationNodeBlendSpace2D::_get_property_list (Godot 4.8; 4.7 binds it in
+        // ClassDB): after the blend points, which the triangles name.
+        Row.AnyOrder("AnimationNodeBlendSpace2D", @"^triangles\z"),
         // scene/animation/animation_blend_tree.cpp, AnimationNodeTransition::_get_property_list; _set adds an input only on
         // input_<count>/name, and input_count is an editor-only property the file never holds.
         Row.OnKey("AnimationNodeTransition", @"^input_(?<index>[0-9]+)/(?<key>[^/]*)", TransitionInputKeys),

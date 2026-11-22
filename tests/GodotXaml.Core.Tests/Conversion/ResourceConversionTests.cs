@@ -77,6 +77,26 @@ public sealed partial class ResourceConversionTests
         Assert.Equal(Renumber(UnorderedNames.Text(fixture, text)), Renumber(TscnWriter.Write(UnorderedNames.Sort(fixture, back.Document))));
     }
 
+    // A file Godot 4.8 saved, whose triangles come from _get_property_list: the way back writes them before the script, and with
+    // ids minted again the text differs from Godot's only in the ids.
+    [Fact]
+    public void ConvertsAGodotFourEightBlendSpaceThereAndBackWithNewIds()
+    {
+        var metadata = GodotMetadata.LoadBundled("4.8");
+        ConversionOptions options = Options with { ScriptClassOf = _ => null };
+        string text = new UTF8Encoding(false, true).GetString(
+            File.ReadAllBytes(RepoFiles.PathOf("tests", "fixtures", "tscn48", "blend2d_scripted.tres"))
+        );
+
+        ConversionResult<XscnDocument> forward = TscnToXscn.Convert(TscnReader.Read(text), metadata, options);
+        Assert.Empty(forward.Issues);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(forward.Document, metadata, options);
+
+        Assert.Empty(back.Issues);
+        Assert.Equal(Renumber(text), Renumber(TscnWriter.Write(back.Document)));
+    }
+
     [Fact]
     public void SubResourceUsedTwiceIsOneKeyedEntry()
     {

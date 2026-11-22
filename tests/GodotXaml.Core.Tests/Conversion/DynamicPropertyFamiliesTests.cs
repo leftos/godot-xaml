@@ -12,6 +12,14 @@ public sealed class DynamicPropertyFamiliesTests
 {
     private static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
 
+    // The class-list names a row may match in the version named here, because that version binds the name in ClassDB where a
+    // later version lists it from _get_property_list; each reason says so. The key's Class is the class whose class list holds
+    // the name.
+    private static readonly Dictionary<(string Version, string Class, string Pattern), string> Allowances = new()
+    {
+        [("4.7", "AnimationNodeBlendSpace2D", @"^triangles\z")] = "4.7 binds triangles with ADD_PROPERTY; 4.8 lists it from _get_property_list.",
+    };
+
     [Fact]
     public void EveryFamilyPatternIsAnchored() => Assert.Empty(Offenders(row => !row.Family.Pattern.ToString().StartsWith('^')));
 
@@ -34,32 +42,37 @@ public sealed class DynamicPropertyFamiliesTests
         Assert.Empty(offenders);
     }
 
-    // A class-list name ranks by the class list before any family, so a row over one would be shadowed; no row names one.
+    // A class-list name ranks by the class list before any family, so a row over one would be shadowed; no row names one in a
+    // version the allowance does not name.
     [Fact]
     public void NoFamilyPatternMatchesAClassListName()
     {
-        List<string> offenders = [];
-        foreach (string version in GodotMetadata.BundledVersions)
-        {
-            var metadata = GodotMetadata.LoadBundled(version);
-            foreach (GodotClassInfo cls in metadata.Classes)
-            {
-                List<(string Class, DynamicFamily Family)> families =
-                [
-                    .. metadata.ChainOf(cls).SelectMany(declaring => Of(declaring.Name).Select(family => (declaring.Name, family))),
-                ];
-                foreach (string name in cls.ListOrder)
-                {
-                    offenders.AddRange(
-                        families
-                            .Where(row => row.Family.Pattern.IsMatch(name))
-                            .Select(row => $"Godot {version} {cls.Name} {name} {row.Class} {row.Family.Pattern}")
-                    );
-                }
-            }
-        }
+        List<string> offenders =
+        [
+            .. OffendingClassListNames()
+                .Where(row => !Allowances.ContainsKey((row.Version, row.Class, row.Pattern)))
+                .Select(row => $"Godot {row.Version} {row.Class} {row.Name} {row.Declaring} {row.Pattern}"),
+        ];
 
         Assert.Empty(offenders);
+    }
+
+    // An allowance whose row no longer matches a class-list name hides nothing, so it is stale and would outlive the reason.
+    [Fact]
+    public void NoAllowanceIsStale()
+    {
+        HashSet<(string Version, string Class, string Pattern)> offending =
+        [
+            .. OffendingClassListNames().Select(row => (row.Version, row.Class, row.Pattern)),
+        ];
+        List<string> stale =
+        [
+            .. Allowances
+                .Where(allowance => !offending.Contains(allowance.Key))
+                .Select(allowance => $"{allowance.Key.Version} {allowance.Key.Class} {allowance.Key.Pattern}: {allowance.Value}"),
+        ];
+
+        Assert.True(stale.Count == 0, "Stale allowances:\n" + string.Join('\n', stale));
     }
 
     // Godot writes an index in ASCII digits; \d would also match a non-ASCII digit, such as an Arabic-Indic three.
@@ -316,6 +329,34 @@ public sealed class DynamicPropertyFamiliesTests
         Has(family, "key") ? !family.KeyOrder.IsEmpty && IsDistinct(family.KeyOrder) : family.KeyOrder.IsEmpty;
 
     private static bool IsDistinct(ImmutableArray<string> keys) => keys.Distinct(StringComparer.Ordinal).Count() == keys.Length;
+
+    // Every class-list name a family row matches in each bundled version, with the class that lists it and the row's class and
+    // pattern.
+    private static List<(string Version, string Class, string Name, string Declaring, string Pattern)> OffendingClassListNames()
+    {
+        List<(string Version, string Class, string Name, string Declaring, string Pattern)> offenders = [];
+        foreach (string version in GodotMetadata.BundledVersions)
+        {
+            var metadata = GodotMetadata.LoadBundled(version);
+            foreach (GodotClassInfo cls in metadata.Classes)
+            {
+                List<(string Class, DynamicFamily Family)> families =
+                [
+                    .. metadata.ChainOf(cls).SelectMany(declaring => Of(declaring.Name).Select(family => (declaring.Name, family))),
+                ];
+                foreach (string name in cls.ListOrder)
+                {
+                    offenders.AddRange(
+                        families
+                            .Where(row => row.Family.Pattern.IsMatch(name))
+                            .Select(row => (version, cls.Name, name, row.Class, row.Family.Pattern.ToString()))
+                    );
+                }
+            }
+        }
+
+        return offenders;
+    }
 
     // The rows that fail the check, each named by its class and pattern.
     private static List<string> Offenders(Func<(string Class, DynamicFamily Family), bool> fails) =>

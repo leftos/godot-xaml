@@ -1,0 +1,35 @@
+[gd_resource type="AnimationNodeBlendSpace2D" format=3]
+
+[ext_resource type="Script" path="res://blend2d_scripted.gd" id="1_0iq4k"]
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_tml2b"]
+animation = &"p0"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_okbej"]
+animation = &"p1"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_lxp4b"]
+animation = &"p2"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_gl0e0"]
+animation = &"p3"
+
+[resource]
+auto_triangles = false
+min_space = Vector2(-2, -2)
+blend_point_0/node = SubResource("AnimationNodeAnimation_tml2b")
+blend_point_0/pos = Vector2(0.8, 0)
+blend_point_0/name = &"q0"
+blend_point_1/node = SubResource("AnimationNodeAnimation_okbej")
+blend_point_1/pos = Vector2(0.70206606, 0.38354042)
+blend_point_1/name = &"q1"
+blend_point_2/node = SubResource("AnimationNodeAnimation_lxp4b")
+blend_point_2/pos = Vector2(0.43224186, 0.67317677)
+blend_point_2/name = &"q2"
+blend_point_3/node = SubResource("AnimationNodeAnimation_gl0e0")
+blend_point_3/pos = Vector2(0.05658976, 0.797996)
+blend_point_3/name = &"q3"
+triangles = PackedInt32Array(0, 1, 2, 0, 2, 3)
+script = ExtResource("1_0iq4k")
+extra = 5
+metadata/note = "m"

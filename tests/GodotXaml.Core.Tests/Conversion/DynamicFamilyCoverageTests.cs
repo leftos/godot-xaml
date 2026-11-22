@@ -12,7 +12,7 @@ public sealed class DynamicFamilyCoverageTests
     private static readonly GodotMetadata Metadata = GodotMetadata.Load(RepoFiles.PathOf("metadata", "godot-4.7.json"));
 
     // Rows no fixture can hold, keyed by class and the pattern as the table writes it, so a pattern edit forces a review; each
-    // reason is read in Godot 4.7.2.
+    // reason is read in the Godot source it names.
     private static readonly Dictionary<(string Class, string Pattern), string> Exceptions = new()
     {
         // Editor-only or never stored.
@@ -58,6 +58,10 @@ public sealed class DynamicFamilyCoverageTests
             "Unlisted graph type: VisualShader::_get_property_list writes only the type_string types, each with its own row.",
         [("VisualShader", @"^nodes/")] =
             "Unlisted graph name: every nodes/ name VisualShader::_get_property_list writes ranks by a per-type row above.",
+
+        // Listed dynamically only from 4.8, where no fixture is read: the fixtures pair with 4.7 metadata, which lists it in the class.
+        [("AnimationNodeBlendSpace2D", @"^triangles\z")] =
+            "Godot 4.8 lists triangles from _get_property_list; the fixtures are read with 4.7 metadata, where it is a class-list name.",
     };
 
     [Fact]
