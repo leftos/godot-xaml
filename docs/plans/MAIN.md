@@ -10,13 +10,12 @@
 
 - [ ] GXAML-260 Convert 4.8 scene properties and embedded scenes both ways (sub-issue of GXAML-253) · release vNext
 - [ ] GXAML-262 Prove 4.8 scene properties and embedded scenes in Godot (sub-issue of GXAML-253) · release vNext
-- [ ] GXAML-250 Trial: measure the scene-groups time and the first open on delve-the-dungeon · release vNext
-- [ ] GXAML-264 Tscn model: one shape for the main and nested scenes · release vNext
 - [ ] GXAML-265 Tscn reader: decide on Godot 4.8's loader error texts (nameless node, connection fields)
 - [ ] GXAML-266 Order bundled metadata versions numerically, not ordinally
-- [ ] GXAML-269 Convert AnimationNodeBlendSpace2D triangles under Godot 4.8 metadata · release vNext
-- [ ] GXAML-273 Type .glb, .gltf, .fbx, .blend and .dae references as PackedScene
 - [ ] GXAML-271 Map the conversion tests and shared test helpers in the Task Index
+- [ ] GXAML-278 Warn when a C#-named attribute names no property under the file's Godot version
+- [ ] GXAML-279 Type AnimationMixer libraries/ references as AnimationLibrary, and .escn as PackedScene
+- [ ] GXAML-283 Write no unused xmlns:res declaration when no scene tag uses it
 
 ## Godot addon
 
@@ -31,19 +30,19 @@
 - [ ] GXAML-181 Preview server: a connection to a stripped %Name target is dropped too
 - [ ] GXAML-179 Preview server: the previewed root names the document as its scene file
 - [ ] GXAML-211 Preview server: a text file remapped to another text file previews the original's content
-- [ ] GXAML-236 Addon: XscnLoading's writer call catches the core's writer refusals · release vNext
-- [ ] GXAML-251 Addon: compiles in a host that targets net8.0, or the guide says it needs .NET 9 · release vNext
 - [ ] GXAML-267 Find the 5 RefCounted objects the headless checks leak at exit
-- [ ] GXAML-268 Keep the addon csproj unchanged when the Godot checks run under 4.8 · release vNext
 - [ ] GXAML-270 Check that an editor save parses the replaced file with its own marker's metadata
-- [ ] GXAML-272 Decide whether a save keeps a .xscn file's missing x:Uids and x:UniqueId
 - [ ] GXAML-275 Re-read docs/DEVELOPMENT.md against the Godot 4.8 check changes
+- [ ] GXAML-284 Split XscnSaveRoute.Save under the complexity limit
+- [ ] GXAML-285 A rename writes the holder's Theme property typed in one run and as x:Prop in another
 
 ## Agent tooling
 
-- [ ] GXAML-247 CLI convert: the backup line and GXP0006 warnings print once · release vNext
-- [ ] GXAML-252 CLI: read the global class cache from godot/ when the project's data folder is not hidden · release vNext
 - [ ] GXAML-263 CLI: resolve input paths against the working-directory seam, not the process directory
+- [ ] GXAML-277 CLI: convert --project skips a visible godot/ data folder
+- [ ] GXAML-280 GodotProjectVersion reads past multi-line strings and keeps the last assignment
+- [ ] GXAML-281 CLI convert: SeedKeyOf takes the planned project root
+- [ ] GXAML-282 upgrade: GXT0008 does not call a dynamically listed property a script property
 
 ## Editor support
 
@@ -61,7 +60,7 @@
   - [ ] GXAML-233 Visual Studio extension: publish to the Marketplace from the release, and the docs
 - [ ] GXAML-17 Visual Studio preview pane with click-to-select
 - [ ] GXAML-234 Language server: tag auto-close, matching-tag highlight and folding
-- [ ] GXAML-245 Language server: completion offers x:Godot on a root element · release vNext
+- [ ] GXAML-245 Language server: completion offers x:Godot on a root element · release vNext+1
 - [ ] GXAML-274 Record the editor extensions' rulings in editor-extensions.md
 - [ ] GXAML-276 Make the language server's design doc a durable subsystem doc
 
