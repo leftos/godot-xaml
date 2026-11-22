@@ -33,6 +33,9 @@ internal static class XscnLoading
     // Made once and still reachable at shutdown, when Godot's tracker disposes it (GXAML-81).
     private static readonly StringName ResourceClassName = "Resource";
 
+    // The first Godot that loads x:Scene and a scene inside a PackedScene.
+    private static readonly Version ScenesSince = new(4, 8);
+
     private static readonly ConversionOptions Options = new()
     {
         Seed = Seed,
@@ -205,7 +208,7 @@ internal static class XscnLoading
     /// <param name="document">The parsed <c>.xscn</c> or <c>.xres</c>.</param>
     /// <returns>The converted document and the conversion's issues.</returns>
     internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document) =>
-        XscnToTscn.Convert(document, XscnMetadata.For(document.Godot), Options);
+        NeedsNewerGodot(document) ?? XscnToTscn.Convert(document, XscnMetadata.For(document.Godot), Options);
 
     /// <summary>
     /// Converts a parsed document as <see cref="ToTscn(XscnDocument)"/> does, reading the scenes it instances so their
@@ -215,7 +218,8 @@ internal static class XscnLoading
     /// <param name="path">The file's <c>res://</c> path, which its relative references are resolved against.</param>
     /// <returns>The converted document and the conversion's issues.</returns>
     internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document, string path) =>
-        XscnToTscn.Convert(
+        NeedsNewerGodot(document)
+        ?? XscnToTscn.Convert(
             document,
             XscnMetadata.For(document.Godot, path),
             Options with
@@ -224,6 +228,29 @@ internal static class XscnLoading
                 SourceKey = path,
             }
         );
+
+    // A Godot older than 4.8 reads an embedded scene's nodes as the main scene's until its load fails, so a file holding
+    // x:Scene or an embedded scene is refused before it converts, whatever its marker says; a running version that does
+    // not parse is taken as new. The stand-in is the one the back conversion's own refusal gives.
+    private static ConversionResult<TscnDocument>? NeedsNewerGodot(XscnDocument document)
+    {
+        string running = XscnMetadata.RunningVersion();
+        bool older = Version.TryParse(running, out Version? version) && version < ScenesSince;
+        if (!older || (document.Scene is null && !XscnFormatVocabulary.HoldsSceneRoot(document)))
+        {
+            return null;
+        }
+
+        string message = $"this file holds a Godot 4.8 x:Scene element or embedded scene, which the running Godot {running} cannot load";
+        string location = document.Scene is not null ? "x:Scene" : "PackedScene";
+        var issue = new ConversionIssue(ConversionCodes.NeedsNewerGodot, ConversionSeverity.Error, message, location);
+        var standIn = new TscnDocument
+        {
+            Kind = document.Kind == XscnDocumentKind.Scene ? TscnKind.Scene : TscnKind.Resource,
+            Header = new TscnHeader { Uid = Options.Uid },
+        };
+        return new ConversionResult<TscnDocument>(standIn, [issue]);
+    }
 
     private static Variant LoadConverted(string path, string originalPath, int cacheMode)
     {
@@ -382,12 +409,36 @@ internal static class XscnLoading
             }
         );
         walk.Map(document);
-        if (document.Root is XscnNodeElement root)
+        AddScenePaths(document, Add);
+        return found;
+    }
+
+    /// <summary>
+    /// Passes the scene path of each instance and inherited root the document holds to a function: the main scene's and
+    /// those of every scene a <c>PackedScene</c> holds, in the table, in <c>x:Scene</c> or inline, at any depth.
+    /// </summary>
+    /// <param name="document">The document.</param>
+    /// <param name="add">Called with each scene's path.</param>
+    internal static void AddScenePaths(XscnDocument document, Action<string?> add)
+    {
+        foreach (XscnResource entry in document.Resources)
         {
-            AddScenePaths(root, Add);
+            AddScenePaths(entry, add);
         }
 
-        return found;
+        if (document.Scene is { } scene)
+        {
+            AddScenePaths(scene, add);
+        }
+
+        if (document.Root is XscnNodeElement root)
+        {
+            AddScenePaths(root, add);
+        }
+        else if (document.Root is XscnResource resource)
+        {
+            AddScenePaths(resource, add);
+        }
     }
 
     // Instances and an inherited root name their scene in the node's type; the engine rewrites them as ext_resources.
@@ -398,9 +449,28 @@ internal static class XscnLoading
             add(scene.Path);
         }
 
+        AddInlineScenePaths(element.Properties, add);
         foreach (XscnNodeElement child in element.Children)
         {
             AddScenePaths(child, add);
+        }
+    }
+
+    private static void AddScenePaths(XscnResource resource, Action<string?> add)
+    {
+        if (resource.SceneRoot is { } sceneRoot)
+        {
+            AddScenePaths(sceneRoot, add);
+        }
+
+        AddInlineScenePaths(resource.Properties, add);
+    }
+
+    private static void AddInlineScenePaths(ImmutableArray<XscnProperty> properties, Action<string?> add)
+    {
+        foreach (XscnInline inline in properties.Select(property => property.Value).OfType<XscnInline>())
+        {
+            AddScenePaths(inline.Resource, add);
         }
     }
 

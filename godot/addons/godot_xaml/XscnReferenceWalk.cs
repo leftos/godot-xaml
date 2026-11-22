@@ -9,7 +9,8 @@ namespace GodotXaml.Addon;
 /// <summary>
 /// Rebuilds a document with each file property and each <c>Resource()</c> reference in its values passed through a
 /// function: the properties of nodes, overrides and resources, inline resources, connection binds, array and dictionary
-/// items, and the scripts of typed containers. The <c>x:Uids</c> table is left to the caller.
+/// items, and the scripts of typed containers, in the main scene, in <c>x:Scene</c> and in every scene a <c>PackedScene</c>
+/// holds. The <c>x:Uids</c> table is left to the caller.
 /// </summary>
 /// <param name="reference">The replacement of a <c>Resource()</c> reference.</param>
 /// <param name="file">The replacement of a file property.</param>
@@ -22,6 +23,7 @@ internal sealed class XscnReferenceWalk(Func<GodotPathRef, GodotValue> reference
         document with
         {
             Resources = [.. document.Resources.Select(Resource)],
+            Scene = document.Scene is { } scene ? Resource(scene) : null,
             Root = document.Root switch
             {
                 XscnNodeElement node => Node(node),
@@ -38,7 +40,12 @@ internal sealed class XscnReferenceWalk(Func<GodotPathRef, GodotValue> reference
             Children = [.. element.Children.Select(Node)],
         };
 
-    private XscnResource Resource(XscnResource resource) => resource with { Properties = Properties(resource.Properties) };
+    private XscnResource Resource(XscnResource resource) =>
+        resource with
+        {
+            Properties = Properties(resource.Properties),
+            SceneRoot = resource.SceneRoot is { } root ? (XscnNode)Node(root) : null,
+        };
 
     private ImmutableArray<XscnProperty> Properties(ImmutableArray<XscnProperty> properties) =>
         [.. properties.Select(property => property with { Value = PropertyValue(property.Value) })];

@@ -316,6 +316,15 @@ public partial class Checks : Node
             ("C156", ASaveToANewPathWritesTheTableAndTheIds),
             ("C157", ANodeAddedToAFileWithNoIdsGetsNoId),
             ("C158", ASecondSaveOfAFileWithNoIdsChangesNothing),
+            // A Godot older than 4.8 refuses a file holding x:Scene or an embedded scene, whatever its marker says, and the
+            // addon's walkers reach inside embedded scenes.
+            ("C159", AFourEightSceneInAnOlderGodotIsRefused),
+            ("C160", AFourEightResourceInAnOlderGodotIsRefused),
+            ("C161", AFourEightMarkedFileWithoutTheConstructsLoadsInAnOlderGodot),
+            ("C162", TheRefusalFollowsTheRunningVersionNotTheMarker),
+            ("C163", TheReferenceWalkReachesEmbeddedScenes),
+            ("C164", ScenePathsIncludeEmbeddedScenes),
+            ("C165", TheSaveRouteHoldsEmbeddedSubResources),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -8041,5 +8050,213 @@ public partial class Checks : Node
                 );
             }
         );
+    }
+
+    // The path an embedded scene's instance names in tests/fixtures/converted48/embedded_instance.xscn.
+    private const string EmbeddedTargetPath = "res://cases/embedded_target.tscn";
+
+    // A 4.8-marked scene with neither x:Scene nor an embedded scene.
+    private const string PlainFourEightScene =
+        "<Node xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" x:Godot=\"4.8\" Name=\"Root\">\n"
+        + "  <Node Name=\"Child\" />\n"
+        + "</Node>\n";
+
+    // Under a running Godot 4.7, both ToTscn overloads and a load refuse x:Scene and an embedded scene; the refusal names
+    // x:Scene when the scene has one, else PackedScene.
+    private static string AFourEightSceneInAnOlderGodotIsRefused() =>
+        Failures(
+            RefusedInAnOlderGodot("scene_meta.xscn", "x:Scene"),
+            RefusedInAnOlderGodot("embedded_scene.xscn", "x:Scene"),
+            RefusedInAnOlderGodot("embedded_instance.xscn", "PackedScene")
+        );
+
+    // Under a running Godot 4.7, a .xres holding an embedded scene is refused as a .xscn is.
+    private static string AFourEightResourceInAnOlderGodotIsRefused() => RefusedInAnOlderGodot("scene_holder.xres", "PackedScene");
+
+    // Under a running Godot 4.7, a 4.8 marker alone refuses nothing.
+    private static string AFourEightMarkedFileWithoutTheConstructsLoadsInAnOlderGodot()
+    {
+        if (FourEightDocument(PlainFourEightScene, XscnDocumentKind.Scene, out XscnDocument? document) is { } setup)
+        {
+            return setup;
+        }
+
+        XscnMetadata.RunningVersion = () => "4.7";
+        try
+        {
+            ImmutableArray<ConversionIssue> issues = XscnLoading.ToTscn(document!).Issues;
+            return issues.IsEmpty ? "" : "the plain 4.8 scene converted with issues: " + IssueText(issues);
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+        }
+    }
+
+    // Under a running Godot 4.8, a 4.8 embedded scene converts: the refusal reads the running version, not the marker.
+    private static string TheRefusalFollowsTheRunningVersionNotTheMarker()
+    {
+        if (FourEightFixture("embedded_scene.xscn", out XscnDocument? document) is { } setup)
+        {
+            return setup;
+        }
+
+        XscnMetadata.RunningVersion = () => "4.8";
+        try
+        {
+            ImmutableArray<ConversionIssue> issues = XscnLoading.ToTscn(document!).Issues;
+            return issues.Any(issue => issue.Code == ConversionCodes.NeedsNewerGodot)
+                ? "embedded_scene.xscn was refused under Godot 4.8: " + IssueText(issues)
+                : "";
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+        }
+    }
+
+    // The reference walk passes a file property inside an embedded scene to its function.
+    private static string TheReferenceWalkReachesEmbeddedScenes()
+    {
+        const string picture = "res://cases/embedded_target.png";
+        string text = File.ReadAllText(FourEightFixturePath("embedded_instance.xscn"))
+            .Replace(
+                "<Node2D Name=\"Tinted\"",
+                $"<Sprite2D Name=\"Pictured\" Texture=\"{picture}\" />\n        <Node2D Name=\"Tinted\"",
+                StringComparison.Ordinal
+            );
+        if (FourEightDocument(text, XscnDocumentKind.Scene, out XscnDocument? document) is { } setup)
+        {
+            return setup;
+        }
+
+        var reached = new List<string>();
+        var walk = new XscnReferenceWalk(
+            reference => reference,
+            file =>
+            {
+                reached.Add(file.Path);
+                return file;
+            }
+        );
+        walk.Map(document!);
+        return reached.Contains(picture, StringComparer.Ordinal)
+            ? ""
+            : $"the walk reached [{string.Join(", ", reached)}], not {picture} inside the embedded scene";
+    }
+
+    // The scene paths a rename resolves include an instance's inside an embedded scene.
+    private static string ScenePathsIncludeEmbeddedScenes()
+    {
+        if (FourEightFixture("embedded_instance.xscn", out XscnDocument? document) is { } setup)
+        {
+            return setup;
+        }
+
+        var paths = new List<string?>();
+        XscnLoading.AddScenePaths(document!, paths.Add);
+        return paths.Contains(EmbeddedTargetPath, StringComparer.Ordinal)
+            ? ""
+            : $"the scene paths [{string.Join(", ", paths)}] lack {EmbeddedTargetPath}";
+    }
+
+    // The resources a save gives loader ids include a sub-resource inside an embedded scene and x:Scene itself.
+    private static string TheSaveRouteHoldsEmbeddedSubResources()
+    {
+        if (FourEightFixture("embedded_instance.xscn", out XscnDocument? embedded) is { } embeddedSetup)
+        {
+            return embeddedSetup;
+        }
+
+        if (FourEightFixture("scene_meta.xscn", out XscnDocument? meta) is { } metaSetup)
+        {
+            return metaSetup;
+        }
+
+        string[] classes = [.. XscnSaveRoute.Resources(embedded!).Select(ResourceClass)];
+        return Failures(
+            classes.Contains("CanvasItemMaterial", StringComparer.Ordinal)
+                ? ""
+                : $"the resources of embedded_instance.xscn [{string.Join(", ", classes)}] lack the embedded CanvasItemMaterial",
+            XscnSaveRoute.Resources(meta!).Any(resource => ReferenceEquals(resource, meta!.Scene))
+                ? ""
+                : "the resources of scene_meta.xscn lack x:Scene"
+        );
+    }
+
+    // Under a running Godot 4.7, both ToTscn overloads give the one GXC0123 refusal, and a load of the file fails with it.
+    private static string RefusedInAnOlderGodot(string name, string location)
+    {
+        XscnDocumentKind kind = name.EndsWith(".xscn", StringComparison.Ordinal) ? XscnDocumentKind.Scene : XscnDocumentKind.Resource;
+        string text = File.ReadAllText(FourEightFixturePath(name));
+        if (FourEightDocument(text, kind, out XscnDocument? document) is { } setup)
+        {
+            return setup;
+        }
+
+        string path = OutFolder + name;
+        const string message = "this file holds a Godot 4.8 x:Scene element or embedded scene, which the running Godot 4.7 cannot load";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
+        XscnMetadata.RunningVersion = () => "4.7";
+        try
+        {
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), text);
+            (Resource? loaded, WarningLog log) = LoadLogged(path);
+            return Failures(
+                RefusalFailure(name, "ToTscn(document)", XscnLoading.ToTscn(document!).Issues, message, location),
+                RefusalFailure(name, "ToTscn(document, path)", XscnLoading.ToTscn(document!, path).Issues, message, location),
+                loaded is null ? "" : $"loading {path} returned a {loaded.GetClass()}, not null",
+                Logged(log.Entries, Logger.ErrorType.Error, name, ConversionCodes.NeedsNewerGodot, message)
+                    ? ""
+                    : $"the load of {path} logged no error naming it, {ConversionCodes.NeedsNewerGodot} and the refusal: [{LogText(log.Entries)}]"
+            );
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+            DeleteKeptTempFiles(tempPathsBeforeLoad);
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // The failure of a conversion that should give exactly the one GXC0123 error, or "".
+    private static string RefusalFailure(string name, string call, ImmutableArray<ConversionIssue> issues, string message, string location) =>
+        issues is [{ Code: ConversionCodes.NeedsNewerGodot, Severity: ConversionSeverity.Error } issue]
+        && issue.Message == message
+        && issue.Location == location
+            ? ""
+            : $"{call} of {name} gave [{IssueText(issues)}], not the one {ConversionCodes.NeedsNewerGodot} error \"{message}\" at {location}";
+
+    private static string IssueText(ImmutableArray<ConversionIssue> issues) =>
+        string.Join("; ", issues.Select(issue => $"{issue.Severity} {issue.Code} {issue.Message} ({issue.Location})"));
+
+    private static string ResourceClass(XscnResource resource) =>
+        resource.Type switch
+        {
+            XscnClassType known => known.Class.Name,
+            XscnUnknownType unknown => unknown.Name,
+            _ => resource.Type.ToString(),
+        };
+
+    // A golden of tests/fixtures/converted48, beside the godot/ project in the repository.
+    private static string FourEightFixturePath(string name) =>
+        Path.Combine(ProjectSettings.GlobalizePath("res://"), "..", "tests", "fixtures", "converted48", name);
+
+    private static string? FourEightFixture(string name, out XscnDocument? document)
+    {
+        XscnDocumentKind kind = name.EndsWith(".xscn", StringComparison.Ordinal) ? XscnDocumentKind.Scene : XscnDocumentKind.Resource;
+        return FourEightDocument(File.ReadAllText(FourEightFixturePath(name)), kind, out document);
+    }
+
+    // The text parsed with the 4.8 metadata; the failure, or null with the document.
+    private static string? FourEightDocument(string text, XscnDocumentKind kind, out XscnDocument? document)
+    {
+        XscnParseResult result = XscnParser.Parse(text, kind, XscnMetadata.For("4.8"));
+        document = result.HasErrors ? null : result.Document;
+        return result.HasErrors
+            ? "setup: the 4.8 text does not parse: " + string.Join("; ", result.Diagnostics.Select(d => $"{d.Code} {d.Message}"))
+            : null;
     }
 }

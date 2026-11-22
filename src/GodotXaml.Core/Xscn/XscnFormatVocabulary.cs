@@ -138,9 +138,18 @@ public static class XscnFormatVocabulary
         return !System.Version.TryParse(metadata.Version, out Version? version) || version >= ScenesSince;
     }
 
-    // Whether a table entry or the root, or any resource inside them at any depth, holds a scene root: what a metadata
-    // ReadsScenes refuses besides x:Scene.
-    internal static bool HoldsSceneRoot(XscnDocument document) => document.Resources.Any(HoldsSceneRoot) || HoldsSceneRoot(document.Root);
+    /// <summary>
+    /// Whether a table entry or the root, or any resource inside them at any depth, holds a scene root: what a Godot older
+    /// than 4.8 cannot load besides <c>x:Scene</c>.
+    /// </summary>
+    /// <param name="document">The document.</param>
+    /// <returns>True when some <c>PackedScene</c> in the document holds a scene.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="document"/> is null.</exception>
+    public static bool HoldsSceneRoot(XscnDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return document.Resources.Any(HoldsSceneRoot) || HoldsSceneRoot(document.Root);
+    }
 
     private static bool HoldsSceneRoot(XscnElement element) =>
         element switch

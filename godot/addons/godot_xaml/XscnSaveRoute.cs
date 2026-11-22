@@ -251,9 +251,17 @@ internal static class XscnSaveRoute
         return ids;
     }
 
-    // Every resource the document holds: the table's entries and each resource held inline, at any depth.
-    private static IEnumerable<XscnResource> Resources(XscnDocument document) =>
-        document.Resources.SelectMany(entry => Held(entry).Prepend(entry)).Concat(Held(document.Root));
+    /// <summary>
+    /// Every resource the document holds: the table's entries, <c>x:Scene</c> and each resource held inline, at any depth,
+    /// the nodes of every scene a <c>PackedScene</c> holds included.
+    /// </summary>
+    /// <param name="document">The document.</param>
+    /// <returns>The resources, each table entry before the resources it holds.</returns>
+    internal static IEnumerable<XscnResource> Resources(XscnDocument document)
+    {
+        IEnumerable<XscnResource> scene = document.Scene is { } held ? Held(held).Prepend(held) : [];
+        return document.Resources.SelectMany(entry => Held(entry).Prepend(entry)).Concat(scene).Concat(Held(document.Root));
+    }
 
     private static IEnumerable<XscnResource> Held(XscnElement element)
     {
@@ -267,7 +275,12 @@ internal static class XscnSaveRoute
             .Select(property => property.Value)
             .OfType<XscnInline>()
             .SelectMany(value => Held(value.Resource).Prepend(value.Resource));
-        return element is XscnNodeElement { Children: var children } ? inline.Concat(children.SelectMany(Held)) : inline;
+        return element switch
+        {
+            XscnNodeElement { Children: var children } => inline.Concat(children.SelectMany(Held)),
+            XscnResource { SceneRoot: { } sceneRoot } => inline.Concat(Held(sceneRoot)),
+            _ => inline,
+        };
     }
 
     // After a load a sub-resource's path is "<old file>::<id>", and after Save As that is another file's path; Resource.is_built_in
