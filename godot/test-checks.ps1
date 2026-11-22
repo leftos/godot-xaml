@@ -15,13 +15,15 @@ guard: a passing run never waits it out. Export's exit code is not asserted, bec
 expected errors leaves it exiting 1. A case whose stub Godot prints a Fatal error line after its verdicts expects the
 script to fail on it and to print a FATAL line naming the step and the line. A stub that prints the crash on its import
 and exits 0 expects each script to stop at the import with a FATAL import line. A stub that ends any scene call carrying
---quit-after expects a checks or compare run whose scene call has no frame budget. The last case checks Harness.psm1's
-Get-EngineErrorKind directly against a table of engine error lines and the lines it must leave alone. Each case gets its
-own temp root and runs its script on a copy of the tree that script reads (godot/, tests/fixtures/ and the two tools/
-projects, with the Godot cache and build output left out), then asserts the run left the repo's own godot/cases/,
-fixture scripts and .tmp/export/ exactly as they were. The assertion snapshots paths a real run also writes, so a real
-compare or export run in the same checkout while the test runs fails a case. A failing case does not stop the later
-ones; the test prints CASE <name> PASS|FAIL <detail> per case and exits 0 only when every case passed.
+--quit-after expects a checks or compare run whose scene call has no frame budget. The last two cases check Harness.psm1
+directly: its line judgement against a table of engine error lines and the lines it must leave alone, and its restore of
+a project's csproj after an editor run (an import, an export flag or the editor flag) rewrote it and left a backup,
+including a run that failed after the rewrite. Each case gets its own temp root and runs its script on a copy of the
+tree that script reads (godot/, tests/fixtures/ and the two tools/ projects, with the Godot cache and build output left
+out), then asserts the run left the repo's own godot/cases/, fixture scripts and .tmp/export/ exactly as they were. The
+assertion snapshots paths a real run also writes, so a real compare or export run in the same checkout while the test
+runs fails a case. A failing case does not stop the later ones; the test prints CASE <name> PASS|FAIL <detail> per case
+and exits 0 only when every case passed.
 
 .EXAMPLE
 pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/test-checks.log --slot light --timeout 900 --
@@ -39,15 +41,19 @@ $repo = Split-Path $PSScriptRoot -Parent
 # any other kind of call, the run prints its first line and flushes it, holds until the test releases it, runs the
 # tail, and then, on every call with -Fatal or only on the calls whose arguments match -FatalWhen, prints the .NET
 # finalizer crash Godot leaves on its error output before exiting 0. The hold's bound is past the test's hang guard, so
-# only the test ends it.
+# only the test ends it. With -RewriteCsprojOnEditorRun, an editor run (an import, an export flag or the editor flag)
+# rewrites the --path project's csproj the way Godot's editor tools do, keeping the old file in the .old family, and
+# exits with -ImportExitCode.
 function New-StubGodot {
     param(
         [Parameter(Mandatory)][string] $FirstLine,
-        [Parameter(Mandatory)][string] $Tail,
+        [Parameter(Mandatory)][AllowEmptyString()][string] $Tail,
         [string] $Only = '',
         [switch] $Fatal,
         [string] $FatalWhen = '',
-        [switch] $FatalOnImport
+        [switch] $FatalOnImport,
+        [switch] $RewriteCsprojOnEditorRun,
+        [int] $ImportExitCode = 0
     )
     $template = @'
 param()
@@ -69,6 +75,32 @@ exit 0
     $importLine = "if (`$all -match '--import') { exit 0 }"
     if ($FatalOnImport) {
         $importLine = "if (`$all -match '--import') {`n" + $crashLines + "`n    exit 0`n}"
+    }
+    if ($RewriteCsprojOnEditorRun) {
+        # The backup goes to the first free name of Godot's .old family, so one the run found survives it.
+        $importLine = @'
+$editorArguments = @('--import', '--export-release', '--export-debug', '--export-pack', '--export-patch', '-e', '--editor')
+if (@($args | Where-Object { $editorArguments -ccontains $_ }).Count -gt 0) {
+    $pathIndex = [array]::IndexOf($args, '--path')
+    if ($pathIndex -ge 0 -and $pathIndex + 1 -lt $args.Count) {
+        $csproj = @(Get-ChildItem -LiteralPath $args[$pathIndex + 1] -Filter '*.csproj' -File -Force | Select-Object -First 1)
+        if ($csproj.Count -gt 0) {
+            $backup = $csproj[0].FullName + '.old'
+            $attempt = 1
+            while ((Test-Path -LiteralPath $backup) -and $attempt -le 5) {
+                $backup = $csproj[0].FullName + ".old.$attempt"
+                $attempt++
+            }
+            Copy-Item -LiteralPath $csproj[0].FullName -Destination $backup -Force
+            $text = Get-Content -LiteralPath $csproj[0].FullName -Raw
+            Set-Content -LiteralPath $csproj[0].FullName -NoNewline `
+                -Value ($text -replace 'Godot\.NET\.Sdk/4\.7\.2', 'Godot.NET.Sdk/4.8.0-beta.2')
+        }
+    }
+    exit __IMPORT_EXIT__
+}
+'@
+        $importLine = $importLine.Replace('__IMPORT_EXIT__', "$ImportExitCode")
     }
     $template = $template.Replace('__ONLY__', $Only).Replace('__FIRST__', $FirstLine).Replace('__IMPORT__', $importLine)
     $fatalLines = ''
@@ -307,10 +339,11 @@ function Get-FileState {
 }
 
 # What a case's run must leave alone in the real tree: each watched folder's own times, every file under the two
-# folders a real run rewrites, and the fixture scripts a compare run replaces, each with its path, size, creation and
-# last-write time and content hash, or an entry saying it is absent. godot/ is watched for its own times because a
-# compare run replaces its fixture scripts in place: copying keeps their last-write time, the content is unchanged, and
-# NTFS restores the creation time of a name re-created in the same folder within seconds, so only the folder shows it.
+# folders a real run rewrites, the addon's csproj and its backup files, and the fixture scripts a compare run replaces,
+# each with its path, size, creation and last-write time and content hash, or an entry saying it is absent. godot/ is
+# watched for its own times because a compare run replaces its fixture scripts in place: copying keeps their
+# last-write time, the content is unchanged, and NTFS restores the creation time of a name re-created in the same folder
+# within seconds, so only the folder shows it.
 function Get-RealState {
     param([Parameter(Mandatory)][string] $Repo)
     $state = [System.Collections.Generic.List[string]]::new()
@@ -332,13 +365,17 @@ function Get-RealState {
             $state.Add((Get-FileState -File $file))
         }
     }
-    foreach ($name in @('holder.gd', 'holder.gd.uid', 'quoted.gd', 'quoted.gd.uid', 'tagged.gd', 'tagged.gd.uid')) {
+    foreach ($name in @('GodotXaml.Addon.csproj', 'holder.gd', 'holder.gd.uid', 'quoted.gd', 'quoted.gd.uid', 'tagged.gd', 'tagged.gd.uid')) {
         $file = Join-Path $Repo "godot/$name"
         if (Test-Path -LiteralPath $file) {
             $state.Add((Get-FileState -File (Get-Item -LiteralPath $file)))
         } else {
             $state.Add("$file <absent>")
         }
+    }
+    # A Godot editor run leaves the backup files of a csproj it rewrites; one here says a run leaked into the tree.
+    foreach ($backup in @(Get-ChildItem -LiteralPath (Join-Path $Repo 'godot') -Filter '*.csproj.old*' -File | Sort-Object FullName)) {
+        $state.Add((Get-FileState -File $backup))
     }
     return $state
 }
@@ -437,7 +474,7 @@ function Test-LinesReachTheOutputWhileGodotRuns {
 
     $stateChange = Get-RealStateChange -Before $stateBefore -After (Get-RealState -Repo $Repo)
     if ($null -ne $stateChange) {
-        $failures.Add("the run rewrote the real tree (godot/cases/, .tmp/export/, the fixture scripts): $stateChange")
+        $failures.Add("the run rewrote the real tree (godot/cases/, .tmp/export/, the fixture scripts, the addon's csproj): $stateChange")
     }
     if ($null -ne $run) {
         if ($null -ne $wait.Detail) { $failures.Add($wait.Detail) }
@@ -488,6 +525,237 @@ function Test-EngineErrorKinds {
         }
     }
     return (Write-CaseResult -Case 'EngineErrorLinesAreJudged' -Failures $failures)
+}
+
+# Writes a stub Godot under the case's root and returns the godot.cmd that runs it, as a script case's stub folder does.
+function New-CaseStubGodot {
+    param(
+        [Parameter(Mandatory)][string] $Root,
+        [Parameter(Mandatory)][string] $Name,
+        [Parameter(Mandatory)][string] $Stub
+    )
+    $folder = Join-Path $Root $Name
+    New-Item -ItemType Directory -Force -Path $folder | Out-Null
+    Set-Content -LiteralPath (Join-Path $folder 'godot-stub.ps1') -Value $Stub
+    $cmd = "@pwsh -NoProfile -File `"%~dp0godot-stub.ps1`" %*`r`n@exit /b %ERRORLEVEL%`r`n"
+    Set-Content -LiteralPath (Join-Path $folder 'godot.cmd') -Value $cmd -NoNewline
+    return (Join-Path $folder 'godot.cmd')
+}
+
+# Writes a project folder holding one csproj with the given content and returns the folder.
+function New-CaseProject {
+    param(
+        [Parameter(Mandatory)][string] $Root,
+        [Parameter(Mandatory)][string] $Name,
+        [Parameter(Mandatory)][AllowEmptyString()][string] $Content
+    )
+    $dir = Join-Path $Root $Name
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    Set-Content -LiteralPath (Join-Path $dir 'Probe.csproj') -Value $Content -NoNewline
+    return $dir
+}
+
+# Adds a failure for each way a run left the project folder different from the csproj the case wrote and the backup
+# files it expected to find there, comparing the csproj's bytes.
+function Add-CsprojLeftoverFailures {
+    param(
+        [Parameter(Mandatory)] $Failures,
+        [Parameter(Mandatory)][string] $Label,
+        [Parameter(Mandatory)][string] $Directory,
+        [Parameter(Mandatory)][AllowEmptyString()][string] $Expected,
+        [AllowEmptyCollection()][string[]] $ExpectOld = @()
+    )
+    $csproj = Join-Path $Directory 'Probe.csproj'
+    $actual = $null
+    if (Test-Path -LiteralPath $csproj) {
+        $actual = [IO.File]::ReadAllBytes($csproj)
+    }
+    $want = [Text.UTF8Encoding]::new($false).GetBytes($Expected)
+    if ($null -eq $actual) {
+        $Failures.Add("$Label left no csproj where the case wrote one")
+    } elseif ([Convert]::ToBase64String($actual) -cne [Convert]::ToBase64String($want)) {
+        $Failures.Add("$Label left $($actual.Length) csproj byte(s) where the case's own $($want.Length) are right")
+    }
+    $old = @(Get-ChildItem -LiteralPath $Directory -Filter '*.csproj.old*' -File -Force | ForEach-Object { $_.Name } | Sort-Object)
+    $wantOld = @($ExpectOld | ForEach-Object { Split-Path -Leaf $_ } | Sort-Object)
+    if (($old -join ', ') -cne ($wantOld -join ', ')) {
+        $Failures.Add("$Label left the csproj backups '$($old -join ', ')' where '$($wantOld -join ', ')' is right")
+    }
+}
+
+# Writes a fake Godot script that finds the project as Godot does (the --path folder, else the working directory),
+# rewrites its csproj the way the editor does, leaves a marker the case can assert, then runs the case's own
+# PowerShell; the fake runs in this process, so a throw it makes is the case's to catch.
+function New-FakeGodot {
+    param(
+        [Parameter(Mandatory)][string] $Root,
+        [Parameter(Mandatory)][string] $Name,
+        [Parameter(Mandatory)][AllowEmptyString()][string] $Then
+    )
+    $body = @'
+param()
+$pathIndex = [array]::IndexOf($args, '--path')
+$project = (Get-Location).ProviderPath
+if ($pathIndex -ge 0 -and $pathIndex + 1 -lt $args.Count) { $project = $args[$pathIndex + 1] }
+$csproj = @(Get-ChildItem -LiteralPath $project -Filter '*.csproj' -File -Force | Select-Object -First 1)[0]
+Copy-Item -LiteralPath $csproj.FullName -Destination ($csproj.FullName + '.old') -Force
+Set-Content -LiteralPath $csproj.FullName -NoNewline -Value '<Project Sdk="Godot.NET.Sdk/4.8.0-beta.2">'
+Set-Content -LiteralPath (Join-Path $project 'rewrote.marker') -NoNewline -Value 'rewritten'
+__THEN__
+'@
+    $path = Join-Path $Root "$Name.ps1"
+    Set-Content -LiteralPath $path -Value $body.Replace('__THEN__', $Then)
+    return $path
+}
+
+# Runs one editor step through the harness with its information output captured, and adds a failure unless the run
+# printed exactly one RESTORED line for the case's csproj, which only a rewrite it undid prints.
+function Invoke-EditorStep {
+    param(
+        [Parameter(Mandatory)] $Failures,
+        [Parameter(Mandatory)][string] $Label,
+        [Parameter(Mandatory)][string] $Godot,
+        [Parameter(Mandatory)][string[]] $Arguments
+    )
+    $output = @(& { Invoke-GodotStep -Godot $Godot -Name editor -Arguments $Arguments } 6>&1)
+    $restored = @($output | Where-Object {
+            $_ -is [System.Management.Automation.InformationRecord] -and
+            $_.MessageData.ToString() -ceq 'RESTORED Probe.csproj'
+        })
+    if ($restored.Count -ne 1) {
+        $Failures.Add("$Label printed $($restored.Count) 'RESTORED Probe.csproj' line(s) where exactly one must be there")
+    }
+}
+
+# Adds a failure unless the file holds exactly the bytes the case gave it.
+function Add-FileBytesFailures {
+    param(
+        [Parameter(Mandatory)] $Failures,
+        [Parameter(Mandatory)][string] $Label,
+        [Parameter(Mandatory)][string] $Path,
+        [Parameter(Mandatory)][string] $Expected
+    )
+    $actual = $null
+    if (Test-Path -LiteralPath $Path) {
+        $actual = [IO.File]::ReadAllBytes($Path)
+    }
+    $want = [Text.UTF8Encoding]::new($false).GetBytes($Expected)
+    if ($null -eq $actual) {
+        $Failures.Add("$Label left no $(Split-Path -Leaf $Path) where the case wrote one")
+    } elseif ([Convert]::ToBase64String($actual) -cne [Convert]::ToBase64String($want)) {
+        $Failures.Add("$Label left $(Split-Path -Leaf $Path) with $($actual.Length) byte(s) where the case's own $($want.Length) are right")
+    }
+}
+
+# Adds a failure unless the fake Godot left its marker, which says it rewrote the csproj before the run reached its end.
+function Add-MarkerFailures {
+    param(
+        [Parameter(Mandatory)] $Failures,
+        [Parameter(Mandatory)][string] $Label,
+        [Parameter(Mandatory)][string] $Directory
+    )
+    if (-not (Test-Path -LiteralPath (Join-Path $Directory 'rewrote.marker'))) {
+        $Failures.Add("$Label never rewrote the csproj, so it proves nothing")
+    }
+}
+
+# Checks that Invoke-GodotStep puts a project's csproj and its backups back after an editor run: the editor's C# tools
+# rewrite the csproj's Sdk line and keep the old file in the .old family, and the harness leaves the tree as it found
+# it, whatever started the editor, with or without a --path, and whatever the run did after the rewrite.
+function Test-ImportRestoresTheCsproj {
+    $failures = [System.Collections.Generic.List[string]]::new()
+    Import-Module (Join-Path $repo 'godot/Harness.psm1') -Force
+    $root = Join-Path ([IO.Path]::GetTempPath()) "gx-test-csproj-$([guid]::NewGuid().ToString('N'))"
+    $original = "<Project Sdk=`"Godot.NET.Sdk/4.7.2`">`n  <PropertyGroup></PropertyGroup>`n</Project>`n"
+    New-Item -ItemType Directory -Force -Path $root | Out-Null
+    try {
+        $stub = New-StubGodot -FirstLine 'STUB editor' -Tail '' -RewriteCsprojOnEditorRun
+        $failingStub = New-StubGodot -FirstLine 'STUB editor' -Tail '' -RewriteCsprojOnEditorRun -ImportExitCode 1
+
+        # Every flag that starts an editor run rewrites the csproj, and the harness puts it back.
+        $flags = @('--import', '--export-release', '--export-debug', '--export-pack', '--export-patch', '-e', '--editor')
+        $index = 0
+        foreach ($flag in $flags) {
+            $index++
+            $label = "a run carrying $flag"
+            $dir = New-CaseProject -Root $root -Name "flag-$index" -Content $original
+            $godot = New-CaseStubGodot -Root $root -Name "flag-$index-godot" -Stub $stub
+            Invoke-EditorStep -Failures $failures -Label $label -Godot $godot `
+                -Arguments @('--headless', '--path', $dir, $flag)
+            Add-CsprojLeftoverFailures -Failures $failures -Label $label -Directory $dir -Expected $original
+        }
+
+        $label = 'an import that exited 1'
+        $dir = New-CaseProject -Root $root -Name 'failing' -Content $original
+        $godot = New-CaseStubGodot -Root $root -Name 'failing-godot' -Stub $failingStub
+        Invoke-EditorStep -Failures $failures -Label $label -Godot $godot `
+            -Arguments @('--headless', '--path', $dir, '--import')
+        Add-CsprojLeftoverFailures -Failures $failures -Label $label -Directory $dir -Expected $original
+
+        # A backup the run found survives it byte for byte, the editor taking the next free name of the family.
+        $label = 'an import beside a backup the run found'
+        $dir = New-CaseProject -Root $root -Name 'backed-up' -Content $original
+        Set-Content -LiteralPath (Join-Path $dir 'Probe.csproj.old') -Value 'kept before the run' -NoNewline
+        $godot = New-CaseStubGodot -Root $root -Name 'backed-up-godot' -Stub $stub
+        Invoke-EditorStep -Failures $failures -Label $label -Godot $godot `
+            -Arguments @('--headless', '--path', $dir, '--import')
+        Add-CsprojLeftoverFailures -Failures $failures -Label $label -Directory $dir -Expected $original `
+            -ExpectOld @('Probe.csproj.old')
+        Add-FileBytesFailures -Failures $failures -Label $label -Path (Join-Path $dir 'Probe.csproj.old') `
+            -Expected 'kept before the run'
+
+        # A backup the run rewrote is put back to the bytes it held before the run.
+        $label = 'a run whose rewrite changed a backup'
+        $dir = New-CaseProject -Root $root -Name 'changed-backup' -Content $original
+        Set-Content -LiteralPath (Join-Path $dir 'Probe.csproj.old') -Value 'kept before the run' -NoNewline
+        $fake = New-FakeGodot -Root $root -Name 'changing-backup' -Then ''
+        Invoke-EditorStep -Failures $failures -Label $label -Godot $fake `
+            -Arguments @('--headless', '--path', $dir, '--import')
+        Add-CsprojLeftoverFailures -Failures $failures -Label $label -Directory $dir -Expected $original `
+            -ExpectOld @('Probe.csproj.old')
+        Add-FileBytesFailures -Failures $failures -Label $label -Path (Join-Path $dir 'Probe.csproj.old') `
+            -Expected 'kept before the run'
+        Add-MarkerFailures -Failures $failures -Label $label -Directory $dir
+
+        # With no --path Godot takes the working directory as the project, and so does the harness.
+        $label = 'an editor run with no --path'
+        $dir = New-CaseProject -Root $root -Name 'no-path' -Content $original
+        $fake = New-FakeGodot -Root $root -Name 'no-path' -Then ''
+        Push-Location -LiteralPath $dir
+        try {
+            Invoke-EditorStep -Failures $failures -Label $label -Godot $fake -Arguments @('--import')
+        } finally {
+            Pop-Location
+        }
+        Add-CsprojLeftoverFailures -Failures $failures -Label $label -Directory $dir -Expected $original
+        Add-MarkerFailures -Failures $failures -Label $label -Directory $dir
+
+        # A run that throws after its rewrite still leaves the folder as it found it.
+        $label = 'an editor run that threw after rewriting'
+        $dir = New-CaseProject -Root $root -Name 'throwing' -Content $original
+        $fake = New-FakeGodot -Root $root -Name 'throwing' -Then "throw 'the fake Godot died after rewriting the csproj'"
+        $threw = $false
+        try {
+            $null = Invoke-GodotStep -Godot $fake -Name editor -Arguments @('--headless', '--path', $dir, '--import')
+        } catch {
+            $threw = $true
+        }
+        if (-not $threw) {
+            $failures.Add("$label did not make the step throw, so the restore is unproven")
+        }
+        Add-CsprojLeftoverFailures -Failures $failures -Label $label -Directory $dir -Expected $original
+        Add-MarkerFailures -Failures $failures -Label $label -Directory $dir
+
+        # An empty csproj is an empty byte array the restore compares without touching the file.
+        $label = 'an editor run beside an empty csproj'
+        $dir = New-CaseProject -Root $root -Name 'empty' -Content ''
+        $godot = New-CaseStubGodot -Root $root -Name 'empty-godot' -Stub $stub
+        $null = Invoke-GodotStep -Godot $godot -Name editor -Arguments @('--headless', '--path', $dir, '--import')
+        Add-CsprojLeftoverFailures -Failures $failures -Label $label -Directory $dir -Expected ''
+    } finally {
+        Remove-TempRoot -Path $root
+    }
+    return (Write-CaseResult -Case 'ImportRestoresTheCsproj' -Failures $failures)
 }
 
 $checksTail = @'
@@ -606,5 +874,6 @@ $results = @(
     (Test-LinesReachTheOutputWhileGodotRuns -Case 'CompareSceneRunHasNoFrameBudget' -Repo $repo -Script 'compare.ps1' `
         -StubGodot $compareNoBudgetStub -FirstLine 'COMPARE stub1 PASS' -Expect 'CleanExit')
     (Test-EngineErrorKinds)
+    (Test-ImportRestoresTheCsproj)
 )
 exit $(if ($results -contains $false) { 1 } else { 0 })
