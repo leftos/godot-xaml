@@ -97,7 +97,7 @@ internal sealed class XscnPreviewInstances : IDisposable
         TscnDocument redirected = document with
         {
             ExtResources = [.. document.ExtResources.Select(Redirected)],
-            Nodes = [.. document.Nodes.Select(RedirectedPlaceholder)],
+            MainScene = document.MainScene with { Nodes = [.. document.Nodes.Select(RedirectedPlaceholder)] },
         };
         HashSet<string> instanced = LostUnderInstances(document);
         lost = [.. instanced, .. XscnPreviewScene.ScriptedNodePaths(document)];

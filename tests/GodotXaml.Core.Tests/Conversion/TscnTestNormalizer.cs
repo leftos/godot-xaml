@@ -59,17 +59,20 @@ internal static class TscnTestNormalizer
                 ),
             ],
             ResourceProperties = Properties(document.ResourceProperties),
-            Nodes =
-            [
-                .. document.Nodes.Select(node =>
-                    node with
-                    {
-                        Instance = node.Instance is { } instance ? Rewrite(instance) : null,
-                        Properties = Properties(node.Properties),
-                    }
-                ),
-            ],
-            Connections = [.. document.Connections.Select(connection => connection with { Binds = [.. connection.Binds.Select(Rewrite)] })],
+            MainScene = document.MainScene with
+            {
+                Nodes =
+                [
+                    .. document.Nodes.Select(node =>
+                        node with
+                        {
+                            Instance = node.Instance is { } instance ? Rewrite(instance) : null,
+                            Properties = Properties(node.Properties),
+                        }
+                    ),
+                ],
+                Connections = [.. document.Connections.Select(connection => connection with { Binds = [.. connection.Binds.Select(Rewrite)] })],
+            },
         };
     }
 

@@ -119,7 +119,7 @@ public sealed class TscnReaderTests
         "Extra tag found when parsing main resource file"
     )]
     // :532-537, 646-651: a resource file that ends inside its resource loops returns the parser's ERR_FILE_EOF,
-    // which load() reports with no message of its own; GXAML-40 measured it and names it "Unexpected end of file".
+    // which load() reports with no message of its own, and the reader names it "Unexpected end of file".
     [InlineData("[gd_resource type=\"Resource\" format=3]\n\n[sub_resource type=\"X\" id=\"X_1\"]\na = 1\n", "Unexpected end of file")]
     [InlineData(
         "[gd_resource type=\"Resource\" format=3]\n\n[ext_resource type=\"Script\" path=\"res://a.gd\" id=\"1_a\"]\n",
@@ -449,6 +449,42 @@ public sealed class TscnReaderTests
         );
     }
 
+    // The model's order is the main scene first, then each PackedScene sub-resource's own scene in sub-resource order;
+    // in the file the nested sections come before the main nodes.
+    [Fact]
+    public void ScenesListsMainThenNestedInSubResourceOrder()
+    {
+        var first = new TscnScene { Nodes = [new TscnNode { Name = "First", Type = "Node" }] };
+        var second = new TscnScene { Nodes = [new TscnNode { Name = "Second", Type = "Node" }] };
+        var document = new TscnDocument
+        {
+            Kind = TscnKind.Scene,
+            MainScene = new TscnScene { Nodes = [new TscnNode { Name = "Root", Type = "Node" }] },
+            SubResources =
+            [
+                new TscnSubResource
+                {
+                    Type = "PackedScene",
+                    Id = "P_1",
+                    Scene = first,
+                },
+                new TscnSubResource { Type = "Resource", Id = "R_1" },
+                new TscnSubResource
+                {
+                    Type = "PackedScene",
+                    Id = "P_2",
+                    Scene = second,
+                },
+            ],
+        };
+
+        TscnScene[] scenes = [.. document.Scenes];
+        Assert.Equal(3, scenes.Length);
+        Assert.Same(document.MainScene, scenes[0]);
+        Assert.Same(first, scenes[1]);
+        Assert.Same(second, scenes[2]);
+    }
+
     // Godot 4.8 (resource_format_text.cpp:674-681, 402-404): a .tres's PackedScene sub-resource holds its nodes too.
     [Fact]
     public void ReadsHolder()
@@ -518,7 +554,7 @@ public sealed class TscnReaderTests
         Assert.False(document.HasSceneResourceSection);
     }
 
-    private static void AssertInnerScene(TscnNestedScene? scene)
+    private static void AssertInnerScene(TscnScene? scene)
     {
         Assert.NotNull(scene);
         Assert.Equal(["InnerRoot", "InnerChild"], scene.Nodes.Select(node => node.Name));

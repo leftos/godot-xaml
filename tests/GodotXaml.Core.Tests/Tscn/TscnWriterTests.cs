@@ -48,58 +48,61 @@ public sealed class TscnWriterTests
                     Id = "1_aaaaa",
                 },
             ],
-            Nodes =
-            [
-                new TscnNode
-                {
-                    Name = "Root",
-                    Type = "Node",
-                    UniqueId = 5,
-                },
-                new TscnNode
-                {
-                    Name = "Child \"1\"",
-                    Parent = ".",
-                    ParentIdPath = [5],
-                    Owner = "Inst",
-                    OwnerUidPath = [5, 6],
-                    Index = 2,
-                    UniqueId = 7,
-                    NodePaths = ["target"],
-                    Groups = ["zeta", "alpha"],
-                    Instance = new GodotResourceRef(GodotRefKind.External, "1_aaaaa"),
-                    Properties = [new("with space", new GodotFloat(1))],
-                },
-                new TscnNode
-                {
-                    Name = "Plain",
-                    Type = "Node",
-                    Parent = ".",
-                    Owner = ".",
-                },
-            ],
-            Connections =
-            [
-                new TscnConnection
-                {
-                    Signal = "s",
-                    From = ".",
-                    To = "Plain",
-                    Method = "m",
-                },
-                new TscnConnection
-                {
-                    Signal = "t",
-                    From = ".",
-                    To = "Plain",
-                    Method = "n",
-                    Flags = 3,
-                    Unbinds = 1,
-                    Binds = [new GodotInt(4)],
-                    FromUidPath = [5],
-                },
-            ],
-            Editables = [new TscnEditable { Path = "Child" }],
+            MainScene = new TscnScene
+            {
+                Nodes =
+                [
+                    new TscnNode
+                    {
+                        Name = "Root",
+                        Type = "Node",
+                        UniqueId = 5,
+                    },
+                    new TscnNode
+                    {
+                        Name = "Child \"1\"",
+                        Parent = ".",
+                        ParentIdPath = [5],
+                        Owner = "Inst",
+                        OwnerUidPath = [5, 6],
+                        Index = 2,
+                        UniqueId = 7,
+                        NodePaths = ["target"],
+                        Groups = ["zeta", "alpha"],
+                        Instance = new GodotResourceRef(GodotRefKind.External, "1_aaaaa"),
+                        Properties = [new("with space", new GodotFloat(1))],
+                    },
+                    new TscnNode
+                    {
+                        Name = "Plain",
+                        Type = "Node",
+                        Parent = ".",
+                        Owner = ".",
+                    },
+                ],
+                Connections =
+                [
+                    new TscnConnection
+                    {
+                        Signal = "s",
+                        From = ".",
+                        To = "Plain",
+                        Method = "m",
+                    },
+                    new TscnConnection
+                    {
+                        Signal = "t",
+                        From = ".",
+                        To = "Plain",
+                        Method = "n",
+                        Flags = 3,
+                        Unbinds = 1,
+                        Binds = [new GodotInt(4)],
+                        FromUidPath = [5],
+                    },
+                ],
+                Editables = [new TscnEditable { Path = "Child" }],
+            },
         };
 
         string expected =
@@ -192,7 +195,7 @@ public sealed class TscnWriterTests
         {
             Kind = TscnKind.Resource,
             Header = new TscnHeader { Type = "Resource" },
-            Nodes = [new TscnNode { Name = "R" }],
+            MainScene = new TscnScene { Nodes = [new TscnNode { Name = "R" }] },
         };
         Assert.Contains("Nodes", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
     }
@@ -204,16 +207,19 @@ public sealed class TscnWriterTests
         {
             Kind = TscnKind.Resource,
             Header = new TscnHeader { Type = "Resource" },
-            Connections =
-            [
-                new TscnConnection
-                {
-                    Signal = "s",
-                    From = ".",
-                    To = ".",
-                    Method = "m",
-                },
-            ],
+            MainScene = new TscnScene
+            {
+                Connections =
+                [
+                    new TscnConnection
+                    {
+                        Signal = "s",
+                        From = ".",
+                        To = ".",
+                        Method = "m",
+                    },
+                ],
+            },
         };
         Assert.Contains("Connections", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
     }
@@ -225,7 +231,7 @@ public sealed class TscnWriterTests
         {
             Kind = TscnKind.Resource,
             Header = new TscnHeader { Type = "Resource" },
-            Editables = [new TscnEditable { Path = "A" }],
+            MainScene = new TscnScene { Editables = [new TscnEditable { Path = "A" }] },
         };
         Assert.Contains("Editables", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
     }
@@ -270,10 +276,10 @@ public sealed class TscnWriterTests
                 {
                     Type = "Resource",
                     Id = "Resource_1",
-                    Scene = new TscnNestedScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
+                    Scene = new TscnScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
                 },
             ],
-            Nodes = [new TscnNode { Name = "R", Type = "Node" }],
+            MainScene = new TscnScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
         };
         Assert.Contains("Scene", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
     }
@@ -292,10 +298,10 @@ public sealed class TscnWriterTests
                     Type = "PackedScene",
                     Id = "P",
                     Properties = [new("_bundled", new GodotInt(0))],
-                    Scene = new TscnNestedScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
+                    Scene = new TscnScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
                 },
             ],
-            Nodes = [new TscnNode { Name = "R", Type = "Node" }],
+            MainScene = new TscnScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
         };
         Assert.Contains("_bundled", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
     }
@@ -305,8 +311,8 @@ public sealed class TscnWriterTests
     [InlineData(false)]
     public void RefusesANestedSceneWithNoNodeButConnectionsOrEditables(bool connection)
     {
-        TscnNestedScene scene = connection
-            ? new TscnNestedScene
+        TscnScene scene = connection
+            ? new TscnScene
             {
                 Connections =
                 [
@@ -319,7 +325,7 @@ public sealed class TscnWriterTests
                     },
                 ],
             }
-            : new TscnNestedScene { Editables = [new TscnEditable { Path = "A" }] };
+            : new TscnScene { Editables = [new TscnEditable { Path = "A" }] };
         var document = new TscnDocument
         {
             Kind = TscnKind.Scene,
@@ -332,7 +338,7 @@ public sealed class TscnWriterTests
                     Scene = scene,
                 },
             ],
-            Nodes = [new TscnNode { Name = "R", Type = "Node" }],
+            MainScene = new TscnScene { Nodes = [new TscnNode { Name = "R", Type = "Node" }] },
         };
         Assert.Contains("no node", Assert.Throws<InvalidOperationException>(() => TscnWriter.Write(document)).Message, StringComparison.Ordinal);
     }
@@ -362,7 +368,7 @@ public sealed class TscnWriterTests
         var document = new TscnDocument
         {
             Kind = TscnKind.Scene,
-            Nodes = [new TscnNode { Name = "R", Groups = ["\U0001F600", new string((char)0xFF21, 1)] }],
+            MainScene = new TscnScene { Nodes = [new TscnNode { Name = "R", Groups = ["\U0001F600", new string((char)0xFF21, 1)] }] },
         };
 
         Assert.Contains("groups=[\"" + (char)0xFF21 + "\", \"\U0001F600\"]", TscnWriter.Write(document), StringComparison.Ordinal);

@@ -2723,19 +2723,22 @@ public partial class Checks : Node
                     Id = "2_gdscr",
                 },
             ],
-            Nodes =
-            [
-                new TscnNode
-                {
-                    Name = "Root",
-                    Type = "Control",
-                    Properties =
-                    [
-                        new TscnProperty("script", new GodotResourceRef(GodotRefKind.External, "1_gdscr")),
-                        new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "2_gdscr")),
-                    ],
-                },
-            ],
+            MainScene = new TscnScene
+            {
+                Nodes =
+                [
+                    new TscnNode
+                    {
+                        Name = "Root",
+                        Type = "Control",
+                        Properties =
+                        [
+                            new TscnProperty("script", new GodotResourceRef(GodotRefKind.External, "1_gdscr")),
+                            new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "2_gdscr")),
+                        ],
+                    },
+                ],
+            },
         };
         TscnDocument stripped = XscnPreviewScene.WithoutScripts(document);
         string[] properties = [.. stripped.Nodes[0].Properties.Select(property => property.Name)];
@@ -3161,15 +3164,18 @@ public partial class Checks : Node
                     Id = "1_uid",
                 },
             ],
-            Nodes =
-            [
-                new TscnNode
-                {
-                    Name = "Root",
-                    Type = "Control",
-                    Properties = [new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "1_uid"))],
-                },
-            ],
+            MainScene = new TscnScene
+            {
+                Nodes =
+                [
+                    new TscnNode
+                    {
+                        Name = "Root",
+                        Type = "Control",
+                        Properties = [new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "1_uid"))],
+                    },
+                ],
+            },
         };
         using var instances = new XscnPreviewInstances();
         TscnDocument stripped = instances.Stripped(document);
@@ -4588,15 +4594,18 @@ public partial class Checks : Node
                     Id = "1_ref",
                 },
             ],
-            Nodes =
-            [
-                new TscnNode
-                {
-                    Name = "Root",
-                    Type = "Control",
-                    Properties = [new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "1_ref"))],
-                },
-            ],
+            MainScene = new TscnScene
+            {
+                Nodes =
+                [
+                    new TscnNode
+                    {
+                        Name = "Root",
+                        Type = "Control",
+                        Properties = [new TscnProperty("metadata/s", new GodotResourceRef(GodotRefKind.External, "1_ref"))],
+                    },
+                ],
+            },
         };
 
     // The issues a strip of the document leaves, and the document it returns.
@@ -4880,15 +4889,18 @@ public partial class Checks : Node
         var document = new TscnDocument
         {
             Kind = TscnKind.Scene,
-            Nodes =
-            [
-                new TscnNode
-                {
-                    Name = "P",
-                    Type = "Control",
-                    InstancePlaceholder = placeholder,
-                },
-            ],
+            MainScene = new TscnScene
+            {
+                Nodes =
+                [
+                    new TscnNode
+                    {
+                        Name = "P",
+                        Type = "Control",
+                        InstancePlaceholder = placeholder,
+                    },
+                ],
+            },
         };
         using var instances = new XscnPreviewInstances();
         TscnDocument stripped = instances.Stripped(document);
@@ -4963,15 +4975,18 @@ public partial class Checks : Node
                     Id = "1_scene",
                 },
             ],
-            Nodes =
-            [
-                new TscnNode
-                {
-                    Name = "P",
-                    Type = "Control",
-                    InstancePlaceholder = climb,
-                },
-            ],
+            MainScene = new TscnScene
+            {
+                Nodes =
+                [
+                    new TscnNode
+                    {
+                        Name = "P",
+                        Type = "Control",
+                        InstancePlaceholder = climb,
+                    },
+                ],
+            },
         };
         string folder = AddonTempFolder.Get();
         string[] before = Directory.GetFiles(folder);
@@ -5009,7 +5024,7 @@ public partial class Checks : Node
                     Id = "1_outer",
                 },
             ],
-            Nodes = [new TscnNode { Name = "Inst", Instance = new GodotResourceRef(GodotRefKind.External, "1_outer") }],
+            MainScene = new TscnScene { Nodes = [new TscnNode { Name = "Inst", Instance = new GodotResourceRef(GodotRefKind.External, "1_outer") }] },
         };
         string folder = AddonTempFolder.Get();
         using var instances = new XscnPreviewInstances();
@@ -5033,26 +5048,29 @@ public partial class Checks : Node
         var document = new TscnDocument
         {
             Kind = TscnKind.Scene,
-            Nodes =
-            [
-                new TscnNode { Name = "Root", Type = "Control" },
-                new TscnNode
-                {
-                    Name = "P",
-                    Parent = ".",
-                    InstancePlaceholder = childScene,
-                },
-            ],
-            Connections =
-            [
-                new TscnConnection
-                {
-                    Signal = "poked",
-                    From = ".",
-                    To = "P/Child",
-                    Method = "hide",
-                },
-            ],
+            MainScene = new TscnScene
+            {
+                Nodes =
+                [
+                    new TscnNode { Name = "Root", Type = "Control" },
+                    new TscnNode
+                    {
+                        Name = "P",
+                        Parent = ".",
+                        InstancePlaceholder = childScene,
+                    },
+                ],
+                Connections =
+                [
+                    new TscnConnection
+                    {
+                        Signal = "poked",
+                        From = ".",
+                        To = "P/Child",
+                        Method = "hide",
+                    },
+                ],
+            },
         };
         using var instances = new XscnPreviewInstances();
         TscnDocument stripped = instances.Stripped(document);

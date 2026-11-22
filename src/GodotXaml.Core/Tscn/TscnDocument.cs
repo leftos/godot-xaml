@@ -86,14 +86,15 @@ public sealed record TscnSubResource
     /// The nodes, connections and editables a PackedScene sub-resource holds as its own sections (Godot 4.8 and
     /// later), or null.
     /// </summary>
-    public TscnNestedScene? Scene { get; init; }
+    public TscnScene? Scene { get; init; }
 }
 
 /// <summary>
-/// The scene a PackedScene sub-resource holds as its own <c>[node]</c>, <c>[connection]</c> and <c>[editable]</c>
-/// sections in Godot 4.8 (scene/resources/resource_format_text.cpp:2122-2125), in place of 4.7.2's <c>_bundled</c>.
+/// The node, connection and editable sections of one scene: the main scene of a .tscn, or the scene a PackedScene
+/// sub-resource holds as its own sections in Godot 4.8 (scene/resources/resource_format_text.cpp:2122-2125), in place of
+/// 4.7.2's <c>_bundled</c>.
 /// </summary>
-public sealed record TscnNestedScene
+public sealed record TscnScene
 {
     /// <summary>The <c>[node]</c> sections, in order.</summary>
     public ImmutableArray<TscnNode> Nodes { get; init; } = [];
@@ -103,6 +104,15 @@ public sealed record TscnNestedScene
 
     /// <summary>The <c>[editable]</c> sections, in order.</summary>
     public ImmutableArray<TscnEditable> Editables { get; init; } = [];
+
+    /// <summary>The values the saver's format-4 check reads: node properties, node instances and connection binds.</summary>
+    /// <returns>Every node's properties, every instance and every connection bind.</returns>
+    internal IEnumerable<GodotValue> Values() =>
+        Nodes
+            .SelectMany(node => node.Properties)
+            .Select(property => property.Value)
+            .Concat(Nodes.Select(node => node.Instance).OfType<GodotValue>())
+            .Concat(Connections.SelectMany(connection => connection.Binds));
 }
 
 /// <summary>A <c>[node]</c> of a scene, with every header attribute the 4.7.2 and 4.8 savers write.</summary>
@@ -232,14 +242,20 @@ public sealed record TscnDocument
     /// </summary>
     public bool HasSceneResourceSection { get; init; }
 
+    /// <summary>The main scene's sections; scenes only, and empty in a resource file.</summary>
+    public TscnScene MainScene { get; init; } = new();
+
     /// <summary>The main scene's <c>[node]</c> sections, in order; scenes only.</summary>
-    public ImmutableArray<TscnNode> Nodes { get; init; } = [];
+    public ImmutableArray<TscnNode> Nodes => MainScene.Nodes;
 
     /// <summary>The main scene's <c>[connection]</c> sections, in order; scenes only.</summary>
-    public ImmutableArray<TscnConnection> Connections { get; init; } = [];
+    public ImmutableArray<TscnConnection> Connections => MainScene.Connections;
 
     /// <summary>The main scene's <c>[editable]</c> sections, in order; scenes only.</summary>
-    public ImmutableArray<TscnEditable> Editables { get; init; } = [];
+    public ImmutableArray<TscnEditable> Editables => MainScene.Editables;
+
+    /// <summary>The main scene first, then each PackedScene sub-resource's own scene in sub-resource order.</summary>
+    public IEnumerable<TscnScene> Scenes => [MainScene, .. SubResources.Select(sub => sub.Scene).OfType<TscnScene>()];
 
     /// <summary>
     /// A new ext-resource id, <c>&lt;n&gt;_&lt;5 characters&gt;</c> with n one past the current count, as the editor's

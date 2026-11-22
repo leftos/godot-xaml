@@ -51,6 +51,7 @@
 - **Latest-wins**: the preview server keeps one pending render per connection and document; a newer request supersedes an older one, which answers the cancelled error.
 - **Left file**: a file `convert --project` keeps as text because Godot loads it before any addon (`StartupFiles`).
 - **`macos-signing` environment**: the GitHub environment that alone holds the `MACOS_*` signing secrets; only `main` and `v*` tags may deploy to it, which relies on the ruleset "Release tags: owner only" (only the admin creates, updates or deletes a `v*` tag). Only the `sign-macos` job of `build-server.yml` names it.
+- **Main scene**: a `.tscn`'s own node, connection and editable sections, held as the `TscnScene` in `TscnDocument.MainScene`.
 - **Marker**: the `x:Godot="<major>.<minor>"` attribute on the root of an `.xscn` or `.xres`, naming the Godot version whose metadata the writer wrote the file with (`XscnDocument.Godot`).
 - **Metadata dump**: the tool in `tools/metadata-dump/` that walks `ClassDB` in a headless Godot run and writes the metadata file.
 - **Metadata file**: `metadata/godot-<major>.<minor>.json`, the per-Godot-version file of every class's own properties (Godot name, type, enum or flags type, hint, default), the defaults it changes for inherited properties (`defaultOverrides`), enums and, for `Control` and `Window` classes, the theme-override items (name, type, hint), dumped from `ClassDB`, so tools outside Godot know what the backing integers mean. C# names are computed by the core, not stored.
@@ -58,6 +59,7 @@
 - **Minted id**: a new ext-resource or sub-resource id the core makes from a caller's seed, in Godot's id form (`TscnDocument.NewExtResourceId`, `NewSubResourceId`).
 - **NativeAOT**: .NET's ahead-of-time compilation to a native executable with no runtime to install; the language server ships this way, one build per platform, since NativeAOT does not cross-compile across operating systems.
 - **NeedsProp**: the result (`XscnNeedsProp`) of writing a value that does not fit its type's compact form; the value is then written as an `<x:Prop>` element with Godot value text.
+- **Nested scene**: the scene a `PackedScene` sub resource holds as its own sections in a Godot 4.8 `.tscn`, a `TscnScene` on `TscnSubResource.Scene`.
 - **Notarisation**: Apple's scan of a signed macOS executable, which leaves a ticket Gatekeeper finds online; a bare executable cannot be stapled, so a Mac's first launch of the language server checks it online (`tools/sign-macos.ps1 -Step Notarise`).
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
 - **Preview server**: the listener in the open Godot editor's addon that renders the `.xscn` text a client sends and returns an image and each node's rectangle; off unless `godot_xaml/preview_server/enabled` is set.

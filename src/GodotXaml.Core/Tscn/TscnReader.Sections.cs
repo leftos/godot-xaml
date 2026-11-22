@@ -50,8 +50,8 @@ public static partial class TscnReader
         private readonly List<TscnSubResource> _subResources = [];
         private readonly List<TscnProperty> _resourceProperties = [];
         private readonly List<TscnProperty> _sceneProperties = [];
-        private readonly SceneLists _main = new();
-        private SceneLists? _nested;
+        private readonly SceneBuilder _main = new();
+        private SceneBuilder? _nested;
         private List<TscnProperty>? _properties;
         private Action<ImmutableArray<TscnProperty>>? _finish;
         private TscnTag? _tag;
@@ -72,7 +72,7 @@ public static partial class TscnReader
         }
 
         // The scene the node, connection and editable tags read now go to: a PackedScene sub-resource's own, or the main one.
-        private SceneLists Scene => _nested ?? _main;
+        private SceneBuilder Scene => _nested ?? _main;
 
         public TscnDocument Build(TscnScanner scanner)
         {
@@ -88,9 +88,7 @@ public static partial class TscnReader
                 ResourceProperties = [.. _resourceProperties],
                 SceneProperties = [.. _sceneProperties],
                 HasSceneResourceSection = _kind == TscnKind.Scene && _resourceSeen,
-                Nodes = [.. _main.Nodes],
-                Connections = [.. _main.Connections],
-                Editables = [.. _main.Editables],
+                MainScene = _main.ToScene(),
             };
         }
 
@@ -112,8 +110,8 @@ public static partial class TscnReader
             if (_kind == TscnKind.Scene && _main.Nodes.Count == 0)
             {
                 // resource_format_text.cpp:532-537, 646-651, 1194-1200: the resource loops and the tag read after the
-                // header end the file with the parser's ERR_FILE_EOF, which load() reports with no message; GXAML-40
-                // measured it and names it "Unexpected end of file".
+                // header end the file with the parser's ERR_FILE_EOF, which load() reports with no message, and the
+                // reader names it "Unexpected end of file".
                 throw TscnScanner.Error("Unexpected end of file", scanner.Line, scanner.Column);
             }
         }
@@ -266,7 +264,7 @@ public static partial class TscnReader
                     return false;
                 }
 
-                _nested = new SceneLists();
+                _nested = new SceneBuilder();
                 return true;
             }
 
@@ -413,7 +411,7 @@ public static partial class TscnReader
     }
 
     // The node, connection and editable sections of one scene, the main one or a PackedScene sub-resource's own.
-    private sealed class SceneLists
+    private sealed class SceneBuilder
     {
         public List<TscnNode> Nodes { get; } = [];
 
@@ -421,14 +419,14 @@ public static partial class TscnReader
 
         public List<TscnEditable> Editables { get; } = [];
 
-        public void AddFrom(SceneLists other)
+        public void AddFrom(SceneBuilder other)
         {
             Nodes.AddRange(other.Nodes);
             Connections.AddRange(other.Connections);
             Editables.AddRange(other.Editables);
         }
 
-        public TscnNestedScene ToScene() =>
+        public TscnScene ToScene() =>
             new()
             {
                 Nodes = [.. Nodes],

@@ -64,7 +64,7 @@ public sealed class StableKeyTests
         // is left out of it, so only the previous file holds a class the older metadata lacks.
         TscnDocument withoutLine = saved.Document with
         {
-            Nodes = [.. saved.Document.Nodes.Where(node => node.Type != "Line3D")],
+            MainScene = saved.Document.MainScene with { Nodes = [.. saved.Document.Nodes.Where(node => node.Type != "Line3D")] },
         };
 
         ConversionResult<XscnDocument> forward = TscnToXscn.Convert(

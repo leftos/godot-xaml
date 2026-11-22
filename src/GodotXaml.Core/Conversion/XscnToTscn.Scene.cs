@@ -39,9 +39,12 @@ public static partial class XscnToTscn
             ReportUnusedEntries();
             TscnDocument converted = MintIds(new TscnDocument { Kind = TscnKind.Scene }) with
             {
-                Nodes = [.. placed.Where(WritesNode).Select(SceneNode)],
-                Connections = [.. placed.SelectMany(SceneConnections)],
-                Editables = [.. placed.Where(element => element.Element.Editable).Select(element => new TscnEditable { Path = element.Path })],
+                MainScene = new TscnScene
+                {
+                    Nodes = [.. placed.Where(WritesNode).Select(SceneNode)],
+                    Connections = [.. placed.SelectMany(SceneConnections)],
+                    Editables = [.. placed.Where(element => element.Element.Editable).Select(element => new TscnEditable { Path = element.Path })],
+                },
             };
             return converted with
             {

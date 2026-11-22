@@ -317,7 +317,10 @@ public sealed partial class SceneForwardTests
     {
         TscnDocument document = TscnReader.Read(text);
         var missing = new GodotResourceRef(GodotRefKind.External, "missing");
-        return document with { Nodes = document.Nodes.SetItem(node, document.Nodes[node] with { Instance = missing }) };
+        return document with
+        {
+            MainScene = document.MainScene with { Nodes = document.Nodes.SetItem(node, document.Nodes[node] with { Instance = missing }) },
+        };
     }
 
     private static string[] Codes(ConversionResult<XscnDocument> result) => [.. result.Issues.Select(issue => issue.Code)];

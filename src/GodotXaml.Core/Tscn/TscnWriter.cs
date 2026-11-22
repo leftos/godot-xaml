@@ -52,9 +52,9 @@ public static class TscnWriter
         (string Field, bool Present)[] misplaced = resource
             ?
             [
-                ("Nodes", !document.Nodes.IsEmpty),
-                ("Connections", !document.Connections.IsEmpty),
-                ("Editables", !document.Editables.IsEmpty),
+                ("Nodes", !document.MainScene.Nodes.IsEmpty),
+                ("Connections", !document.MainScene.Connections.IsEmpty),
+                ("Editables", !document.MainScene.Editables.IsEmpty),
                 ("SceneProperties", !document.SceneProperties.IsEmpty),
             ]
             : [("ResourceProperties", !document.ResourceProperties.IsEmpty)];
@@ -125,15 +125,7 @@ public static class TscnWriter
             .Concat(document.ResourceProperties)
             .Concat(document.SceneProperties)
             .Select(property => property.Value)
-            .Concat(document.SubResources.Select(sub => sub.Scene).OfType<TscnNestedScene>().SelectMany(SceneValues))
-            .Concat(SceneValues(new TscnNestedScene { Nodes = document.Nodes, Connections = document.Connections }));
-
-    private static IEnumerable<GodotValue> SceneValues(TscnNestedScene scene) =>
-        scene
-            .Nodes.SelectMany(node => node.Properties)
-            .Select(property => property.Value)
-            .Concat(scene.Nodes.Select(node => node.Instance).OfType<GodotValue>())
-            .Concat(scene.Connections.SelectMany(connection => connection.Binds));
+            .Concat(document.Scenes.SelectMany(scene => scene.Values()));
 
     // :1800-1820.
     private static void WriteHeader(StringBuilder text, TscnDocument document, int format)
@@ -179,7 +171,7 @@ public static class TscnWriter
             WriteProperties(context, sub.Properties);
             if (sub.Scene is not null)
             {
-                WriteNodes(context, sub.Scene.Nodes, sub.Scene.Connections, sub.Scene.Editables);
+                WriteNodes(context, sub.Scene);
             }
 
             context.Text.Append('\n');
@@ -198,31 +190,26 @@ public static class TscnWriter
             context.Text.Append('\n');
         }
 
-        WriteNodes(context, document.Nodes, document.Connections, document.Editables);
+        WriteNodes(context, document.MainScene);
     }
 
     // 4.8 :1721-1866 (4.7.2 :2010-2151): the nodes with a blank line between each, then the connections and the
     // editables, each block after a blank line.
-    private static void WriteNodes(
-        Context context,
-        ImmutableArray<TscnNode> nodes,
-        ImmutableArray<TscnConnection> connections,
-        ImmutableArray<TscnEditable> editables
-    )
+    private static void WriteNodes(Context context, TscnScene scene)
     {
-        for (int i = 0; i < nodes.Length; i++)
+        for (int i = 0; i < scene.Nodes.Length; i++)
         {
-            TscnNode node = nodes[i];
+            TscnNode node = scene.Nodes[i];
             context.Text.Append("[node").Append(TscnNodeHeader.Write(node, context.Options)).Append(Extra(node.Extra)).Append("]\n");
             WriteProperties(context, node.Properties);
-            if (i < nodes.Length - 1)
+            if (i < scene.Nodes.Length - 1)
             {
                 context.Text.Append('\n');
             }
         }
 
-        WriteBlock(context.Text, connections.Select(connection => TscnNodeHeader.Connection(connection, context.Options)));
-        WriteBlock(context.Text, editables.Select(editable => "[editable " + Escaped("path", editable.Path) + Extra(editable.Extra) + "]"));
+        WriteBlock(context.Text, scene.Connections.Select(connection => TscnNodeHeader.Connection(connection, context.Options)));
+        WriteBlock(context.Text, scene.Editables.Select(editable => "[editable " + Escaped("path", editable.Path) + Extra(editable.Extra) + "]"));
     }
 
     // :2100-2103, 2146-2149: one blank line before the first line of a block, none between.

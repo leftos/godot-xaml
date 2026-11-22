@@ -199,26 +199,29 @@ internal static class XscnPreviewScene
                         .Select(sub => sub with { Properties = Stripped(sub.Properties, removed) }),
                 ],
                 ResourceProperties = Stripped(document.ResourceProperties, removed),
-                // The text loader parses a node's instance= as a value too, a Resource() path loading as it is parsed.
-                Nodes =
-                [
-                    .. document.Nodes.Select(node =>
-                        node with
-                        {
-                            Properties = Stripped(node.Properties, removed),
-                            Instance = node.Instance is { } instance ? Nulled(instance, removed) : null,
-                        }
-                    ),
-                ],
-                // Godot logs an error for each connection whose signal or method went with the script (object.cpp:1529,1550).
-                Connections =
-                [
-                    .. document
-                        .Connections.Where(connection =>
-                            !strippedNodes.Contains(Simplified(connection.From)) && !strippedNodes.Contains(Simplified(connection.To))
-                        )
-                        .Select(connection => connection with { Binds = [.. connection.Binds.Select(bind => Nulled(bind, removed))] }),
-                ],
+                MainScene = document.MainScene with
+                {
+                    // The text loader parses a node's instance= as a value too, a Resource() path loading as it is parsed.
+                    Nodes =
+                    [
+                        .. document.Nodes.Select(node =>
+                            node with
+                            {
+                                Properties = Stripped(node.Properties, removed),
+                                Instance = node.Instance is { } instance ? Nulled(instance, removed) : null,
+                            }
+                        ),
+                    ],
+                    // Godot logs an error for each connection whose signal or method went with the script (object.cpp:1529,1550).
+                    Connections =
+                    [
+                        .. document
+                            .Connections.Where(connection =>
+                                !strippedNodes.Contains(Simplified(connection.From)) && !strippedNodes.Contains(Simplified(connection.To))
+                            )
+                            .Select(connection => connection with { Binds = [.. connection.Binds.Select(bind => Nulled(bind, removed))] }),
+                    ],
+                },
             }
         );
     }
@@ -232,9 +235,12 @@ internal static class XscnPreviewScene
             Header = document.Header with { Extra = [] },
             ExtResources = [.. document.ExtResources.Select(ext => ext with { Extra = [] })],
             SubResources = [.. document.SubResources.Select(sub => sub with { Extra = [] })],
-            Nodes = [.. document.Nodes.Select(node => node with { Extra = [] })],
-            Connections = [.. document.Connections.Select(connection => connection with { Extra = [] })],
-            Editables = [.. document.Editables.Select(editable => editable with { Extra = [] })],
+            MainScene = document.MainScene with
+            {
+                Nodes = [.. document.Nodes.Select(node => node with { Extra = [] })],
+                Connections = [.. document.Connections.Select(connection => connection with { Extra = [] })],
+                Editables = [.. document.Editables.Select(editable => editable with { Extra = [] })],
+            },
         };
 
     /// <summary>
