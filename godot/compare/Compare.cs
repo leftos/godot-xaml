@@ -444,9 +444,19 @@ public partial class Compare : Node
             "[v.is_typed(), v.get_typed_key_builtin(), v.get_typed_key_class_name(), v.get_typed_key_script(),"
             + " v.get_typed_value_builtin(), v.get_typed_value_class_name(), v.get_typed_value_script()]";
 
+        // The property a PackedScene stores its packed state in, which DumpState reads apart.
+        private const string BundledProperty = "_bundled";
+
+        // Whether a built-in PackedScene value is opened: under Godot 4.8 or newer, where a scene file embeds whole scenes.
+        // An older engine's dump names it, as every dump did before 4.8.
+        private static readonly bool OpensEmbeddedScenes = FourEightOrNewer();
+
         private readonly List<string> lines = [];
         private readonly List<List<string>> connections = [];
         private readonly Dictionary<ulong, int> visited = [];
+
+        // The scenes being dumped, this one and the ones holding it, which a value naming one of them does not open again.
+        private HashSet<ulong> Open { get; init; } = [];
 
         public List<string> Lines()
         {
@@ -456,7 +466,9 @@ public partial class Compare : Node
                 return lines;
             }
 
+            Open.Add(scene!.GetInstanceId());
             DumpState();
+            DumpSceneProperties(scene);
             DumpNode(root!);
             foreach (List<string> connection in connections.OrderBy(block => block[0], StringComparer.Ordinal))
             {
@@ -506,6 +518,67 @@ public partial class Compare : Node
             }
         }
 
+        // The scene's own stored properties (the [resource] section of a Godot 4.8 scene file, x:Scene in an .xscn), each
+        // as a sceneprop line; _bundled, and a property holding a new PackedScene's value, are left out.
+        private void DumpSceneProperties(PackedScene packed)
+        {
+            using var blank = new PackedScene();
+            foreach (string name in StorageNames(packed).Where(name => name != BundledProperty))
+            {
+                Variant value = packed.Get(name);
+                if (string.Equals(GD.VarToStr(value), GD.VarToStr(blank.Get(name)), StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var firstVisits = new List<(Resource, string)>();
+                lines.Add($"sceneprop {name} {ValueText(name, value, firstVisits)}");
+                DumpFirstVisits("", firstVisits, lines);
+            }
+        }
+
+        // An embedded scene, dumped whole as a scene is (its state, ids, own properties, tree and connections), each line
+        // after "embedded <path> <key>: ".
+        private void DumpEmbedded(string path, string key, PackedScene packed, List<string> into)
+        {
+            Node? nested = packed.Instantiate();
+            if (nested is null)
+            {
+                into.Add($"embedded {path} {key} did not instantiate");
+                return;
+            }
+
+            try
+            {
+                var dump = new SceneDump(packed, nested) { Open = [.. Open] };
+                into.AddRange(dump.Lines().Select(line => $"embedded {path} {key}: {line}"));
+            }
+            finally
+            {
+                nested.Free();
+            }
+        }
+
+        private static bool FourEightOrNewer()
+        {
+            using GodotDictionary info = Engine.GetVersionInfo();
+            int major = info["major"].AsInt32();
+            return major > 4 || (major == 4 && info["minor"].AsInt32() >= 8);
+        }
+
+        // A built-in PackedScene, held by no file of its own, that no scene being dumped is.
+        private bool Embedded(PackedScene packed) =>
+            OpensEmbeddedScenes
+            && (packed.ResourcePath.Length == 0 || packed.ResourcePath.Contains("::", StringComparison.Ordinal))
+            && !Open.Contains(packed.GetInstanceId());
+
+        private static IEnumerable<string> StorageNames(GodotObject owner) =>
+            owner
+                .GetPropertyList()
+                .Where(property => (property["usage"].AsInt64() & (long)PropertyUsageFlags.Storage) != 0)
+                .Select(property => property["name"].AsString())
+                .Order(StringComparer.Ordinal);
+
         private void DumpNode(Node node)
         {
             string path = PathOf(node);
@@ -538,12 +611,7 @@ public partial class Compare : Node
 
         private void DumpProperties(GodotObject owner, string kind, string path, string keyPrefix, List<string> into)
         {
-            IEnumerable<string> names = owner
-                .GetPropertyList()
-                .Where(property => (property["usage"].AsInt64() & (long)PropertyUsageFlags.Storage) != 0)
-                .Select(property => property["name"].AsString())
-                .Order(StringComparer.Ordinal);
-            foreach (string name in names)
+            foreach (string name in StorageNames(owner))
             {
                 var firstVisits = new List<(Resource, string)>();
                 Variant value = owner.Get(name);
@@ -562,12 +630,20 @@ public partial class Compare : Node
         private static string UndoPathRewrite(string source) =>
             source.Replace(".xscn", ".tscn", StringComparison.Ordinal).Replace(".xres", ".tres", StringComparison.Ordinal);
 
-        // The subprop lines of each resource a value named for the first time, after the value's own line.
+        // The subprop lines of each resource a value named for the first time, after the value's own line; an embedded
+        // scene's embedded lines instead.
         private void DumpFirstVisits(string path, List<(Resource Resource, string Key)> firstVisits, List<string> into)
         {
             foreach ((Resource resource, string key) in firstVisits)
             {
-                DumpProperties(resource, "subprop", path, key + ".", into);
+                if (resource is PackedScene packed)
+                {
+                    DumpEmbedded(path, key, packed, into);
+                }
+                else
+                {
+                    DumpProperties(resource, "subprop", path, key + ".", into);
+                }
             }
         }
 
@@ -585,7 +661,9 @@ public partial class Compare : Node
             {
                 null => "null",
                 Node node => PathOf(node),
-                // A scene's packing order is not the scene, so a scene value is named and never opened.
+                // An embedded scene is dumped whole at its first visit, so a node, connection or override it lost fails the
+                // pair; a scene file's scene is named and never opened.
+                PackedScene packed when Embedded(packed) => ResourceText(key, packed, firstVisits),
                 PackedScene packed => $"res({ResourceName(packed)})",
                 Resource resource => ResourceText(key, resource, firstVisits),
                 _ => $"obj({value.GetClass()})",

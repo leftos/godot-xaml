@@ -6,8 +6,8 @@ writes reaches the script's own output while Godot is still running, so the gate
 and an import that prints the crash fails the run.
 
 .DESCRIPTION
-The stub Godot exits 0 for --import, printing the crash when the case gives it -FatalOnImport. For checks.ps1's scene
-run it prints CHECK C1 PASS, for compare.ps1's it prints COMPARE stub1 PASS, and for export.ps1's pack export it prints
+The stub Godot answers --version as a Godot 4.7.2 and exits 0 for --import, printing the crash when the case gives it
+-FatalOnImport. For checks.ps1's scene run it prints CHECK C1 PASS, for compare.ps1's it prints COMPARE stub1 PASS, and for export.ps1's pack export it prints
 STUB export started. Each holds until the test writes its release file, then prints the rest of its run: checks and
 compare end with a passing verdict, export runs its whole preset list. The test waits for that first line on the
 script's stdout, fails at once if the script exits first, and only then releases the stub. The one bound is a hang
@@ -58,6 +58,7 @@ function New-StubGodot {
     $template = @'
 param()
 $all = $args -join ' '
+if ($all -eq '--version') { [Console]::Out.WriteLine('4.7.2.stable.mono.stub'); exit 0 }
 __IMPORT__
 __ONLY__
 [Console]::Out.WriteLine('__FIRST__')

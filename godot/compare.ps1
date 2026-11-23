@@ -1,20 +1,23 @@
 #requires -Version 7
 <#
 .SYNOPSIS
-Compares each scene fixture with its converted .xscn and each .tres fixture with its converted .xres, as Godot 4.7 loads
-them.
+Compares each scene fixture with its converted .xscn and each .tres fixture with its converted .xres, as Godot 4.7 or 4.8
+loads them.
 
 .DESCRIPTION
-Copies the fixtures (tests/fixtures/scenes/*.tscn and *.tres, and the hand-written tests/fixtures/stored/*.tscn), their
-converted goldens (tests/fixtures/converted/*.xscn and *.xres) into godot/cases/, recreated on each run, and the scripts
-the fixtures name
-(holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the
-fixtures' res:// paths point. Then builds the godot/ project as a full rebuild (--no-incremental), imports it headless
-(which registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless. The
-expected pair count is the number of fixture files it copies (the .tscn and .tres files in tests/fixtures/scenes and the
-.tscn files in tests/fixtures/stored), passed to the scene as --expected-pairs=<n>. The scene prints
-COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is left in
-godot/cases/<name>.tscn.dump and <name>.xscn.dump, or <name>.tres.dump and <name>.xres.dump.
+Asks Godot for its version (--version) and stops when the first line it prints does not start with major.minor. Copies
+the 4.7 set, the fixtures (tests/fixtures/scenes/*.tscn and *.tres, and the hand-written tests/fixtures/stored/*.tscn)
+and their converted goldens (tests/fixtures/converted/*.xscn and *.xres), into godot/cases/, recreated on each run.
+Under Godot 4.8 or newer it also copies the 4.8 set: each golden in tests/fixtures/converted48/ with its source of the
+same stem in tests/fixtures/tscn48/, whose stems differ from the 4.7 set's; a source without a golden is left out. It
+prints COMPARE set 4.7 or COMPARE set 4.7+4.8 before the copy. It copies the scripts the fixtures name (holder.gd,
+quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the fixtures'
+res:// paths point. Then builds the godot/ project as a full rebuild (--no-incremental), imports it headless (which
+registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless. The expected pair
+count is the number of source files it copies (the .tscn and .tres files in tests/fixtures/scenes, the .tscn files in
+tests/fixtures/stored and, under 4.8, the 4.8 set's sources), passed to the scene as --expected-pairs=<n>. The scene
+prints COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is
+left in godot/cases/<name>.tscn.dump and <name>.xscn.dump, or <name>.tres.dump and <name>.xres.dump.
 
 Godot's lines are printed as Godot writes them, so the gate's stall watchdog sees the run progress. The documented
 command passes --stall 600 because a run starved by outside load can go two minutes without enough CPU to count as
@@ -38,8 +41,16 @@ $PSNativeCommandUseErrorActionPreference = $false
 Import-Module (Join-Path $PSScriptRoot 'Harness.psm1') -Force
 
 $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env:GODOT_BIN } else {
-    throw 'compare.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary'
+    throw 'compare.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 or 4.8 .NET console binary'
 }
+
+# The engine's major.minor, from the start of the first line --version prints (4.8.beta2.mono.official.cafc17a19 is 4.8).
+$versionLine = "$(@(& $godot --version 2>&1) | Select-Object -First 1)"
+if ($versionLine -notmatch '^(\d+)\.(\d+)') {
+    [Console]::Error.WriteLine("compare.ps1: the Godot version `"$versionLine`" does not start with <major>.<minor>")
+    exit 1
+}
+$fourEight = [int]$Matches[1] -gt 4 -or ([int]$Matches[1] -eq 4 -and [int]$Matches[2] -ge 8)
 
 $project = $PSScriptRoot
 $repo = Split-Path $project -Parent
@@ -54,6 +65,23 @@ if ($expectedFixtures -eq 0) {
     [Console]::Error.WriteLine('compare.ps1: no fixtures in tests/fixtures/scenes')
     exit 1
 }
+# The 4.8 set, under Godot 4.8 or newer: each golden of converted48 with its source of the same stem in tscn48, each
+# source counted as an expected pair.
+$fourEightPairs = @()
+if ($fourEight) {
+    $sourceExtension = @{ '.xscn' = '.tscn'; '.xres' = '.tres' }
+    $fourEightPairs = @(Get-ChildItem -File -Path @(
+            (Join-Path $repo 'tests/fixtures/converted48/*.xscn'),
+            (Join-Path $repo 'tests/fixtures/converted48/*.xres')
+        ) | ForEach-Object {
+            [pscustomobject]@{
+                Golden = $_.FullName
+                Source = Join-Path $repo "tests/fixtures/tscn48/$($_.BaseName)$($sourceExtension[$_.Extension])"
+            }
+        })
+    $expectedFixtures += $fourEightPairs.Count
+}
+[Console]::Out.WriteLine($(if ($fourEight) { 'COMPARE set 4.7+4.8' } else { 'COMPARE set 4.7' }))
 # The scripts the fixtures name by res:// path, copied from the generator's project; .gitignore lists each copy.
 $fixtureScripts = @('holder.gd', 'quoted.gd', 'tagged.gd')
 
@@ -67,6 +95,10 @@ Copy-Item -Path (Join-Path $repo 'tests/fixtures/scenes/*.tres') -Destination $c
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/stored/*.tscn') -Destination $cases
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/converted/*.xscn') -Destination $cases
 Copy-Item -Path (Join-Path $repo 'tests/fixtures/converted/*.xres') -Destination $cases
+foreach ($pair in $fourEightPairs) {
+    Copy-Item -LiteralPath $pair.Golden -Destination $cases
+    Copy-Item -LiteralPath $pair.Source -Destination $cases
+}
 foreach ($script in $fixtureScripts) {
     foreach ($copy in @((Join-Path $project $script), (Join-Path $project "$script.uid"))) {
         if (Test-Path -LiteralPath $copy) {

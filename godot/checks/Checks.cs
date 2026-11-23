@@ -342,6 +342,8 @@ public partial class Checks : Node
             ("C177", AFourEightMarkedFileWithAnEmptyPackedSceneLoadsInAnOlderGodot),
             ("C178", AnEmbeddedScenesConnectionToAStrippedInstanceNodeIsDropped),
             ("C179", APreviewNamesEachInlineInstanceRefusalOnce),
+            ("C180", AFourEightSaveOfSceneContentRoundTrips),
+            ("C181", AScriptsOffPreviewOfAnEmbeddedSceneRunsNoProjectCode),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -8677,6 +8679,235 @@ public partial class Checks : Node
                 );
             }
         );
+    }
+
+    // Whether the running engine is Godot 4.8 or newer, which loads the scene's own properties and embedded scenes.
+    private static bool FourEightRuns() => Version.Parse(XscnMetadata.EngineMinor()) >= new Version(4, 8);
+
+    // Under Godot 4.8, a scene with its own name and metadata and an embedded scene in its root's metadata saves as an
+    // .xscn holding x:Scene and the embedded scene's root, and loads back with each of them. Older engines pass.
+    private static string AFourEightSaveOfSceneContentRoundTrips()
+    {
+        if (!FourEightRuns())
+        {
+            return "";
+        }
+
+        string path = OutFolder + "scene_content.xscn";
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            using PackedScene scene = SceneWithContent();
+            Error error = ResourceSaver.Save(scene, path);
+            if (error != Error.Ok)
+            {
+                return $"ResourceSaver.Save({path}) returned {error}";
+            }
+
+            string text = File.ReadAllText(ProjectSettings.GlobalizePath(path));
+            if (FourEightDocument(text, XscnDocumentKind.Scene, out XscnDocument? document) is { } setup)
+            {
+                return setup;
+            }
+
+            return Failures(
+                document!.Scene is null ? $"the saved text has no x:Scene: {Escaped(text)}" : "",
+                HoldsEmbeddedScene(document) ? "" : $"the saved text holds no embedded scene root: {Escaped(text)}",
+                LoadedContentFailure(path)
+            );
+        }
+        finally
+        {
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // A packed Root with a Child, named Content with metadata/answer 42, whose root holds the embedded scene in metadata/inner.
+    private static PackedScene SceneWithContent()
+    {
+        var root = new Node { Name = "Root" };
+        var child = new Node { Name = "Child" };
+        root.AddChild(child);
+        child.Owner = root;
+        var scene = new PackedScene();
+        try
+        {
+            using PackedScene inner = InnerScene();
+            root.SetMeta("inner", inner);
+            Error packed = scene.Pack(root);
+            if (packed != Error.Ok)
+            {
+                throw new InvalidOperationException($"packing the scene returned {packed}");
+            }
+        }
+        finally
+        {
+            root.Free();
+        }
+
+        scene.ResourceName = "Content";
+        scene.SetMeta("answer", 42);
+        return scene;
+    }
+
+    // A packed InnerRoot with an InnerChild whose renamed signal is connected, persistently, to InnerRoot's queue_free.
+    private static PackedScene InnerScene()
+    {
+        var root = new Node { Name = "InnerRoot" };
+        var child = new Node { Name = "InnerChild" };
+        root.AddChild(child);
+        child.Owner = root;
+        child.Connect(Node.SignalName.Renamed, new Callable(root, Node.MethodName.QueueFree), (uint)ConnectFlags.Persist);
+        var inner = new PackedScene();
+        try
+        {
+            Error packed = inner.Pack(root);
+            return packed == Error.Ok ? inner : throw new InvalidOperationException($"packing the inner scene returned {packed}");
+        }
+        finally
+        {
+            root.Free();
+        }
+    }
+
+    // Whether the document holds a PackedScene with a scene root, in x:Resources or inline in the root's properties.
+    private static bool HoldsEmbeddedScene(XscnDocument document) =>
+        document.Resources.Any(resource => resource.SceneRoot is not null)
+        || (document.Root is XscnNodeElement node && node.Properties.Any(p => p.Value is XscnInline { Resource.SceneRoot: not null }));
+
+    // The file loaded back: its name, its metadata and the embedded scene's nodes and connection, or why not.
+    private static string LoadedContentFailure(string path)
+    {
+        if (ResourceLoader.Load(path, "PackedScene", ResourceLoader.CacheMode.Ignore) is not PackedScene loaded)
+        {
+            return $"loading {path} did not return a PackedScene";
+        }
+
+        using (loaded)
+        {
+            Node root = loaded.Instantiate();
+            try
+            {
+                return Failures(
+                    loaded.ResourceName == "Content" ? "" : $"the loaded scene's resource_name is \"{loaded.ResourceName}\", not \"Content\"",
+                    loaded.GetMeta("answer", default(Variant)).Obj is long answer && answer == 42
+                        ? ""
+                        : $"the loaded scene's metadata/answer is {loaded.GetMeta("answer", default(Variant))}, not 42",
+                    root.GetMeta("inner", default(Variant)).Obj is PackedScene inner
+                        ? InnerStateFailure(inner)
+                        : "the root's metadata/inner holds no PackedScene"
+                );
+            }
+            finally
+            {
+                root.Free();
+            }
+        }
+    }
+
+    // The inner scene's state: InnerRoot and InnerChild, and the one renamed connection from InnerChild to the root's queue_free.
+    private static string InnerStateFailure(PackedScene inner)
+    {
+        SceneState state = inner.GetState();
+        string[] nodes = [.. Enumerable.Range(0, state.GetNodeCount()).Select(node => state.GetNodeName(node).ToString())];
+        string[] connections =
+        [
+            .. Enumerable
+                .Range(0, state.GetConnectionCount())
+                .Select(c =>
+                    $"{state.GetConnectionSource(c)}.{state.GetConnectionSignal(c)}>{state.GetConnectionTarget(c)}.{state.GetConnectionMethod(c)}"
+                ),
+        ];
+        return Failures(
+            nodes.SequenceEqual(["InnerRoot", "InnerChild"], StringComparer.Ordinal)
+                ? ""
+                : $"the inner scene's nodes are [{string.Join(", ", nodes)}], not [InnerRoot, InnerChild]",
+            connections.SequenceEqual(["InnerChild.renamed>..queue_free"], StringComparer.Ordinal)
+                ? ""
+                : $"the inner scene's connections are [{string.Join(", ", connections)}], not [InnerChild.renamed>..queue_free]"
+        );
+    }
+
+    // The project setting the probe script's static initializer sets when it loads.
+    private const string ProbeSetting = "godot_xaml_checks/probe_ran";
+
+    private const string ProbeScriptPath = OutFolder + "probe.gd";
+
+    // A text whose embedded scenes, one in x:Scene's metadata and one in the root's, each hold a node with the probe script.
+    private const string EmbeddedProbeScene =
+        "<Node xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" x:Godot=\"4.8\" Name=\"Root\">\n"
+        + "  <Node.Metadata.inner>\n"
+        + "    <PackedScene>\n"
+        + "      <Node Name=\"InnerRoot\">\n"
+        + "        <Node Name=\"Probed\" Script=\""
+        + ProbeScriptPath
+        + "\" />\n"
+        + "      </Node>\n"
+        + "    </PackedScene>\n"
+        + "  </Node.Metadata.inner>\n"
+        + "  <x:Scene>\n"
+        + "    <x:Scene.Metadata.inner>\n"
+        + "      <PackedScene>\n"
+        + "        <Node Name=\"SceneRoot\" Script=\""
+        + ProbeScriptPath
+        + "\" />\n"
+        + "      </PackedScene>\n"
+        + "    </x:Scene.Metadata.inner>\n"
+        + "  </x:Scene>\n"
+        + "</Node>\n";
+
+    // Under Godot 4.8, with scripts off, previewing a scene whose embedded scenes hold the probe script, directly and through
+    // an instanced .xscn, runs no probe; loading the probe itself does. Older engines pass.
+    private static string AScriptsOffPreviewOfAnEmbeddedSceneRunsNoProjectCode()
+    {
+        if (!FourEightRuns())
+        {
+            return "";
+        }
+
+        string heldPath = OutFolder + "held_probe.xscn";
+        using var previous = new PreviewSettingScope();
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        try
+        {
+            File.WriteAllText(
+                ProjectSettings.GlobalizePath(ProbeScriptPath),
+                "extends Node\n\nstatic func _static_init():\n\tProjectSettings.set_setting(\"" + ProbeSetting + "\", true)\n"
+            );
+            File.WriteAllText(ProjectSettings.GlobalizePath(heldPath), EmbeddedProbeScene);
+            ProjectSettings.SetSetting(PreviewScriptsSetting, false);
+            return Failures(
+                ProbeFailure("the previewed scene", EmbeddedProbeScene),
+                ProbeFailure("the instanced .xscn", InstancingScene(heldPath)),
+                ProbeRunsFailure()
+            );
+        }
+        finally
+        {
+            ProjectSettings.SetSetting(ProbeSetting, default(Variant));
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // The preview of the text succeeds and leaves the probe's setting unset.
+    private static string ProbeFailure(string what, string text)
+    {
+        ProjectSettings.SetSetting(ProbeSetting, default(Variant));
+        string preview = WithPreview(text, OutFolder + "previewed.xscn", scriptsRequested: true, _ => "");
+        return Failures(
+            preview.Length == 0 ? "" : $"{what}: {preview}",
+            ProjectSettings.HasSetting(ProbeSetting) ? $"{what}: the probe's _static_init ran in a scripts-off preview" : ""
+        );
+    }
+
+    // The positive control: loading the probe script runs its _static_init.
+    private static string ProbeRunsFailure()
+    {
+        ProjectSettings.SetSetting(ProbeSetting, default(Variant));
+        using Resource? probe = ResourceLoader.Load(ProbeScriptPath, "", ResourceLoader.CacheMode.Ignore);
+        return ProjectSettings.HasSetting(ProbeSetting) ? "" : $"loading {ProbeScriptPath} did not run its _static_init, so the probe proves nothing";
     }
 
     // A scene whose only node instances the scene at the path.

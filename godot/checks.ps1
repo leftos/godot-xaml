@@ -1,7 +1,7 @@
 #requires -Version 7
 <#
 .SYNOPSIS
-Runs the addon's headless checks in Godot 4.7.
+Runs the addon's headless checks in Godot 4.7 or 4.8.
 
 .DESCRIPTION
 Builds the godot/ project as a full rebuild (--no-incremental), imports it headless (which registers the addon's global
@@ -30,11 +30,11 @@ $PSNativeCommandUseErrorActionPreference = $false
 Import-Module (Join-Path $PSScriptRoot 'Harness.psm1') -Force
 
 $godot = if ($env:GODOT_PATH) { $env:GODOT_PATH } elseif ($env:GODOT_BIN) { $env:GODOT_BIN } else {
-    throw 'checks.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary'
+    throw 'checks.ps1: GODOT_PATH or GODOT_BIN must name a Godot 4.7 or 4.8 .NET console binary'
 }
 
 $project = $PSScriptRoot
-$expectedChecks = 178
+$expectedChecks = 180
 
 $built = Invoke-Step 'build' { dotnet build (Join-Path $project 'GodotXaml.Addon.csproj') -c Debug -warnaserror --no-incremental }
 if (-not $built) {
