@@ -56,7 +56,7 @@
   - [ ] GXAML-233 Visual Studio extension: publish to the Marketplace from the release, and the docs
 - [ ] GXAML-17 Visual Studio preview pane with click-to-select
 - [ ] GXAML-234 Language server: tag auto-close, matching-tag highlight and folding
-- [ ] GXAML-245 Language server: completion offers x:Godot on a root element · release vNext+1
+- [ ] GXAML-245 Language server: completion offers x:Godot on a root element · release vNext
 - [ ] GXAML-274 Record the editor extensions' rulings in editor-extensions.md
 - [ ] GXAML-276 Make the language server's design doc a durable subsystem doc
 
