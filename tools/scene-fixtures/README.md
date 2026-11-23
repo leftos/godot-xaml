@@ -10,16 +10,27 @@ pwsh -NoProfile -File tools/gate.ps1 run --log .tmp/scene-fixtures.log --timeout
 
 `generate.ps1` takes `-Godot` (else `$env:GODOT_BIN`) and an optional `-OutDir` (default `tests/fixtures/scenes/`), runs `generate.gd` headless over this folder's project, prints `scene-fixtures: wrote N files` and exits with Godot's status.
 
+`-FourEight` writes the Godot 4.8 cases (`scene48_cases.gd`) to `tests/fixtures/tscn48/` instead, and needs a Godot 4.8 console binary; each mode refuses an engine of the other version. A routed run goes to a builder that has Godot 4.7.2 only, so the 4.8 run is local:
+
+```
+pwsh -NoProfile -File tools/gate.ps1 run --local --reason "Godot 4.8 fixtures need the local 4.8 engine" --log .tmp/scene-fixtures-48.log --timeout 300 --slot light -- pwsh -NoProfile -File tools/scene-fixtures/generate.ps1 -FourEight -Godot F:/Godot/4.8-beta2/Godot_v4.8-beta2_mono_win64/Godot_v4.8-beta2_mono_win64_console.exe
+```
+
+The 4.8 mode never clears its out folder, since `tests/fixtures/tscn48/` also holds `blend2d_scripted`, which no case here writes; each case overwrites its own file.
+
 ## Regenerating is a deliberate act
 
 Ext-resource and sub-resource ids are pinned (`Resource.set_id_for_path`, `resource_scene_unique_id`), so they are the same on every run. Node `unique_id` values are not: the packer draws them at random (`packed_scene.cpp`, `SceneState::_parse_node`) and `Node.set_unique_scene_id` is not exposed to scripts. Every run therefore rewrites the `unique_id=` numbers of every scene, and nothing else.
 
 Regenerate only when a case is added or changed. A changed case commits the whole folder after the run; a new case is copied alone from an `-OutDir` run, so the other fixtures keep their `unique_id`s. A new fixture also goes in the fixture lists (`SceneForwardTests.Scenes`, `SceneBackTests.Fixtures`, `SceneRoundTripTests.Fixtures`; `SceneBackTests` reads a generated fixture back from its golden unless `SceneBackTests.Inputs` holds a hand-written input, and `godot/compare.ps1` counts the fixture files itself); a `.tres` fixture joins `ResourceConversionTests.Fixtures` and `ResourceForwardTests.Resources` instead of the scene lists.
 
+A 4.8 fixture joins `SceneForwardTests.Scenes48` and its twins `SceneBackTests.Fixtures48` and `SceneRoundTripTests.Fixtures48` (a `.tres` joins `ResourceForwardTests` and `ResourceConversionTests` instead), and has its golden in `tests/fixtures/converted48/` (`x:Godot="4.8"`), not `tests/fixtures/converted/`, which `SubResourceIdTests`, `XscnMarkerTests` and `godot/compare.ps1` enumerate under 4.7 assumptions.
+
 ## Files
 
 - `generate.gd`: the generator (extends `SceneTree`, works in `_initialize`). Each case builds its scene or resource in code, saves it under `res://cases/` (ignored by git; cases reference each other there by `res://` path) and copies the saved bytes unchanged to the output folder.
 - `family_cases.gd`: the dynamic-family cases, which generate.gd calls.
+- `scene48_cases.gd`: the Godot 4.8 cases, which generate.gd runs with `--four-eight` (the 4.7 cases then do not run, and the 4.7 mode does not run these).
 - `holder.gd`: a node script with an exported `Node` property, which gives `node_paths=`.
 - `tagged.gd`: a resource script with `class_name`, which gives `script_class=`.
 - `quoted.gd`: a resource script whose property names `property_name_encode` must quote.
@@ -75,6 +86,20 @@ Regenerate only when a case is added or changed. A changed case commits the whol
 
   The canvas shader adds a `hint_screen_texture` sampler, which Godot does not list. The generator adds the globals to the RenderingServer and removes them again, and `godot/project.godot` defines them for the compare.
 - `tile_map_grid_map.tscn`: a TileMap of 12 layers (named, modulated, y-sorted with an origin and a z index, some disabled or without navigation), a GridMap on a MeshLibrary of 12 items (each with its own BoxMesh and every key off its default) with one cell per item and its meshes baked, and a MeshInstance3D on an ArrayMesh of 12 blend shapes named out of name order and 12 surfaces, each shape's value set and each surface with an override material, so the way back must keep the layer and item keys in Godot's order, `blend_shapes/` in the mesh's order and every family in numeric order past ten.
+
+## Cases under Godot 4.8
+
+Written to `tests/fixtures/tscn48/` by `-FourEight`:
+
+- `scene_meta.tscn`: the scene's own properties in a `[resource]` section before the first node, `resource_name` and a metadata value.
+- `embedded_scene.tscn`: an embedded scene and a plain sub-resource, both referred to from the scene's `[resource]`.
+- `embedded_only.tscn`: an embedded scene no node uses, only a meta value on the root, which still gets a bare `[resource]` section.
+- `embedded_empty.tscn`: an unpacked PackedScene as a meta value, which holds no nodes but still gets the bare `[resource]` section.
+- `scene_holder.tres`: a `.tres` holding an embedded scene, its PackedScene sub-resource carrying its own `[node]` sections.
+- `embedded_target.tscn`: the scene `embedded_instance` instances, a `Node2D` root with a `Part` child.
+- `embedded_instance.tscn`: an embedded scene holding an editable instance of `embedded_target`, a property override on the instance's `Part`, a sub-resource material and a connection, beside a sub-resource of the main scene, so the reader's id order is proven.
+
+`blend2d_scripted.tres` and its script, in the same folder, are not written by these cases and are kept.
 
 ## What a dynamic-family case needs from Godot
 

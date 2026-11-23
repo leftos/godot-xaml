@@ -250,6 +250,8 @@ Error. `No x:Resources entry has the key 'Key'.` A `{Key}` or `SubResource("Key"
 
 Error. A value the parser could not read, already reported as a `GX` code; the property is dropped.
 
+Warning. A `PackedScene` holds both an embedded scene and `_bundled`: `_bundled is dropped: this PackedScene holds an embedded scene, which replaces it`.
+
 ### GXC0104 ExtResource in value text
 
 Error. An `ExtResource(…)` inside value text names no section in an `.xscn`. Write `Resource("res://…")` instead.
@@ -306,6 +308,8 @@ Warning. A placeholder (`x:InstancePlaceholder`) whose tag names a class other t
 
 Warning. A save could not carry a comment of the file it replaced, because what the comment preceded is gone. The message names it. A node renamed in a file with no `x:UniqueId` is matched by path only, so its comments are dropped.
 
+A comment inside an embedded scene names the node and its owner (`node <path> in the scene of <owner>`); one on the scene's own properties is `the x:Scene element`.
+
 ### GXC0118 Instanced class unreadable
 
 Warning. The class of an instanced scene could not be read: the file is missing, unparsable, a cycle, missing the node path, or referred to by `uid://` only. The section keeps its written property order rather than Godot's.
@@ -323,6 +327,8 @@ Warning. `x:Uids gives 'res://a.tres' more than one uid (uid://bbb, uid://aaa); 
 Error. `res://ui/legacy.scn: a binary scene cannot be previewed with scripts off`.
 
 With scripts off, the preview strips every scene and text resource the text references (an instance, an inherited root, or a scene in a property or metadata value), at any depth, before loading it, and this one could not be stripped: it is a binary scene (a `.scn`, or a `.res` holding a scene or whose class cannot be read), it is a binary resource, it holds a scene but is not a `.tscn` or `.xscn` (`<path> is not a text scene`), or it cannot be read, does not parse or does not convert.
+
+With scripts off the preview also strips each embedded scene a document holds, at any depth, and the scene's own properties. It refuses what it cannot strip, naming the location: `<location> instances an embedded scene directly (instance=SubResource), which the preview cannot strip`, `<location> instances a scene given inline (instance=<kind>), which the preview cannot strip` and `<location> holds _bundled in the scene's own properties, which the preview cannot strip`.
 
 The preview shows no scene.
 
@@ -350,9 +356,13 @@ Warning. `The file "res://s.gdshader" could not be read (not found), so this sec
 
 ### GXC0123 Needs a newer Godot
 
-Error. `this file holds a Godot 4.8 scene [resource] section or embedded scene, which Godot 4.7 cannot load` A `.tscn` or `.tres` saved by Godot 4.8, or an `.xscn` or `.xres` holding an `x:Scene` element or an embedded scene, holds a scene's own properties (a `[resource]` section before the first node, or `x:Scene`) or a PackedScene with nodes of its own, and the conversion targets an older Godot, whose loader reads neither.
+Error. `this file holds a Godot 4.8 scene [resource] section or embedded scene, which Godot 4.7 cannot load`
+
+A `.tscn` or `.tres` saved by Godot 4.8, or an `.xscn` or `.xres` holding an `x:Scene` element or an embedded scene, holds a scene's own properties (a `[resource]` section before the first node, or `x:Scene`) or a PackedScene with nodes of its own. The conversion targets an older Godot, whose loader reads neither.
 
 The file is not converted, either way, so nothing in it is dropped; converting an `.xscn` back says `this file holds a Godot 4.8 x:Scene element or embedded scene, which Godot 4.7 cannot load`. Convert it for Godot 4.8 or later, or save the scene again in the older Godot.
+
+The addon refuses by the running Godot, not by the file's `x:Godot` marker: loading or previewing an `.xscn` or `.xres` holding `x:Scene` or an embedded scene in a Godot older than 4.8 says `this file holds a Godot 4.8 x:Scene element or embedded scene, which the running Godot 4.7.2 cannot load`. A file marked 4.8 that holds neither (an empty PackedScene included) loads, and a rename still rewrites one that does. A back conversion's location is `x:Scene` or `PackedScene`.
 
 ## Project conversion: `GXP`
 
@@ -422,7 +432,7 @@ Error. `no x:Godot marker; pass --from with the version it was written with` An 
 
 ### GXT0008 Property removed
 
-Warning. `Label.legacy_text is not in Godot 4.7's metadata; kept as a script property with its value text` The version an `upgrade` writes with no longer has a property the file sets, so the property is written as a script property: an attribute under its Godot name holding its Godot value text (`legacy_text='"old"'`). One line per class and property in a file.
+Warning. `Label.legacy_text is not in Godot 4.7's metadata; kept as a script property with its value text` The version an `upgrade` writes with no longer has a property the file sets, so the property is written as a script property: an attribute under its Godot name holding its Godot value text (`legacy_text='"old"'`). One line per class and property in a file, a property set inside an embedded scene included.
 
 ### GXT0009 Project version not carried
 

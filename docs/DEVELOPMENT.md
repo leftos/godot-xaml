@@ -69,7 +69,9 @@ A proof run of the harness scripts under Godot 4.8 sets `GODOT_PATH` to the 4.8 
 pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/godot-checks.log --slot light --timeout 1500 -- pwsh -NoProfile -File godot/checks.ps1
 ```
 
-`--stall 600` because a run starved by outside load can go two minutes without enough CPU for the gate to count it as progress. The streaming means the gate's log shows the `CHECK` lines live. `pwsh -NoProfile -File godot/test-checks.ps1 [-HangGuardSeconds <n>]` tests that, and the same for `compare.ps1` and `export.ps1`, against a stub Godot, running each case from a throwaway copy of the project so the real `godot/cases/` and `.tmp/export/` stay untouched (a real compare or export run in the same checkout during the test fails a case; its gated command is in `docs/ARCHITECTURE.md`, Test locations).
+`--stall 600` because a run starved by outside load can go two minutes without enough CPU for the gate to count it as progress. A check of 4.8 behaviour under the 4.7.2 harness engine sets `XscnMetadata.RunningVersion` to a fake and restores `XscnMetadata.EngineMinor` after.
+
+The streaming means the gate's log shows the `CHECK` lines live. `pwsh -NoProfile -File godot/test-checks.ps1 [-HangGuardSeconds <n>]` tests that, and the same for `compare.ps1` and `export.ps1`, against a stub Godot, running each case from a throwaway copy of the project so the real `godot/cases/` and `.tmp/export/` stay untouched (a real compare or export run in the same checkout during the test fails a case; its gated command is in `docs/ARCHITECTURE.md`, Test locations).
 
 When the gate reports STALLED:
 

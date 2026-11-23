@@ -333,6 +333,10 @@ Two constructs exist only for Godot 4.8 or later, which saves a scene's own prop
 
 The embedded tree declares no namespaces, `x:Godot` marker or tables of its own: it uses the file's.
 
+Both convert to and from a Godot 4.8 `.tscn` or `.tres`: `x:Scene` is the `[resource]` section's properties and an embedded scene is its PackedScene sub-resource's own `[node]`, `[connection]` and `[editable]` sections. The `.xscn` records no flag for the `[resource]` section, since the way back writes it when the scene has its own properties or any PackedScene sub-resource, as Godot 4.8 does.
+
+Converting for an older Godot refuses the file (`GXC0123`), and an `.xres` whose root PackedScene holds a scene is refused under any version (`GXC0107`). A moved file is renamed inside `x:Scene` and embedded scenes too.
+
 ## Signals
 
 A connection is written on the node that emits the signal.

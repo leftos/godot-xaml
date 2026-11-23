@@ -4,7 +4,8 @@
 
 ### Added
 
-- Godot 4.8 `.xscn` files can hold the scene's own properties in `x:Scene` and an embedded scene inside a `PackedScene` resource.
+- Godot 4.8 scenes with their own properties or embedded scenes convert to `.xscn` and back unchanged, as `x:Scene` and a scene inside its `PackedScene`.
+- A Godot older than 4.8 refuses to load or preview a `.xscn` or `.xres` holding 4.8 scene content, with `GXC0123` naming the running version.
 - Godot 4.8 projects get 4.8's classes, property typing and hover docs, taken from Godot 4.8 beta 2.
 
 ### Changed
@@ -16,6 +17,7 @@
 
 ### Fixed
 
+- With scripts off, the live preview refuses a scene that instances another scene given inline rather than by file, which could load project scripts.
 - Converting back to `.tscn`, a reference to a `.glb`, `.gltf`, `.fbx`, `.blend`, `.dae` or `.obj` file gets its scene or mesh type, without warning GXC0101.
 - Converting a `.xres` back keeps its global class's `script_class` in a project whose data folder is the visible `godot/`.
 

@@ -59,7 +59,7 @@
 - **Minted id**: a new ext-resource or sub-resource id the core makes from a caller's seed, in Godot's id form (`TscnDocument.NewExtResourceId`, `NewSubResourceId`).
 - **NativeAOT**: .NET's ahead-of-time compilation to a native executable with no runtime to install; the language server ships this way, one build per platform, since NativeAOT does not cross-compile across operating systems.
 - **NeedsProp**: the result (`XscnNeedsProp`) of writing a value that does not fit its type's compact form; the value is then written as an `<x:Prop>` element with Godot value text.
-- **Nested scene**: the scene a `PackedScene` sub resource holds as its own sections in a Godot 4.8 `.tscn`, a `TscnScene` on `TscnSubResource.Scene`.
+- **Nested scene**: the scene a `PackedScene` sub resource holds as its own sections in a Godot 4.8 `.tscn`, a `TscnScene` on `TscnSubResource.Scene`; the format's embedded scene is its `.xscn` side (`XscnResource.SceneRoot`).
 - **Notarisation**: Apple's scan of a signed macOS executable, which leaves a ticket Gatekeeper finds online; a bare executable cannot be stapled, so a Mac's first launch of the language server checks it online (`tools/sign-macos.ps1 -Step Notarise`).
 - **Preview pane**: the Visual Studio tool window that shows the scene being edited, rendered by Godot.
 - **Preview server**: the listener in the open Godot editor's addon that renders the `.xscn` text a client sends and returns an image and each node's rectangle; off unless `godot_xaml/preview_server/enabled` is set.
@@ -74,6 +74,7 @@
 - **Scene comparison**: `godot/compare.ps1`, which loads each scene fixture and its converted `.xscn`, and each `.tres` fixture and its converted `.xres`, in headless Godot and fails unless a canonical dump of both is identical; the Godot half of the round-trip proof.
 - **Scene lookup**: the host's reader of another scene file's text (`ISceneFiles`), which the way back uses to learn the class of an instanced node or an override, and to read a shader's uniforms or a mesh's blend shapes from an external file.
 - **Scene namespace**: an XML namespace on the root binding a prefix to a `res://` folder (`xmlns:c="res://ui/"`), so a scene in that folder is instanced as a tag (`<c:Modal Name="Confirm" />`).
+- **Scene properties**: the stored properties of the `PackedScene` a scene is saved as (`resource_name`, `metadata/…`, a script); Godot 4.8 writes them as a `[resource]` section before the first node (`TscnDocument.SceneProperties`), and the format as `x:Scene`.
 - **Scripts off**: the preview's default mode, in which nothing the previewed text references loads a script; the request or the project setting `godot_xaml/preview_server/allow_scripts` turns it on.
 - **Seed scene**: the one-node scene `tools/scene-fixtures/` saves first so the inherited-scene case can be saved from it; a script cannot set up scene inheritance directly.
 - **Sidecar**: the `.uid` file beside a file that has no header to hold its uid (`main.xscn.uid`); `convert` moves a uid between a `.tscn` header and it.
