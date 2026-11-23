@@ -8901,8 +8901,9 @@ public partial class Checks : Node
         + "</Node>\n";
 
     // Under Godot 4.8, a scripts-off preview of a scene whose embedded scenes hold probes, directly and through an instanced
-    // .xscn, keeps the probed nodes and neither runs nor caches a probe, while a scripts-allowed preview of the same text
-    // runs each. Older engines pass.
+    // .xscn, neither runs nor caches a probe, while a scripts-allowed preview of the same text runs each. Only the node
+    // probes are also checked to be kept, in the root's embedded scene: the preview's tree cannot reach the embedded scene
+    // in the scene resource's own properties, so its probe is proved by the runs alone. Older engines pass.
     private static string AScriptsOffPreviewOfAnEmbeddedSceneRunsNoProjectCode()
     {
         if (!FourEightRuns())

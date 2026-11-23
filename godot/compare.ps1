@@ -11,15 +11,16 @@ and their converted goldens (tests/fixtures/converted/*.xscn and *.xres), into g
 Under Godot 4.8 or newer it also copies the 4.8 set: each golden in tests/fixtures/converted48/ with its source of the
 same stem in tests/fixtures/tscn48/, whose stems differ from the 4.7 set's. A tscn48 source is left out only when the
 script's exclusion list names it with its reason; any other source without a golden, a golden without its source, or
-an empty 4.8 set stops the run with a compare.ps1 message. It prints COMPARE set 4.7, or COMPARE set 4.7+4.8 (<k> 4.8
-pairs), before the copy. It copies the scripts the fixtures name (holder.gd,
-quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the fixtures'
-res:// paths point. Then builds the godot/ project as a full rebuild (--no-incremental), imports it headless (which
-registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless. The expected pair
-count is the number of source files it copies (the .tscn and .tres files in tests/fixtures/scenes, the .tscn files in
-tests/fixtures/stored and, under 4.8, the 4.8 set's sources), passed to the scene as --expected-pairs=<n>. The scene
-prints COMPARE <name> PASS or COMPARE <name> FAIL <detail> per fixture and DONE <passed>/<total>; each side's dump is
-left in godot/cases/<name>.tscn.dump and <name>.xscn.dump, or <name>.tres.dump and <name>.xres.dump.
+an empty 4.8 set stops the run with a compare.ps1 message, and so does a missing tests/fixtures/converted48 or
+tests/fixtures/tscn48 folder. It prints COMPARE set 4.7, or COMPARE set 4.7+4.8 (<k> 4.8 pairs), before the copy. It
+copies the scripts the fixtures name (holder.gd, quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the
+previous copies) into godot/, where the fixtures' res:// paths point. Then builds the godot/ project as a full rebuild
+(--no-incremental), imports it headless (which registers the addon's loader), then imports it again, and runs
+res://compare/Compare.tscn headless. The expected pair count is the number of source files it copies (the .tscn and
+.tres files in tests/fixtures/scenes, the .tscn files in tests/fixtures/stored and, under 4.8, the 4.8 set's sources),
+passed to the scene as --expected-pairs=<n>. The scene prints COMPARE <name> PASS or COMPARE <name> FAIL <detail> per
+fixture and DONE <passed>/<total>; each side's dump is left in godot/cases/<name>.tscn.dump and <name>.xscn.dump, or
+<name>.tres.dump and <name>.xres.dump.
 
 Godot's lines are printed as Godot writes them, so the gate's stall watchdog sees the run progress. The documented
 command passes --stall 600 because a run starved by outside load can go two minutes without enough CPU to count as
@@ -78,6 +79,12 @@ $fourEightPairs = @()
 if ($fourEight) {
     $goldenExtension = @{ '.tscn' = '.xscn'; '.tres' = '.xres' }
     $sourceExtension = @{ '.xscn' = '.tscn'; '.xres' = '.tres' }
+    foreach ($folder in @('converted48', 'tscn48')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $repo "tests/fixtures/$folder") -PathType Container)) {
+            [Console]::Error.WriteLine("compare.ps1: tests/fixtures/$folder is missing, under a Godot 4.8 or newer")
+            exit 1
+        }
+    }
     $problems = [System.Collections.Generic.List[string]]::new()
     $sources = @(Get-ChildItem -File -Path @(
             (Join-Path $repo 'tests/fixtures/tscn48/*.tscn'),
