@@ -142,7 +142,13 @@ internal static class XscnPreviewScene
     /// initializer as it loads. A <c>Resource()</c> type becomes <c>Object</c> whatever it names.
     /// </returns>
     internal static TscnDocument WithoutScripts(TscnDocument document) =>
-        WithoutScripts(document, new HashSet<string>(StringComparer.Ordinal), XscnPreviewReferences.ClassifyFile, (_, _) => { });
+        WithoutScripts(
+            document,
+            new HashSet<string>(StringComparer.Ordinal),
+            new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal),
+            XscnPreviewReferences.ClassifyFile,
+            (_, _) => { }
+        );
 
     /// <summary>
     /// The document with no script from its own text, as <see cref="WithoutScripts(TscnDocument)"/> gives it, and no
@@ -150,12 +156,17 @@ internal static class XscnPreviewScene
     /// </summary>
     /// <param name="document">The converted scene or resource.</param>
     /// <param name="lostScripts">The paths from the root, simplified, of the instanced nodes whose script was removed.</param>
+    /// <param name="embeddedLostScripts">
+    /// By each embedded scene's sub-resource id, the paths from that scene's root, simplified, of its instanced nodes whose
+    /// script was removed; an id it lacks has none.
+    /// </param>
     /// <param name="kindOf">What the preview makes of a resolved path, read for every ext_resource and path value.</param>
     /// <param name="pathValue">Called with each <c>Resource()</c> value's resolved path and kind, the strip's own answer.</param>
     /// <returns>The stripped document.</returns>
     internal static TscnDocument WithoutScripts(
         TscnDocument document,
         IReadOnlySet<string> lostScripts,
+        IReadOnlyDictionary<string, IReadOnlySet<string>> embeddedLostScripts,
         Func<string, PreviewReferenceKind> kindOf,
         Action<string, PreviewReferenceKind> pathValue
     )
@@ -202,8 +213,10 @@ internal static class XscnPreviewScene
                             sub with
                             {
                                 Properties = Stripped(sub.Properties, removed),
-                                // An embedded scene is not part of an instance tree, so only its own scripted nodes lose connections.
-                                Scene = sub.Scene is { } scene ? StrippedScene(scene, none, removed) : null,
+                                // An embedded scene is not part of an instance tree, so only its own lost nodes lose connections.
+                                Scene = sub.Scene is { } scene
+                                    ? StrippedScene(scene, embeddedLostScripts.GetValueOrDefault(sub.Id, none), removed)
+                                    : null,
                             }
                         ),
                 ],
@@ -279,20 +292,16 @@ internal static class XscnPreviewScene
     /// <returns>True for a Script class; false for any other, and for a class neither knows.</returns>
     internal static bool IsScriptClass(string type) => XscnPreviewReferences.Inherits(type, ScriptClass) == true;
 
-    // Adds the resource each script reference names to the removed ones; true when the properties hold a script reference.
-    private static bool AddScriptReferences(ImmutableArray<TscnProperty> properties, HashSet<string> removedExts, HashSet<string> removedSubs)
+    // Adds the resource each script reference names to the removed ones.
+    private static void AddScriptReferences(ImmutableArray<TscnProperty> properties, HashSet<string> removedExts, HashSet<string> removedSubs)
     {
-        bool any = false;
         foreach (TscnProperty property in properties.Where(IsScriptReference))
         {
-            any = true;
             if (property.Value is GodotResourceRef reference)
             {
                 (reference.Kind == GodotRefKind.External ? removedExts : removedSubs).Add(reference.Id);
             }
         }
-
-        return any;
     }
 
     // A script property that names a script. Any other value, such as the explicit null an instance or an override carries

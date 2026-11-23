@@ -33,9 +33,6 @@ internal static class XscnLoading
     // Made once and still reachable at shutdown, when Godot's tracker disposes it (GXAML-81).
     private static readonly StringName ResourceClassName = "Resource";
 
-    // The first Godot that loads x:Scene and a scene inside a PackedScene.
-    private static readonly Version ScenesSince = new(4, 8);
-
     private static readonly ConversionOptions Options = new()
     {
         Seed = Seed,
@@ -208,7 +205,7 @@ internal static class XscnLoading
     /// <param name="document">The parsed <c>.xscn</c> or <c>.xres</c>.</param>
     /// <returns>The converted document and the conversion's issues.</returns>
     internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document) =>
-        NeedsNewerGodot(document) ?? XscnToTscn.Convert(document, XscnMetadata.For(document.Godot), Options);
+        NeedsNewerGodot(document) ?? ForRunningGodot(XscnToTscn.Convert(document, XscnMetadata.For(document.Godot), Options));
 
     /// <summary>
     /// Converts a parsed document as <see cref="ToTscn(XscnDocument)"/> does, reading the scenes it instances so their
@@ -219,24 +216,43 @@ internal static class XscnLoading
     /// <returns>The converted document and the conversion's issues.</returns>
     internal static ConversionResult<TscnDocument> ToTscn(XscnDocument document, string path) =>
         NeedsNewerGodot(document)
-        ?? XscnToTscn.Convert(
-            document,
-            XscnMetadata.For(document.Godot, path),
-            Options with
-            {
-                SceneFiles = GodotSceneFiles.Instance,
-                SourceKey = path,
-            }
+        ?? ForRunningGodot(
+            XscnToTscn.Convert(
+                document,
+                XscnMetadata.For(document.Godot, path),
+                Options with
+                {
+                    SceneFiles = GodotSceneFiles.Instance,
+                    SourceKey = path,
+                }
+            )
         );
 
+    // A Godot older than 4.8 refuses a [resource] section in a scene file (resource_format_text.cpp, the "Unexpected
+    // 'resource' tag" error), which a 4.8-marked scene whose only PackedScene is empty still converts with; the scene's
+    // own properties are empty there, since x:Scene is refused before the conversion.
+    private static ConversionResult<TscnDocument> ForRunningGodot(ConversionResult<TscnDocument> result) =>
+        RunningOlderThanScenes(out _) && result.Document.HasSceneResourceSection
+            ? result with
+            {
+                Document = result.Document with { HasSceneResourceSection = false },
+            }
+            : result;
+
+    // Whether the running Godot is older than the first that loads x:Scene and embedded scenes; a running version that
+    // does not parse is taken as new.
+    private static bool RunningOlderThanScenes(out string running)
+    {
+        running = XscnMetadata.RunningVersion();
+        return Version.TryParse(running, out Version? version) && version < XscnFormatVocabulary.ScenesSince;
+    }
+
     // A Godot older than 4.8 reads an embedded scene's nodes as the main scene's until its load fails, so a file holding
-    // x:Scene or an embedded scene is refused before it converts, whatever its marker says; a running version that does
-    // not parse is taken as new. The stand-in is the one the back conversion's own refusal gives.
+    // x:Scene or an embedded scene is refused before it converts, whatever its marker says. The stand-in is the one the
+    // back conversion's own refusal gives.
     private static ConversionResult<TscnDocument>? NeedsNewerGodot(XscnDocument document)
     {
-        string running = XscnMetadata.RunningVersion();
-        bool older = Version.TryParse(running, out Version? version) && version < ScenesSince;
-        if (!older || (document.Scene is null && !XscnFormatVocabulary.HoldsSceneRoot(document)))
+        if (!RunningOlderThanScenes(out string running) || !XscnFormatVocabulary.HoldsSceneRoot(document))
         {
             return null;
         }

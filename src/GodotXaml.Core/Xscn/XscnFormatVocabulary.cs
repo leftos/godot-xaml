@@ -76,9 +76,6 @@ public static class XscnFormatVocabulary
 
     private static readonly string[] ElementNames = ["Uids", "Uid", "Resources", "Scene", "Instance", "Override", "Connect", "Prop"];
 
-    // Godot reads a scene's own properties and a scene inside a PackedScene from 4.8 on.
-    private static readonly Version ScenesSince = new(4, 8);
-
     private static readonly FrozenDictionary<string, IReadOnlyList<string>> AttributesByKind = new Dictionary<string, IReadOnlyList<string>>(
         StringComparer.Ordinal
     )
@@ -95,6 +92,9 @@ public static class XscnFormatVocabulary
         ["Connect"] = Array.AsReadOnly(ConnectAttributes),
         ["Prop"] = Array.AsReadOnly(PropAttributes),
     }.ToFrozenDictionary(StringComparer.Ordinal);
+
+    /// <summary>The first Godot that reads a scene's own properties (<c>x:Scene</c>) and a scene inside a <c>PackedScene</c>.</summary>
+    public static Version ScenesSince { get; } = new(4, 8);
 
     /// <summary>The local names of the <c>x:</c> elements, without the prefix.</summary>
     public static IReadOnlyList<string> Elements { get; } = Array.AsReadOnly(ElementNames);
@@ -139,16 +139,16 @@ public static class XscnFormatVocabulary
     }
 
     /// <summary>
-    /// Whether a table entry or the root, or any resource inside them at any depth, holds a scene root: what a Godot older
-    /// than 4.8 cannot load besides <c>x:Scene</c>.
+    /// Whether the document holds what a Godot older than 4.8 cannot load: <c>x:Scene</c>, or a scene root in a table
+    /// entry or the root, or in any resource inside them at any depth.
     /// </summary>
     /// <param name="document">The document.</param>
-    /// <returns>True when some <c>PackedScene</c> in the document holds a scene.</returns>
+    /// <returns>True when the document has <c>x:Scene</c> or some <c>PackedScene</c> in it holds a scene.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="document"/> is null.</exception>
     public static bool HoldsSceneRoot(XscnDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        return document.Resources.Any(HoldsSceneRoot) || HoldsSceneRoot(document.Root);
+        return document.Scene is not null || document.Resources.Any(HoldsSceneRoot) || HoldsSceneRoot(document.Root);
     }
 
     private static bool HoldsSceneRoot(XscnElement element) =>

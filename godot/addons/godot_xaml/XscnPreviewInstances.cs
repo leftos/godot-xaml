@@ -9,6 +9,7 @@ using GodotXaml.Core.Tscn;
 using GodotXaml.Core.Values;
 using GodotXaml.Core.Xscn;
 using FileAccess = Godot.FileAccess;
+using ObjectValue = GodotXaml.Core.Values.GodotObject;
 
 namespace GodotXaml.Addon;
 
@@ -52,12 +53,9 @@ internal sealed class XscnPreviewInstances : IDisposable
     /// nothing is read, classified or copied.
     /// </summary>
     /// <param name="document">A converted scene whose ext_resource paths are resource paths.</param>
-    /// <param name="resPath">
-    /// The document's <c>res://</c> path, which an issue about the document itself names; when null, the issue names it
-    /// the previewed scene.
-    /// </param>
+    /// <param name="resPath">The document's <c>res://</c> path, which an issue about the document itself names.</param>
     /// <returns>The document to load; when <see cref="Issues"/> is not empty, one that must not be loaded.</returns>
-    internal TscnDocument Stripped(TscnDocument document, string? resPath = null)
+    internal TscnDocument Stripped(TscnDocument document, string resPath)
     {
         // Godot registers a global class whose native base is ResourceFormatLoader as a loader, and a built-in loader that
         // fails on a file hands that file on to them (resource_loader.cpp, add_custom_loaders), which runs the class's
@@ -68,7 +66,7 @@ internal sealed class XscnPreviewInstances : IDisposable
             Failed(path, LoaderClassRefusal(className));
         }
 
-        return loaderClasses.Count > 0 ? document : Stripped(document, resPath ?? "the previewed scene", out _);
+        return loaderClasses.Count > 0 ? document : Stripped(document, resPath, out _);
     }
 
     // Why a project's loader class leaves nothing to preview.
@@ -95,7 +93,8 @@ internal sealed class XscnPreviewInstances : IDisposable
 
     private TscnDocument Stripped(TscnDocument document, string location, out HashSet<string> lost)
     {
-        RefuseEmbeddedInstances(document, location);
+        RefuseInlineInstances(document, location);
+        RefuseBundledSceneProperties(document, location);
 
         // The editor stops Godot making placeholder nodes (editor_node.cpp) and loads each placeholder's scene as a real
         // instance, so a placeholder is pointed at that scene's stripped copy too (packed_scene.cpp), in every scene the
@@ -108,19 +107,63 @@ internal sealed class XscnPreviewInstances : IDisposable
             },
             scene => scene with { Nodes = [.. scene.Nodes.Select(RedirectedPlaceholder)] }
         );
-        HashSet<string> instanced = LostUnderInstances(document);
+        HashSet<string> instanced = LostUnderInstances(document, document.MainScene);
+
+        // An embedded scene is not part of an instance tree, so its own lost nodes only drop its own connections.
+        var embedded = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal);
+        foreach (TscnSubResource sub in document.SubResources)
+        {
+            if (sub.Scene is { } scene)
+            {
+                embedded[sub.Id] = LostUnderInstances(document, scene);
+            }
+        }
+
         lost = [.. instanced, .. XscnPreviewScene.ScriptedNodePaths(document)];
-        return XscnPreviewScene.WithoutScripts(redirected, instanced, KindOf, RefusePathValue);
+        return XscnPreviewScene.WithoutScripts(redirected, instanced, embedded, KindOf, RefusePathValue);
     }
 
-    // A node whose instance= names a sub_resource instances that embedded scene as written (packed_scene.cpp, SceneState
-    // instantiate), which no copy can stand in for, so the document is refused. Only a hand-written .tscn holds one: the
-    // saver writes every instance as an ext_resource.
-    private void RefuseEmbeddedInstances(TscnDocument document, string location)
+    // A node whose instance= is anything but an ExtResource instances what the value builds as written (packed_scene.cpp,
+    // SceneState instantiate): a SubResource's embedded scene, or an Object(PackedScene, ...) whose _bundled the text loader
+    // sets as it parses the value (variant_parser.cpp), which no copy can stand in for, so the document is refused. Only a
+    // hand-written .tscn holds one: the saver writes every instance as an ext_resource.
+    private void RefuseInlineInstances(TscnDocument document, string location)
     {
-        if (document.Scenes.SelectMany(scene => scene.Nodes).Any(node => node.Instance is GodotResourceRef { Kind: GodotRefKind.Sub }))
+        foreach (GodotValue instance in document.Scenes.SelectMany(scene => scene.Nodes).Select(node => node.Instance).OfType<GodotValue>())
         {
-            Failed(location, $"{location} instances an embedded scene directly (instance=SubResource), which the preview cannot strip");
+            if (instance is GodotResourceRef { Kind: GodotRefKind.External })
+            {
+                continue;
+            }
+
+            Failed(
+                location,
+                instance is GodotResourceRef
+                    ? $"{location} instances an embedded scene directly (instance=SubResource), which the preview cannot strip"
+                    : $"{location} instances a scene given inline (instance={ValueKind(instance)}), which the preview cannot strip"
+            );
+        }
+    }
+
+    // How an inline instance= value is named in its refusal.
+    private static string ValueKind(GodotValue value) =>
+        value switch
+        {
+            ObjectValue objectValue => $"Object({objectValue.ClassName})",
+            GodotPathRef => "Resource()",
+            GodotString => "a string",
+            GodotNull => "null",
+            _ => "a " + value.GetType().Name.Replace("Godot", "", StringComparison.Ordinal),
+        };
+
+    // A _bundled value in the scene's own properties is set on the PackedScene before its [node] sections are read
+    // (resource_format_text.cpp, the [resource] tag; packed_scene.cpp, _set_bundled_scene), and instancing it loads its
+    // instances and placeholders as written, which the strip never opens. The saver never writes it there.
+    private void RefuseBundledSceneProperties(TscnDocument document, string location)
+    {
+        if (document.SceneProperties.Any(property => string.Equals(property.Name, "_bundled", StringComparison.Ordinal)))
+        {
+            Failed(location, $"{location} holds _bundled in the scene's own properties, which the preview cannot strip");
         }
     }
 
@@ -152,15 +195,15 @@ internal sealed class XscnPreviewInstances : IDisposable
         }
     }
 
-    // The paths, from the document's root, of the nodes in its instanced scenes that lost their script. An instance that
-    // detaches its scene's script itself keeps its connections, as it would with scripts allowed. A placeholder's scene is
-    // loaded as an instance is, so its nodes join the same way.
-    private HashSet<string> LostUnderInstances(TscnDocument document)
+    // The paths, from the scene's own root, of the nodes in its instanced scenes that lost their script; the document gives
+    // the ext_resources the instances name. An instance that detaches its scene's script itself keeps its connections, as
+    // it would with scripts allowed. A placeholder's scene is loaded as an instance is, so its nodes join the same way.
+    private HashSet<string> LostUnderInstances(TscnDocument document, TscnScene scene)
     {
         var lost = new HashSet<string>(StringComparer.Ordinal);
-        foreach (TscnNode node in document.Nodes)
+        foreach (TscnNode node in scene.Nodes)
         {
-            if (InstancedScenePath(document, node) is not { } scene || !lostScripts.TryGetValue(scene, out HashSet<string>? inside))
+            if (InstancedScenePath(document, node) is not { } path || !lostScripts.TryGetValue(path, out HashSet<string>? inside))
             {
                 continue;
             }

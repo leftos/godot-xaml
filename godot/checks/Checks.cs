@@ -337,6 +337,10 @@ public partial class Checks : Node
             ("C172", AnInstanceOfAnEmbeddedSceneIsRefused),
             ("C173", AReferencedFourEightTscnIsStrippedSceneByScene),
             ("C174", ADocumentWithoutEmbeddedScenesStripsAsBefore),
+            ("C175", APreviewRefusesBundledInTheScenesOwnProperties),
+            ("C176", APreviewRefusesAnInlineObjectInstance),
+            ("C177", AFourEightMarkedFileWithAnEmptyPackedSceneLoadsInAnOlderGodot),
+            ("C178", AnEmbeddedScenesConnectionToAStrippedInstanceNodeIsDropped),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -3206,7 +3210,7 @@ public partial class Checks : Node
             },
         };
         using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(document);
+        TscnDocument stripped = instances.Stripped(document, BuiltPreviewPath);
         return Failures(
             stripped.ExtResources.IsEmpty
                 ? ""
@@ -3262,7 +3266,7 @@ public partial class Checks : Node
             ExtResources = [.. converted.ExtResources.Select(ext => ext.Id == reference.Id ? ext with { Type = "Resource" } : ext)],
         };
         using var instances = new XscnPreviewInstances();
-        TscnExtResource redirected = instances.Stripped(retyped).ExtResources.First(ext => ext.Id == reference.Id);
+        TscnExtResource redirected = instances.Stripped(retyped, PreviewPath).ExtResources.First(ext => ext.Id == reference.Id);
         return Failures(
             CopyFailure(redirected),
             instances.Issues.Count == 0 ? "" : $"issues: [{string.Join("; ", instances.Issues.Select(issue => issue.Message))}]"
@@ -4640,7 +4644,7 @@ public partial class Checks : Node
     private static (ConversionIssue[] Issues, TscnDocument Stripped) StrippedIssues(TscnDocument document)
     {
         using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(document);
+        TscnDocument stripped = instances.Stripped(document, BuiltPreviewPath);
         return ([.. instances.Issues], stripped);
     }
 
@@ -4931,7 +4935,7 @@ public partial class Checks : Node
             },
         };
         using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(document);
+        TscnDocument stripped = instances.Stripped(document, BuiltPreviewPath);
         string? copy = stripped.Nodes.Single().InstancePlaceholder;
         string folder = AddonTempFolder.Get();
         string? text = copy is { } path && path.StartsWith(folder, StringComparison.Ordinal) ? File.ReadAllText(path) : null;
@@ -5019,7 +5023,7 @@ public partial class Checks : Node
         string folder = AddonTempFolder.Get();
         string[] before = Directory.GetFiles(folder);
         using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(document);
+        TscnDocument stripped = instances.Stripped(document, BuiltPreviewPath);
         string[] written = [.. Directory.GetFiles(folder).Except(before, StringComparer.Ordinal)];
         string? copy = stripped.Nodes.Single().InstancePlaceholder;
         return Failures(
@@ -5056,7 +5060,7 @@ public partial class Checks : Node
         };
         string folder = AddonTempFolder.Get();
         using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(document);
+        TscnDocument stripped = instances.Stripped(document, BuiltPreviewPath);
         string? copy = stripped.ExtResources.SingleOrDefault()?.Path;
         bool redirected = copy is { } path && path.StartsWith(folder, StringComparison.Ordinal);
         string text = redirected ? File.ReadAllText(copy!) : "";
@@ -5101,7 +5105,7 @@ public partial class Checks : Node
             },
         };
         using var instances = new XscnPreviewInstances();
-        TscnDocument stripped = instances.Stripped(document);
+        TscnDocument stripped = instances.Stripped(document, BuiltPreviewPath);
         string? copy = stripped.Nodes.Single(node => node.Name == "P").InstancePlaceholder;
         return Failures(
             instances.Issues.Count == 0 ? "" : $"the issues are [{string.Join("; ", instances.Issues.Select(issue => issue.Message))}]",
@@ -8411,9 +8415,9 @@ public partial class Checks : Node
             () =>
             {
                 using var referencing = new XscnPreviewInstances();
-                referencing.Stripped(ReferencingDocument(path));
+                referencing.Stripped(ReferencingDocument(path), BuiltPreviewPath);
                 using var direct = new XscnPreviewInstances();
-                direct.Stripped(TscnReader.Read(held));
+                direct.Stripped(TscnReader.Read(held), path);
                 return Failures(
                     referencing.Issues is [{ Code: ConversionCodes.InstanceNotStripped, Severity: ConversionSeverity.Error } issue]
                     && issue.Message == message
@@ -8439,10 +8443,11 @@ public partial class Checks : Node
             () =>
             {
                 using var instances = new XscnPreviewInstances();
-                TscnExtResource redirected = instances.Stripped(ReferencingDocument(path)).ExtResources.Single();
+                TscnExtResource redirected = instances.Stripped(ReferencingDocument(path), BuiltPreviewPath).ExtResources.Single();
                 return Failures(
                     instances.Issues.Count == 0 ? "" : $"issues: [{IssueText([.. instances.Issues])}]",
                     CopyFailure(redirected),
+                    File.Exists(redirected.Path) ? NoScriptFailure(File.ReadAllText(redirected.Path)) : "",
                     File.Exists(redirected.Path) ? DanglingFailure(File.ReadAllText(redirected.Path)) : ""
                 );
             }
@@ -8463,6 +8468,181 @@ public partial class Checks : Node
     private const string SignalsSceneStripped =
         "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n\n[node name=\"Emitter\" type=\"Control\" parent=\".\"]\n\n"
         + "[node name=\"Plain\" type=\"Control\" parent=\".\"]\n\n[node name=\"Ok\" type=\"Button\" parent=\".\"]\n";
+
+    // The location the preview checks give a document they build in code, which no file holds.
+    private const string BuiltPreviewPath = "res://checks/preview.xscn";
+
+    // A PackedScene's _bundled value whose one node is a placeholder (flag 1 << 30) of a scripted scene named as a variant.
+    private const string BundledValue =
+        "{\"names\": PackedStringArray(\"Root\"), \"variants\": [\"res://scripted.tscn\"], \"node_count\": 1, "
+        + "\"nodes\": PackedInt32Array(-1, -1, 2147483647, 0, 1073741824, 0, 0, 0), \"conn_count\": 0, \"conns\": PackedInt32Array(), "
+        + "\"node_paths\": [], \"editable_instances\": [], \"version\": 3}";
+
+    // With scripts off, a _bundled value in a scene's own properties is refused with GXC0121: in a raw .tscn the preview
+    // copies, and in an .xscn whose x:Scene carries it, which either fails to parse or convert or is refused, never loaded.
+    private static string APreviewRefusesBundledInTheScenesOwnProperties()
+    {
+        string path = OutFolder + "bundled_ref.tscn";
+        string raw = "[gd_scene format=3]\n\n[resource]\n_bundled = " + BundledValue + "\n\n[node name=\"Root\" type=\"Control\"]\n";
+        string message = $"{path} holds _bundled in the scene's own properties, which the preview cannot strip";
+        string copied = WithOutFile(
+            path,
+            raw,
+            () =>
+            {
+                using var instances = new XscnPreviewInstances();
+                instances.Stripped(ReferencingDocument(path), BuiltPreviewPath);
+                return
+                    instances.Issues is [{ Code: ConversionCodes.InstanceNotStripped, Severity: ConversionSeverity.Error } issue]
+                    && issue.Message == message
+                    && issue.Location == path
+                    ? ""
+                    : $"the copied .tscn gave [{IssueText([.. instances.Issues])}], not the one {ConversionCodes.InstanceNotStripped} "
+                        + $"error \"{message}\" at {path}";
+            }
+        );
+        const string head = "<Control xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" x:Godot=\"4.8\" Name=\"Root\">\n";
+        return Failures(
+            copied,
+            BundledXscnFailure("the _Bundled attribute", head + "  <x:Scene _Bundled='" + BundledValue + "' />\n</Control>\n"),
+            BundledXscnFailure(
+                "an x:Prop _bundled",
+                head + "  <x:Scene>\n    <x:Prop Name=\"_bundled\" Value='" + BundledValue + "' />\n  </x:Scene>\n</Control>\n"
+            )
+        );
+    }
+
+    // The .xscn's preview fails to parse, fails to convert, or is refused with the _bundled GXC0121 error; it never loads.
+    // The running version is faked to 4.8, so the older-engine refusal does not stop the text before the strip sees it.
+    private static string BundledXscnFailure(string what, string text)
+    {
+        PreviewScene preview;
+        XscnMetadata.RunningVersion = () => "4.8";
+        try
+        {
+            preview = XscnPreviewScene.Instantiate(text, PreviewPath, scriptsRequested: false);
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+        }
+
+        bool loaded = preview.Root is not null;
+        preview.Root?.Free();
+        string message = $"{PreviewPath} holds _bundled in the scene's own properties, which the preview cannot strip";
+        return !loaded && BundledRefused(preview, message)
+            ? ""
+            : $"{what}: the preview {(loaded ? "loaded" : "gave no root")} with [{PreviewProblems(preview)}], "
+                + $"not a parse error, a conversion error or \"{message}\"";
+    }
+
+    // Whether the preview failed to parse, failed to convert, or refused the text with the message.
+    private static bool BundledRefused(PreviewScene preview, string message) =>
+        preview.Diagnostics.Any(d => d.Severity == XscnSeverity.Error)
+        || preview.Issues.Any(issue => issue.Severity == ConversionSeverity.Error && issue.Code != ConversionCodes.InstanceNotStripped)
+        || preview.Issues.Any(issue => issue.Code == ConversionCodes.InstanceNotStripped && issue.Message == message);
+
+    // With scripts off, an instance= given as an Object(PackedScene) value is refused with GXC0121, in the main scene and
+    // in an embedded scene.
+    private static string APreviewRefusesAnInlineObjectInstance()
+    {
+        const string inline = "instance=Object(PackedScene,\"_bundled\":" + BundledValue + ")";
+        const string main = "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n\n[node name=\"Held\" parent=\".\" " + inline + "]\n";
+        const string embedded =
+            "[gd_scene format=3]\n\n"
+            + "[sub_resource type=\"PackedScene\" id=\"PackedScene_e\"]\n"
+            + "[node name=\"Inner\" type=\"Control\"]\n\n"
+            + "[node name=\"Held\" parent=\".\" "
+            + inline
+            + "]\n\n"
+            + "[resource]\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\nmetadata/inner = SubResource(\"PackedScene_e\")\n";
+        return Failures(InlineInstanceFailure("the main scene", main), InlineInstanceFailure("the embedded scene", embedded));
+    }
+
+    // The text's strip gives exactly the one inline-instance GXC0121 error.
+    private static string InlineInstanceFailure(string what, string text)
+    {
+        string message = $"{BuiltPreviewPath} instances a scene given inline (instance=Object(PackedScene)), which the preview cannot strip";
+        using var instances = new XscnPreviewInstances();
+        instances.Stripped(TscnReader.Read(text), BuiltPreviewPath);
+        return
+            instances.Issues is [{ Code: ConversionCodes.InstanceNotStripped, Severity: ConversionSeverity.Error } issue]
+            && issue.Message == message
+            && issue.Location == BuiltPreviewPath
+            ? ""
+            : $"{what} gave [{IssueText([.. instances.Issues])}], not the one {ConversionCodes.InstanceNotStripped} error \"{message}\"";
+    }
+
+    // Under a running Godot 4.7, a 4.8-marked file whose only PackedScene is empty converts with no [resource] section, which
+    // Godot 4.7 refuses in a scene file, and loads.
+    private static string AFourEightMarkedFileWithAnEmptyPackedSceneLoadsInAnOlderGodot()
+    {
+        const string name = "embedded_empty.xscn";
+        string text = File.ReadAllText(FourEightFixturePath(name));
+        if (FourEightDocument(text, XscnDocumentKind.Scene, out XscnDocument? document) is { } setup)
+        {
+            return setup;
+        }
+
+        string path = OutFolder + name;
+        DeleteFolder(OutFolder);
+        Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
+        int tempPathsBeforeLoad = XscnLoadRoute.TempPaths.Count;
+        XscnMetadata.RunningVersion = () => "4.7";
+        try
+        {
+            ConversionResult<TscnDocument> converted = XscnLoading.ToTscn(document!, path);
+            string written = TscnWriter.Write(converted.Document);
+            File.WriteAllText(ProjectSettings.GlobalizePath(path), text);
+            (Resource? loaded, WarningLog log) = LoadLogged(path);
+            return Failures(
+                converted.Issues.Any(issue => issue.Severity == ConversionSeverity.Error)
+                    ? "the conversion failed: " + IssueText(converted.Issues)
+                    : "",
+                written.Contains("[resource]", StringComparison.Ordinal) ? $"the converted text holds [resource]: {Escaped(written)}" : "",
+                loaded is null ? $"loading {path} returned null: [{LogText(log.Entries)}]" : ""
+            );
+        }
+        finally
+        {
+            XscnMetadata.RunningVersion = XscnMetadata.EngineMinor;
+            DeleteKeptTempFiles(tempPathsBeforeLoad);
+            DeleteFolder(OutFolder);
+        }
+    }
+
+    // An embedded scene's connection from a node under its own instance of a scripted scene is dropped, by that scene's own
+    // paths, once the instanced scene's root loses its script.
+    private static string AnEmbeddedScenesConnectionToAStrippedInstanceNodeIsDropped()
+    {
+        string scripted = OutFolder + "scripted_instance.tscn";
+        string text =
+            "[gd_scene format=3]\n\n"
+            + "[ext_resource type=\"PackedScene\" path=\""
+            + scripted
+            + "\" id=\"1_i\"]\n\n"
+            + "[sub_resource type=\"PackedScene\" id=\"PackedScene_e\"]\n"
+            + "[node name=\"Inner\" type=\"Control\"]\n\n"
+            + "[node name=\"Inst\" parent=\".\" instance=ExtResource(\"1_i\")]\n\n"
+            + "[connection signal=\"poked\" from=\"Inst\" to=\".\" method=\"hide\"]\n\n"
+            + "[resource]\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\nmetadata/inner = SubResource(\"PackedScene_e\")\n";
+        return WithOutFile(
+            scripted,
+            "[gd_scene format=3]\n\n" + EmbeddedScriptExt + "[node name=\"S\" type=\"Control\"]\nscript = ExtResource(\"1_s\")\n",
+            () =>
+            {
+                using var instances = new XscnPreviewInstances();
+                TscnDocument stripped = instances.Stripped(TscnReader.Read(text), BuiltPreviewPath);
+                string[] connections = [.. (stripped.SubResources.Single().Scene?.Connections ?? []).Select(c => $"{c.From}>{c.To}")];
+                return Failures(
+                    instances.Issues.Count == 0 ? "" : $"issues: [{IssueText([.. instances.Issues])}]",
+                    connections.Length == 0 ? "" : $"the embedded scene's connections are [{string.Join(", ", connections)}], not []"
+                );
+            }
+        );
+    }
 
     // A scene whose only node instances the scene at the path.
     private static TscnDocument ReferencingDocument(string path) =>

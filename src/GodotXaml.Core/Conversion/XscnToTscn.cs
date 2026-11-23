@@ -104,7 +104,7 @@ public static partial class XscnToTscn
                 Root = own with { SceneRoot = null },
             }
             : document;
-        if (XscnFormatVocabulary.ReadsScenes(metadata) || (judged.Scene is null && !XscnFormatVocabulary.HoldsSceneRoot(judged)))
+        if (XscnFormatVocabulary.ReadsScenes(metadata) || !XscnFormatVocabulary.HoldsSceneRoot(judged))
         {
             return null;
         }
