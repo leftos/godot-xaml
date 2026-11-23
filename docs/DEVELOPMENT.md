@@ -19,7 +19,7 @@ How to build, test and check godot-xaml on a development machine, from the repo 
 
 | Script | Godot it runs |
 |---|---|
-| `godot/checks.ps1`, `godot/compare.ps1`, `godot/compare-project.ps1`, `godot/test-compare-project.ps1`, `godot/export.ps1`, `godot/editor-checks.ps1` | `$env:GODOT_PATH`, else `$env:GODOT_BIN`; with neither set it stops with `GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary` |
+| `godot/checks.ps1`, `godot/compare.ps1`, `godot/compare-project.ps1`, `godot/test-compare-project.ps1`, `godot/export.ps1`, `godot/editor-checks.ps1` | `$env:GODOT_PATH`, else `$env:GODOT_BIN`; with neither set it stops with `GODOT_PATH or GODOT_BIN must name a Godot 4.7 .NET console binary`, or `4.7 or 4.8` for `checks.ps1` and `compare.ps1`, the two that run under either |
 | `tools/metadata-dump/dump.ps1`, `tools/value-fixtures/generate.ps1`, `tools/scene-fixtures/generate.ps1` | `-Godot`, else `$env:GODOT_BIN`; they never read `GODOT_PATH` |
 
 ## run.ps1
@@ -59,7 +59,14 @@ To run one test class after a build, go through the gate: `tools/gate.ps1 run` w
 
 A Godot run whose arguments carry `--import`, `--export-release`, `--export-debug`, `--export-pack`, `--export-patch`, `-e` or `--editor` can make Godot's C# tooling rewrite the project's top-level `*.csproj` and leave `*.csproj.old*` backups. `Invoke-GodotStreaming` leaves the csproj byte-identical and the backups as found: it writes changed bytes back and prints `RESTORED <file>`, deletes only the backups the run created, and prints `WARNING leftover <file>: ...` for a backup that was already there. This covers `checks.ps1`, `compare.ps1`, `export.ps1`, `editor-checks.ps1` and `compare-project.ps1` on a user's project. A killed run (gate timeout, stall kill) skips the restore, so restore the csproj by hand then.
 
-A proof run of the harness scripts under Godot 4.8 sets `GODOT_PATH` to the 4.8 console binary and runs with the gate's `--local`: a routed run goes to a builder that pins its own Godot 4.7.2, so it would test 4.7.2.
+A proof run of the harness scripts under Godot 4.8 sets `GODOT_PATH` to the 4.8 console binary and runs with the gate's `--local`: a routed run goes to a builder that pins its own Godot 4.7.2, so it would test 4.7.2. Only `checks.ps1` and `compare.ps1` accept a 4.8 binary; `godot/test-checks.ps1`'s stub Godot answers `--version` with 4.7.2.
+
+```
+$env:GODOT_PATH = 'F:\Godot\4.8-beta2\Godot_v4.8-beta2_mono_win64\Godot_v4.8-beta2_mono_win64_console.exe'
+pwsh -NoProfile -File tools/gate.ps1 run --no-markers --stall 600 --log .tmp/compare48.log --slot light --timeout 1500 --local --reason "Godot 4.8 compare" -- pwsh -NoProfile -File godot/compare.ps1
+```
+
+The 4.8 engine is on this PC only, hence `--local` with its `--reason`. `compare.ps1` and `checks.ps1` read the engine's `--version`: under 4.8 or newer the compare prints `COMPARE set 4.7+4.8` and also runs the `tests/fixtures/converted48/` goldens against their `tests/fixtures/tscn48/` sources, otherwise `COMPARE set 4.7`; a version that does not parse stops it. Two headless checks (a save of a scene with its own properties and an embedded scene loads back the same; a scripts-off preview of an embedded scene with a probe script runs no project code) pass without asserting under 4.7.2 and run under 4.8.
 
 ### Headless addon checks
 

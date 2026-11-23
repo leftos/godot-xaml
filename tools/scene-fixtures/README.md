@@ -99,6 +99,8 @@ Written to `tests/fixtures/tscn48/` by `-FourEight`:
 - `embedded_target.tscn`: the scene `embedded_instance` instances, a `Node2D` root with a `Part` child.
 - `embedded_instance.tscn`: an embedded scene holding an editable instance of `embedded_target`, a property override on the instance's `Part`, a sub-resource material and a connection, beside a sub-resource of the main scene, so the reader's id order is proven.
 
+`godot/compare.ps1` proves these pairs in Godot only under a 4.8 engine (see `docs/DEVELOPMENT.md`, Godot-side harnesses): it then copies each with its golden in `tests/fixtures/converted48/`.
+
 `blend2d_scripted.tres` and its script, in the same folder, are not written by these cases and are kept.
 
 ## What a dynamic-family case needs from Godot
