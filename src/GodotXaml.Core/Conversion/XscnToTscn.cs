@@ -203,10 +203,11 @@ public static partial class XscnToTscn
         // _find_resources (4.7.2 :1680-1714, 4.8 :1642-1676): a resource's properties in sorted name order, each
         // reference followed where it is met. The site is the site key of the element or resource that holds them: a
         // resource held inline gets "<holder's site>|<property>", and a table entry "key:<x:Key>" wherever it is used.
+        // The .xres root and x:Scene write their properties as they stand, so every one of them is discovered.
         private void Discover(XscnResource resource, string location, string site) =>
-            DiscoverProperties(resource.Type, WrittenProperties(resource), location, site);
+            DiscoverProperties(resource.Type, resource.Properties, location, site);
 
-        // A resource's properties as its section writes them: an embedded scene takes _bundled's place (4.8 :2073-2075,
+        // A sub_resource's properties as its section writes them: an embedded scene takes _bundled's place (4.8 :2073-2075,
         // 2122-2125), so a _bundled beside it is dropped and what it refers to is never discovered.
         private static ImmutableArray<XscnProperty> WrittenProperties(XscnResource resource) =>
             resource.SceneRoot is null ? resource.Properties : [.. resource.Properties.Where(property => property.GodotName != BundledProperty)];
@@ -319,7 +320,7 @@ public static partial class XscnToTscn
                 scenes[resource] = placed;
             }
 
-            Discover(resource, location, site);
+            DiscoverProperties(resource.Type, WrittenProperties(resource), location, site);
             visiting.Remove(resource);
             found.Add(resource);
             subUses.Add(new SubUse(resource, location, site));

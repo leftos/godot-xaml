@@ -126,22 +126,24 @@ internal sealed class XscnPreviewInstances : IDisposable
     // A node whose instance= is anything but an ExtResource instances what the value builds as written (packed_scene.cpp,
     // SceneState instantiate): a SubResource's embedded scene, or an Object(PackedScene, ...) whose _bundled the text loader
     // sets as it parses the value (variant_parser.cpp), which no copy can stand in for, so the document is refused. Only a
-    // hand-written .tscn holds one: the saver writes every instance as an ext_resource.
+    // hand-written .tscn holds one: the saver writes every instance as an ext_resource. Nodes refused for the same reason
+    // give one issue between them.
     private void RefuseInlineInstances(TscnDocument document, string location)
     {
-        foreach (GodotValue instance in document.Scenes.SelectMany(scene => scene.Nodes).Select(node => node.Instance).OfType<GodotValue>())
-        {
-            if (instance is GodotResourceRef { Kind: GodotRefKind.External })
-            {
-                continue;
-            }
-
-            Failed(
-                location,
+        IEnumerable<string> messages = document
+            .Scenes.SelectMany(scene => scene.Nodes)
+            .Select(node => node.Instance)
+            .OfType<GodotValue>()
+            .Where(instance => instance is not GodotResourceRef { Kind: GodotRefKind.External })
+            .Select(instance =>
                 instance is GodotResourceRef
                     ? $"{location} instances an embedded scene directly (instance=SubResource), which the preview cannot strip"
                     : $"{location} instances a scene given inline (instance={ValueKind(instance)}), which the preview cannot strip"
-            );
+            )
+            .Distinct(StringComparer.Ordinal);
+        foreach (string message in messages)
+        {
+            Failed(location, message);
         }
     }
 
@@ -153,8 +155,27 @@ internal sealed class XscnPreviewInstances : IDisposable
             GodotPathRef => "Resource()",
             GodotString => "a string",
             GodotNull => "null",
-            _ => "a " + value.GetType().Name.Replace("Godot", "", StringComparison.Ordinal),
+            _ => KindName(value),
         };
+
+    // Any other value by its kind, in lower case with its article.
+    private static string KindName(GodotValue value) =>
+        IsVector(value)
+            ? "a vector"
+            : value switch
+            {
+                GodotInt => "an int",
+                GodotFloat => "a float",
+                GodotBool => "a bool",
+                GodotArray => "an array",
+                GodotDictionary => "a dictionary",
+                _ => "a value",
+            };
+
+    private static bool IsVector(GodotValue value) =>
+        value
+            is GodotReal { Kind: GodotRealKind.Vector2 or GodotRealKind.Vector3 or GodotRealKind.Vector4 }
+                or GodotInts { Kind: GodotIntKind.Vector2I or GodotIntKind.Vector3I or GodotIntKind.Vector4I };
 
     // A _bundled value in the scene's own properties is set on the PackedScene before its [node] sections are read
     // (resource_format_text.cpp, the [resource] tag; packed_scene.cpp, _set_bundled_scene), and instancing it loads its

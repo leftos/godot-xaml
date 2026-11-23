@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using GodotXaml.Core.Conversion;
 using GodotXaml.Core.Metadata;
 using GodotXaml.Core.Tscn;
@@ -151,6 +152,35 @@ public sealed partial class SceneBackTests
         string written = TscnWriter.Write(back.Document);
         Assert.DoesNotContain("[node", written, StringComparison.Ordinal);
         Assert.Contains("resource_name = \"P\"", written, StringComparison.Ordinal);
+    }
+
+    // The .xres root's own properties are discovered as they are written, _bundled included, so whatever it refers to has its
+    // section when the refused root is still converted.
+    [Theory]
+    [InlineData("inline")]
+    [InlineData("file")]
+    [InlineData("key")]
+    public void AnXresRootPackedSceneWithASceneAndBundledIsRefusedWithoutThrowing(string value)
+    {
+        XscnValue bundled = value switch
+        {
+            "inline" => new XscnInline(Named("Unused")),
+            "file" => new XscnFile("res://unused.tres"),
+            _ => new XscnKeyRef("Unused"),
+        };
+        ImmutableArray<XscnResource> table = value == "key" ? [Named("Unused") with { Key = "Unused" }] : [];
+        var root = new XscnResource
+        {
+            Type = Class48("PackedScene"),
+            Properties = [new XscnProperty("_bundled", bundled)],
+            SceneRoot = new XscnNode { Type = Class48("Node"), Name = "R" },
+        };
+        var document = new XscnDocument(XscnDocumentKind.Resource, [], [], table, root, null);
+
+        ConversionResult<TscnDocument> back = XscnToTscn.Convert(document, Metadata48, Options);
+
+        ConversionIssue issue = Assert.Single(back.Issues, issue => issue.Severity == ConversionSeverity.Error);
+        Assert.Equal((ConversionCodes.NotAResource, "root"), (issue.Code, issue.Location));
     }
 
     // A resource whose property holds an embedded scene is refused under older metadata at the PackedScene.

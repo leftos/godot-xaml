@@ -341,6 +341,7 @@ public partial class Checks : Node
             ("C176", APreviewRefusesAnInlineObjectInstance),
             ("C177", AFourEightMarkedFileWithAnEmptyPackedSceneLoadsInAnOlderGodot),
             ("C178", AnEmbeddedScenesConnectionToAStrippedInstanceNodeIsDropped),
+            ("C179", APreviewNamesEachInlineInstanceRefusalOnce),
             ("C28", ExtensionsSplitByType),
             ("C29", ReportsDependencies),
             ("C30", RenamesDependencies),
@@ -8560,10 +8561,44 @@ public partial class Checks : Node
         return Failures(InlineInstanceFailure("the main scene", main), InlineInstanceFailure("the embedded scene", embedded));
     }
 
-    // The text's strip gives exactly the one inline-instance GXC0121 error.
-    private static string InlineInstanceFailure(string what, string text)
+    // Two nodes refused alike give one GXC0121 between them, and an inline value is named by its kind in lower case.
+    private static string APreviewNamesEachInlineInstanceRefusalOnce()
     {
-        string message = $"{BuiltPreviewPath} instances a scene given inline (instance=Object(PackedScene)), which the preview cannot strip";
+        const string twoSubResources =
+            "[gd_scene format=3]\n\n"
+            + "[sub_resource type=\"PackedScene\" id=\"PackedScene_e\"]\n"
+            + "[node name=\"Inner\" type=\"Control\"]\n\n"
+            + "[resource]\n\n"
+            + "[node name=\"Root\" type=\"Control\"]\n\n"
+            + "[node name=\"A\" parent=\".\" instance=SubResource(\"PackedScene_e\")]\n\n"
+            + "[node name=\"B\" parent=\".\" instance=SubResource(\"PackedScene_e\")]\n";
+        const string twoInts =
+            "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n\n"
+            + "[node name=\"A\" parent=\".\" instance=1]\n\n[node name=\"B\" parent=\".\" instance=2]\n";
+        const string array = "[gd_scene format=3]\n\n[node name=\"Root\" type=\"Control\"]\n\n[node name=\"A\" parent=\".\" instance=[1]]\n";
+        const string tail = "which the preview cannot strip";
+        return Failures(
+            OneInstanceFailure(
+                "two SubResource instances",
+                twoSubResources,
+                $"{BuiltPreviewPath} instances an embedded scene directly (instance=SubResource), {tail}"
+            ),
+            OneInstanceFailure("two int instances", twoInts, $"{BuiltPreviewPath} instances a scene given inline (instance=an int), {tail}"),
+            OneInstanceFailure("an array instance", array, $"{BuiltPreviewPath} instances a scene given inline (instance=an array), {tail}")
+        );
+    }
+
+    // The text's strip gives exactly the one inline-instance GXC0121 error.
+    private static string InlineInstanceFailure(string what, string text) =>
+        OneInstanceFailure(
+            what,
+            text,
+            $"{BuiltPreviewPath} instances a scene given inline (instance=Object(PackedScene)), which the preview cannot strip"
+        );
+
+    // The text's strip gives exactly the one GXC0121 error with the message.
+    private static string OneInstanceFailure(string what, string text, string message)
+    {
         using var instances = new XscnPreviewInstances();
         instances.Stripped(TscnReader.Read(text), BuiltPreviewPath);
         return
