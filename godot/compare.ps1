@@ -9,8 +9,10 @@ Asks Godot for its version (--version) and stops when the first line it prints d
 the 4.7 set, the fixtures (tests/fixtures/scenes/*.tscn and *.tres, and the hand-written tests/fixtures/stored/*.tscn)
 and their converted goldens (tests/fixtures/converted/*.xscn and *.xres), into godot/cases/, recreated on each run.
 Under Godot 4.8 or newer it also copies the 4.8 set: each golden in tests/fixtures/converted48/ with its source of the
-same stem in tests/fixtures/tscn48/, whose stems differ from the 4.7 set's; a source without a golden is left out. It
-prints COMPARE set 4.7 or COMPARE set 4.7+4.8 before the copy. It copies the scripts the fixtures name (holder.gd,
+same stem in tests/fixtures/tscn48/, whose stems differ from the 4.7 set's. A tscn48 source is left out only when the
+script's exclusion list names it with its reason; any other source without a golden, a golden without its source, or
+an empty 4.8 set stops the run with a compare.ps1 message. It prints COMPARE set 4.7, or COMPARE set 4.7+4.8 (<k> 4.8
+pairs), before the copy. It copies the scripts the fixtures name (holder.gd,
 quoted.gd and tagged.gd from tools/scene-fixtures/, replacing the previous copies) into godot/, where the fixtures'
 res:// paths point. Then builds the godot/ project as a full rebuild (--no-incremental), imports it headless (which
 registers the addon's loader), then imports it again, and runs res://compare/Compare.tscn headless. The expected pair
@@ -65,23 +67,53 @@ if ($expectedFixtures -eq 0) {
     [Console]::Error.WriteLine('compare.ps1: no fixtures in tests/fixtures/scenes')
     exit 1
 }
+# The tscn48 sources that are no conversion pair, each with the reason it has no golden in converted48.
+$fourEightExcluded = @{
+    'blend2d_scripted.tres' = 'it holds a Godot 4.8 triangles order for the core tests, not a conversion pair'
+}
 # The 4.8 set, under Godot 4.8 or newer: each golden of converted48 with its source of the same stem in tscn48, each
-# source counted as an expected pair.
+# source counted as an expected pair. A tscn48 source the exclusions do not name without its golden, a golden without
+# its source, or no golden at all stops the run, so it never runs the set short.
 $fourEightPairs = @()
 if ($fourEight) {
+    $goldenExtension = @{ '.tscn' = '.xscn'; '.tres' = '.xres' }
     $sourceExtension = @{ '.xscn' = '.tscn'; '.xres' = '.tres' }
+    $problems = [System.Collections.Generic.List[string]]::new()
+    $sources = @(Get-ChildItem -File -Path @(
+            (Join-Path $repo 'tests/fixtures/tscn48/*.tscn'),
+            (Join-Path $repo 'tests/fixtures/tscn48/*.tres')
+        ) | Sort-Object Name)
+    foreach ($source in $sources) {
+        $golden = Join-Path $repo "tests/fixtures/converted48/$($source.BaseName)$($goldenExtension[$source.Extension])"
+        if (-not $fourEightExcluded.ContainsKey($source.Name) -and -not (Test-Path -LiteralPath $golden)) {
+            $problems.Add("compare.ps1: tests/fixtures/tscn48/$($source.Name) has no golden in tests/fixtures/converted48")
+        }
+    }
     $fourEightPairs = @(Get-ChildItem -File -Path @(
             (Join-Path $repo 'tests/fixtures/converted48/*.xscn'),
             (Join-Path $repo 'tests/fixtures/converted48/*.xres')
-        ) | ForEach-Object {
+        ) | Sort-Object Name | ForEach-Object {
             [pscustomobject]@{
+                Name = $_.Name
                 Golden = $_.FullName
                 Source = Join-Path $repo "tests/fixtures/tscn48/$($_.BaseName)$($sourceExtension[$_.Extension])"
             }
         })
+    foreach ($pair in $fourEightPairs) {
+        if (-not (Test-Path -LiteralPath $pair.Source)) {
+            $problems.Add("compare.ps1: tests/fixtures/converted48/$($pair.Name) has no source in tests/fixtures/tscn48")
+        }
+    }
+    if ($fourEightPairs.Count -eq 0) {
+        $problems.Add('compare.ps1: no 4.8 pairs in tests/fixtures/converted48, under a Godot 4.8 or newer')
+    }
+    if ($problems.Count -gt 0) {
+        foreach ($problem in $problems) { [Console]::Error.WriteLine($problem) }
+        exit 1
+    }
     $expectedFixtures += $fourEightPairs.Count
 }
-[Console]::Out.WriteLine($(if ($fourEight) { 'COMPARE set 4.7+4.8' } else { 'COMPARE set 4.7' }))
+[Console]::Out.WriteLine($(if ($fourEight) { "COMPARE set 4.7+4.8 ($($fourEightPairs.Count) 4.8 pairs)" } else { 'COMPARE set 4.7' }))
 # The scripts the fixtures name by res:// path, copied from the generator's project; .gitignore lists each copy.
 $fixtureScripts = @('holder.gd', 'quoted.gd', 'tagged.gd')
 

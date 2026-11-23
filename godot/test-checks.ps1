@@ -7,15 +7,18 @@ and an import that prints the crash fails the run.
 
 .DESCRIPTION
 The stub Godot answers --version as a Godot 4.7.2 and exits 0 for --import, printing the crash when the case gives it
--FatalOnImport. For checks.ps1's scene run it prints CHECK C1 PASS, for compare.ps1's it prints COMPARE stub1 PASS, and for export.ps1's pack export it prints
-STUB export started. Each holds until the test writes its release file, then prints the rest of its run: checks and
-compare end with a passing verdict, export runs its whole preset list. The test waits for that first line on the
+-FatalOnImport. For checks.ps1's scene run it prints CHECK C1 PASS, for compare.ps1's it prints COMPARE stub1 PASS,
+and for export.ps1's pack export it prints STUB export started. Each holds until the test writes its release file,
+then prints the rest of its run: checks and compare end with a passing verdict, export runs its whole preset list. The test waits for that first line on the
 script's stdout, fails at once if the script exits first, and only then releases the stub. The one bound is a hang
 guard: a passing run never waits it out. Export's exit code is not asserted, because a stub that omits the presets'
 expected errors leaves it exiting 1. A case whose stub Godot prints a Fatal error line after its verdicts expects the
 script to fail on it and to print a FATAL line naming the step and the line. A stub that prints the crash on its import
 and exits 0 expects each script to stop at the import with a FATAL import line. A stub that ends any scene call carrying
---quit-after expects a checks or compare run whose scene call has no frame budget. The last two cases check Harness.psm1
+--quit-after expects a checks or compare run whose scene call has no frame budget. Three cases run compare.ps1 against
+a stub Godot that answers --version with a given line and runs without holding: a 4.8 line runs the 4.7 set and every
+4.8 pair and names their count, a line that does not start with major.minor stops the run before its copy, and a 4.8
+source without a golden stops the run with the script's message. The last two cases check Harness.psm1
 directly: its line judgement against a table of engine error lines and the lines it must leave alone, and its restore of
 a project's csproj after an editor run (an import, an export flag or the editor flag) rewrote it and left a backup,
 including a run that failed after the rewrite. Each case gets its own temp root and runs its script on a copy of the
@@ -492,6 +495,77 @@ function Test-LinesReachTheOutputWhileGodotRuns {
     return (Write-CaseResult -Case $Case -Failures $failures -Note $note)
 }
 
+# Runs compare.ps1 on a copy of the tree against a stub Godot that answers --version with the line and passes every
+# expected pair at once; with -ExtraSource, that file is added to the copy's tests/fixtures/tscn48 first. The case passes
+# when the script exits with -ExpectExit and its output holds every line of -Lines; prints the case's result and returns
+# whether it passed.
+function Test-CompareVersion {
+    param(
+        [Parameter(Mandatory)][string] $Case,
+        [Parameter(Mandatory)][string] $VersionLine,
+        [Parameter(Mandatory)][int] $ExpectExit,
+        [Parameter(Mandatory)][string[]] $Lines,
+        [AllowEmptyCollection()][string[]] $AbsentLines = @(),
+        [string] $ExtraSource = ''
+    )
+    $root = Join-Path ([System.IO.Path]::GetTempPath()) ("gx-test-checks-" + [guid]::NewGuid().ToString('N'))
+    $stubs = Join-Path $root 'bin'
+    $failures = [System.Collections.Generic.List[string]]::new()
+    $stateBefore = Get-RealState -Repo $repo
+    try {
+        $copyProject = New-RepoCopy -Repo $repo -Destination (Join-Path $root 'repo')
+        if ($ExtraSource) {
+            Set-Content -LiteralPath (Join-Path $root "repo/tests/fixtures/tscn48/$ExtraSource") -Value '[gd_scene format=3]'
+        }
+        New-Item -ItemType Directory -Force $stubs | Out-Null
+        Set-Content -LiteralPath (Join-Path $stubs 'dotnet.cmd') -Value "@exit /b 0`r`n" -NoNewline
+        $stub = @'
+$all = $args -join ' '
+if ($all -eq '--version') { [Console]::Out.WriteLine('__VERSION__'); exit 0 }
+if ($all -match '--import') { exit 0 }
+$pairs = [int]([regex]::Match($all, '--expected-pairs=(\d+)').Groups[1].Value)
+foreach ($n in 1..$pairs) { [Console]::Out.WriteLine("COMPARE stub$n PASS") }
+[Console]::Out.WriteLine("DONE $pairs/$pairs")
+exit 0
+'@
+        Set-Content -LiteralPath (Join-Path $stubs 'godot-stub.ps1') -Value $stub.Replace('__VERSION__', $VersionLine)
+        $godotCmd = "@pwsh -NoProfile -File `"%~dp0godot-stub.ps1`" %*`r`n@exit /b %ERRORLEVEL%`r`n"
+        Set-Content -LiteralPath (Join-Path $stubs 'godot.cmd') -Value $godotCmd -NoNewline
+
+        $psi = [System.Diagnostics.ProcessStartInfo]::new('pwsh')
+        foreach ($a in @('-NoProfile', '-File', (Join-Path $copyProject 'compare.ps1'))) { $psi.ArgumentList.Add($a) }
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.UseShellExecute = $false
+        $psi.Environment['GODOT_PATH'] = Join-Path $stubs 'godot.cmd'
+        $psi.Environment['GODOT_BIN'] = ''
+        $psi.Environment['PATH'] = $stubs + [System.IO.Path]::PathSeparator + $env:PATH
+        $process = [System.Diagnostics.Process]::Start($psi)
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit($HangGuardSeconds * 1000)) {
+            $process.Kill($true)
+            $null = $process.WaitForExit()
+            $failures.Add("hung: compare.ps1 had not ended after $HangGuardSeconds s")
+        }
+        $output = @(($stdout.GetAwaiter().GetResult() + "`n" + $stderr.GetAwaiter().GetResult()) -split '\r?\n')
+        if ($process.ExitCode -ne $ExpectExit) {
+            $failures.Add("compare.ps1 exited $($process.ExitCode), not ${ExpectExit}: $($output -join ' | ')")
+        }
+        foreach ($line in $Lines) {
+            if ($output -cnotcontains $line) { $failures.Add("compare.ps1 did not print '$line': $($output -join ' | ')") }
+        }
+        foreach ($line in $AbsentLines) {
+            if ($output -ccontains $line) { $failures.Add("compare.ps1 printed '$line'") }
+        }
+    } finally {
+        Remove-TempRoot -Path $root
+    }
+    $stateChange = Get-RealStateChange -Before $stateBefore -After (Get-RealState -Repo $repo)
+    if ($null -ne $stateChange) { $failures.Add("the run rewrote the real tree: $stateChange") }
+    return (Write-CaseResult -Case $Case -Failures $failures)
+}
+
 # Checks Harness.psm1's line judgement against the engine error lines that fail an editor run and the lines that must
 # stay informational; a command that throws counts as a wrong row rather than ending the test.
 function Test-EngineErrorKinds {
@@ -841,6 +915,18 @@ $exportVerdicts = @(@('all', 'selected', 'exclude', 'resources', 'broken', 'depe
 $probeVerdicts = @(@('P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'B1', 'B2', 'D1', 'D2') |
         ForEach-Object { "PROBE $_" })
 
+# The 4.7 set's and the 4.8 set's sizes, counted as compare.ps1 counts them.
+$fourSevenPairs = @(Get-ChildItem -File -Path @(
+        (Join-Path $repo 'tests/fixtures/scenes/*.tscn'),
+        (Join-Path $repo 'tests/fixtures/scenes/*.tres'),
+        (Join-Path $repo 'tests/fixtures/stored/*.tscn')
+    )).Count
+$fourEightPairs = @(Get-ChildItem -File -Path @(
+        (Join-Path $repo 'tests/fixtures/converted48/*.xscn'),
+        (Join-Path $repo 'tests/fixtures/converted48/*.xres')
+    )).Count
+$allPairs = $fourSevenPairs + $fourEightPairs
+
 $results = @(
     (Test-LinesReachTheOutputWhileGodotRuns -Case 'SceneLinesReachTheOutputWhileGodotRuns' -Repo $repo -Script 'checks.ps1' `
         -StubGodot $checksStub -FirstLine 'CHECK C1 PASS' -Expect 'CleanExit' -ChecksCount)
@@ -874,6 +960,13 @@ $results = @(
         -StubGodot $checksNoBudgetStub -FirstLine 'CHECK C1 PASS' -Expect 'CleanExit' -ChecksCount)
     (Test-LinesReachTheOutputWhileGodotRuns -Case 'CompareSceneRunHasNoFrameBudget' -Repo $repo -Script 'compare.ps1' `
         -StubGodot $compareNoBudgetStub -FirstLine 'COMPARE stub1 PASS' -Expect 'CleanExit')
+    (Test-CompareVersion -Case 'CompareUnderFourEightRunsEveryFourEightPair' -VersionLine '4.8.beta2.mono.official.stub' `
+        -ExpectExit 0 -Lines @("COMPARE set 4.7+4.8 ($fourEightPairs 4.8 pairs)", "COMPARE passed $allPairs, failed 0, expected $allPairs"))
+    (Test-CompareVersion -Case 'CompareStopsOnAnUnreadableVersion' -VersionLine 'Godot Engine stub' -ExpectExit 1 `
+        -Lines @('compare.ps1: the Godot version "Godot Engine stub" does not start with <major>.<minor>') -AbsentLines @('STEP copy'))
+    (Test-CompareVersion -Case 'CompareStopsOnAFourEightSourceWithoutAGolden' -VersionLine '4.8.beta2.mono.official.stub' `
+        -ExpectExit 1 -ExtraSource 'stray.tscn' -AbsentLines @('STEP copy') `
+        -Lines @('compare.ps1: tests/fixtures/tscn48/stray.tscn has no golden in tests/fixtures/converted48'))
     (Test-EngineErrorKinds)
     (Test-ImportRestoresTheCsproj)
 )

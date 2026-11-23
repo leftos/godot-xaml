@@ -8714,6 +8714,9 @@ public partial class Checks : Node
             return Failures(
                 document!.Scene is null ? $"the saved text has no x:Scene: {Escaped(text)}" : "",
                 HoldsEmbeddedScene(document) ? "" : $"the saved text holds no embedded scene root: {Escaped(text)}",
+                document.Scene?.Properties.Any(p => p.Value is XscnInline { Resource.SceneRoot: not null }) == true
+                    ? ""
+                    : $"the saved x:Scene holds no embedded scene: {Escaped(text)}",
                 LoadedContentFailure(path)
             );
         }
@@ -8723,47 +8726,58 @@ public partial class Checks : Node
         }
     }
 
-    // A packed Root with a Child, named Content with metadata/answer 42, whose root holds the embedded scene in metadata/inner.
+    // A packed Root with a Child, named Content with metadata/answer 42 and the held scene in its own metadata/held, whose
+    // root holds the inner scene in metadata/inner.
     private static PackedScene SceneWithContent()
     {
         var root = new Node { Name = "Root" };
         var child = new Node { Name = "Child" };
         root.AddChild(child);
         child.Owner = root;
-        var scene = new PackedScene();
-        try
-        {
-            using PackedScene inner = InnerScene();
-            root.SetMeta("inner", inner);
-            Error packed = scene.Pack(root);
-            if (packed != Error.Ok)
-            {
-                throw new InvalidOperationException($"packing the scene returned {packed}");
-            }
-        }
-        finally
-        {
-            root.Free();
-        }
-
+        using PackedScene inner = InnerScene();
+        root.SetMeta("inner", inner);
+        PackedScene scene = Packed(root);
+        using PackedScene held = HeldScene();
         scene.ResourceName = "Content";
         scene.SetMeta("answer", 42);
+        scene.SetMeta("held", held);
         return scene;
     }
 
-    // A packed InnerRoot with an InnerChild whose renamed signal is connected, persistently, to InnerRoot's queue_free.
+    // A packed InnerRoot with a Node2D InnerChild whose material is an additive CanvasItemMaterial and whose renamed signal
+    // is connected, deferred and persistent, to InnerRoot's queue_free.
     private static PackedScene InnerScene()
     {
         var root = new Node { Name = "InnerRoot" };
-        var child = new Node { Name = "InnerChild" };
+        var child = new Node2D
+        {
+            Name = "InnerChild",
+            Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add },
+        };
         root.AddChild(child);
         child.Owner = root;
-        child.Connect(Node.SignalName.Renamed, new Callable(root, Node.MethodName.QueueFree), (uint)ConnectFlags.Persist);
-        var inner = new PackedScene();
+        child.Connect(Node.SignalName.Renamed, new Callable(root, Node.MethodName.QueueFree), (uint)(ConnectFlags.Persist | ConnectFlags.Deferred));
+        return Packed(root);
+    }
+
+    // A packed HeldRoot with a HeldChild.
+    private static PackedScene HeldScene()
+    {
+        var root = new Node { Name = "HeldRoot" };
+        var child = new Node { Name = "HeldChild" };
+        root.AddChild(child);
+        child.Owner = root;
+        return Packed(root);
+    }
+
+    // The tree packed into a new scene; the tree is freed either way.
+    private static PackedScene Packed(Node root)
+    {
+        var scene = new PackedScene();
         try
         {
-            Error packed = inner.Pack(root);
-            return packed == Error.Ok ? inner : throw new InvalidOperationException($"packing the inner scene returned {packed}");
+            Error packed = scene.Pack(root);
+            return packed == Error.Ok ? scene : throw new InvalidOperationException($"packing {root.Name} returned {packed}");
         }
         finally
         {
@@ -8794,9 +8808,13 @@ public partial class Checks : Node
                     loaded.GetMeta("answer", default(Variant)).Obj is long answer && answer == 42
                         ? ""
                         : $"the loaded scene's metadata/answer is {loaded.GetMeta("answer", default(Variant))}, not 42",
+                    root.GetNodeOrNull("Child") is null ? "the loaded scene has no node Child" : "",
                     root.GetMeta("inner", default(Variant)).Obj is PackedScene inner
                         ? InnerStateFailure(inner)
-                        : "the root's metadata/inner holds no PackedScene"
+                        : "the root's metadata/inner holds no PackedScene",
+                    loaded.GetMeta("held", default(Variant)).Obj is PackedScene held
+                        ? HeldStateFailure(held)
+                        : "the loaded scene's metadata/held holds no PackedScene"
                 );
             }
             finally
@@ -8806,59 +8824,85 @@ public partial class Checks : Node
         }
     }
 
-    // The inner scene's state: InnerRoot and InnerChild, and the one renamed connection from InnerChild to the root's queue_free.
+    // The inner scene's state: InnerRoot and InnerChild, InnerChild's additive material, and the one renamed connection
+    // from InnerChild to the root's queue_free, deferred and persistent.
     private static string InnerStateFailure(PackedScene inner)
     {
         SceneState state = inner.GetState();
-        string[] nodes = [.. Enumerable.Range(0, state.GetNodeCount()).Select(node => state.GetNodeName(node).ToString())];
         string[] connections =
         [
             .. Enumerable
                 .Range(0, state.GetConnectionCount())
                 .Select(c =>
-                    $"{state.GetConnectionSource(c)}.{state.GetConnectionSignal(c)}>{state.GetConnectionTarget(c)}.{state.GetConnectionMethod(c)}"
+                    $"{state.GetConnectionSource(c)} {state.GetConnectionSignal(c)} -> {state.GetConnectionTarget(c)} "
+                    + $"{state.GetConnectionMethod(c)} flags={state.GetConnectionFlags(c)}"
                 ),
         ];
-        return Failures(
-            nodes.SequenceEqual(["InnerRoot", "InnerChild"], StringComparer.Ordinal)
-                ? ""
-                : $"the inner scene's nodes are [{string.Join(", ", nodes)}], not [InnerRoot, InnerChild]",
-            connections.SequenceEqual(["InnerChild.renamed>..queue_free"], StringComparer.Ordinal)
-                ? ""
-                : $"the inner scene's connections are [{string.Join(", ", connections)}], not [InnerChild.renamed>..queue_free]"
-        );
+        string expected = $"InnerChild renamed -> . queue_free flags={(int)(ConnectFlags.Persist | ConnectFlags.Deferred)}";
+        Node root = inner.Instantiate();
+        try
+        {
+            return Failures(
+                NodesFailure("inner", state, ["InnerRoot", "InnerChild"]),
+                connections.SequenceEqual([expected], StringComparer.Ordinal)
+                    ? ""
+                    : $"the inner scene's connections are [{string.Join("; ", connections)}], not [{expected}]",
+                root.GetNodeOrNull<Node2D>("InnerChild")?.Material is CanvasItemMaterial { BlendMode: CanvasItemMaterial.BlendModeEnum.Add }
+                    ? ""
+                    : "the inner scene's InnerChild has no CanvasItemMaterial with blend mode Add"
+            );
+        }
+        finally
+        {
+            root.Free();
+        }
     }
 
-    // The project setting the probe script's static initializer sets when it loads.
-    private const string ProbeSetting = "godot_xaml_checks/probe_ran";
+    // The held scene's state: HeldRoot and HeldChild.
+    private static string HeldStateFailure(PackedScene held) => NodesFailure("held", held.GetState(), ["HeldRoot", "HeldChild"]);
 
-    private const string ProbeScriptPath = OutFolder + "probe.gd";
+    // The state's node names in order are the expected ones, or the failure names the scene.
+    private static string NodesFailure(string scene, SceneState state, string[] expected)
+    {
+        string[] nodes = [.. Enumerable.Range(0, state.GetNodeCount()).Select(node => state.GetNodeName(node).ToString())];
+        return nodes.SequenceEqual(expected, StringComparer.Ordinal)
+            ? ""
+            : $"the {scene} scene's nodes are [{string.Join(", ", nodes)}], not [{string.Join(", ", expected)}]";
+    }
 
-    // A text whose embedded scenes, one in x:Scene's metadata and one in the root's, each hold a node with the probe script.
-    private const string EmbeddedProbeScene =
+    // Each probe of C181: a route's x:Scene probe and root probe, and the direct-load control. Each has its own script, so
+    // no probe is reused from the cache, where a loaded GDScript does not run its static initializer again.
+    private static readonly string[] Probes = ["direct_scene", "direct_node", "ref_scene", "ref_node", "control"];
+
+    private static string ProbePath(string probe) => OutFolder + $"probe_{probe}.gd";
+
+    // The project setting the probe's static initializer sets when its script loads.
+    private static string ProbeMarker(string probe) => $"godot_xaml_checks/probe_{probe}_ran";
+
+    private static string ProbeScript(string probe) =>
+        "extends Node\n\nstatic func _static_init():\n\tProjectSettings.set_setting(\"" + ProbeMarker(probe) + "\", true)\n";
+
+    // A text whose embedded scenes each hold a node Probed with a probe: the one in x:Scene's metadata/inner the scene
+    // probe, the one in the root's metadata/inner the node probe.
+    private static string EmbeddedProbeScene(string sceneProbe, string nodeProbe) =>
         "<Node xmlns:x=\"https://github.com/leftos/godot-xaml/format/1\" x:Godot=\"4.8\" Name=\"Root\">\n"
         + "  <Node.Metadata.inner>\n"
         + "    <PackedScene>\n"
-        + "      <Node Name=\"InnerRoot\">\n"
-        + "        <Node Name=\"Probed\" Script=\""
-        + ProbeScriptPath
-        + "\" />\n"
-        + "      </Node>\n"
+        + $"      <Node Name=\"InnerRoot\">\n        <Node Name=\"Probed\" Script=\"{ProbePath(nodeProbe)}\" />\n      </Node>\n"
         + "    </PackedScene>\n"
         + "  </Node.Metadata.inner>\n"
         + "  <x:Scene>\n"
         + "    <x:Scene.Metadata.inner>\n"
         + "      <PackedScene>\n"
-        + "        <Node Name=\"SceneRoot\" Script=\""
-        + ProbeScriptPath
-        + "\" />\n"
+        + $"        <Node Name=\"SceneRoot\">\n          <Node Name=\"Probed\" Script=\"{ProbePath(sceneProbe)}\" />\n        </Node>\n"
         + "      </PackedScene>\n"
         + "    </x:Scene.Metadata.inner>\n"
         + "  </x:Scene>\n"
         + "</Node>\n";
 
-    // Under Godot 4.8, with scripts off, previewing a scene whose embedded scenes hold the probe script, directly and through
-    // an instanced .xscn, runs no probe; loading the probe itself does. Older engines pass.
+    // Under Godot 4.8, a scripts-off preview of a scene whose embedded scenes hold probes, directly and through an instanced
+    // .xscn, keeps the probed nodes and neither runs nor caches a probe, while a scripts-allowed preview of the same text
+    // runs each. Older engines pass.
     private static string AScriptsOffPreviewOfAnEmbeddedSceneRunsNoProjectCode()
     {
         if (!FourEightRuns())
@@ -8872,42 +8916,85 @@ public partial class Checks : Node
         Directory.CreateDirectory(ProjectSettings.GlobalizePath(OutFolder));
         try
         {
-            File.WriteAllText(
-                ProjectSettings.GlobalizePath(ProbeScriptPath),
-                "extends Node\n\nstatic func _static_init():\n\tProjectSettings.set_setting(\"" + ProbeSetting + "\", true)\n"
-            );
-            File.WriteAllText(ProjectSettings.GlobalizePath(heldPath), EmbeddedProbeScene);
-            ProjectSettings.SetSetting(PreviewScriptsSetting, false);
+            foreach (string probe in Probes)
+            {
+                ProjectSettings.SetSetting(ProbeMarker(probe), default(Variant));
+                File.WriteAllText(ProjectSettings.GlobalizePath(ProbePath(probe)), ProbeScript(probe));
+            }
+
+            File.WriteAllText(ProjectSettings.GlobalizePath(heldPath), EmbeddedProbeScene("ref_scene", "ref_node"));
             return Failures(
-                ProbeFailure("the previewed scene", EmbeddedProbeScene),
-                ProbeFailure("the instanced .xscn", InstancingScene(heldPath)),
-                ProbeRunsFailure()
+                ProbeRouteFailure("the previewed scene", EmbeddedProbeScene("direct_scene", "direct_node"), ".", "direct_scene", "direct_node"),
+                ProbeRouteFailure("the instanced .xscn", InstancingScene(heldPath), "Inst", "ref_scene", "ref_node"),
+                // Last: every preview above runs before any probe script has been loaded by anything but a preview, so
+                // its HasCached reads and markers say what that preview alone did.
+                ProbeRunsFailure("control")
             );
         }
         finally
         {
-            ProjectSettings.SetSetting(ProbeSetting, default(Variant));
+            foreach (string probe in Probes)
+            {
+                ProjectSettings.SetSetting(ProbeMarker(probe), default(Variant));
+            }
+
             DeleteFolder(OutFolder);
         }
     }
 
-    // The preview of the text succeeds and leaves the probe's setting unset.
-    private static string ProbeFailure(string what, string text)
+    // One route: with scripts off, the preview keeps the holder's embedded scene with its Probed node and leaves both probes
+    // unrun and uncached; with scripts allowed, the preview of the same text runs both.
+    private static string ProbeRouteFailure(string route, string text, string holder, string sceneProbe, string nodeProbe)
     {
-        ProjectSettings.SetSetting(ProbeSetting, default(Variant));
-        string preview = WithPreview(text, OutFolder + "previewed.xscn", scriptsRequested: true, _ => "");
+        const string previewPath = OutFolder + "previewed.xscn";
+        string[] probes = [sceneProbe, nodeProbe];
+        ProjectSettings.SetSetting(PreviewScriptsSetting, false);
+        string stripped = WithPreview(text, previewPath, scriptsRequested: true, root => ProbedNodeFailure(root, holder));
+        string[] ran = [.. probes.Where(probe => ProjectSettings.HasSetting(ProbeMarker(probe)))];
+        string[] cached = [.. probes.Where(probe => ResourceLoader.HasCached(ProbePath(probe)))];
+        ProjectSettings.SetSetting(PreviewScriptsSetting, true);
+        string allowed = WithPreview(text, previewPath, scriptsRequested: true, _ => "");
+        string[] unrun = [.. probes.Where(probe => !ProjectSettings.HasSetting(ProbeMarker(probe)))];
         return Failures(
-            preview.Length == 0 ? "" : $"{what}: {preview}",
-            ProjectSettings.HasSetting(ProbeSetting) ? $"{what}: the probe's _static_init ran in a scripts-off preview" : ""
+            stripped.Length == 0 ? "" : $"{route}, scripts off: {stripped}",
+            ran.Length == 0 ? "" : $"{route}: the probes [{string.Join(", ", ran)}] ran in a scripts-off preview",
+            cached.Length == 0 ? "" : $"{route}: the probes [{string.Join(", ", cached)}] are cached after a scripts-off preview",
+            allowed.Length == 0 ? "" : $"{route}, scripts allowed: {allowed}",
+            unrun.Length == 0 ? "" : $"{route}: the probes [{string.Join(", ", unrun)}] did not run in a scripts-allowed preview"
         );
     }
 
-    // The positive control: loading the probe script runs its _static_init.
-    private static string ProbeRunsFailure()
+    // The holder node is in the preview's tree, and the embedded scene in its metadata/inner still holds Probed.
+    private static string ProbedNodeFailure(Node root, string holder)
     {
-        ProjectSettings.SetSetting(ProbeSetting, default(Variant));
-        using Resource? probe = ResourceLoader.Load(ProbeScriptPath, "", ResourceLoader.CacheMode.Ignore);
-        return ProjectSettings.HasSetting(ProbeSetting) ? "" : $"loading {ProbeScriptPath} did not run its _static_init, so the probe proves nothing";
+        if (root.GetNodeOrNull(holder) is not { } held)
+        {
+            return HasNode(root, holder);
+        }
+
+        if (held.GetMeta("inner", default(Variant)).Obj is not PackedScene inner)
+        {
+            return $"{holder}'s metadata/inner holds no PackedScene";
+        }
+
+        Node innerRoot = inner.Instantiate();
+        try
+        {
+            return HasNode(innerRoot, "Probed") is { Length: > 0 } missing ? $"{holder}'s embedded scene: {missing}" : "";
+        }
+        finally
+        {
+            innerRoot.Free();
+        }
+    }
+
+    // The positive control: loading the probe's script runs its _static_init.
+    private static string ProbeRunsFailure(string probe)
+    {
+        using Resource? script = ResourceLoader.Load(ProbePath(probe), "", ResourceLoader.CacheMode.Ignore);
+        return ProjectSettings.HasSetting(ProbeMarker(probe))
+            ? ""
+            : $"loading {ProbePath(probe)} did not run its _static_init, so the probes prove nothing";
     }
 
     // A scene whose only node instances the scene at the path.

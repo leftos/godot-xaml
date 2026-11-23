@@ -453,10 +453,9 @@ public partial class Compare : Node
 
         private readonly List<string> lines = [];
         private readonly List<List<string>> connections = [];
-        private readonly Dictionary<ulong, int> visited = [];
 
-        // The scenes being dumped, this one and the ones holding it, which a value naming one of them does not open again.
-        private HashSet<ulong> Open { get; init; } = [];
+        // The resources dumped so far, each with the ordinal of its first visit; an embedded scene's dump shares its holder's.
+        private Dictionary<ulong, int> Visited { get; init; } = [];
 
         public List<string> Lines()
         {
@@ -466,10 +465,22 @@ public partial class Compare : Node
                 return lines;
             }
 
-            Open.Add(scene!.GetInstanceId());
+            return SceneLines();
+        }
+
+        // The packed state and the scene's own properties, then the instantiated tree and its connections, or a
+        // "did not instantiate" line when the scene gave no root.
+        private List<string> SceneLines()
+        {
             DumpState();
-            DumpSceneProperties(scene);
-            DumpNode(root!);
+            DumpSceneProperties(scene!);
+            if (root is null)
+            {
+                lines.Add("did not instantiate");
+                return lines;
+            }
+
+            DumpNode(root);
             foreach (List<string> connection in connections.OrderBy(block => block[0], StringComparer.Ordinal))
             {
                 lines.AddRange(connection);
@@ -484,7 +495,7 @@ public partial class Compare : Node
         private void DumpResource(Resource top)
         {
             lines.Add($"resource {top.GetClass()}");
-            visited[top.GetInstanceId()] = 1;
+            Visited[top.GetInstanceId()] = 1;
             DumpProperties(top, "prop", "", "", lines);
         }
 
@@ -526,7 +537,11 @@ public partial class Compare : Node
             foreach (string name in StorageNames(packed).Where(name => name != BundledProperty))
             {
                 Variant value = packed.Get(name);
-                if (string.Equals(GD.VarToStr(value), GD.VarToStr(blank.Get(name)), StringComparison.Ordinal))
+                bool isDefault =
+                    value.VariantType == Variant.Type.Object
+                        ? value.AsGodotObject() is null
+                        : string.Equals(GD.VarToStr(value), GD.VarToStr(blank.Get(name)), StringComparison.Ordinal);
+                if (isDefault)
                 {
                     continue;
                 }
@@ -538,24 +553,20 @@ public partial class Compare : Node
         }
 
         // An embedded scene, dumped whole as a scene is (its state, ids, own properties, tree and connections), each line
-        // after "embedded <path> <key>: ".
+        // after "embedded <path> <key>: ". It shares this dump's visits, so a resource the conversion split or merged across
+        // the scene's boundary reads differently on the two sides; the scene itself is already a visit, so a reference
+        // back to it reads res(seen:<n>).
         private void DumpEmbedded(string path, string key, PackedScene packed, List<string> into)
         {
             Node? nested = packed.Instantiate();
-            if (nested is null)
-            {
-                into.Add($"embedded {path} {key} did not instantiate");
-                return;
-            }
-
             try
             {
-                var dump = new SceneDump(packed, nested) { Open = [.. Open] };
-                into.AddRange(dump.Lines().Select(line => $"embedded {path} {key}: {line}"));
+                var dump = new SceneDump(packed, nested, null) { Visited = Visited };
+                into.AddRange(dump.SceneLines().Select(line => $"embedded {path} {key}: {line}"));
             }
             finally
             {
-                nested.Free();
+                nested?.Free();
             }
         }
 
@@ -566,11 +577,9 @@ public partial class Compare : Node
             return major > 4 || (major == 4 && info["minor"].AsInt32() >= 8);
         }
 
-        // A built-in PackedScene, held by no file of its own, that no scene being dumped is.
-        private bool Embedded(PackedScene packed) =>
-            OpensEmbeddedScenes
-            && (packed.ResourcePath.Length == 0 || packed.ResourcePath.Contains("::", StringComparison.Ordinal))
-            && !Open.Contains(packed.GetInstanceId());
+        // A built-in PackedScene, held by no file of its own.
+        private static bool Embedded(PackedScene packed) =>
+            OpensEmbeddedScenes && (packed.ResourcePath.Length == 0 || packed.ResourcePath.Contains("::", StringComparison.Ordinal));
 
         private static IEnumerable<string> StorageNames(GodotObject owner) =>
             owner
@@ -672,12 +681,12 @@ public partial class Compare : Node
         // A resource is dumped once, at its first visit; a later reference names that visit's ordinal.
         private string ResourceText(string key, Resource resource, List<(Resource, string)> firstVisits)
         {
-            if (visited.TryGetValue(resource.GetInstanceId(), out int ordinal))
+            if (Visited.TryGetValue(resource.GetInstanceId(), out int ordinal))
             {
                 return $"res(seen:{ordinal})";
             }
 
-            visited[resource.GetInstanceId()] = visited.Count + 1;
+            Visited[resource.GetInstanceId()] = Visited.Count + 1;
             firstVisits.Add((resource, key));
             return $"res({ResourceName(resource)})";
         }
